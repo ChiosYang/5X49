@@ -1,0 +1,28 @@
+# Environment Variables
+.env
+.env.local
+.env.*.local
+
+# Dependency Directories
+node_modules/
+__pycache__/
+*.pyc
+
+# System Files
+.DS_Store
+
+# IDEs
+.idea/
+.vscode/
+
+# Build Outputs
+dist/
+out/
+build/
+.next/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
