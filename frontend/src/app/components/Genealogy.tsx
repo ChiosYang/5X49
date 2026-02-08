@@ -53,137 +53,141 @@ export default function Genealogy() {
   };
 
   return (
-    <div className="min-h-screen bg-neutral-950 text-neutral-200 p-8 font-sans selection:bg-rose-900 selection:text-white">
-      <div className="max-w-4xl mx-auto space-y-12">
+    <div className="min-h-screen bg-black text-white p-6 md:p-12 selection:bg-white selection:text-black">
+      <div className="max-w-6xl mx-auto space-y-20">
         {/* Header */}
-        <header className="text-center space-y-4 pt-10">
-          <h1 className="text-5xl font-bold tracking-tight bg-gradient-to-r from-rose-400 to-orange-300 bg-clip-text text-transparent">
-            Film Genealogy
+        <header className="space-y-6 pt-12 border-b border-neutral-800 pb-12">
+          <h1 className="text-6xl md:text-8xl tracking-tighter font-serif">
+            FILM GENEALOGY
           </h1>
-          <p className="text-neutral-400 text-lg">
-            Discover the ancestry and legacy of cinema.
+          <p className="text-neutral-500 text-meta tracking-widest text-sm">
+            ARCHIVE NO. 001 — THE ANCESTRY OF CINEMA
           </p>
         </header>
 
-        {/* Search */}
-        <form onSubmit={handleSearch} className="relative max-w-xl mx-auto">
+        {/* Search Input (Minimalist) */}
+        <form onSubmit={handleSearch} className="relative max-w-2xl">
           <input
             type="text"
-            placeholder="Enter a film title (e.g., 2001: A Space Odyssey)..."
-            className="w-full bg-neutral-900 border border-neutral-800 rounded-full px-6 py-4 pl-14 text-lg focus:outline-none focus:ring-2 focus:ring-rose-500/50 transition-all placeholder:text-neutral-600"
+            placeholder="ENTER FILM TITLE..."
+            className="w-full bg-transparent border-b border-neutral-700 py-4 text-2xl md:text-4xl placeholder:text-neutral-800 focus:outline-none focus:border-white transition-colors uppercase font-bold tracking-tight"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
           />
-          <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-neutral-500 w-5 h-5" />
           <button 
             type="submit" 
             disabled={loading}
-            className="absolute right-3 top-1/2 -translate-y-1/2 bg-rose-600 hover:bg-rose-500 text-white px-4 py-2 rounded-full text-sm font-medium transition-colors disabled:opacity-50"
+            className="absolute right-0 top-1/2 -translate-y-1/2 text-sm uppercase tracking-widest hover:text-neutral-400 disabled:opacity-50"
           >
-            {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Analyze"}
+            {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : "ANALYZE →"}
           </button>
         </form>
 
         {/* Error */}
         {error && (
-          <div className="text-center text-rose-400 bg-rose-950/30 py-3 rounded-lg border border-rose-900/50">
-            {error}
+          <div className="border border-red-900 text-red-500 p-4 text-xs font-mono uppercase">
+            Error: {error}
           </div>
         )}
 
         {/* Results */}
         {data && (
           <motion.div 
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 40 }}
             animate={{ opacity: 1, y: 0 }}
-            className="space-y-16"
+            transition={{ duration: 0.8, ease: "circOut" }}
+            className="space-y-24 pb-24"
           >
-            {/* Main Film Info */}
-            <div className="bg-neutral-900/50 rounded-2xl p-8 border border-neutral-800 text-center relative overflow-hidden">
-               <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-rose-500 to-transparent opacity-50"></div>
-               <h2 className="text-4xl font-serif text-white mb-2">{data.tmdb_metadata.title}</h2>
-               <div className="text-rose-400 font-mono text-sm mb-6">{data.tmdb_metadata.year}</div>
-               
-               <div className="flex flex-wrap justify-center gap-2 mb-6">
-                 {data.tmdb_metadata.genres.map(g => (
-                   <span key={g} className="px-3 py-1 bg-neutral-800 rounded-full text-xs text-neutral-300 font-medium tracking-wide uppercase">
-                     {g}
-                   </span>
-                 ))}
+            {/* Hero Section */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-start">
+               <div className="lg:col-span-8 space-y-8">
+                 <h2 className="text-7xl md:text-9xl font-bold uppercase leading-[0.8] tracking-tighter break-words">
+                   {data.tmdb_metadata.title}
+                 </h2>
+                 <div className="space-y-4">
+                    <p className="text-2xl font-serif italic text-neutral-400">"{data.micro_genre}"</p>
+                    <p className="max-w-xl text-lg text-neutral-300 leading-relaxed font-light">
+                      {data.influence_impact}
+                    </p>
+                 </div>
                </div>
 
-               <div className="max-w-2xl mx-auto space-y-6 text-neutral-300 leading-relaxed">
-                  <div>
-                    <span className="block text-xs font-bold text-rose-500/80 uppercase tracking-widest mb-1">Micro-Genre</span>
-                    <p className="font-serif text-xl italic text-white">"{data.micro_genre}"</p>
-                  </div>
-                  
-                  <div>
-                    <span className="block text-xs font-bold text-rose-500/80 uppercase tracking-widest mb-1">Impact Analysis</span>
-                    <p className="text-neutral-400">{data.influence_impact}</p>
-                  </div>
+               <div className="lg:col-span-4 space-y-6 border-t border-neutral-800 pt-6 lg:pt-0 lg:border-t-0">
+                 <div className="flex justify-between border-b border-neutral-900 pb-2">
+                   <span className="text-meta text-neutral-500">YEAR</span>
+                   <span className="text-lg font-bold">{data.tmdb_metadata.year}</span>
+                 </div>
+                 <div className="flex flex-col gap-2 border-b border-neutral-900 pb-4">
+                   <span className="text-meta text-neutral-500">GENRES</span>
+                   <div className="flex flex-wrap gap-2">
+                     {data.tmdb_metadata.genres.map(g => (
+                       <span key={g} className="text-sm uppercase tracking-wide border border-neutral-800 px-2 py-1">
+                         {g}
+                       </span>
+                     ))}
+                   </div>
+                 </div>
                </div>
             </div>
 
-            {/* Timeline */}
-            <div className="relative border-l-2 border-neutral-800 ml-6 md:ml-auto md:max-w-2xl space-y-12 pl-8 pb-4">
+            {/* Timeline Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-16 border-t border-neutral-800 pt-16">
               
-              {/* Ancestors */}
-              <div className="space-y-8">
-                <h3 className="text-sm font-bold text-neutral-500 uppercase tracking-widest -ml-10 mb-6 flex items-center gap-4">
-                  <span className="w-2 h-2 rounded-full bg-neutral-700"></span>
-                  Ancestors
+              {/* Ancestors Column */}
+              <div className="space-y-12">
+                <h3 className="text-meta text-neutral-500 border-b border-neutral-900 pb-4 mb-8">
+                  I. ANCESTORS (INFLUENCES)
                 </h3>
                 {data.ancestors.map((film, i) => (
-                  <div key={i} className="relative">
-                    <div className="absolute -left-[41px] top-1.5 w-4 h-4 rounded-full bg-neutral-900 border-2 border-neutral-700"></div>
-                    <div className="group hover:bg-neutral-900/40 p-4 -m-4 rounded-xl transition-colors">
-                      <div className="flex items-baseline justify-between mb-1">
-                        <h4 className="text-xl font-bold text-neutral-200 group-hover:text-white transition-colors">
-                          {film.title} <span className="text-neutral-500 text-sm font-normal ml-2">{film.year}</span>
-                        </h4>
-                        <span className="text-xs bg-neutral-800 text-neutral-400 px-2 py-0.5 rounded">{film.type}</span>
-                      </div>
-                      <p className="text-neutral-400 text-sm">{film.reason}</p>
+                  <div key={i} className="group space-y-3">
+                    <div className="flex items-baseline justify-between">
+                       <h4 className="text-3xl font-bold uppercase group-hover:underline decoration-1 underline-offset-4">
+                         {film.title}
+                       </h4>
+                       <span className="font-mono text-neutral-500 text-sm">{film.year}</span>
                     </div>
+                    <div className="text-xs text-neutral-400 uppercase tracking-widest mb-1">
+                      [{film.type}]
+                    </div>
+                    <p className="text-neutral-400 font-serif italic leading-relaxed">
+                      {film.reason}
+                    </p>
                   </div>
                 ))}
               </div>
 
-              {/* Core Node Marker */}
-              <div className="relative py-8">
-                 <div className="absolute -left-[45px] top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-rose-500 border-4 border-neutral-950 shadow-[0_0_20px_rgba(225,29,72,0.5)]"></div>
-              </div>
-
-              {/* Descendants */}
-              <div className="space-y-8">
-                <h3 className="text-sm font-bold text-neutral-500 uppercase tracking-widest -ml-10 mb-6 flex items-center gap-4">
-                  <span className="w-2 h-2 rounded-full bg-neutral-700"></span>
-                  Descendants
+              {/* Descendants Column */}
+              <div className="space-y-12">
+                <h3 className="text-meta text-neutral-500 border-b border-neutral-900 pb-4 mb-8">
+                  II. DESCENDANTS (LEGACY)
                 </h3>
                 {data.descendants.map((film, i) => (
-                  <div key={i} className="relative">
-                    <div className="absolute -left-[41px] top-1.5 w-4 h-4 rounded-full bg-neutral-900 border-2 border-neutral-700"></div>
-                     <div className="group hover:bg-neutral-900/40 p-4 -m-4 rounded-xl transition-colors">
-                      <div className="flex items-baseline justify-between mb-1">
-                        <h4 className="text-xl font-bold text-neutral-200 group-hover:text-white transition-colors">
-                          {film.title} <span className="text-neutral-500 text-sm font-normal ml-2">{film.year}</span>
-                        </h4>
-                        <span className="text-xs bg-neutral-800 text-neutral-400 px-2 py-0.5 rounded">{film.type}</span>
-                      </div>
-                      <p className="text-neutral-400 text-sm">{film.reason}</p>
+                  <div key={i} className="group space-y-3">
+                     <div className="flex items-baseline justify-between">
+                       <h4 className="text-3xl font-bold uppercase group-hover:underline decoration-1 underline-offset-4">
+                         {film.title}
+                       </h4>
+                       <span className="font-mono text-neutral-500 text-sm">{film.year}</span>
                     </div>
+                    <div className="text-xs text-neutral-400 uppercase tracking-widest mb-1">
+                      [{film.type}]
+                    </div>
+                    <p className="text-neutral-400 font-serif italic leading-relaxed">
+                      {film.reason}
+                    </p>
                   </div>
                 ))}
               </div>
 
             </div>
             
-            {/* Thought Chain Toggle (Optional) */}
-            <div className="border-t border-neutral-900 pt-8 text-center">
-               <details className="text-sm text-neutral-500 cursor-pointer group">
-                 <summary className="list-none hover:text-rose-400 transition-colors">Show AI Thought Process</summary>
-                 <div className="mt-4 p-4 bg-neutral-900/30 rounded-lg text-left font-mono text-xs leading-relaxed max-w-2xl mx-auto">
+            {/* Thought Chain Minimal */}
+            <div className="pt-24 opacity-50 hover:opacity-100 transition-opacity">
+               <details className="cursor-pointer">
+                 <summary className="text-meta text-neutral-600 list-none text-center">
+                   AI ANALYSIS LOG +
+                 </summary>
+                 <div className="mt-8 font-mono text-xs text-neutral-500 max-w-3xl mx-auto border-l border-neutral-800 pl-4">
                    {data.thought_chain}
                  </div>
                </details>

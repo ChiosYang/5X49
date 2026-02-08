@@ -1,5 +1,6 @@
 import json
 import os
+import time
 import requests
 from openai import OpenAI
 from dotenv import load_dotenv
@@ -64,11 +65,15 @@ class FilmHistorian:
 
     def analyze_genealogy(self, movie_name):
         print(f"\n🏛️ --- 正在构建《{movie_name}》的电影谱系 ---\n")
+        start_time = time.time()
         
         # Step 1: 获取本体信息
+        t0 = time.time()
         metadata = get_movie_metadata(movie_name)
         if not metadata:
             return None
+        t1 = time.time()
+        print(f"  ⏱️ TMDB Data Fetch: {t1 - t0:.2f}s")
             
         print(f"  ✅ 锁定目标: {metadata['title']} ({metadata['year']})")
         
@@ -97,11 +102,19 @@ class FilmHistorian:
         }}
         """
         
+        print(f"  🧠 [Historian] Using model: {self.model}")
+        print(f"  🧠 [Historian] Sending request to LLM...")
+        t2 = time.time()
+        
         response = client.chat.completions.create(
             model=self.model,
             messages=[{"role": "user", "content": prompt}],
             response_format={"type": "json_object"}
         )
+        
+        t3 = time.time()
+        print(f"  ⏱️ LLM Generation: {t3 - t2:.2f}s")
+        print(f"  ⏱️ Total Process: {t3 - start_time:.2f}s")
         
         try:
             timeline = json.loads(response.choices[0].message.content)
