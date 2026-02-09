@@ -86,8 +86,29 @@ export default function GenealogySection({
     return (
       <div className="border-b border-neutral-800 p-8 md:p-16">
         <h2 className="text-2xl md:text-3xl font-bold uppercase tracking-tight mb-8">Film Genealogy</h2>
-        <div className="text-center py-16">
-          <p className="text-neutral-500 text-sm uppercase tracking-widest">Analysis unavailable</p>
+        <div className="flex flex-col items-center justify-center py-16 space-y-6">
+          <p className="text-neutral-500 text-sm uppercase tracking-widest">Analysis failed or unavailable</p>
+          {onTriggerAnalysis && (
+            <>
+              <p className="text-xs text-neutral-600 text-center max-w-md">
+                The previous analysis attempt failed. You can try again below.
+              </p>
+              <button
+                onClick={onTriggerAnalysis}
+                disabled={analyzing}
+                className="px-8 py-4 border-2 border-neutral-700 bg-black text-neutral-400 font-bold uppercase tracking-widest text-sm hover:border-white hover:text-white transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {analyzing ? (
+                  <span className="flex items-center gap-3">
+                    <div className="animate-spin h-4 w-4 border-2 border-neutral-700 border-t-white rounded-full"></div>
+                    Retrying...
+                  </span>
+                ) : (
+                  'Retry Analysis'
+                )}
+              </button>
+            </>
+          )}
         </div>
       </div>
     );
