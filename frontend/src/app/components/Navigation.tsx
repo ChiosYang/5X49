@@ -84,6 +84,13 @@ export default function Navigation() {
                   Search
                 </Link>
                 <Link 
+                  href="/settings" 
+                  onClick={toggleMenu}
+                  className="block text-5xl md:text-7xl font-bold tracking-tighter text-white hover:text-neutral-400 transition-colors"
+                >
+                  Settings
+                </Link>
+                <Link 
                   href="#" 
                   className="block text-5xl md:text-7xl font-bold tracking-tighter text-neutral-600 hover:text-neutral-500 transition-colors cursor-not-allowed"
                 >
