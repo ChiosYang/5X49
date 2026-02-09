@@ -33,6 +33,7 @@ class Movie(SQLModel, table=True):
     # Analysis Status
     analysis_status: str = Field(default="pending")
     micro_genre: Optional[str] = None
+    micro_genre_definition: Optional[str] = None
     analysis_data: Optional[dict] = Field(default=None, sa_column=Column(JSON))
     
     # File info

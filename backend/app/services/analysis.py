@@ -47,7 +47,24 @@ class AnalysisService:
                 
                 if result:
                     movie.analysis_data = result
-                    movie.micro_genre = result.get("micro_genre")
+                    
+                    # Parse micro_genre to extract name and definition
+                    # Format: "名称 (English Name) - 详细定义说明"
+                    raw_micro_genre = result.get("micro_genre", "")
+                    if raw_micro_genre:
+                        # Split by " - " to separate name from definition
+                        if " - " in raw_micro_genre:
+                            parts = raw_micro_genre.split(" - ", 1)
+                            movie.micro_genre = parts[0].strip()
+                            movie.micro_genre_definition = parts[1].strip()
+                        else:
+                            # Fallback: no separator found, store as name only
+                            movie.micro_genre = raw_micro_genre.strip()
+                            movie.micro_genre_definition = None
+                    else:
+                        movie.micro_genre = None
+                        movie.micro_genre_definition = None
+                    
                     movie.analysis_status = "completed"
                     logger.info(f"Analysis completed for: {movie.title}")
                 else:

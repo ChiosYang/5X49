@@ -22,7 +22,6 @@ interface Movie {
 export default function LibraryPage() {
   const [movies, setMovies] = useState<Movie[]>([]);
   const [loading, setLoading] = useState(true);
-  const [seeding, setSeeding] = useState(false);
 
   const fetchLibrary = async () => {
     try {
@@ -40,15 +39,7 @@ export default function LibraryPage() {
     fetchLibrary();
   }, []);
 
-  const handleSeed = async () => {
-    setSeeding(true);
-    try {
-      await fetch(API.librarySeed(), { method: "POST" });
-      await fetchLibrary();
-    } finally {
-      setSeeding(false);
-    }
-  };
+
 
   if (loading) {
     return (
@@ -71,16 +62,6 @@ export default function LibraryPage() {
             <span className="text-neutral-500 text-xs font-bold uppercase tracking-widest hidden md:inline-block">
               {movies.length} FILMS
             </span>
-            {movies.length === 0 && (
-              <button
-                onClick={handleSeed}
-                disabled={seeding}
-                className="flex items-center gap-2 px-4 py-2 border border-neutral-700 hover:bg-neutral-900 transition-colors uppercase text-xs font-bold tracking-widest disabled:opacity-50"
-              >
-                {seeding ? <Loader2 className="w-3 h-3 animate-spin"/> : <Database className="w-3 h-3" />}
-                Generate Data
-              </button>
-            )}
           </div>
         </header>
 

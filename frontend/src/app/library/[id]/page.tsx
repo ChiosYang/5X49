@@ -5,7 +5,23 @@ import { useParams, useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { ArrowLeft, Play, Share2, Search, Menu } from "lucide-react";
 import { API } from "@/lib/api";
-import Genealogy from "../../components/Genealogy";
+import GenealogySection from "../../components/GenealogySection";
+
+interface FilmReference {
+  title: string;
+  year: number;
+  type: string;
+  reason: string;
+}
+
+interface AnalysisData {
+  thought_chain: string;
+  micro_genre: string;
+  influence_impact: string;
+  ancestors: FilmReference[];
+  descendants: FilmReference[];
+  tmdb_metadata?: any;
+}
 
 interface MovieDetail {
   id: string;
@@ -18,7 +34,9 @@ interface MovieDetail {
   overview?: string;
   plot?: string;
   micro_genre: string;
+  micro_genre_definition?: string;
   analysis_status: string;
+  analysis_data?: AnalysisData | null;
   director?: string;
 }
 
@@ -27,6 +45,7 @@ export default function MovieDetailPage() {
   const router = useRouter();
   const [movie, setMovie] = useState<MovieDetail | null>(null);
   const [loading, setLoading] = useState(true);
+  const [analyzing, setAnalyzing] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -46,6 +65,39 @@ export default function MovieDetailPage() {
 
     fetchMovie();
   }, [id]);
+
+  const triggerAnalysis = async () => {
+    if (!id || analyzing) return;
+    
+    setAnalyzing(true);
+    try {
+      const res = await fetch(`http://localhost:8000/library/analyze/${id}`, {
+        method: 'POST',
+      });
+      
+      if (res.ok) {
+        // Update status to processing
+        setMovie(prev => prev ? { ...prev, analysis_status: 'processing' } : null);
+        
+        // Poll for updates every 5 seconds
+        const pollInterval = setInterval(async () => {
+          const updateRes = await fetch(API.libraryMovie(id as string));
+          if (updateRes.ok) {
+            const updatedMovie = await updateRes.json();
+            setMovie(updatedMovie);
+            
+            if (updatedMovie.analysis_status === 'completed' || updatedMovie.analysis_status === 'failed') {
+              clearInterval(pollInterval);
+              setAnalyzing(false);
+            }
+          }
+        }, 5000);
+      }
+    } catch (error) {
+      console.error('Failed to trigger analysis:', error);
+      setAnalyzing(false);
+    }
+  };
 
   if (loading) return (
     <div className="min-h-screen bg-black text-white flex items-center justify-center">
@@ -131,9 +183,12 @@ export default function MovieDetailPage() {
                      </a>
                  ))}
              </div>
-             <div className="pt-12">
-                 <span className="block text-xs font-bold uppercase tracking-widest text-neutral-500 mb-2">Micro-Genre</span>
-                 <span className="text-lg font-serif italic text-white">{movie.micro_genre || "Genre Analysis Pending"}</span>
+             <div className="pt-12 space-y-3">
+                 <span className="block text-xs font-bold uppercase tracking-widest text-neutral-500">Micro-Genre</span>
+                 <span className="block text-lg font-serif italic text-white">{movie.micro_genre || "Genre Analysis Pending"}</span>
+                 {movie.micro_genre_definition && (
+                   <p className="text-sm text-neutral-400 leading-relaxed">{movie.micro_genre_definition}</p>
+                 )}
              </div>
          </div>
          <div className="lg:col-span-2">
@@ -144,9 +199,14 @@ export default function MovieDetailPage() {
       </div>
 
       {/* Genealogy Analysis Section */}
-      <div className="min-h-screen">
-          <Genealogy initialQuery={movie.title_cn || movie.title} />
-      </div>
+      <GenealogySection 
+        analysisData={movie.analysis_data || null}
+        analysisStatus={movie.analysis_status}
+        movieTitle={movie.title_cn || movie.title}
+        movieYear={movie.year}
+        onTriggerAnalysis={triggerAnalysis}
+        analyzing={analyzing}
+      />
 
     </div>
   );
