@@ -133,73 +133,64 @@ export default function GenealogySection({
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.2 }}
-          className="mb-12 pl-6 border-l-2 border-neutral-700"
+          className="mb-16"
         >
-          <p className="text-lg md:text-xl font-serif italic text-neutral-300 leading-relaxed">
+          <p className="text-xl md:text-2xl font-serif italic text-neutral-300 leading-relaxed">
             {influence_impact}
           </p>
         </motion.div>
       )}
 
-      {/* Timeline */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 relative">
-        {/* Ancestors */}
-        <div className="space-y-6">
-          <h3 className="text-xs font-bold uppercase tracking-widest text-neutral-500 mb-6">Ancestors</h3>
+      {/* A24-style Hairline Divider */}
+      <div className="border-t border-neutral-900 mb-12" />
+
+      {/* Genealogy Grid - A24 3-column style */}
+      <div className="space-y-16">
+        {/* Ancestors Section */}
+        <div>
+          <h3 className="text-[11px] font-medium uppercase tracking-[0.1em] text-neutral-500 mb-8">
+            Ancestors
+          </h3>
           {ancestors.length > 0 ? (
-            ancestors.map((film, index) => (
-              <FilmCard
-                key={`ancestor-${index}`}
-                title={film.title}
-                year={film.year}
-                type={film.type}
-                reason={film.reason}
-                variant="ancestor"
-              />
-            ))
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-12">
+              {ancestors.map((film, index) => (
+                <FilmCard
+                  key={`ancestor-${index}`}
+                  title={film.title}
+                  year={film.year}
+                  type={film.type}
+                  reason={film.reason}
+                  variant="ancestor"
+                />
+              ))}
+            </div>
           ) : (
-            <div className="border border-dashed border-neutral-800 p-6 text-center">
+            <div className="py-12 text-center border border-dashed border-neutral-900">
               <p className="text-xs text-neutral-600 uppercase tracking-widest">No ancestors identified</p>
             </div>
           )}
         </div>
 
-        {/* Current Film (Center) */}
-        <div className="flex flex-col justify-center items-center">
-          <motion.div
-            initial={{ scale: 0.9, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            transition={{ delay: 0.3 }}
-            className="border-2 border-white bg-black p-8 text-center w-full"
-          >
-            <span className="block text-[10px] font-bold uppercase tracking-widest text-neutral-500 mb-3">Current Film</span>
-            <h3 className="text-2xl font-bold uppercase tracking-tight mb-2">{movieTitle}</h3>
-            <span className="text-lg text-neutral-500 font-mono">{movieYear}</span>
-          </motion.div>
-
-          {/* Timeline Arrows (Desktop only) */}
-          <div className="hidden lg:flex absolute top-1/2 -translate-y-1/2 w-full justify-between px-4 pointer-events-none">
-            <span className="text-4xl text-neutral-700">←</span>
-            <span className="text-4xl text-neutral-700">→</span>
-          </div>
-        </div>
-
-        {/* Descendants */}
-        <div className="space-y-6">
-          <h3 className="text-xs font-bold uppercase tracking-widest text-neutral-500 mb-6">Descendants</h3>
+        {/* Descendants Section */}
+        <div>
+          <h3 className="text-[11px] font-medium uppercase tracking-[0.1em] text-neutral-500 mb-8">
+            Descendants
+          </h3>
           {descendants.length > 0 ? (
-            descendants.map((film, index) => (
-              <FilmCard
-                key={`descendant-${index}`}
-                title={film.title}
-                year={film.year}
-                type={film.type}
-                reason={film.reason}
-                variant="descendant"
-              />
-            ))
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-12">
+              {descendants.map((film, index) => (
+                <FilmCard
+                  key={`descendant-${index}`}
+                  title={film.title}
+                  year={film.year}
+                  type={film.type}
+                  reason={film.reason}
+                  variant="descendant"
+                />
+              ))}
+            </div>
           ) : (
-            <div className="border border-dashed border-neutral-800 p-6 text-center">
+            <div className="py-12 text-center border border-dashed border-neutral-900">
               <p className="text-xs text-neutral-600 uppercase tracking-widest">No descendants identified</p>
             </div>
           )}

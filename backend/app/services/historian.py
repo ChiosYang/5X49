@@ -139,10 +139,19 @@ class FilmHistorian:
         print(f"  ⏱️ Total Process: {t3 - start_time:.2f}s")
         
         try:
-            timeline = json.loads(response.choices[0].message.content)
+            raw_content = response.choices[0].message.content
+            timeline = json.loads(raw_content)
             # Merge TMDB metadata
             timeline['tmdb_metadata'] = metadata
             return timeline
-        except:
-            print("  ❌ LLM 输出格式错误，无法解析。")
+        except json.JSONDecodeError as e:
+            print(f"  ❌ LLM 输出格式错误，无法解析 JSON")
+            print(f"  ❌ 错误详情: {e}")
+            print(f"  ❌ LLM 原始响应内容:")
+            print("  " + "-" * 60)
+            print(raw_content)
+            print("  " + "-" * 60)
+            return None
+        except Exception as e:
+            print(f"  ❌ 未知错误: {e}")
             return None
