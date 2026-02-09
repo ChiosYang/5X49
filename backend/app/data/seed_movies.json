@@ -1,0 +1,47 @@
+[
+  {
+    "id": "Inception_2010",
+    "title": "Inception",
+    "year": 2010,
+    "backdrop_path": "/s3TBrRGB1iav7gFOCNx3H31MoES.jpg",
+    "overview": "Cobb, a skilled thief who commits corporate espionage by infiltrating the subconscious of his targets...",
+    "analysis_status": "completed",
+    "micro_genre": "Metaphysical Heist Thriller"
+  },
+  {
+    "id": "The_Godfather_1972",
+    "title": "The Godfather",
+    "year": 1972,
+    "backdrop_path": "/tmU7GeKVybMWFButWEGl2M4GeiP.jpg",
+    "overview": "Spanning the years 1945 to 1955, a chronicle of the fictional Italian-American Corleone crime family...",
+    "analysis_status": "completed",
+    "micro_genre": "Operatic Gangster Tragedy"
+  },
+  {
+    "id": "Parasite_2019",
+    "title": "Parasite",
+    "year": 2019,
+    "backdrop_path": "/TU9NIjwzjoKPwQHoHshkFcQUCG.jpg",
+    "overview": "All-unemployed Ki-taek's family takes peculiar interest in the wealthy and glamorous Parks...",
+    "analysis_status": "completed",
+    "micro_genre": "Social Satire Thriller"
+  },
+  {
+    "id": "2001_A_Space_Odyssey_1968",
+    "title": "2001: A Space Odyssey",
+    "year": 1968,
+    "backdrop_path": "/w5IDXtifKntw0ajv2co7jFlTQDM.jpg",
+    "overview": "Humanity finds a mysterious object buried beneath the lunar surface...",
+    "analysis_status": "completed",
+    "micro_genre": "Cosmic Evolutionary Epic"
+  },
+  {
+    "id": "Moonlight_2016",
+    "title": "Moonlight",
+    "year": 2016,
+    "backdrop_path": "/v0qkC1c06zg2XsBmOb1S90JNiLg.jpg",
+    "overview": "The tender, heartbreaking story of a young man's struggle to find himself...",
+    "analysis_status": "completed",
+    "micro_genre": "Coming-of-Age Poetic Realism"
+  }
+]

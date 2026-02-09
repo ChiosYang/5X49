@@ -17,6 +17,8 @@ export const metadata: Metadata = {
   description: "Discover the ancestry and legacy of cinema.",
 };
 
+import Navigation from "./components/Navigation";
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -27,7 +29,10 @@ export default function RootLayout({
       <body
         className={`${inter.variable} ${playfair.variable} antialiased`}
       >
-        {children}
+        <Navigation />
+        <main>
+          {children}
+        </main>
       </body>
     </html>
   );

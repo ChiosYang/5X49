@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Search, Loader2 } from "lucide-react";
 import { motion } from "framer-motion";
+import { API } from "@/lib/api";
 
 interface FilmNode {
   title: string;
@@ -26,22 +27,34 @@ interface GenealogyData {
   };
 }
 
-export default function Genealogy() {
-  const [query, setQuery] = useState("");
+interface GenealogyProps {
+  initialQuery?: string;
+  hideSearch?: boolean;
+}
+
+export default function Genealogy({ initialQuery = "", hideSearch = false }: GenealogyProps) {
+  const [query, setQuery] = useState(initialQuery);
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState<GenealogyData | null>(null);
   const [error, setError] = useState("");
 
-  const handleSearch = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!query.trim()) return;
+  useEffect(() => {
+    // if (initialQuery) {
+    //   handleSearch(new Event('submit') as any, initialQuery);
+    // }
+  }, [initialQuery]);
+
+  const handleSearch = async (e: React.FormEvent, overrideQuery?: string) => {
+    if (e) e.preventDefault();
+    const q = overrideQuery || query;
+    if (!q.trim()) return;
 
     setLoading(true);
     setError("");
     setData(null);
 
     try {
-      const res = await fetch(`http://localhost:8000/analyze/${encodeURIComponent(query)}`);
+      const res = await fetch(API.analyze(q));
       if (!res.ok) throw new Error("Film not found or analysis failed");
       const jsonData = await res.json();
       setData(jsonData);
@@ -66,22 +79,24 @@ export default function Genealogy() {
         </header>
 
         {/* Search Input (Minimalist) */}
-        <form onSubmit={handleSearch} className="relative max-w-2xl">
-          <input
-            type="text"
-            placeholder="ENTER FILM TITLE..."
-            className="w-full bg-transparent border-b border-neutral-700 py-4 text-2xl md:text-4xl placeholder:text-neutral-800 focus:outline-none focus:border-white transition-colors uppercase font-bold tracking-tight"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-          />
-          <button 
-            type="submit" 
-            disabled={loading}
-            className="absolute right-0 top-1/2 -translate-y-1/2 text-sm uppercase tracking-widest hover:text-neutral-400 disabled:opacity-50"
-          >
-            {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : "ANALYZE →"}
-          </button>
-        </form>
+        {!hideSearch && (
+          <form onSubmit={handleSearch} className="relative max-w-2xl">
+            <input
+              type="text"
+              placeholder="ENTER FILM TITLE..."
+              className="w-full bg-transparent border-b border-neutral-700 py-4 text-2xl md:text-4xl placeholder:text-neutral-800 focus:outline-none focus:border-white transition-colors uppercase font-bold tracking-tight"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+            />
+            <button 
+              type="submit" 
+              disabled={loading}
+              className="absolute right-0 top-1/2 -translate-y-1/2 text-sm uppercase tracking-widest hover:text-neutral-400 disabled:opacity-50"
+            >
+              {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : "ANALYZE →"}
+            </button>
+          </form>
+        )}
 
         {/* Error */}
         {error && (
