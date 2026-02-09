@@ -22,19 +22,34 @@ client = OpenAI(
 # 1. 基础工具 (The Tools)
 # ==========================================
 
-def get_movie_metadata(movie_name):
+def get_movie_metadata(movie_name, tmdb_id=None):
     """获取电影的基础信息：年份、ID、关键词、流派"""
-    print(f"  🎬 [TMDB]正在查找电影: {movie_name}...")
-    url = "https://api.themoviedb.org/3/search/movie"
-    params = {"api_key": TMDB_API_KEY, "query": movie_name, "language": "en-US"}
+    print(f"  🎬 [TMDB]正在查找电影: {movie_name} (TMDB ID: {tmdb_id})...")
     
     try:
-        resp = requests.get(url, params=params)
-        data = resp.json()
-        if data['results']:
-            movie = data['results'][0]
-            movie_id = movie['id']
-            release_date = movie.get('release_date', '')
+        data = None
+        # Priority 1: Direct lookup by TMDB ID
+        if tmdb_id:
+            url = f"https://api.themoviedb.org/3/movie/{tmdb_id}"
+            resp = requests.get(url, params={"api_key": TMDB_API_KEY, "language": "en-US"})
+            if resp.status_code == 200:
+                data = resp.json()
+                print(f"  ✅ [TMDB] ID match: {data.get('title')}")
+            else:
+                print(f"  ⚠️ [TMDB] ID lookup failed for {tmdb_id}, falling back to search.")
+
+        # Priority 2: Search by Name
+        if not data:
+            url = "https://api.themoviedb.org/3/search/movie"
+            params = {"api_key": TMDB_API_KEY, "query": movie_name, "language": "en-US"}
+            resp = requests.get(url, params=params)
+            search_data = resp.json()
+            if search_data.get('results'):
+                data = search_data['results'][0]
+
+        if data:
+            movie_id = data['id']
+            release_date = data.get('release_date', '')
             year = int(release_date[:4]) if release_date else 0
             
             # Fetch Keywords
@@ -42,16 +57,25 @@ def get_movie_metadata(movie_name):
             k_resp = requests.get(keywords_url, params={"api_key": TMDB_API_KEY})
             keywords = [k['name'] for k in k_resp.json().get('keywords', [])][:5]
             
-            # Fetch Genres
-            details_url = f"https://api.themoviedb.org/3/movie/{movie_id}"
-            d_resp = requests.get(details_url, params={"api_key": TMDB_API_KEY})
-            genres = [g['name'] for g in d_resp.json().get('genres', [])]
+            # Fetch Genres (if not already full details)
+            # If we did direct lookup, genres are already in 'data' as list of dicts/names?
+            # Direct lookup returns genres as list of objects [{"id": 18, "name": "Drama"}...]
+            # Search result returns genre_ids list [18, ...]
+            
+            genres = []
+            if 'genres' in data: # Direct lookup format
+                genres = [g['name'] for g in data['genres']]
+            else: # Search result format, need details
+                details_url = f"https://api.themoviedb.org/3/movie/{movie_id}"
+                d_resp = requests.get(details_url, params={"api_key": TMDB_API_KEY})
+                if d_resp.status_code == 200:
+                    genres = [g['name'] for g in d_resp.json().get('genres', [])]
 
             return {
                 "id": movie_id,
-                "title": movie['title'],
+                "title": data['title'],
                 "year": year,
-                "overview": movie['overview'],
+                "overview": data['overview'],
                 "keywords": keywords,
                 "genres": genres
             }
@@ -63,13 +87,13 @@ class FilmHistorian:
     def __init__(self):
         self.model = MODEL_NAME
 
-    def analyze_genealogy(self, movie_name):
+    def analyze_genealogy(self, movie_name, tmdb_id=None):
         print(f"\n🏛️ --- 正在构建《{movie_name}》的电影谱系 ---\n")
         start_time = time.time()
         
         # Step 1: 获取本体信息
         t0 = time.time()
-        metadata = get_movie_metadata(movie_name)
+        metadata = get_movie_metadata(movie_name, tmdb_id=tmdb_id)
         if not metadata:
             return None
         t1 = time.time()

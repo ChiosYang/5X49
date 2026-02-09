@@ -79,13 +79,7 @@ export default function MovieDetailPage() {
             <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent" />
         </div>
 
-        {/* Navigation Back */}
-        <button 
-          onClick={() => router.back()}
-          className="absolute top-8 left-8 z-50 flex items-center gap-2 text-sm font-bold uppercase tracking-widest hover:opacity-70 transition-opacity mix-blend-exclusion text-white"
-        >
-          <ArrowLeft className="w-5 h-5" /> Back
-        </button>
+
 
         {/* Title Block */}
         <div className="absolute bottom-0 left-0 p-8 md:p-16 w-full z-40">

@@ -2,39 +2,61 @@ import json
 import os
 from typing import List, Dict, Optional
 from pathlib import Path
+from sqlmodel import Session, select, delete
+from app.database import engine, create_db_and_tables, get_session
+from app.models import Movie
 
 # Configuration via environment variables
-LIBRARY_FILE = os.getenv("LIBRARY_FILE", "library.json")
 SEED_DATA_FILE = Path(__file__).parent.parent / "data" / "seed_movies.json"
 
 class LibraryManager:
     def __init__(self):
-        self.library_file = LIBRARY_FILE
-        self._ensure_library_file()
+        # We handle DB creation in main.py, but good to ensure tables exist
+        pass
 
-    def _ensure_library_file(self):
-        if not os.path.exists(self.library_file):
-            self.save_library({"scanned_paths": [], "movies": {}})
+    def add_movies(self, movies_data: list[dict]) -> int:
+        """Add multiple movies to the library (upsert)."""
+        added = 0
+        with Session(engine) as session:
+            for movie_dict in movies_data:
+                # Convert dict to Movie model
+                # Check if movie exists
+                movie_id = movie_dict.get("id")
+                if not movie_id:
+                    continue
+                
+                existing_movie = session.get(Movie, movie_id)
+                if existing_movie:
+                    # Update fields
+                    for key, value in movie_dict.items():
+                        setattr(existing_movie, key, value)
+                    session.add(existing_movie)
+                else:
+                    # Create new
+                    new_movie = Movie(**movie_dict)
+                    session.add(new_movie)
+                    added += 1
+            session.commit()
+        return added
 
-    def load_library(self) -> Dict:
-        try:
-            with open(self.library_file, 'r') as f:
-                return json.load(f)
-        except:
-            return {"scanned_paths": [], "movies": {}}
+    def get_movies(self) -> List[dict]:
+        with Session(engine) as session:
+            statement = select(Movie)
+            results = session.exec(statement).all()
+            # Convert to dicts for frontend compatibility
+            return [movie.model_dump() for movie in results]
 
-    def save_library(self, data: Dict):
-        with open(self.library_file, 'w') as f:
-            json.dump(data, f, indent=2)
+    def get_movie(self, movie_id: str) -> Optional[dict]:
+        with Session(engine) as session:
+            movie = session.get(Movie, movie_id)
+            return movie.model_dump() if movie else None
 
-    def get_movies(self) -> List[Dict]:
-        data = self.load_library()
-        # Convert dictionary to list for frontend
-        return list(data.get("movies", {}).values())
-
-    def get_movie(self, movie_id: str) -> Optional[Dict]:
-        data = self.load_library()
-        return data.get("movies", {}).get(movie_id)
+    def clear_library(self):
+        """Clear all movies from the library."""
+        with Session(engine) as session:
+            statement = delete(Movie)
+            session.exec(statement)
+            session.commit()
 
     def seed_test_data(self):
         """Populates the library with mock data from external JSON file."""
@@ -45,28 +67,8 @@ class LibraryManager:
             print(f"Warning: Seed file not found at {SEED_DATA_FILE}")
             movies_list = []
         
-        # Convert list to dict keyed by ID
-        mock_movies = {movie["id"]: movie for movie in movies_list}
-        
-        data = self.load_library()
-        data["movies"] = mock_movies
-        self.save_library(data)
-        return list(mock_movies.values())
-
-    def add_movies(self, movies: list[dict]) -> int:
-        """Add multiple movies to the library (from scanner)."""
-        data = self.load_library()
-        added = 0
-        for movie in movies:
-            movie_id = movie.get("id")
-            if movie_id and movie_id not in data["movies"]:
-                data["movies"][movie_id] = movie
-                added += 1
-        self.save_library(data)
-        return added
-
-    def clear_library(self):
-        """Clear all movies from the library."""
-        self.save_library({"scanned_paths": [], "movies": {}})
+        # Add to DB
+        self.add_movies(movies_list)
+        return movies_list
 
 library_manager = LibraryManager()

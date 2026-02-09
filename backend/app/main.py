@@ -1,12 +1,20 @@
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, HTTPException, Query, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from contextlib import asynccontextmanager
 from app.services.historian import FilmHistorian
 from app.services.library import library_manager
 from app.services.scanner import NFOScanner
+from app.services.analysis import analysis_service
+from app.database import create_db_and_tables
 import os
 
-app = FastAPI()
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    create_db_and_tables()
+    yield
+
+app = FastAPI(lifespan=lifespan)
 
 # Enable CORS for frontend
 app.add_middleware(
@@ -56,7 +64,7 @@ def seed_library():
     return library_manager.seed_test_data()
 
 @app.post("/library/scan")
-def scan_library(media_dir: str = Query(default=None)):
+def scan_library(background_tasks: BackgroundTasks, media_dir: str = Query(default=None)):
     """
     Scan a directory for TMM-scraped movies and add them to library.
     If no media_dir is provided, uses the default MEDIA_DIR.
@@ -72,11 +80,23 @@ def scan_library(media_dir: str = Query(default=None)):
     
     added = library_manager.add_movies(movies)
     
+    # Queue analysis for all scanned movies
+    # Analysis service will skip already completed ones
+    for movie in movies:
+        background_tasks.add_task(analysis_service.analyze_movie, movie["id"])
+    
     return {
         "scanned": len(movies),
         "added": added,
+        "queued_for_analysis": len(movies),
         "media_dir": target_dir
     }
+
+@app.post("/library/analyze/{movie_id}")
+def trigger_analysis(movie_id: str, background_tasks: BackgroundTasks):
+    """Manually trigger analysis for a specific movie."""
+    background_tasks.add_task(analysis_service.analyze_movie, movie_id)
+    return {"message": f"Analysis queued for {movie_id}"}
 
 @app.delete("/library")
 def clear_library():
