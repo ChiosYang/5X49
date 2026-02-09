@@ -7,6 +7,7 @@ from app.services.library import library_manager
 from app.services.scanner import NFOScanner
 from app.services.analysis import analysis_service
 from app.database import create_db_and_tables
+from app.utils.security import validate_movie_id
 import os
 
 @asynccontextmanager
@@ -17,20 +18,45 @@ async def lifespan(app: FastAPI):
 app = FastAPI(lifespan=lifespan)
 
 # Enable CORS for frontend
+# In production, replace localhost with your actual domain
+ALLOWED_ORIGINS = [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    # Add production domain here when deployed
+    # "https://yourdomain.com",
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE"],
     allow_headers=["*"],
 )
 
 # Configuration for media directory (can be overridden via env var)
-MEDIA_DIR = os.getenv("MEDIA_DIR", "/Users/alicolia/Projects/movies-nfo-test")
+# Security: Validate that MEDIA_DIR is within allowed paths
+from pathlib import Path
+
+ALLOWED_BASE_DIR = "/Users/alicolia/Projects"
+DEFAULT_MEDIA_DIR = f"{ALLOWED_BASE_DIR}/movies-nfo-test"
+MEDIA_DIR = os.getenv("MEDIA_DIR", DEFAULT_MEDIA_DIR)
+
+# Validate media directory path
+try:
+    media_path = Path(MEDIA_DIR).resolve()
+    if not str(media_path).startswith(ALLOWED_BASE_DIR):
+        raise ValueError(f"MEDIA_DIR must be within {ALLOWED_BASE_DIR}")
+    MEDIA_DIR = str(media_path)
+except Exception as e:
+    print(f"⚠️ Warning: Invalid MEDIA_DIR ({e}), using default")
+    MEDIA_DIR = DEFAULT_MEDIA_DIR
 
 # Mount media directory for static file serving (local images)
 if os.path.exists(MEDIA_DIR):
     app.mount("/media", StaticFiles(directory=MEDIA_DIR), name="media")
+else:
+    print(f"⚠️ Warning: MEDIA_DIR does not exist: {MEDIA_DIR}")
 
 historian = FilmHistorian()
 
@@ -53,6 +79,9 @@ def get_library():
 @app.get("/library/{movie_id}")
 def get_library_movie(movie_id: str):
     """Get details for a specific movie."""
+    if not validate_movie_id(movie_id):
+        raise HTTPException(status_code=400, detail="Invalid movie ID format")
+    
     movie = library_manager.get_movie(movie_id)
     if not movie:
         raise HTTPException(status_code=404, detail="Movie not found")
@@ -95,6 +124,9 @@ def scan_library(background_tasks: BackgroundTasks, media_dir: str = Query(defau
 @app.post("/library/analyze/{movie_id}")
 def trigger_analysis(movie_id: str, background_tasks: BackgroundTasks):
     """Manually trigger analysis for a specific movie."""
+    if not validate_movie_id(movie_id):
+        raise HTTPException(status_code=400, detail="Invalid movie ID format")
+    
     background_tasks.add_task(analysis_service.analyze_movie, movie_id)
     return {"message": f"Analysis queued for {movie_id}"}
 
