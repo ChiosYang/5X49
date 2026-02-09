@@ -11,7 +11,7 @@ load_dotenv(".env.local")
 
 # API Keys
 TMDB_API_KEY = os.getenv("TMDB_API_KEY")
-MODEL_NAME = os.getenv("MODEL_NAME", "z-ai/glm-4.5-air:free")
+MODEL_NAME = os.getenv("MODEL_NAME")
 
 client = OpenAI(
     api_key=os.getenv("OPENROUTER_API_KEY"),

@@ -159,15 +159,15 @@ export default function MovieDetailPage() {
 
       {/* Info Grid */}
       <div className="border-t border-neutral-800 grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x divide-neutral-800 bg-black text-neutral-300">
-         <div className="p-8 space-y-2">
+         <div className="p-8 md:px-16 space-y-2">
              <span className="block text-xs font-bold uppercase tracking-widest text-neutral-500">Directed By</span>
              <span className="block text-xl md:text-2xl font-bold text-white uppercase">{movie.director || "Unknown Director"}</span>
          </div>
-         <div className="p-8 space-y-2">
+         <div className="p-8 md:px-16 space-y-2">
              <span className="block text-xs font-bold uppercase tracking-widest text-neutral-500">Released</span>
              <span className="block text-xl md:text-2xl font-bold text-white font-serif italic">{movie.year}</span>
          </div>
-         <div className="p-8 flex items-center justify-between group cursor-pointer hover:bg-white hover:text-black transition-colors">
+         <div className="p-8 md:px-16 flex items-center justify-between group cursor-pointer hover:bg-white hover:text-black transition-colors">
              <span className="text-xl md:text-2xl font-bold uppercase">Watch Now</span>
              <Play className="w-6 h-6 fill-current" />
          </div>

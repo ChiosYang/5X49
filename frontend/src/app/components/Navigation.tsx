@@ -19,11 +19,11 @@ export default function Navigation() {
 
   return (
     <>
-      <nav className="fixed top-0 left-0 right-0 z-[60] flex justify-between items-center p-8 text-white mix-blend-exclusion">
+      <nav className="fixed top-0 left-0 right-0 z-[60] flex justify-between items-center p-8 text-white">
         {/* Left: Menu Trigger */}
         <button 
           onClick={toggleMenu}
-          className="flex items-center gap-2 uppercase text-sm font-bold tracking-widest hover:opacity-70 transition-opacity"
+          className="flex items-center gap-2 uppercase text-sm font-bold tracking-widest hover:opacity-70 transition-opacity drop-shadow-lg"
         >
           {isOpen ? (
             <>
@@ -37,13 +37,13 @@ export default function Navigation() {
         </button>
 
         {/* Center: Logo */}
-        <Link href="/" className="font-serif font-bold text-2xl tracking-tighter absolute left-1/2 -translate-x-1/2 z-50">
+        <Link href="/" className="font-serif font-bold text-2xl tracking-tighter absolute left-1/2 -translate-x-1/2 z-50 drop-shadow-lg">
           A24.ARCHIVE
         </Link>
 
         {/* Right: Search Icon (Optional specifically requested in sidebar, but nice to adhere to A24 pattern where search is accessible) */}
         <div className="flex gap-6">
-           <Search className="w-5 h-5 opacity-0 md:opacity-100" /> {/* Hidden on mobile or visual only */}
+           <Search className="w-5 h-5 opacity-0 md:opacity-100 drop-shadow-lg" /> {/* Hidden on mobile or visual only */}
         </div>
       </nav>
 
