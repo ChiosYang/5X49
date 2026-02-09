@@ -15,7 +15,8 @@ interface MovieDetail {
   backdrop_path?: string;
   backdrop_local?: string;
   poster_local?: string;
-  overview: string;
+  overview?: string;
+  plot?: string;
   micro_genre: string;
   analysis_status: string;
   director?: string;
@@ -137,7 +138,7 @@ export default function MovieDetailPage() {
          </div>
          <div className="lg:col-span-2">
              <p className="text-xl md:text-2xl lg:text-3xl font-bold leading-tight text-neutral-200">
-                 {movie.overview}
+                 {movie.overview || movie.plot || 'No description available'}
              </p>
          </div>
       </div>
