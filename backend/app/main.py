@@ -105,10 +105,9 @@ def scan_library(background_tasks: BackgroundTasks, media_dir: str = Query(defau
     
     added = library_manager.add_movies(movies)
     
-    # Queue analysis for all scanned movies
-    # Analysis service will skip already completed ones
-    for movie in movies:
-        background_tasks.add_task(analysis_service.analyze_movie, movie["id"])
+    # Analysis is now triggered manually or via separate process
+    # for movie in movies:
+    #     background_tasks.add_task(analysis_service.analyze_movie, movie["id"])
     
     return {
         "scanned": len(movies),
@@ -294,3 +293,16 @@ def list_directories(path: str = Query(default="/")):
     except Exception as e:
         print(f"Error listing directories at {path}: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/sys/scan-library")
+def trigger_manual_scan(background_tasks: BackgroundTasks):
+    """
+    Manually trigger a library scan.
+    """
+    try:
+        # Use background task to avoid blocking the request
+        # Pass the background_tasks object to scan_library so it can queue analysis tasks
+        background_tasks.add_task(scan_library, background_tasks=background_tasks, media_dir=None)
+        return {"status": "success", "message": "Library scan started"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to start scan: {str(e)}")

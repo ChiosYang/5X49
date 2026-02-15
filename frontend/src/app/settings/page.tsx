@@ -1,6 +1,10 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
+import { Loader2 } from "lucide-react";
+
+// ... (inside SettingsPage component)
+
 import FileBrowser from "@/components/FileBrowser";
 import API from "@/lib/api";
 
@@ -20,6 +24,31 @@ export default function SettingsPage() {
   const [baseUrlSaving, setBaseUrlSaving] = useState(false);
   const [baseUrlSaved, setBaseUrlSaved] = useState(false);
   const [fileBrowserOpen, setFileBrowserOpen] = useState(false);
+
+  // Scan State
+  const [isScanning, setIsScanning] = useState(false);
+  const [scanMessage, setScanMessage] = useState("");
+
+  const handleScanLibrary = async () => {
+    setIsScanning(true);
+    setScanMessage("");
+    try {
+      const res = await fetch(API.systemScanLibrary(), {
+        method: "POST",
+      });
+      if (res.ok) {
+        setScanMessage("Scan started in background");
+        setTimeout(() => setScanMessage(""), 5000);
+      } else {
+        setScanMessage("Failed to start scan");
+      }
+    } catch (error) {
+      console.error("Scan failed:", error);
+      setScanMessage("Network error");
+    } finally {
+      setIsScanning(false);
+    }
+  };
 
   // Filter models based on search
   const filteredModels = useMemo(() => {
@@ -526,6 +555,40 @@ export default function SettingsPage() {
                         <p>If running in Docker, this must be a path mapped inside the container (e.g., /media). If running locally, use the absolute path to your movies folder.</p>
                         <p className="font-semibold text-neutral-500">Restart server required to apply changes for image serving.</p>
                       </div>
+                    </div>
+                  </div>
+
+                  <div className="border-b border-neutral-900 pb-6">
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <p className="text-sm font-medium uppercase tracking-widest mb-1">Manual Scan</p>
+                            <p className="text-xs text-neutral-600">Force a re-scan of the library folder</p>
+                        </div>
+                        <div className="flex items-center gap-4">
+                            {scanMessage && (
+                                <span className={`text-xs uppercase tracking-widest ${
+                                    scanMessage.includes("Failed") || scanMessage.includes("error") 
+                                    ? "text-red-500" 
+                                    : "text-green-500"
+                                }`}>
+                                    {scanMessage}
+                                </span>
+                            )}
+                            <button
+                                onClick={handleScanLibrary}
+                                disabled={isScanning}
+                                className="flex items-center gap-2 bg-neutral-900 border border-neutral-800 text-white px-4 py-3 text-xs font-medium uppercase tracking-widest hover:bg-neutral-800 hover:border-neutral-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                {isScanning ? (
+                                    <>
+                                        <Loader2 className="w-3 h-3 animate-spin" />
+                                        Scanning...
+                                    </>
+                                ) : (
+                                    "Scan Now"
+                                )}
+                            </button>
+                        </div>
                     </div>
                   </div>
 

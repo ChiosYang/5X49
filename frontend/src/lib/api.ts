@@ -23,6 +23,7 @@ export const API = {
 
     // System
     systemListDirs: () => `${API_BASE_URL}/sys/list-dirs`,
+    systemScanLibrary: () => `${API_BASE_URL}/sys/scan-library`,
     settingsTestApiKey: () => `${API_BASE_URL}/settings/test-api-key`,
     settingsModelsRefresh: () => `${API_BASE_URL}/settings/models/refresh`,
 
