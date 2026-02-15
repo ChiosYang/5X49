@@ -24,7 +24,7 @@ services:
       retries: 3
 
   frontend:
-    image: ${DOCKER_USERNAME:-haiweiyang}/film-genealogy-frontend:latest
+    image: ${DOCKER_USERNAME:-alicolia}/film-genealogy-frontend:latest
     container_name: film-genealogy-frontend
     ports:
       - "3000:3000"
