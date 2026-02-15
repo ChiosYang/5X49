@@ -2,8 +2,8 @@ version: '3.8'
 
 services:
   backend:
-    image: ${DOCKER_USERNAME:-alicolia}/film-genealogy-backend:latest
-    container_name: film-genealogy-backend
+    image: ${DOCKER_USERNAME:-alicolia}/5x49-backend:latest
+    container_name: 5x49-backend
     ports:
       - "8000:8000"
     volumes:
@@ -24,8 +24,8 @@ services:
       retries: 3
 
   frontend:
-    image: ${DOCKER_USERNAME:-alicolia}/film-genealogy-frontend:latest
-    container_name: film-genealogy-frontend
+    image: ${DOCKER_USERNAME:-alicolia}/5x49-frontend:latest
+    container_name: 5x49-frontend
     ports:
       - "3000:3000"
     environment:
