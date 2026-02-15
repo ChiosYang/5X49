@@ -11,12 +11,17 @@ load_dotenv(".env.local")
 
 # API Keys
 TMDB_API_KEY = os.getenv("TMDB_API_KEY")
-MODEL_NAME = os.getenv("MODEL_NAME")
 
-client = OpenAI(
-    api_key=os.getenv("OPENROUTER_API_KEY"),
-    base_url="https://openrouter.ai/api/v1"
-)
+# Import settings service for dynamic model selection
+from app.services.settings import get_current_model, get_base_url
+
+# Initialize OpenAI client with dynamic base URL
+def get_client():
+    """Get OpenAI client with current base URL"""
+    return OpenAI(
+        api_key=os.getenv("OPENROUTER_API_KEY"),
+        base_url=get_base_url()
+    )
 
 # ==========================================
 # 1. 基础工具 (The Tools)
@@ -85,10 +90,14 @@ def get_movie_metadata(movie_name, tmdb_id=None):
 
 class FilmHistorian:
     def __init__(self):
-        self.model = MODEL_NAME
+        # Model will be fetched dynamically on each analysis
+        pass
 
     def analyze_genealogy(self, movie_name, tmdb_id=None):
-        print(f"\n🏛️ --- 正在构建《{movie_name}》的电影谱系 ---\n")
+        # Get current model dynamically on each analysis
+        self.model = get_current_model()
+        print(f"\n🏛️ --- 正在构建《{movie_name}》的电影谱系 ---")
+        print(f"🤖 使用模型: {self.model}\n")
         start_time = time.time()
         
         # Step 1: 获取本体信息
@@ -125,9 +134,12 @@ class FilmHistorian:
         """
         
         print(f"  🧠 [Historian] Using model: {self.model}")
+        print(f"  🌐 [API] Base URL: {get_base_url()}")
         print(f"  🧠 [Historian] Sending request to LLM...")
         t2 = time.time()
         
+        # Get fresh client with current base_url
+        client = get_client()
         response = client.chat.completions.create(
             model=self.model,
             messages=[{"role": "user", "content": prompt}],

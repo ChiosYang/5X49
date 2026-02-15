@@ -135,3 +135,107 @@ def clear_library():
     """Clear all movies from the library."""
     library_manager.clear_library()
     return {"message": "Library cleared"}
+
+# Settings endpoints
+from app.services.settings import load_settings, save_settings, get_current_model, set_current_model, get_base_url, set_base_url, refresh_models_cache
+
+@app.get("/settings")
+def get_settings():
+    """Get current system settings"""
+    settings = load_settings()
+    return settings
+
+@app.get("/settings/model")
+def get_model_setting():
+    """Get current model configuration"""
+    settings = load_settings()
+    return {
+        "current_model": settings.get("model_name"),
+        "available_models": settings.get("available_models", [])
+    }
+
+@app.put("/settings/model")
+def update_model_setting(model_name: str):
+    """Update the current model"""
+    success = set_current_model(model_name)
+    if success:
+        return {"message": "Model updated", "model_name": model_name}
+    else:
+        raise HTTPException(status_code=500, detail="Failed to save settings")
+
+@app.get("/settings/base-url")
+def get_base_url_setting():
+    """Get current API base URL"""
+    return {
+        "base_url": get_base_url()
+    }
+
+@app.put("/settings/base-url")
+def update_base_url_setting(base_url: str):
+    """Update the API base URL"""
+    success = set_base_url(base_url)
+    if success:
+        return {"message": "Base URL updated", "base_url": base_url}
+    else:
+        raise HTTPException(status_code=500, detail="Failed to save settings")
+@app.post("/settings/models/refresh")
+def refresh_models():
+    """Force refresh the available models from OpenRouter API"""
+    models = refresh_models_cache()
+    if models:
+        return {
+            "message": "Models refreshed successfully",
+            "count": len(models),
+            "models": models
+        }
+    else:
+        raise HTTPException(status_code=500, detail="Failed to refresh models")
+
+@app.get("/settings/test-api-key")
+def test_api_key():
+    """Test if OpenRouter API key is working"""
+    import requests
+    
+    api_key = os.getenv("OPENROUTER_API_KEY")
+    if not api_key:
+        return {
+            "status": "error",
+            "message": "OPENROUTER_API_KEY not configured"
+        }
+    
+    try:
+        # Test API by fetching models list
+        response = requests.get(
+            "https://openrouter.ai/api/v1/models",
+            headers={"Authorization": f"Bearer {api_key}"},
+            timeout=10
+        )
+        
+        if response.status_code == 200:
+            data = response.json()
+            model_count = len(data.get("data", []))
+            return {
+                "status": "success",
+                "message": f"API key is valid. {model_count} models available.",
+                "model_count": model_count
+            }
+        elif response.status_code == 401:
+            return {
+                "status": "error",
+                "message": "Invalid API key. Please check your OPENROUTER_API_KEY."
+            }
+        else:
+            return {
+                "status": "error",
+                "message": f"API returned status code {response.status_code}"
+            }
+    except requests.exceptions.Timeout:
+        return {
+            "status": "error",
+            "message": "Request timeout. Please check your network connection."
+        }
+    except Exception as e:
+        return {
+            "status": "error",
+            "message": f"Error testing API: {str(e)}"
+        }
