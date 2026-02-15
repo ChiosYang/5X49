@@ -13,7 +13,7 @@ const playfair = Playfair_Display({
 });
 
 export const metadata: Metadata = {
-  title: "Film Genealogy | A24 Style",
+  title: "5X49",
   description: "Discover the ancestry and legacy of cinema.",
 };
 

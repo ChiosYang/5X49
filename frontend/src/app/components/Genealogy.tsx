@@ -71,10 +71,10 @@ export default function Genealogy({ initialQuery = "", hideSearch = false }: Gen
         {/* Header */}
         <header className="space-y-6 pt-12 border-b border-neutral-800 pb-12">
           <h1 className="text-6xl md:text-8xl tracking-tighter font-serif">
-            FILM GENEALOGY
+            5X49
           </h1>
           <p className="text-neutral-500 text-meta tracking-widest text-sm">
-            ARCHIVE NO. 001 — THE ANCESTRY OF CINEMA
+            FILM GENEALOGY — ARCHIVE NO. 001
           </p>
         </header>
 

@@ -38,7 +38,7 @@ export default function Navigation() {
 
         {/* Center: Logo */}
         <Link href="/" className="font-serif font-bold text-2xl tracking-tighter absolute left-1/2 -translate-x-1/2 z-50 drop-shadow-lg">
-          A24.ARCHIVE
+          5X49
         </Link>
 
         {/* Right: Search Icon (Optional specifically requested in sidebar, but nice to adhere to A24 pattern where search is accessible) */}
@@ -106,8 +106,7 @@ export default function Navigation() {
 
               {/* Footer in Sidebar */}
               <div className="absolute bottom-16 left-8 md:left-16 text-neutral-500 text-xs font-bold uppercase tracking-widest space-y-2">
-                <p>Film Genealogy Project</p>
-                <p>Based on A24 Design System</p>
+                <p>5X49 Project</p>
               </div>
             </motion.div>
           </>
