@@ -6,3 +6,9 @@ data/
 .git
 .gitignore
 *.md
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
