@@ -37,25 +37,16 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Configuration for media directory (can be overridden via env var)
-# Security: Validate that MEDIA_DIR is within allowed paths
-from pathlib import Path
+from app.services.settings import get_default_settings, save_settings, get_available_models, get_current_model, set_current_model, get_base_url, set_base_url, refresh_models_cache, get_media_dir, set_media_dir
 
-ALLOWED_BASE_DIR = "/Users/alicolia/Projects"
-DEFAULT_MEDIA_DIR = f"{ALLOWED_BASE_DIR}/movies-nfo-test"
-MEDIA_DIR = os.getenv("MEDIA_DIR", DEFAULT_MEDIA_DIR)
-
-# Validate media directory path
-try:
-    media_path = Path(MEDIA_DIR).resolve()
-    if not str(media_path).startswith(ALLOWED_BASE_DIR):
-        raise ValueError(f"MEDIA_DIR must be within {ALLOWED_BASE_DIR}")
-    MEDIA_DIR = str(media_path)
-except Exception as e:
-    print(f"⚠️ Warning: Invalid MEDIA_DIR ({e}), using default")
-    MEDIA_DIR = DEFAULT_MEDIA_DIR
+# Configuration for media directory
+# Prioritize settings.json, then env var, then default
+DEFAULT_MEDIA_DIR = os.getenv("MEDIA_DIR", "/media")
+MEDIA_DIR = get_media_dir() or DEFAULT_MEDIA_DIR
 
 # Mount media directory for static file serving (local images)
+# Dynamic mounting is tricky in FastAPI, so we mount the current MEDIA_DIR
+# If user changes it, they might need to restart or we need a way to remount
 if os.path.exists(MEDIA_DIR):
     app.mount("/media", StaticFiles(directory=MEDIA_DIR), name="media")
 else:
@@ -99,9 +90,10 @@ def seed_library():
 def scan_library(background_tasks: BackgroundTasks, media_dir: str = Query(default=None)):
     """
     Scan a directory for TMM-scraped movies and add them to library.
-    If no media_dir is provided, uses the default MEDIA_DIR.
+    If no media_dir is provided, uses the configured MEDIA_DIR from settings.
     """
-    target_dir = media_dir or MEDIA_DIR
+    # Fetch latest setting dynamically
+    target_dir = media_dir or get_media_dir() or DEFAULT_MEDIA_DIR
     
     if not os.path.exists(target_dir):
         raise HTTPException(status_code=400, detail=f"Directory not found: {target_dir}")
@@ -163,6 +155,25 @@ def update_model_setting(model_name: str):
     success = set_current_model(model_name)
     if success:
         return {"message": "Model updated", "model_name": model_name}
+    else:
+        raise HTTPException(status_code=500, detail="Failed to save settings")
+
+@app.get("/settings/media-dir")
+def get_media_directory():
+    return {"media_dir": get_media_dir()}
+
+@app.put("/settings/media-dir")
+def update_media_directory(media_dir: str):
+    if not media_dir:
+        raise HTTPException(status_code=400, detail="Media directory cannot be empty")
+    
+    # Optional: Check if directory exists, but don't strictly block it (could be mounted later)
+    if not os.path.exists(media_dir):
+        print(f"Warning: Setting non-existent media_dir: {media_dir}")
+
+    success = set_media_dir(media_dir)
+    if success:
+        return {"status": "success", "media_dir": media_dir, "message": "Media directory updated. Please restart server to apply changes for static file serving."}
     else:
         raise HTTPException(status_code=500, detail="Failed to save settings")
 

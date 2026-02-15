@@ -32,6 +32,7 @@ export default function SettingsPage() {
   useEffect(() => {
     fetchModelSettings();
     fetchBaseUrl();
+    fetchMediaDir();
   }, []);
 
   const fetchModelSettings = async () => {
@@ -55,7 +56,25 @@ export default function SettingsPage() {
         setBaseUrl(data.base_url);
       }
     } catch (error) {
-      console.error("Failed to load base URL:", error);
+      console.error("Failed to fetch base URL:", error);
+    }
+  };
+
+  // State for Media Path
+  const [mediaDir, setMediaDir] = useState<string>("");
+  const [mediaDirSaving, setMediaDirSaving] = useState(false);
+  const [mediaDirSaved, setMediaDirSaved] = useState(false);
+
+  // Fetch Media Path
+  const fetchMediaDir = async () => {
+    try {
+      const res = await fetch(API.settingsMediaDir());
+      if (res.ok) {
+        const data = await res.json();
+        setMediaDir(data.media_dir);
+      }
+    } catch (error) {
+      console.error("Failed to fetch media dir:", error);
     }
   };
 
@@ -112,6 +131,23 @@ export default function SettingsPage() {
       console.error("Failed to update base URL:", error);
     } finally {
       setBaseUrlSaving(false);
+    }
+  };
+
+  const handleMediaDirChange = async () => {
+    setMediaDirSaving(true);
+    try {
+      const res = await fetch(`${API.settingsMediaDir()}?media_dir=${encodeURIComponent(mediaDir)}`, {
+        method: "PUT",
+      });
+      if (res.ok) {
+        setMediaDirSaved(true);
+        setTimeout(() => setMediaDirSaved(false), 2000);
+      }
+    } catch (error) {
+        console.error("Failed to save media dir:", error);
+    } finally {
+        setMediaDirSaving(false);
     }
   };
 
@@ -460,13 +496,37 @@ export default function SettingsPage() {
 
                 <div className="space-y-6">
                   <div className="border-b border-neutral-900 pb-6">
-                    <label className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm font-medium uppercase tracking-widest mb-1">Media Directory</p>
-                        <p className="text-xs text-neutral-600">Path to NFO files (Docker only)</p>
+                    <div>
+                      <p className="text-sm font-medium uppercase tracking-widest mb-1">Media Directory</p>
+                      <p className="text-xs text-neutral-600 mb-4">Path to NFO files (Docker only)</p>
+                      
+                      <div className="flex gap-3">
+                        <input
+                          type="text"
+                          value={mediaDir}
+                          onChange={(e) => setMediaDir(e.target.value)}
+                          placeholder="/path/to/movies"
+                          className="flex-1 bg-neutral-900 border border-neutral-800 text-white px-4 py-3 text-sm placeholder:text-neutral-600 hover:border-neutral-600 focus:border-white focus:outline-none"
+                        />
+                        <button
+                          onClick={handleMediaDirChange}
+                          disabled={mediaDirSaving}
+                          className="bg-white text-black px-6 py-3 text-xs font-medium uppercase tracking-widest hover:bg-neutral-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {mediaDirSaving ? "Saving..." : "Save"}
+                        </button>
                       </div>
-                      <div className="text-neutral-600 text-xs uppercase">Coming Soon</div>
-                    </label>
+
+                      {mediaDirSaved && (
+                        <p className="text-xs text-green-500 mt-2 uppercase tracking-widest">✓ Saved</p>
+                      )}
+                      
+                      <div className="mt-4 space-y-2 text-xs text-neutral-600">
+                        <p className="font-medium text-neutral-500">Note:</p>
+                        <p>If running in Docker, this must be a path mapped inside the container (e.g., /media). If running locally, use the absolute path to your movies folder.</p>
+                        <p className="font-semibold text-neutral-500">Restart server required to apply changes for image serving.</p>
+                      </div>
+                    </div>
                   </div>
 
                   <div className="border-b border-neutral-900 pb-6">

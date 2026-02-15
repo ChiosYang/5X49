@@ -161,3 +161,17 @@ def set_base_url(base_url: str):
 def refresh_models_cache():
     """Force refresh the models cache"""
     return get_available_models(force_refresh=True)
+
+def get_media_dir():
+    """Get current media directory"""
+    settings = load_settings()
+    # Default to environment variable or hardcoded default
+    default_media_dir = os.getenv("MEDIA_DIR", "/media")
+    return settings.get("media_dir", default_media_dir)
+
+def set_media_dir(media_dir: str):
+    """Set media directory"""
+    # Simply save the path, validation happens at usage time
+    settings = load_settings()
+    settings["media_dir"] = media_dir
+    return save_settings(settings)
