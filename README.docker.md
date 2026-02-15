@@ -64,3 +64,23 @@ docker-compose up -d --build
 2. 使用 Nginx 反向代理处理 HTTPS
 3. 在 `backend/.env` 中更新 `ALLOWED_ORIGINS`
 4. 在 `frontend/.env` 中更新 `NEXT_PUBLIC_API_URL`
+
+## 📦 发布到 Docker Hub
+
+如果你想将应用发布给他人使用（开箱即用）：
+
+1. **构建并推送镜像**
+
+   编辑 `publish.sh` 确认你的 Docker Hub 用户名，然后运行：
+   ```bash
+   ./publish.sh
+   ```
+
+2. **用户部署**
+
+   用户只需要 `docker-compose.release.yml` 和 `.env`文件即可部署，无需源代码。
+   
+   ```bash
+   # 使用发布版配置启动
+   docker-compose -f docker-compose.release.yml up -d
+   ```
