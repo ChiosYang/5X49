@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
+import API from "@/lib/api";
 
 type SettingSection = "appearance" | "display" | "analysis" | "library";
 
@@ -35,7 +36,7 @@ export default function SettingsPage() {
 
   const fetchModelSettings = async () => {
     try {
-      const res = await fetch("http://localhost:8000/settings/model");
+      const res = await fetch(API.settingsModel());
       if (res.ok) {
         const data = await res.json();
         setCurrentModel(data.current_model);
@@ -48,7 +49,7 @@ export default function SettingsPage() {
 
   const fetchBaseUrl = async () => {
     try {
-      const res = await fetch("http://localhost:8000/settings/base-url");
+      const res = await fetch(API.settingsBaseUrl());
       if (res.ok) {
         const data = await res.json();
         setBaseUrl(data.base_url);
@@ -62,7 +63,7 @@ export default function SettingsPage() {
     setLoading(true);
     setSaved(false);
     try {
-      const res = await fetch(`http://localhost:8000/settings/model?model_name=${encodeURIComponent(newModel)}`, {
+      const res = await fetch(`${API.settingsModel()}?model_name=${encodeURIComponent(newModel)}`, {
         method: "PUT",
       });
       if (res.ok) {
@@ -81,7 +82,7 @@ export default function SettingsPage() {
     setApiTesting(true);
     setApiTestResult(null);
     try {
-      const res = await fetch("http://localhost:8000/settings/test-api-key");
+      const res = await fetch(API.settingsTestApiKey());
       if (res.ok) {
         const data = await res.json();
         setApiTestResult(data);
@@ -100,7 +101,7 @@ export default function SettingsPage() {
     setBaseUrlSaving(true);
     setBaseUrlSaved(false);
     try {
-      const res = await fetch(`http://localhost:8000/settings/base-url?base_url=${encodeURIComponent(baseUrl)}`, {
+      const res = await fetch(`${API.settingsBaseUrl()}?base_url=${encodeURIComponent(baseUrl)}`, {
         method: "PUT",
       });
       if (res.ok) {

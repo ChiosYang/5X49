@@ -84,7 +84,7 @@ export default function LibraryPage() {
                   {(movie.backdrop_local || movie.backdrop_path) ? (
                     <img
                       src={movie.backdrop_local 
-                        ? `http://localhost:8000${movie.backdrop_local}` 
+                        ? API.mediaUrl(movie.backdrop_local) 
                         : `https://image.tmdb.org/t/p/w1280${movie.backdrop_path}`}
                       alt={movie.title}
                       className="w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-105"

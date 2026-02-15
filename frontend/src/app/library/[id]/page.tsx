@@ -71,7 +71,7 @@ export default function MovieDetailPage() {
     
     setAnalyzing(true);
     try {
-      const res = await fetch(`http://localhost:8000/library/analyze/${id}`, {
+      const res = await fetch(API.libraryAnalyze(id as string), {
         method: 'POST',
       });
       
@@ -123,7 +123,7 @@ export default function MovieDetailPage() {
             {(movie.backdrop_local || movie.backdrop_path) && (
                 <img 
                     src={movie.backdrop_local 
-                      ? `http://localhost:8000${movie.backdrop_local}` 
+                      ? API.mediaUrl(movie.backdrop_local) 
                       : `https://image.tmdb.org/t/p/original${movie.backdrop_path}`}
                     alt={movie.title}
                     className="w-full h-full object-cover opacity-80"
