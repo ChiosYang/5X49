@@ -9,6 +9,7 @@ from app.services.analysis import analysis_service
 from app.database import create_db_and_tables
 from app.utils.security import validate_movie_id
 import os
+from pathlib import Path
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -253,3 +254,43 @@ def test_api_key():
             "status": "error",
             "message": f"Error testing API: {str(e)}"
         }
+
+@app.get("/sys/list-dirs")
+def list_directories(path: str = Query(default="/")):
+    """
+    List subdirectories in the given path.
+    Used for the frontend file browser.
+    """
+    # Security: In a real app, you might restrict this to certain roots.
+    # For a personal media server, full access is usually expected.
+    
+    target_path = Path(path).resolve()
+    
+    if not target_path.exists():
+        # Fallback to root if path doesn't exist
+        target_path = Path("/")
+    
+    if not target_path.is_dir():
+        target_path = target_path.parent
+
+    dirs = []
+    try:
+        # List items
+        for item in target_path.iterdir():
+            if item.is_dir() and not item.name.startswith('.'):
+                dirs.append({
+                    "name": item.name,
+                    "path": str(item.resolve())
+                })
+        
+        # Sort by name
+        dirs.sort(key=lambda x: x["name"].lower())
+        
+        return {
+            "current_path": str(target_path),
+            "parent_path": str(target_path.parent) if target_path != target_path.parent else None,
+            "directories": dirs
+        }
+    except Exception as e:
+        print(f"Error listing directories at {path}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
+import FileBrowser from "@/components/FileBrowser";
 import API from "@/lib/api";
 
 type SettingSection = "appearance" | "display" | "analysis" | "library";
@@ -18,12 +19,13 @@ export default function SettingsPage() {
   const [baseUrl, setBaseUrl] = useState<string>("");
   const [baseUrlSaving, setBaseUrlSaving] = useState(false);
   const [baseUrlSaved, setBaseUrlSaved] = useState(false);
+  const [fileBrowserOpen, setFileBrowserOpen] = useState(false);
 
   // Filter models based on search
   const filteredModels = useMemo(() => {
     if (!modelSearch.trim()) return availableModels;
     const search = modelSearch.toLowerCase();
-    return availableModels.filter(model => 
+    return availableModels.filter((model: string) => 
       model.toLowerCase().includes(search)
     );
   }, [availableModels, modelSearch]);
@@ -145,9 +147,9 @@ export default function SettingsPage() {
         setTimeout(() => setMediaDirSaved(false), 2000);
       }
     } catch (error) {
-        console.error("Failed to save media dir:", error);
+      console.error("Failed to save media dir:", error);
     } finally {
-        setMediaDirSaving(false);
+      setMediaDirSaving(false);
     }
   };
 
@@ -299,53 +301,34 @@ export default function SettingsPage() {
                         <div className="relative">
                           {/* Current Selection / Trigger */}
                           <button
-                            type="button"
                             onClick={() => setDropdownOpen(!dropdownOpen)}
-                            className="w-full bg-neutral-900 border border-neutral-800 text-white px-4 py-3 text-sm uppercase tracking-widest hover:border-neutral-600 focus:border-white focus:outline-none text-left flex items-center justify-between"
+                            className="w-full flex items-center justify-between bg-neutral-900 border border-neutral-800 text-white px-4 py-3 text-sm hover:border-neutral-600 focus:outline-none"
                           >
-                            <span>{currentModel || "Select a model..."}</span>
-                            <svg 
-                              className={`w-4 h-4 transition-transform ${dropdownOpen ? 'rotate-180' : ''}`} 
-                              fill="none" 
-                              stroke="currentColor" 
-                              viewBox="0 0 24 24"
-                            >
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                            </svg>
+                            <span className="truncate">{currentModel || "Select a model..."}</span>
+                            <span className="text-neutral-500 ml-2">▼</span>
                           </button>
 
                           {/* Dropdown Menu */}
                           {dropdownOpen && (
                             <>
-                              {/* Backdrop to close dropdown */}
                               <div 
-                                className="fixed inset-0 z-10" 
+                                className="fixed inset-0 z-10"
                                 onClick={() => setDropdownOpen(false)}
                               />
-                              
-                              {/* Dropdown Content */}
-                              <div className="absolute z-20 w-full mt-1 bg-neutral-900 border border-neutral-800 shadow-2xl max-h-96 flex flex-col">
-                                {/* Search Box Inside Dropdown */}
-                                <div className="p-3 border-b border-neutral-800">
+                              <div className="absolute z-20 mt-2 w-full bg-neutral-900 border border-neutral-800 shadow-xl max-h-60 flex flex-col">
+                                <div className="p-2 border-b border-neutral-800">
                                   <input
                                     type="text"
-                                    placeholder="Search models..."
                                     value={modelSearch}
                                     onChange={(e) => setModelSearch(e.target.value)}
-                                    className="w-full bg-neutral-950 border border-neutral-700 text-white px-3 py-2 text-sm placeholder:text-neutral-600 focus:border-white focus:outline-none"
-                                    onClick={(e) => e.stopPropagation()}
+                                    placeholder="Search models..."
+                                    className="w-full bg-neutral-950 text-white px-3 py-2 text-xs focus:outline-none"
+                                    autoFocus
                                   />
-                                  {modelSearch && (
-                                    <p className="text-xs text-neutral-500 mt-2">
-                                      {filteredModels.length} model{filteredModels.length !== 1 ? 's' : ''} found
-                                    </p>
-                                  )}
                                 </div>
-
-                                {/* Model List */}
-                                <div className="overflow-y-auto max-h-80">
+                                <div className="overflow-y-auto flex-1">
                                   {filteredModels.length > 0 ? (
-                                    filteredModels.map((model) => (
+                                    filteredModels.map((model: string) => (
                                       <button
                                         key={model}
                                         type="button"
@@ -509,6 +492,12 @@ export default function SettingsPage() {
                           className="flex-1 bg-neutral-900 border border-neutral-800 text-white px-4 py-3 text-sm placeholder:text-neutral-600 hover:border-neutral-600 focus:border-white focus:outline-none"
                         />
                         <button
+                          onClick={() => setFileBrowserOpen(true)}
+                          className="bg-neutral-800 text-white px-4 py-3 text-xs font-medium uppercase tracking-widest hover:bg-neutral-700 transition-colors"
+                        >
+                          Browse
+                        </button>
+                        <button
                           onClick={handleMediaDirChange}
                           disabled={mediaDirSaving}
                           className="bg-white text-black px-6 py-3 text-xs font-medium uppercase tracking-widest hover:bg-neutral-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
@@ -516,6 +505,17 @@ export default function SettingsPage() {
                           {mediaDirSaving ? "Saving..." : "Save"}
                         </button>
                       </div>
+
+                      {/* File Browser Modal */}
+                      <FileBrowser
+                        isOpen={fileBrowserOpen}
+                        initialPath={mediaDir}
+                        onSelect={(path) => {
+                          setMediaDir(path);
+                          setFileBrowserOpen(false);
+                        }}
+                        onCancel={() => setFileBrowserOpen(false)}
+                      />
 
                       {mediaDirSaved && (
                         <p className="text-xs text-green-500 mt-2 uppercase tracking-widest">✓ Saved</p>
