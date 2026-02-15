@@ -17,14 +17,17 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 
-# Enable CORS for frontend
-# In production, replace localhost with your actual domain
-ALLOWED_ORIGINS = [
-    "http://localhost:3000",
-    "http://127.0.0.1:3000",
-    # Add production domain here when deployed
-    # "https://yourdomain.com",
-]
+# Health check for Docker
+@app.get("/health")
+def health_check():
+    return {"status": "healthy"}
+
+# CORS - configurable via environment variable
+ALLOWED_ORIGINS = os.getenv(
+    "ALLOWED_ORIGINS",
+    "http://localhost:3000,http://127.0.0.1:3000"
+).split(",")
+
 
 app.add_middleware(
     CORSMiddleware,
