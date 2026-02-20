@@ -175,3 +175,16 @@ def set_media_dir(media_dir: str):
     settings = load_settings()
     settings["media_dir"] = media_dir
     return save_settings(settings)
+
+def get_language():
+    """Get language preference, 'zh' or 'en'"""
+    settings = load_settings()
+    return settings.get("language", "zh")
+
+def set_language(language: str):
+    """Set language preference"""
+    if language not in ["zh", "en"]:
+        language = "zh"
+    settings = load_settings()
+    settings["language"] = language
+    return save_settings(settings)

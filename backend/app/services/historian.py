@@ -13,7 +13,7 @@ load_dotenv(".env.local")
 TMDB_API_KEY = os.getenv("TMDB_API_KEY")
 
 # Import settings service for dynamic model selection
-from app.services.settings import get_current_model, get_base_url
+from app.services.settings import get_current_model, get_base_url, get_language
 
 # Initialize OpenAI client with dynamic base URL
 def get_client():
@@ -111,8 +111,16 @@ class FilmHistorian:
         print(f"  ✅ 锁定目标: {metadata['title']} ({metadata['year']})")
         
         # Step 2: 溯源与推演 (LLM Drafting)
+        lang = get_language()
+        lang_instruction = (
+            "请务必使用 **中文** 进行深度的分析，并输出所有内容。" if lang == "zh"
+            else "You are a film historian. Please deeply analyze the movie. ALL analysis, descriptions, and outputs MUST be strictly in **English**."
+        )
+
         prompt = f"""
         你是电影史学家。请深度分析电影《{metadata['title']}》({metadata['year']})。
+        
+        {lang_instruction}
         
         任务：
         1. [Genre Definition]: 重新定义它的流派。不仅仅是官方的(如Sci-Fi)，请给出一个更学术、更精准的“微流派”定义(Micro-Genre)。

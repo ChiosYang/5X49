@@ -20,6 +20,7 @@ export const API = {
     settingsModel: () => `${API_BASE_URL}/settings/model`,
     settingsBaseUrl: () => `${API_BASE_URL}/settings/base-url`,
     settingsMediaDir: () => `${API_BASE_URL}/settings/media-dir`,
+    settingsLanguage: () => `${API_BASE_URL}/settings/language`,
 
     // System
     systemListDirs: () => `${API_BASE_URL}/sys/list-dirs`,

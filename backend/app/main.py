@@ -38,7 +38,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-from app.services.settings import get_default_settings, save_settings, get_available_models, get_current_model, set_current_model, get_base_url, set_base_url, refresh_models_cache, get_media_dir, set_media_dir
+from app.services.settings import get_default_settings, save_settings, get_available_models, get_current_model, set_current_model, get_base_url, set_base_url, refresh_models_cache, get_media_dir, set_media_dir, get_language, set_language
 
 # Configuration for media directory
 # Prioritize settings.json, then env var, then default
@@ -174,6 +174,20 @@ def update_media_directory(media_dir: str):
     success = set_media_dir(media_dir)
     if success:
         return {"status": "success", "media_dir": media_dir, "message": "Media directory updated. Please restart server to apply changes for static file serving."}
+    else:
+        raise HTTPException(status_code=500, detail="Failed to save settings")
+
+@app.get("/settings/language")
+def get_language_setting():
+    return {"language": get_language()}
+
+@app.put("/settings/language")
+def update_language_setting(language: str):
+    if language not in ["zh", "en"]:
+        raise HTTPException(status_code=400, detail="Language must be 'zh' or 'en'")
+    success = set_language(language)
+    if success:
+        return {"status": "success", "language": language}
     else:
         raise HTTPException(status_code=500, detail="Failed to save settings")
 
