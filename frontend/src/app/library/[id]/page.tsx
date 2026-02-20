@@ -30,6 +30,7 @@ interface MovieDetail {
   year: number;
   backdrop_path?: string;
   backdrop_local?: string;
+  poster_path?: string;
   poster_local?: string;
   overview?: string;
   plot?: string;
@@ -126,7 +127,7 @@ export default function MovieDetailPage() {
                       ? API.mediaUrl(movie.backdrop_local) 
                       : `https://image.tmdb.org/t/p/original${movie.backdrop_path}`}
                     alt={movie.title}
-                    className="w-full h-full object-cover opacity-80"
+                    className="w-full h-full object-cover"
                 />
             )}
             <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent" />
@@ -192,9 +193,30 @@ export default function MovieDetailPage() {
              </div>
          </div>
          <div className="lg:col-span-2">
-             <p className="text-xl md:text-2xl lg:text-3xl font-bold leading-tight text-neutral-200">
+             <p className="text-xl md:text-2xl lg:text-3xl font-bold leading-tight text-neutral-200 mb-12 md:mb-16">
                  {movie.overview || movie.plot || 'No description available'}
              </p>
+
+             {/* Featured Poster - Single Poster Style */}
+             {(movie.poster_local || movie.poster_path) && (
+               <motion.div 
+                 initial={{ opacity: 0, y: 40 }}
+                 whileInView={{ opacity: 1, y: 0 }}
+                 viewport={{ once: true, margin: "-100px" }}
+                 transition={{ duration: 1, ease: "circOut" }}
+                 className="w-full flex justify-start"
+               >
+                 <div className="w-full md:w-[37.5%]">
+                   <img 
+                     src={movie.poster_local 
+                       ? API.mediaUrl(movie.poster_local) 
+                       : `https://image.tmdb.org/t/p/w780${movie.poster_path}`}
+                     alt={`${movie.title} Poster`}
+                     className="w-full h-auto object-cover"
+                   />
+                 </div>
+               </motion.div>
+             )}
          </div>
       </div>
 
