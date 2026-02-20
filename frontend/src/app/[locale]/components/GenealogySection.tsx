@@ -1,4 +1,5 @@
 import { motion } from 'framer-motion';
+import { useTranslations } from "next-intl";
 import FilmCard from './FilmCard';
 
 interface FilmReference {
@@ -14,14 +15,12 @@ interface AnalysisData {
   influence_impact: string;
   ancestors: FilmReference[];
   descendants: FilmReference[];
-  tmdb_metadata?: any;
+  tmdb_metadata?: Record<string, unknown>;
 }
 
 interface GenealogySectionProps {
   analysisData: AnalysisData | null;
   analysisStatus: string;
-  movieTitle: string;
-  movieYear: number;
   onTriggerAnalysis?: () => void;
   analyzing?: boolean;
 }
@@ -29,11 +28,11 @@ interface GenealogySectionProps {
 export default function GenealogySection({ 
   analysisData, 
   analysisStatus, 
-  movieTitle, 
-  movieYear,
   onTriggerAnalysis,
   analyzing = false
 }: GenealogySectionProps) {
+  const t = useTranslations("Genealogy");
+
   // Pending state with trigger button
   if (analysisStatus === 'pending' && onTriggerAnalysis) {
     return (
@@ -41,7 +40,7 @@ export default function GenealogySection({
         <h2 className="text-2xl md:text-3xl font-bold uppercase tracking-tight mb-8">Film Genealogy</h2>
         <div className="flex flex-col items-center justify-center py-16 space-y-6">
           <p className="text-sm text-neutral-500 uppercase tracking-widest text-center">
-            Genealogy analysis not yet performed
+            {t("pendingStatus")}
           </p>
           <button
             onClick={onTriggerAnalysis}
@@ -52,15 +51,15 @@ export default function GenealogySection({
               <>
                 <span className="flex items-center gap-3">
                   <div className="animate-spin h-4 w-4 border-2 border-neutral-700 border-t-white rounded-full"></div>
-                  Analyzing...
+                  {t("analyzing")}
                 </span>
               </>
             ) : (
-              'Analyze Film Genealogy'
+              t("trigger")
             )}
           </button>
           <p className="text-xs text-neutral-600 text-center max-w-md">
-            This will send the film to our AI for genealogical analysis. The process typically takes 90-120 seconds.
+            The process typically takes 90-120 seconds.
           </p>
         </div>
       </div>
@@ -74,7 +73,7 @@ export default function GenealogySection({
         <div className="flex items-center justify-center py-16">
           <div className="text-center space-y-4">
             <div className="animate-spin h-8 w-8 border-2 border-neutral-700 border-t-white rounded-full mx-auto"></div>
-            <p className="text-sm text-neutral-500 uppercase tracking-widest">Analyzing film genealogy...</p>
+            <p className="text-sm text-neutral-500 uppercase tracking-widest">{t("analyzing")}</p>
           </div>
         </div>
       </div>
@@ -87,7 +86,7 @@ export default function GenealogySection({
       <div className="border-b border-neutral-800 p-8 md:p-16">
         <h2 className="text-2xl md:text-3xl font-bold uppercase tracking-tight mb-8">Film Genealogy</h2>
         <div className="flex flex-col items-center justify-center py-16 space-y-6">
-          <p className="text-neutral-500 text-sm uppercase tracking-widest">Analysis failed or unavailable</p>
+          <p className="text-neutral-500 text-sm uppercase tracking-widest">{t("failedStatus")}</p>
           {onTriggerAnalysis && (
             <>
               <p className="text-xs text-neutral-600 text-center max-w-md">
@@ -149,7 +148,7 @@ export default function GenealogySection({
         {/* Ancestors Section */}
         <div>
           <h3 className="text-[11px] font-medium uppercase tracking-[0.1em] text-neutral-500 mb-8">
-            Ancestors
+            {t("ancestors")}
           </h3>
           {ancestors.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-12">
@@ -174,7 +173,7 @@ export default function GenealogySection({
         {/* Descendants Section */}
         <div>
           <h3 className="text-[11px] font-medium uppercase tracking-[0.1em] text-neutral-500 mb-8">
-            Descendants
+            {t("descendants")}
           </h3>
           {descendants.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-12">

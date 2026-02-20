@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Search, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { motion } from "framer-motion";
+import { useTranslations } from "next-intl";
 import { API } from "@/lib/api";
 
 interface FilmNode {
@@ -33,6 +34,7 @@ interface GenealogyProps {
 }
 
 export default function Genealogy({ initialQuery = "", hideSearch = false }: GenealogyProps) {
+  const t = useTranslations("Genealogy");
   const [query, setQuery] = useState(initialQuery);
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState<GenealogyData | null>(null);
@@ -58,8 +60,12 @@ export default function Genealogy({ initialQuery = "", hideSearch = false }: Gen
       if (!res.ok) throw new Error("Film not found or analysis failed");
       const jsonData = await res.json();
       setData(jsonData);
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError("An unknown error occurred");
+      }
     } finally {
       setLoading(false);
     }
@@ -71,10 +77,10 @@ export default function Genealogy({ initialQuery = "", hideSearch = false }: Gen
         {/* Header */}
         <header className="space-y-6 pt-12 border-b border-neutral-800 pb-12">
           <h1 className="text-6xl md:text-8xl tracking-tighter font-serif">
-            5X49
+            {t("title")}
           </h1>
           <p className="text-neutral-500 text-meta tracking-widest text-sm">
-            FILM GENEALOGY — ARCHIVE NO. 001
+            {t("subtitle")}
           </p>
         </header>
 
@@ -93,7 +99,7 @@ export default function Genealogy({ initialQuery = "", hideSearch = false }: Gen
               disabled={loading}
               className="absolute right-0 top-1/2 -translate-y-1/2 text-sm uppercase tracking-widest hover:text-neutral-400 disabled:opacity-50"
             >
-              {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : "ANALYZE →"}
+              {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : t("analyzing")}
             </button>
           </form>
         )}
@@ -120,7 +126,7 @@ export default function Genealogy({ initialQuery = "", hideSearch = false }: Gen
                    {data.tmdb_metadata.title}
                  </h2>
                  <div className="space-y-4">
-                    <p className="text-2xl font-serif italic text-neutral-400">"{data.micro_genre}"</p>
+                    <p className="text-2xl font-serif italic text-neutral-400">&quot;{data.micro_genre}&quot;</p>
                     <p className="max-w-xl text-lg text-neutral-300 leading-relaxed font-light">
                       {data.influence_impact}
                     </p>
@@ -151,7 +157,7 @@ export default function Genealogy({ initialQuery = "", hideSearch = false }: Gen
               {/* Ancestors Column */}
               <div className="space-y-12">
                 <h3 className="text-meta text-neutral-500 border-b border-neutral-900 pb-4 mb-8">
-                  I. ANCESTORS (INFLUENCES)
+                  {t("ancestors")}
                 </h3>
                 {data.ancestors.map((film, i) => (
                   <div key={i} className="group space-y-3">
@@ -174,7 +180,7 @@ export default function Genealogy({ initialQuery = "", hideSearch = false }: Gen
               {/* Descendants Column */}
               <div className="space-y-12">
                 <h3 className="text-meta text-neutral-500 border-b border-neutral-900 pb-4 mb-8">
-                  II. DESCENDANTS (LEGACY)
+                  {t("descendants")}
                 </h3>
                 {data.descendants.map((film, i) => (
                   <div key={i} className="group space-y-3">

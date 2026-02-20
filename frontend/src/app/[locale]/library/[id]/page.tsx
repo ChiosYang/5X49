@@ -3,7 +3,8 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { ArrowLeft, Play, Share2, Search, Menu } from "lucide-react";
+import { useTranslations } from "next-intl";
+import { Play } from "lucide-react";
 import { API } from "@/lib/api";
 import GenealogySection from "../../components/GenealogySection";
 
@@ -20,7 +21,7 @@ interface AnalysisData {
   influence_impact: string;
   ancestors: FilmReference[];
   descendants: FilmReference[];
-  tmdb_metadata?: any;
+  tmdb_metadata?: Record<string, unknown>;
 }
 
 interface MovieDetail {
@@ -42,6 +43,7 @@ interface MovieDetail {
 }
 
 export default function MovieDetailPage() {
+  const t = useTranslations("FilmDetail");
   const { id } = useParams();
   const router = useRouter();
   const [movie, setMovie] = useState<MovieDetail | null>(null);
@@ -108,9 +110,9 @@ export default function MovieDetailPage() {
   
   if (!movie) return (
     <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center space-y-4">
-      <h1 className="text-4xl font-serif font-bold">MOVIE NOT FOUND</h1>
+      <h1 className="text-4xl font-serif font-bold">{t("notFound")}</h1>
       <button onClick={() => router.push('/library')} className="text-neutral-400 hover:text-white underline">
-        Return to Library
+        {t("return")}
       </button>
     </div>
   );
@@ -121,15 +123,15 @@ export default function MovieDetailPage() {
       <div className="relative h-screen w-full overflow-hidden">
         {/* Backdrop */}
         <div className="absolute inset-0">
-            {(movie.backdrop_local || movie.backdrop_path) && (
-                <img 
-                    src={movie.backdrop_local 
-                      ? API.mediaUrl(movie.backdrop_local) 
-                      : `https://image.tmdb.org/t/p/original${movie.backdrop_path}`}
-                    alt={movie.title}
-                    className="w-full h-full object-cover"
-                />
-            )}
+                <div className="absolute inset-0">
+                    <img 
+                      src={movie.backdrop_local 
+                        ? API.mediaUrl(movie.backdrop_local) 
+                        : `https://image.tmdb.org/t/p/original${movie.backdrop_path}`}
+                      alt={movie.title}
+                      className="w-full h-full object-cover"
+                    />
+                </div>
             <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent" />
         </div>
 
@@ -161,15 +163,15 @@ export default function MovieDetailPage() {
       {/* Info Grid */}
       <div className="border-t border-neutral-800 grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x divide-neutral-800 bg-black text-neutral-300">
          <div className="p-8 md:px-16 space-y-2">
-             <span className="block text-xs font-bold uppercase tracking-widest text-neutral-500">Directed By</span>
+             <span className="block text-xs font-bold uppercase tracking-widest text-neutral-500">{t("directedBy")}</span>
              <span className="block text-xl md:text-2xl font-bold text-white uppercase">{movie.director || "Unknown Director"}</span>
          </div>
          <div className="p-8 md:px-16 space-y-2">
-             <span className="block text-xs font-bold uppercase tracking-widest text-neutral-500">Released</span>
+             <span className="block text-xs font-bold uppercase tracking-widest text-neutral-500">{t("released")}</span>
              <span className="block text-xl md:text-2xl font-bold text-white font-serif italic">{movie.year}</span>
          </div>
          <div className="p-8 md:px-16 flex items-center justify-between group cursor-pointer hover:bg-white hover:text-black transition-colors">
-             <span className="text-xl md:text-2xl font-bold uppercase">Watch Now</span>
+             <span className="text-xl md:text-2xl font-bold uppercase">{t("watchNow")}</span>
              <Play className="w-6 h-6 fill-current" />
          </div>
       </div>
@@ -185,8 +187,8 @@ export default function MovieDetailPage() {
                  ))}
              </div>
              <div className="pt-12 space-y-3">
-                 <span className="block text-xs font-bold uppercase tracking-widest text-neutral-500">Micro-Genre</span>
-                 <span className="block text-lg font-serif italic text-white">{movie.micro_genre || "Genre Analysis Pending"}</span>
+                 <span className="block text-xs font-bold uppercase tracking-widest text-neutral-500">{t("microGenre")}</span>
+                 <span className="block text-lg font-serif italic text-white">{movie.micro_genre || t("pending")}</span>
                  {movie.micro_genre_definition && (
                    <p className="text-sm text-neutral-400 leading-relaxed">{movie.micro_genre_definition}</p>
                  )}
@@ -194,7 +196,7 @@ export default function MovieDetailPage() {
          </div>
          <div className="lg:col-span-2">
              <p className="text-xl md:text-2xl lg:text-3xl font-bold leading-tight text-neutral-200 mb-12 md:mb-16">
-                 {movie.overview || movie.plot || 'No description available'}
+                 {movie.overview || movie.plot || t("noDescription")}
              </p>
 
              {/* Featured Poster - Single Poster Style */}
@@ -224,8 +226,6 @@ export default function MovieDetailPage() {
       <GenealogySection 
         analysisData={movie.analysis_data || null}
         analysisStatus={movie.analysis_status}
-        movieTitle={movie.title_cn || movie.title}
-        movieYear={movie.year}
         onTriggerAnalysis={triggerAnalysis}
         analyzing={analyzing}
       />

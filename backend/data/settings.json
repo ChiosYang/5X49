@@ -2,5 +2,5 @@
   "model_name": "minimax/minimax-m2.5",
   "base_url": "https://openrouter.ai/api/v1",
   "media_dir": "/Users/alicolia/Projects/movies-nfo-test",
-  "language": "en"
+  "language": "zh"
 }

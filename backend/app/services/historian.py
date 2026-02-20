@@ -27,16 +27,17 @@ def get_client():
 # 1. 基础工具 (The Tools)
 # ==========================================
 
-def get_movie_metadata(movie_name, tmdb_id=None):
+def get_movie_metadata(movie_name, tmdb_id=None, lang="en"):
     """获取电影的基础信息：年份、ID、关键词、流派"""
-    print(f"  🎬 [TMDB]正在查找电影: {movie_name} (TMDB ID: {tmdb_id})...")
+    print(f"  🎬 [TMDB]正在查找电影: {movie_name} (TMDB ID: {tmdb_id}, Lang: {lang})...")
     
     try:
         data = None
         # Priority 1: Direct lookup by TMDB ID
         if tmdb_id:
             url = f"https://api.themoviedb.org/3/movie/{tmdb_id}"
-            resp = requests.get(url, params={"api_key": TMDB_API_KEY, "language": "en-US"})
+            tmdb_lang = "zh-CN" if lang == "zh" else "en-US"
+            resp = requests.get(url, params={"api_key": TMDB_API_KEY, "language": tmdb_lang})
             if resp.status_code == 200:
                 data = resp.json()
                 print(f"  ✅ [TMDB] ID match: {data.get('title')}")
@@ -46,7 +47,8 @@ def get_movie_metadata(movie_name, tmdb_id=None):
         # Priority 2: Search by Name
         if not data:
             url = "https://api.themoviedb.org/3/search/movie"
-            params = {"api_key": TMDB_API_KEY, "query": movie_name, "language": "en-US"}
+            tmdb_lang = "zh-CN" if lang == "zh" else "en-US"
+            params = {"api_key": TMDB_API_KEY, "query": movie_name, "language": tmdb_lang}
             resp = requests.get(url, params=params)
             search_data = resp.json()
             if search_data.get('results'):
@@ -102,7 +104,8 @@ class FilmHistorian:
         
         # Step 1: 获取本体信息
         t0 = time.time()
-        metadata = get_movie_metadata(movie_name, tmdb_id=tmdb_id)
+        lang = get_language()
+        metadata = get_movie_metadata(movie_name, tmdb_id=tmdb_id, lang=lang)
         if not metadata:
             return None
         t1 = time.time()
@@ -111,7 +114,6 @@ class FilmHistorian:
         print(f"  ✅ 锁定目标: {metadata['title']} ({metadata['year']})")
         
         # Step 2: 溯源与推演 (LLM Drafting)
-        lang = get_language()
         lang_instruction = (
             "请务必使用 **中文** 进行深度的分析，并输出所有内容。" if lang == "zh"
             else "You are a film historian. Please deeply analyze the movie. ALL analysis, descriptions, and outputs MUST be strictly in **English**."

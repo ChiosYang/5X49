@@ -1,12 +1,14 @@
 "use client";
 
-import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { useTranslations } from "next-intl";
+
+import { Link, usePathname } from "@/i18n/routing";
 import { Search, Menu, X } from "lucide-react";
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
 export default function Navigation() {
+  const t = useTranslations("Navigation");
   const [isOpen, setIsOpen] = useState(false);
   const pathname = usePathname();
 
@@ -23,17 +25,8 @@ export default function Navigation() {
         {/* Left: Menu Trigger */}
         <button 
           onClick={toggleMenu}
-          className="flex items-center gap-2 uppercase text-sm font-bold tracking-widest hover:opacity-70 transition-opacity drop-shadow-lg"
-        >
-          {isOpen ? (
-            <>
-              <X className="w-5 h-5" /> CLOSE
-            </>
-          ) : (
-            <>
-              <Menu className="w-5 h-5" /> MENU
-            </>
-          )}
+          className="flex items-center gap-2 uppercase text-sm font-bold tracking-widest hover:opacity-70 transition-opacity drop-shadow-lg"        >
+          <Menu className="w-5 h-5" /> {isOpen ? "CLOSE" : "MENU"}
         </button>
 
         {/* Center: Logo */}
@@ -74,7 +67,7 @@ export default function Navigation() {
                   onClick={toggleMenu}
                   className="block text-5xl md:text-7xl font-bold tracking-tighter text-white hover:text-neutral-400 transition-colors"
                 >
-                  Films
+                  {t("library")}
                 </Link>
                 <Link 
                   href="/" 
@@ -88,7 +81,7 @@ export default function Navigation() {
                   onClick={toggleMenu}
                   className="block text-5xl md:text-7xl font-bold tracking-tighter text-white hover:text-neutral-400 transition-colors"
                 >
-                  Settings
+                  {t("settings")}
                 </Link>
                 <Link 
                   href="#" 
@@ -106,7 +99,7 @@ export default function Navigation() {
 
               {/* Footer in Sidebar */}
               <div className="absolute bottom-16 left-8 md:left-16 text-neutral-500 text-xs font-bold uppercase tracking-widest space-y-2">
-                <p>5X49 Project</p>
+                <p>{t("project")}</p>
               </div>
             </motion.div>
           </>

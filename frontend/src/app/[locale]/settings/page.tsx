@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { Loader2 } from "lucide-react";
+import { useTranslations } from "next-intl";
+import { useRouter, usePathname } from "@/i18n/routing";
 
 // ... (inside SettingsPage component)
 
@@ -11,6 +13,9 @@ import API from "@/lib/api";
 type SettingSection = "appearance" | "display" | "analysis" | "library";
 
 export default function SettingsPage() {
+  const t = useTranslations("Settings");
+  const router = useRouter();
+  const pathname = usePathname();
   const [activeSection, setActiveSection] = useState<SettingSection>("appearance");
   const [currentModel, setCurrentModel] = useState<string>("");
   const [availableModels, setAvailableModels] = useState<string[]>([]);
@@ -153,7 +158,6 @@ export default function SettingsPage() {
         const data = await res.json();
         setApiTestResult(data);
       }
-    } catch (error) {
       setApiTestResult({
         status: "error",
         message: "Failed to connect to backend"
@@ -192,6 +196,7 @@ export default function SettingsPage() {
       if (res.ok) {
         setLanguage(lang);
         setLanguageSaved(true);
+        router.replace({ pathname }, { locale: lang });
         setTimeout(() => setLanguageSaved(false), 2000);
       }
     } catch (error) {
@@ -223,10 +228,10 @@ export default function SettingsPage() {
       {/* Hero Section */}
       <div className="border-b border-neutral-900 px-8 md:px-16 py-16 md:py-24">
         <h1 className="text-5xl md:text-7xl font-bold uppercase tracking-tight mb-4">
-          Settings
+          {t("title")}
         </h1>
         <p className="text-sm text-neutral-500 uppercase tracking-widest">
-          Configure your film genealogy experience
+          {t("subtitle")}
         </p>
       </div>
 
@@ -243,7 +248,7 @@ export default function SettingsPage() {
                   : "text-neutral-500 hover:text-white hover:bg-neutral-900"
               }`}
             >
-              Appearance
+              {t("appearance")}
             </button>
             <button
               onClick={() => setActiveSection("display")}
@@ -253,7 +258,7 @@ export default function SettingsPage() {
                   : "text-neutral-500 hover:text-white hover:bg-neutral-900"
               }`}
             >
-              Display
+              {t("display")}
             </button>
             <button
               onClick={() => setActiveSection("analysis")}
@@ -263,7 +268,7 @@ export default function SettingsPage() {
                   : "text-neutral-500 hover:text-white hover:bg-neutral-900"
               }`}
             >
-              AI Analysis
+              {t("analysis")}
             </button>
             <button
               onClick={() => setActiveSection("library")}
@@ -273,7 +278,7 @@ export default function SettingsPage() {
                   : "text-neutral-500 hover:text-white hover:bg-neutral-900"
               }`}
             >
-              Library
+              {t("library")}
             </button>
           </nav>
         </aside>
@@ -285,7 +290,7 @@ export default function SettingsPage() {
             {activeSection === "appearance" && (
               <div className="space-y-8">
                 <div>
-                  <h2 className="text-2xl font-bold uppercase tracking-tight mb-2">Appearance</h2>
+                  <h2 className="text-2xl font-bold uppercase tracking-tight mb-2">{t("appearance")}</h2>
                   <p className="text-sm text-neutral-500 mb-8">Customize the visual experience</p>
                 </div>
 
@@ -318,7 +323,7 @@ export default function SettingsPage() {
             {activeSection === "display" && (
               <div className="space-y-8">
                 <div>
-                  <h2 className="text-2xl font-bold uppercase tracking-tight mb-2">Display</h2>
+                  <h2 className="text-2xl font-bold uppercase tracking-tight mb-2">{t("display")}</h2>
                   <p className="text-sm text-neutral-500 mb-8">Control how films are shown</p>
                 </div>
 
@@ -350,7 +355,7 @@ export default function SettingsPage() {
             {activeSection === "analysis" && (
               <div className="space-y-8">
                 <div>
-                  <h2 className="text-2xl font-bold uppercase tracking-tight mb-2">AI Analysis</h2>
+                  <h2 className="text-2xl font-bold uppercase tracking-tight mb-2">{t("analysis")}</h2>
                   <p className="text-sm text-neutral-500 mb-8">Configure genealogy analysis behavior</p>
                 </div>
 
@@ -359,8 +364,8 @@ export default function SettingsPage() {
                   <div className="border-b border-neutral-900 pb-6">
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
-                        <p className="text-sm font-medium uppercase tracking-widest mb-1">AI Model</p>
-                        <p className="text-xs text-neutral-600 mb-4">Choose the LLM for genealogy analysis</p>
+                        <p className="text-sm font-medium uppercase tracking-widest mb-1">{t("model")}</p>
+                        <p className="text-xs text-neutral-600 mb-4">{t("modelDesc")}</p>
                         
                         {/* Custom Dropdown */}
                         <div className="relative">
@@ -433,25 +438,25 @@ export default function SettingsPage() {
                   <div className="border-b border-neutral-900 pb-6">
                     <label className="flex items-center justify-between">
                       <div>
-                        <p className="text-sm font-medium uppercase tracking-widest mb-1">Auto Analyze</p>
-                        <p className="text-xs text-neutral-600">Automatically analyze new films</p>
+                        <p className="text-sm font-medium uppercase tracking-widest mb-1">{t("autoAnalyze")}</p>
+                        <p className="text-xs text-neutral-600">{t("autoAnalyzeDesc")}</p>
                       </div>
-                      <div className="text-neutral-600 text-xs uppercase">Coming Soon</div>
+                      <div className="text-neutral-600 text-xs uppercase">{t("comingSoon")}</div>
                     </label>
                   </div>
 
                   {/* Test API Key */}
                   <div className="border-b border-neutral-900 pb-6">
                     <div>
-                      <p className="text-sm font-medium uppercase tracking-widest mb-1">API Connection</p>
-                      <p className="text-xs text-neutral-600 mb-4">Test OpenRouter API key connectivity</p>
+                      <p className="text-sm font-medium uppercase tracking-widest mb-1">{t("apiKey")}</p>
+                      <p className="text-xs text-neutral-600 mb-4">{t("apiDesc")}</p>
                       
                       <button
                         onClick={testApiKey}
                         disabled={apiTesting}
                         className="bg-white text-black px-6 py-3 text-xs font-medium uppercase tracking-widest hover:bg-neutral-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                       >
-                        {apiTesting ? "Testing..." : "Test API Key"}
+                        {apiTesting ? t("testingBtn") : t("testBtn")}
                       </button>
 
                       {apiTestResult && (
@@ -473,8 +478,8 @@ export default function SettingsPage() {
                   {/* API Base URL */}
                   <div className="border-b border-neutral-900 pb-6">
                     <div>
-                      <p className="text-sm font-medium uppercase tracking-widest mb-1">API Base URL</p>
-                      <p className="text-xs text-neutral-600 mb-4">Configure the API endpoint for model requests</p>
+                      <p className="text-sm font-medium uppercase tracking-widest mb-1">{t("baseUrl")}</p>
+                      <p className="text-xs text-neutral-600 mb-4">{t("baseUrlDesc")}</p>
                       
                       <div className="flex gap-3">
                         <input
@@ -489,16 +494,16 @@ export default function SettingsPage() {
                           disabled={baseUrlSaving}
                           className="bg-white text-black px-6 py-3 text-xs font-medium uppercase tracking-widest hover:bg-neutral-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                          {baseUrlSaving ? "Saving..." : "Save"}
+                          {baseUrlSaving ? t("saving") : t("save")}
                         </button>
                       </div>
 
                       {baseUrlSaved && (
-                        <p className="text-xs text-green-500 mt-2 uppercase tracking-widest">✓ Saved</p>
+                        <p className="text-xs text-green-500 mt-2 uppercase tracking-widest">✓ {t("saved")}</p>
                       )}
                       
                       <div className="mt-4 space-y-2 text-xs text-neutral-600">
-                        <p className="font-medium text-neutral-500">Common Providers:</p>
+                        <p className="font-medium text-neutral-500">{t("commonProviders")}</p>
                         <button
                           onClick={() => setBaseUrl("https://openrouter.ai/api/v1")}
                           className="block hover:text-white transition-colors"
@@ -524,8 +529,8 @@ export default function SettingsPage() {
                   <div className="border-b border-neutral-900 pb-6">
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-sm font-medium uppercase tracking-widest mb-1">Language Preference</p>
-                        <p className="text-xs text-neutral-600">Chinese or English analysis</p>
+                        <p className="text-sm font-medium uppercase tracking-widest mb-1">{t("languagePref")}</p>
+                        <p className="text-xs text-neutral-600">{t("languageDesc")}</p>
                       </div>
                       <div className="flex items-center gap-4">
                         <div className="flex bg-neutral-900 border border-neutral-800 p-1">
@@ -549,7 +554,7 @@ export default function SettingsPage() {
                           </button>
                         </div>
                         {languageSaving && <Loader2 className="w-4 h-4 animate-spin text-neutral-500" />}
-                        {languageSaved && <span className="text-xs text-green-500 uppercase tracking-widest">✓ Saved</span>}
+                        {languageSaved && <span className="text-xs text-green-500 uppercase tracking-widest">✓ {t("saved")}</span>}
                       </div>
                     </div>
                   </div>
@@ -561,15 +566,15 @@ export default function SettingsPage() {
             {activeSection === "library" && (
               <div className="space-y-8">
                 <div>
-                  <h2 className="text-2xl font-bold uppercase tracking-tight mb-2">Library</h2>
-                  <p className="text-sm text-neutral-500 mb-8">Manage your film collection</p>
+                  <h2 className="text-2xl font-bold uppercase tracking-tight mb-2">{t("library")}</h2>
+                  <p className="text-sm text-neutral-500 mb-8">{t("libraryDesc")}</p>
                 </div>
 
                 <div className="space-y-6">
                   <div className="border-b border-neutral-900 pb-6">
                     <div>
-                      <p className="text-sm font-medium uppercase tracking-widest mb-1">Media Directory</p>
-                      <p className="text-xs text-neutral-600 mb-4">Path to NFO files (Docker only)</p>
+                      <p className="text-sm font-medium uppercase tracking-widest mb-1">{t("mediaDir")}</p>
+                      <p className="text-xs text-neutral-600 mb-4">{t("mediaDirDesc")}</p>
                       
                       <div className="flex gap-3">
                         <input
@@ -583,14 +588,14 @@ export default function SettingsPage() {
                           onClick={() => setFileBrowserOpen(true)}
                           className="bg-neutral-800 text-white px-4 py-3 text-xs font-medium uppercase tracking-widest hover:bg-neutral-700 transition-colors"
                         >
-                          Browse
+                          {t("browse")}
                         </button>
                         <button
                           onClick={handleMediaDirChange}
                           disabled={mediaDirSaving}
                           className="bg-white text-black px-6 py-3 text-xs font-medium uppercase tracking-widest hover:bg-neutral-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                          {mediaDirSaving ? "Saving..." : "Save"}
+                          {mediaDirSaving ? t("saving") : t("save")}
                         </button>
                       </div>
 
@@ -606,13 +611,13 @@ export default function SettingsPage() {
                       />
 
                       {mediaDirSaved && (
-                        <p className="text-xs text-green-500 mt-2 uppercase tracking-widest">✓ Saved</p>
+                        <p className="text-xs text-green-500 mt-2 uppercase tracking-widest">✓ {t("saved")}</p>
                       )}
                       
                       <div className="mt-4 space-y-2 text-xs text-neutral-600">
-                        <p className="font-medium text-neutral-500">Note:</p>
-                        <p>If running in Docker, this must be a path mapped inside the container (e.g., /media). If running locally, use the absolute path to your movies folder.</p>
-                        <p className="font-semibold text-neutral-500">Restart server required to apply changes for image serving.</p>
+                        <p className="font-medium text-neutral-500">{t("note")}</p>
+                        <p>{t("noteDocker")}</p>
+                        <p className="font-semibold text-neutral-500">{t("noteRestart")}</p>
                       </div>
                     </div>
                   </div>
@@ -620,8 +625,8 @@ export default function SettingsPage() {
                   <div className="border-b border-neutral-900 pb-6">
                     <div className="flex items-center justify-between">
                         <div>
-                            <p className="text-sm font-medium uppercase tracking-widest mb-1">Manual Scan</p>
-                            <p className="text-xs text-neutral-600">Force a re-scan of the library folder</p>
+                            <p className="text-sm font-medium uppercase tracking-widest mb-1">{t("manualScan")}</p>
+                            <p className="text-xs text-neutral-600">{t("manualScanDesc")}</p>
                         </div>
                         <div className="flex items-center gap-4">
                             {scanMessage && (
@@ -641,10 +646,10 @@ export default function SettingsPage() {
                                 {isScanning ? (
                                     <>
                                         <Loader2 className="w-3 h-3 animate-spin" />
-                                        Scanning...
+                                        {t("scanning")}
                                     </>
                                 ) : (
-                                    "Scan Now"
+                                    t("scanNow")
                                 )}
                             </button>
                         </div>

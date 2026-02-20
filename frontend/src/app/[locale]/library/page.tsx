@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import { motion } from "framer-motion";
-import { Loader2, Database } from "lucide-react";
-import Link from "next/link";
+import { Loader2 } from "lucide-react";
+import { Link } from "@/i18n/routing";
 import { API } from "@/lib/api";
 
 interface Movie {
@@ -20,6 +21,7 @@ interface Movie {
 }
 
 export default function LibraryPage() {
+  const t = useTranslations("Library");
   const [movies, setMovies] = useState<Movie[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -55,7 +57,7 @@ export default function LibraryPage() {
         <header className="flex justify-between items-end border-b border-neutral-900 pb-8">
           <div>
             <h1 className="text-6xl md:text-9xl font-serif tracking-tighter leading-none">
-              LIBRARY
+              {t("title")}
             </h1>
           </div>
           <div className="flex items-center gap-6">
@@ -67,7 +69,7 @@ export default function LibraryPage() {
 
         {movies.length === 0 ? (
           <div className="py-24 text-center space-y-4">
-            <p className="text-neutral-500 font-serif italic text-xl">The archive is empty.</p>
+            <p className="text-neutral-500 font-serif italic text-xl">{t("empty")}</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-16">
