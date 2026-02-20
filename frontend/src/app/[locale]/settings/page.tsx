@@ -31,7 +31,6 @@ export default function SettingsPage() {
   const [fileBrowserOpen, setFileBrowserOpen] = useState(false);
   const [language, setLanguage] = useState<"zh" | "en">("zh");
   const [languageSaving, setLanguageSaving] = useState(false);
-  const [languageSaved, setLanguageSaved] = useState(false);
 
   // Scan State
   const [isScanning, setIsScanning] = useState(false);
@@ -188,16 +187,13 @@ export default function SettingsPage() {
   const handleLanguageChange = async (lang: "zh" | "en") => {
     if (lang === language) return;
     setLanguageSaving(true);
-    setLanguageSaved(false);
     try {
       const res = await fetch(`${API.settingsLanguage()}?language=${lang}`, {
         method: "PUT",
       });
       if (res.ok) {
         setLanguage(lang);
-        setLanguageSaved(true);
         router.replace({ pathname }, { locale: lang });
-        setTimeout(() => setLanguageSaved(false), 2000);
       }
     } catch (error) {
       console.error("Failed to update language:", error);
@@ -296,6 +292,38 @@ export default function SettingsPage() {
 
                 {/* Settings items will go here */}
                 <div className="space-y-6">
+                  <div className="border-b border-neutral-900 pb-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium uppercase tracking-widest mb-1">{t("languagePref")}</p>
+                        <p className="text-xs text-neutral-600">{t("languageDesc")}</p>
+                      </div>
+                      <div className="flex items-center gap-4">
+                        <div className="flex bg-neutral-900 border border-neutral-800 p-1">
+                          <button
+                            onClick={() => handleLanguageChange("zh")}
+                            disabled={languageSaving}
+                            className={`px-4 py-2 text-xs font-medium uppercase tracking-widest transition-colors ${
+                              language === "zh" ? "bg-white text-black" : "text-neutral-500 hover:text-white"
+                            }`}
+                          >
+                            ZH
+                          </button>
+                          <button
+                            onClick={() => handleLanguageChange("en")}
+                            disabled={languageSaving}
+                            className={`px-4 py-2 text-xs font-medium uppercase tracking-widest transition-colors ${
+                              language === "en" ? "bg-white text-black" : "text-neutral-500 hover:text-white"
+                            }`}
+                          >
+                            EN
+                          </button>
+                        </div>
+                        {languageSaving && <Loader2 className="w-4 h-4 animate-spin text-neutral-500" />}
+                      </div>
+                    </div>
+                  </div>
+
                   <div className="border-b border-neutral-900 pb-6">
                     <label className="flex items-center justify-between">
                       <div>
@@ -526,38 +554,7 @@ export default function SettingsPage() {
                     </div>
                   </div>
 
-                  <div className="border-b border-neutral-900 pb-6">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm font-medium uppercase tracking-widest mb-1">{t("languagePref")}</p>
-                        <p className="text-xs text-neutral-600">{t("languageDesc")}</p>
-                      </div>
-                      <div className="flex items-center gap-4">
-                        <div className="flex bg-neutral-900 border border-neutral-800 p-1">
-                          <button
-                            onClick={() => handleLanguageChange("zh")}
-                            disabled={languageSaving}
-                            className={`px-4 py-2 text-xs font-medium uppercase tracking-widest transition-colors ${
-                              language === "zh" ? "bg-white text-black" : "text-neutral-500 hover:text-white"
-                            }`}
-                          >
-                            ZH
-                          </button>
-                          <button
-                            onClick={() => handleLanguageChange("en")}
-                            disabled={languageSaving}
-                            className={`px-4 py-2 text-xs font-medium uppercase tracking-widest transition-colors ${
-                              language === "en" ? "bg-white text-black" : "text-neutral-500 hover:text-white"
-                            }`}
-                          >
-                            EN
-                          </button>
-                        </div>
-                        {languageSaving && <Loader2 className="w-4 h-4 animate-spin text-neutral-500" />}
-                        {languageSaved && <span className="text-xs text-green-500 uppercase tracking-widest">✓ {t("saved")}</span>}
-                      </div>
-                    </div>
-                  </div>
+
                 </div>
               </div>
             )}
