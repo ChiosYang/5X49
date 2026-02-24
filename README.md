@@ -1,5 +1,6 @@
 # 🎬 5X49
 
+[English](README.md) | [简体中文](README.zh-CN.md)
 > A modern, AI-powered film library manager with deep genealogy analysis and a premium A24-inspired aesthetic.
 
 ![Library Grid](docs/images/library_grid.png)
@@ -7,8 +8,6 @@
 ## ✨ Introduction
 
 **5X49** is not just a media server; it's a cinematic exploration tool. Managing your local film collection has never been this beautiful. It scans your metadata, presents your films in a stunning dark-mode interface, and uses advanced AI to analyze the "genealogy" of films—connecting them by themes, directors, visual styles, and historical context.
-
-The interface is designed with a **premium, minimalist aesthetic** inspired by A24, focusing entirely on the art of cinema.
 
 ## 🚀 Key Features
 
@@ -19,6 +18,8 @@ Automatically scans your local NFO-based collection (compatible with TinyMediaMa
 ### 🧠 AI-Powered Analysis
 Deep dives into each film using Large Language Models (LLMs) to generate "genealogy reports," formatted in beautiful markdown. Explore connections you never knew existed.
 ![Detail Page](docs/images/detail_page.png)
+![Detail Page 2](docs/images/detail_page2.png)
+![Film Genealogy](docs/images/film_genealogy.png)
 
 ### 📂 Easy Management
 - **File Browser**: Select your media directory visually—no manual path typing required.
