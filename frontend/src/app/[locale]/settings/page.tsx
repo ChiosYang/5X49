@@ -8,6 +8,7 @@ import { useRouter, usePathname } from "@/i18n/routing";
 // ... (inside SettingsPage component)
 
 import FileBrowser from "@/components/FileBrowser";
+import LibrarianTerminal from "@/components/LibrarianTerminal";
 import API from "@/lib/api";
 
 type SettingSection = "appearance" | "display" | "analysis" | "library";
@@ -29,6 +30,7 @@ export default function SettingsPage() {
   const [baseUrlSaving, setBaseUrlSaving] = useState(false);
   const [baseUrlSaved, setBaseUrlSaved] = useState(false);
   const [fileBrowserOpen, setFileBrowserOpen] = useState(false);
+  const [terminalOpen, setTerminalOpen] = useState(false);
   const [language, setLanguage] = useState<"zh" | "en">("zh");
   const [languageSaving, setLanguageSaving] = useState(false);
 
@@ -652,6 +654,27 @@ export default function SettingsPage() {
                         </div>
                     </div>
                   </div>
+
+                  <div className="border-b border-neutral-900 pb-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium uppercase tracking-widest mb-1 text-purple-400 flex items-center gap-2">
+                          智能归档精灵 <span className="text-[10px] bg-purple-900/50 text-purple-300 px-2 py-0.5 rounded border border-purple-800">Agent</span>
+                        </p>
+                        <p className="text-xs text-neutral-600">Summon the Librarian Agent to autonomously clean the 'inbox' directory using AI reasoning.</p>
+                      </div>
+                      <div className="text-neutral-600 text-xs uppercase">
+                        <button
+                            onClick={() => setTerminalOpen(true)}
+                            className="flex items-center gap-2 bg-purple-950 border border-purple-900 text-purple-400 px-4 py-3 text-xs font-medium uppercase tracking-widest hover:bg-purple-900 hover:border-purple-600 transition-colors"
+                        >
+                            Open Terminal
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <LibrarianTerminal isOpen={terminalOpen} onClose={() => setTerminalOpen(false)} />
 
                   <div className="border-b border-neutral-900 pb-6">
                     <label className="flex items-center justify-between">

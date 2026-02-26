@@ -21,6 +21,10 @@ Deep dives into each film using Large Language Models (LLMs) to generate "geneal
 ![Detail Page 2](docs/images/detail_page2.png)
 ![Film Genealogy](docs/images/film_genealogy.png)
 
+### 🤖 Intelligent Librarian Agent (LangGraph/ReAct)
+Featuring an autonomous background agent powered by **LangGraph** and **LangChain**. The agent monitors an incoming `inbox` folder, handles chaotic filenames using *Function Calling*, searches for metadata, and autonomously renames and files media into the library. 
+Watch the agent's Step-by-Step reasoning via Server-Sent Events (SSE) in the real-time Librarian Terminal.
+
 ### 📂 Easy Management
 - **File Browser**: Select your media directory visually—no manual path typing required.
 - **Manual Scan**: Trigger library updates on demand without restarting the server.
