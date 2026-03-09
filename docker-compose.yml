@@ -2,11 +2,10 @@ version: '3.8'
 
 services:
   backend:
-    build: 
-      context: ./backend
-    container_name: film-genealogy-backend
+    image: alicolia/5x49-backend:latest
+    container_name: 5x49-backend
     ports:
-      - "8000:8000"
+      - "11548:8000"
     volumes:
       - ./backend/data:/app/data
       - ${MEDIA_DIR:-./media}:/media
@@ -16,7 +15,7 @@ services:
       - MODEL_NAME=${MODEL_NAME:-openrouter/pony-alpha}
       - API_BASE_URL=${API_BASE_URL:-https://openrouter.ai/api/v1}
       - MEDIA_DIR=/media
-      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-http://localhost:3000}
+      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-*}
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:8000/health')"]
@@ -25,13 +24,12 @@ services:
       retries: 3
 
   frontend:
-    build:
-      context: ./frontend
-    container_name: film-genealogy-frontend
+    image: alicolia/5x49-frontend:latest
+    container_name: 5x49-frontend
     ports:
-      - "3000:3000"
+      - "11549:3000"
     environment:
-      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://localhost:8000}
+      - API_URL=http://backend:8000
     depends_on:
       - backend
     restart: unless-stopped

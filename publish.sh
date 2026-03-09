@@ -29,8 +29,8 @@ echo "--------------------------------"
 
 # 2. Docker Push Confirmation
 echo "🐳 Docker Operations:"
-echo "   - Build & Push $USERNAME/5x49-backend:$VERSION"
-echo "   - Build & Push $USERNAME/5x49-frontend:$VERSION"
+echo "   - Build & Push $USERNAME/5x49-backend:$VERSION (Multi-arch)"
+echo "   - Build & Push $USERNAME/5x49-frontend:$VERSION (Multi-arch)"
 echo "   - Update 'latest' tags for both"
 echo ""
 
@@ -42,19 +42,22 @@ else
     echo "🔑 Logging in to Docker Hub..."
     docker login
 
+    # Ensure buildx is ready
+    docker buildx create --use --name multi-arch-builder 2>/dev/null || docker buildx use multi-arch-builder
+
     # Backend
-    echo "📦 Building Backend..."
-    docker build -t $USERNAME/5x49-backend:$VERSION -t $USERNAME/5x49-backend:latest ./backend
-    echo "🚀 Pushing Backend..."
-    docker push $USERNAME/5x49-backend:$VERSION
-    docker push $USERNAME/5x49-backend:latest
+    echo "📦 Building and Pushing Backend (Multi-arch)..."
+    docker buildx build --platform linux/amd64,linux/arm64 \
+        -t $USERNAME/5x49-backend:$VERSION \
+        -t $USERNAME/5x49-backend:latest \
+        --push ./backend
 
     # Frontend
-    echo "📦 Building Frontend..."
-    docker build -t $USERNAME/5x49-frontend:$VERSION -t $USERNAME/5x49-frontend:latest ./frontend
-    echo "🚀 Pushing Frontend..."
-    docker push $USERNAME/5x49-frontend:$VERSION
-    docker push $USERNAME/5x49-frontend:latest
+    echo "📦 Building and Pushing Frontend (Multi-arch)..."
+    docker buildx build --platform linux/amd64,linux/arm64 \
+        -t $USERNAME/5x49-frontend:$VERSION \
+        -t $USERNAME/5x49-frontend:latest \
+        --push ./frontend
     
     echo "✅ Docker Images Pushed Successfully!"
 fi

@@ -51,8 +51,7 @@ export default function LibrarianTerminal({ isOpen, onClose }: LibrarianTerminal
     setLogs([]);
     setIsRunning(true);
 
-    const baseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
-    const es = new EventSource(`${baseUrl}/api/agents/clean-inbox`);
+    const es = new EventSource('/api/api/agents/clean-inbox');
     eventSourceRef.current = es;
 
     es.onmessage = (event) => {

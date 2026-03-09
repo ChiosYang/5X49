@@ -1,7 +1,7 @@
 // API Configuration - Centralized endpoint management
-// Use NEXT_PUBLIC_API_URL environment variable in production
+// Use relative path '/api' which will be rewritten by Next.js to the backend dynamically
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+const API_BASE_URL = '/api';
 
 export const API = {
     baseUrl: API_BASE_URL,
