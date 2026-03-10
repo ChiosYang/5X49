@@ -78,7 +78,7 @@ services:
 ### 3. 初始化配置 (推荐)
 为了降低部署门槛，你可以下载并运行我们提供的一键化引导脚本。此脚本会交互式地询问你的配置，并自动在当前目录生成 `.env` 文件：
 ```bash
-bash <(curl -sL https://raw.githubusercontent.com/alicolia/5x49/main/setup.sh)
+bash <(curl -sL https://raw.githubusercontent.com/chiosyang/5x49/main/setup.sh)
 ```
 
 ### 4. 运行服务

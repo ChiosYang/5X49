@@ -75,7 +75,7 @@ services:
 ### 3. Setup Configuration (Optional but Recommended)
 For the easiest deployment experience, you can download and run our interactive setup script. This will automatically generate a `.env` file with your preferences:
 ```bash
-bash <(curl -sL https://raw.githubusercontent.com/alicolia/5x49/main/setup.sh)
+bash <(curl -sL https://raw.githubusercontent.com/chiosyang/5x49/main/setup.sh)
 ```
 
 ### 4. Run it
