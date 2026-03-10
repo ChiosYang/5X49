@@ -21,6 +21,12 @@
 ### 🧠 AI 驱动分析
 利用大型语言模型（LLMs）对每部电影进行深度挖掘，生成“家谱报告”，并以精美的 Markdown 格式呈现。探索你从未发觉的电影关联。
 ![Detail Page](docs/images/detail_page.png)
+![Detail Page 2](docs/images/detail_page2.png)
+![Film Genealogy](docs/images/film_genealogy.png)
+
+### 🤖 智能图书管理员 Agent (LangGraph/ReAct)
+包含一个由 **LangGraph** 和 **LangChain** 驱动的后台自主智能体。该 Agent 监控传入的 `inbox` 文件夹，通过*函数调用 (Function Calling)* 处理混乱的文件名，搜索元数据，并自主重命名和将媒体归档到库中。
+在实时的 Librarian Console 中，通过服务器发送事件 (SSE) 观察 Agent 的逐步推理过程。
 
 ### 📂 轻松管理
 - **文件浏览器**：可视化选择媒体目录——无需手动输入路径。
