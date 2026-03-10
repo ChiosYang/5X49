@@ -34,7 +34,7 @@
 ![Settings & Scan](docs/images/settings_scan.png)
 
 ### 🐳 支持 Docker
-从一开始就为容器化构建。可以在任何系统上使用 Docker Compose 轻松部署。
+从一开始就为容器化构建。可以在任何系统上使用 Docker Compose 轻松部署，现已全面支持 **多架构（AMD64 & ARM64）**。前端自动代理 API 流量，彻底避开了本地 NAS 部署中的 IP 配置困扰。
 
 ## 🛠️ 技术栈
 
@@ -52,7 +52,7 @@
 - 一个 OpenRouter（或 OpenAI/Anthropic）的 API Key
 
 ### 2. 快速部署
-将以下内容保存为 `docker-compose.yml`:
+将以下内容保存为 `docker-compose.yml` (如果你是完全新手，推荐跳过手动编写环境变量，看第3步):
 
 ```yaml
 services:
@@ -61,11 +61,11 @@ services:
     ports:
       - "8000:8000"
     environment:
-      - OPENROUTER_API_KEY=your_key_here
-      - MEDIA_DIR=/media
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
+      - MEDIA_DIR=${MEDIA_DIR:-/media}
     volumes:
       - ./data:/app/data
-      - /path/to/your/movies:/media  # Map your local movie folder here
+      - ${MEDIA_DIR:-./media}:/media  # Map your local movie folder here
 
   frontend:
     image: alicolia/5x49-frontend:latest
@@ -75,7 +75,14 @@ services:
       - backend
 ```
 
-运行:
+### 3. 初始化配置 (推荐)
+为了降低部署门槛，你可以下载并运行我们提供的一键化引导脚本。此脚本会交互式地询问你的配置，并自动在当前目录生成 `.env` 文件：
+```bash
+bash <(curl -sL https://raw.githubusercontent.com/alicolia/5x49/main/setup.sh)
+```
+
+### 4. 运行服务
+运行容器:
 ```bash
 docker-compose up -d
 ```

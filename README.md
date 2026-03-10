@@ -31,7 +31,7 @@ Watch the agent's Step-by-Step reasoning via Server-Sent Events (SSE) in the rea
 ![Settings & Scan](docs/images/settings_scan.png)
 
 ### 🐳 Docker Ready
-Built for containerization from day one. Deploy easily with Docker Compose on any system.
+Built for containerization from day one. Deploy easily with Docker Compose on any system, now with full **Multi-Architecture support (AMD64 & ARM64)** out of the box. The frontend automatically proxies API traffic to avoid IP configuration hassles on local NAS setups.
 
 ## 🛠️ Tech Stack
 
@@ -58,11 +58,11 @@ services:
     ports:
       - "8000:8000"
     environment:
-      - OPENROUTER_API_KEY=your_key_here
-      - MEDIA_DIR=/media
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
+      - MEDIA_DIR=${MEDIA_DIR:-/media}
     volumes:
       - ./data:/app/data
-      - /path/to/your/movies:/media  # Map your local movie folder here
+      - ${MEDIA_DIR:-./media}:/media  # Map your local movie folder here
 
   frontend:
     image: alicolia/5x49-frontend:latest
@@ -72,7 +72,14 @@ services:
       - backend
 ```
 
-Run it:
+### 3. Setup Configuration (Optional but Recommended)
+For the easiest deployment experience, you can download and run our interactive setup script. This will automatically generate a `.env` file with your preferences:
+```bash
+bash <(curl -sL https://raw.githubusercontent.com/alicolia/5x49/main/setup.sh)
+```
+
+### 4. Run it
+Run the containers:
 ```bash
 docker-compose up -d
 ```
