@@ -25,6 +25,9 @@ Deep dives into each film using Large Language Models (LLMs) to generate "geneal
 Featuring an autonomous background agent powered by **LangGraph** and **LangChain**. The agent monitors an incoming `inbox` folder, handles chaotic filenames using *Function Calling*, searches for metadata, and autonomously renames and files media into the library. 
 Watch the agent's Step-by-Step reasoning via Server-Sent Events (SSE) in the real-time Librarian Console.
 
+### 🔌 Extensible API & Agent Skills
+Fully documented RESTful API (see [API Documentation](docs/api.md)) allowing easy integration with other services. Includes a ready-to-use **OpenClaw Skill** (`skills/5x49-backend`) so external AI agents can natively manage your library and trigger analysis.
+
 ### 📂 Easy Management
 - **File Browser**: Select your media directory visually—no manual path typing required.
 - **Manual Scan**: Trigger library updates on demand without restarting the server.
