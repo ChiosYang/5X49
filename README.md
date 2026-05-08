@@ -38,10 +38,10 @@ Built for containerization from day one. Deploy easily with Docker Compose on an
 
 ## 🛠️ Tech Stack
 
-- **Frontend**: Next.js 14, Tailwind CSS, Framer Motion
+- **Frontend**: Next.js 16, Tailwind CSS, Framer Motion, SWR
 - **Backend**: FastAPI, SQLModel (SQLite), Pydantic
 - **AI Integration**: OpenAI/OpenRouter API
-- **Infrastructure**: Docker, Docker Compose
+- **Infrastructure**: Docker, Docker Compose, uv
 
 ## 🏁 Getting Started (Docker)
 
@@ -96,10 +96,7 @@ If you want to contribute or modify the code:
 ### Backend
 ```bash
 cd backend
-python -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
-python -m uvicorn app.main:app --reload
+uv run uvicorn app.main:app --reload
 ```
 
 ### Frontend

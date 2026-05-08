@@ -41,10 +41,10 @@
 
 ## 🛠️ 技术栈
 
-- **前端**: Next.js 14, Tailwind CSS, Framer Motion
+- **前端**: Next.js 16, Tailwind CSS, Framer Motion, SWR
 - **后端**: FastAPI, SQLModel (SQLite), Pydantic
 - **AI 集成**: OpenAI/OpenRouter API
-- **基础设施**: Docker, Docker Compose
+- **基础设施**: Docker, Docker Compose, uv
 
 ## 🏁 快速开始 (Docker)
 
@@ -99,10 +99,7 @@ docker-compose up -d
 ### 后端
 ```bash
 cd backend
-python -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
-python -m uvicorn app.main:app --reload
+uv run uvicorn app.main:app --reload
 ```
 
 ### 前端
