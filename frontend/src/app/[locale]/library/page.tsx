@@ -1,49 +1,22 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useRef } from "react";
 import { useTranslations } from "next-intl";
 import { motion } from "framer-motion";
 import { Loader2 } from "lucide-react";
 import { Link } from "@/i18n/routing";
 import { API } from "@/lib/api";
-
-interface Movie {
-  id: string;
-  title: string;
-  title_cn?: string;
-  year: number;
-  backdrop_path?: string;
-  backdrop_local?: string;
-  poster_local?: string;
-  micro_genre?: string;
-  genres?: string[];
-  director?: string;
-}
+import { useLibrary } from "@/hooks/useLibrary";
 
 export default function LibraryPage() {
   const t = useTranslations("Library");
-  const [movies, setMovies] = useState<Movie[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data: movies = [], isLoading } = useLibrary();
 
-  const fetchLibrary = async () => {
-    try {
-      const res = await fetch(API.library());
-      const data = await res.json();
-      setMovies(data);
-    } catch (error) {
-      console.error("Failed to fetch library", error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  // Skip entrance animation when data comes from SWR cache (e.g. navigating back)
+  const isFromCache = useRef(!isLoading && movies.length > 0);
+  const skipAnimation = isFromCache.current;
 
-  useEffect(() => {
-    fetchLibrary();
-  }, []);
-
-
-
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-black text-white">
         <Loader2 className="w-6 h-6 animate-spin" />
@@ -76,9 +49,9 @@ export default function LibraryPage() {
             {movies.map((movie, i) => (
               <Link key={movie.id} href={`/library/${movie.id}`}>
               <motion.div
-                initial={{ opacity: 0, y: 30 }}
+                initial={skipAnimation ? { opacity: 1, y: 0 } : { opacity: 0, y: 30 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.05, duration: 0.5, ease: "circOut" }}
+                transition={skipAnimation ? { duration: 0 } : { delay: i * 0.05, duration: 0.5, ease: "circOut" }}
                 className="group cursor-pointer space-y-4"
               >
                 {/* Landscape Still */}

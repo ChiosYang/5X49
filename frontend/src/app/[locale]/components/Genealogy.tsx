@@ -1,32 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Loader2 } from "lucide-react";
 import { motion } from "framer-motion";
 import { useTranslations } from "next-intl";
-import { API } from "@/lib/api";
-
-interface FilmNode {
-  title: string;
-  year: number;
-  type?: string;
-  reason: string;
-}
-
-interface GenealogyData {
-  thought_chain: string;
-  micro_genre: string;
-  influence_impact: string;
-  ancestors: FilmNode[];
-  descendants: FilmNode[];
-  tmdb_metadata: {
-    title: string;
-    year: number;
-    overview: string;
-    genres: string[];
-    keywords: string[];
-  };
-}
+import { useAnalyze } from "@/hooks/useAnalyze";
 
 interface GenealogyProps {
   initialQuery?: string;
@@ -36,39 +14,13 @@ interface GenealogyProps {
 export default function Genealogy({ initialQuery = "", hideSearch = false }: GenealogyProps) {
   const t = useTranslations("Genealogy");
   const [query, setQuery] = useState(initialQuery);
-  const [loading, setLoading] = useState(false);
-  const [data, setData] = useState<GenealogyData | null>(null);
-  const [error, setError] = useState("");
+  const { trigger: analyze, data, error, isMutating: loading } = useAnalyze();
 
-  useEffect(() => {
-    // if (initialQuery) {
-    //   handleSearch(new Event('submit') as any, initialQuery);
-    // }
-  }, [initialQuery]);
-
-  const handleSearch = async (e: React.FormEvent, overrideQuery?: string) => {
-    if (e) e.preventDefault();
-    const q = overrideQuery || query;
-    if (!q.trim()) return;
-
-    setLoading(true);
-    setError("");
-    setData(null);
-
-    try {
-      const res = await fetch(API.analyze(q));
-      if (!res.ok) throw new Error("Film not found or analysis failed");
-      const jsonData = await res.json();
-      setData(jsonData);
-    } catch (err: unknown) {
-      if (err instanceof Error) {
-        setError(err.message);
-      } else {
-        setError("An unknown error occurred");
-      }
-    } finally {
-      setLoading(false);
-    }
+  const handleSearch = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const q = query.trim();
+    if (!q) return;
+    await analyze(q);
   };
 
   return (
@@ -107,7 +59,7 @@ export default function Genealogy({ initialQuery = "", hideSearch = false }: Gen
         {/* Error */}
         {error && (
           <div className="border border-red-900 text-red-500 p-4 text-xs font-mono uppercase">
-            Error: {error}
+            Error: {error.message}
           </div>
         )}
 

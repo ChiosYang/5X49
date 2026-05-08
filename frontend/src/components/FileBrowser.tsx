@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import API from "@/lib/api";
+import { useDirectories } from "@/hooks/useDirectories";
 
 interface FileBrowserProps {
   initialPath?: string;
@@ -10,52 +10,20 @@ interface FileBrowserProps {
   isOpen: boolean;
 }
 
-interface DirectoryItem {
-  name: string;
-  path: string;
-}
-
 export default function FileBrowser({ initialPath, onSelect, onCancel, isOpen }: FileBrowserProps) {
   const [currentPath, setCurrentPath] = useState(initialPath || "/");
-  const [directories, setDirectories] = useState<DirectoryItem[]>([]);
-  const [parentPath, setParentPath] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
+  // Reset path when opened with a new initialPath
   useEffect(() => {
-    if (isOpen) {
-      if (initialPath) {
-        setCurrentPath(initialPath);
-        fetchDirectories(initialPath);
-      } else {
-        fetchDirectories("/");
-      }
+    if (isOpen && initialPath) {
+      setCurrentPath(initialPath);
     }
   }, [isOpen, initialPath]);
 
-  const fetchDirectories = async (path: string) => {
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await fetch(`${API.systemListDirs()}?path=${encodeURIComponent(path)}`);
-      if (res.ok) {
-        const data = await res.json();
-        setCurrentPath(data.current_path);
-        setParentPath(data.parent_path);
-        setDirectories(data.directories);
-      } else {
-        const err = await res.json();
-        setError(err.detail || "Failed to list directories");
-      }
-    } catch (e) {
-      setError("Network error");
-    } finally {
-      setLoading(false);
-    }
-  };
+  const { data, error, isLoading } = useDirectories(currentPath, isOpen);
 
   const handleNavigate = (path: string) => {
-    fetchDirectories(path);
+    setCurrentPath(path);
   };
 
   if (!isOpen) return null;
@@ -72,35 +40,35 @@ export default function FileBrowser({ initialPath, onSelect, onCancel, isOpen }:
         {/* Current Path & Navigation */}
         <div className="p-4 bg-neutral-900 border-b border-neutral-800 flex items-center gap-2">
           <button
-            onClick={() => parentPath && handleNavigate(parentPath)}
-            disabled={!parentPath}
+            onClick={() => data?.parent_path && handleNavigate(data.parent_path)}
+            disabled={!data?.parent_path}
             className="px-3 py-1 bg-neutral-800 hover:bg-neutral-700 disabled:opacity-30 disabled:cursor-not-allowed text-white text-sm rounded transition-colors"
             title="Go Up"
           >
             ⬆ Up
           </button>
           <div className="flex-1 bg-black border border-neutral-800 px-3 py-2 text-sm text-neutral-300 font-mono truncate">
-            {currentPath}
+            {data?.current_path || currentPath}
           </div>
         </div>
 
         {/* Directory List */}
         <div className="flex-1 overflow-y-auto p-2 min-h-[300px] bg-neutral-950">
-            {loading ? (
+            {isLoading ? (
                 <div className="flex items-center justify-center h-full text-neutral-500 text-sm animate-pulse">
                     Loading...
                 </div>
             ) : error ? (
                 <div className="flex items-center justify-center h-full text-red-500 text-sm">
-                    {error}
+                    {error.message}
                 </div>
-            ) : directories.length === 0 ? (
+            ) : !data?.directories || data.directories.length === 0 ? (
                 <div className="flex items-center justify-center h-full text-neutral-600 text-sm italic">
                     No subdirectories found
                 </div>
             ) : (
                 <div className="grid grid-cols-1 gap-1">
-                    {directories.map((dir) => (
+                    {data.directories.map((dir) => (
                         <button
                             key={dir.path}
                             onClick={() => handleNavigate(dir.path)}
@@ -123,7 +91,7 @@ export default function FileBrowser({ initialPath, onSelect, onCancel, isOpen }:
                 Cancel
             </button>
             <button
-                onClick={() => onSelect(currentPath)}
+                onClick={() => onSelect(data?.current_path || currentPath)}
                 className="px-6 py-2 bg-white text-black text-xs font-bold uppercase tracking-widest hover:bg-neutral-200 transition-colors"
             >
                 Select Current Folder

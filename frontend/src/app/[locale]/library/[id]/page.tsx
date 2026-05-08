@@ -1,108 +1,27 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { useTranslations } from "next-intl";
 import { Play } from "lucide-react";
 import { API } from "@/lib/api";
+import { useMovie, useAnalyzeMovie } from "@/hooks/useMovie";
 import GenealogySection from "../../components/GenealogySection";
-
-interface FilmReference {
-  title: string;
-  year: number;
-  type: string;
-  reason: string;
-}
-
-interface AnalysisData {
-  thought_chain: string;
-  micro_genre: string;
-  influence_impact: string;
-  ancestors: FilmReference[];
-  descendants: FilmReference[];
-  tmdb_metadata?: Record<string, unknown>;
-}
-
-interface MovieDetail {
-  id: string;
-  title: string;
-  title_cn?: string;
-  year: number;
-  backdrop_path?: string;
-  backdrop_local?: string;
-  poster_path?: string;
-  poster_local?: string;
-  overview?: string;
-  plot?: string;
-  micro_genre: string;
-  micro_genre_definition?: string;
-  analysis_status: string;
-  analysis_data?: AnalysisData | null;
-  director?: string;
-}
 
 export default function MovieDetailPage() {
   const t = useTranslations("FilmDetail");
   const { id } = useParams();
   const router = useRouter();
-  const [movie, setMovie] = useState<MovieDetail | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [analyzing, setAnalyzing] = useState(false);
 
-  useEffect(() => {
-    if (!id) return;
-    
-    const fetchMovie = async () => {
-      try {
-        const res = await fetch(API.libraryMovie(id as string));
-        if (!res.ok) throw new Error("Movie not found");
-        const data = await res.json();
-        setMovie(data);
-      } catch (error) {
-        console.error(error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchMovie();
-  }, [id]);
+  const { data: movie, isLoading } = useMovie(id as string);
+  const { trigger: analyze, isMutating: analyzing } = useAnalyzeMovie(id as string);
 
   const triggerAnalysis = async () => {
     if (!id || analyzing) return;
-    
-    setAnalyzing(true);
-    try {
-      const res = await fetch(API.libraryAnalyze(id as string), {
-        method: 'POST',
-      });
-      
-      if (res.ok) {
-        // Update status to processing
-        setMovie(prev => prev ? { ...prev, analysis_status: 'processing' } : null);
-        
-        // Poll for updates every 5 seconds
-        const pollInterval = setInterval(async () => {
-          const updateRes = await fetch(API.libraryMovie(id as string));
-          if (updateRes.ok) {
-            const updatedMovie = await updateRes.json();
-            setMovie(updatedMovie);
-            
-            if (updatedMovie.analysis_status === 'completed' || updatedMovie.analysis_status === 'failed') {
-              clearInterval(pollInterval);
-              setAnalyzing(false);
-            }
-          }
-        }, 5000);
-      }
-    } catch (error) {
-      console.error('Failed to trigger analysis:', error);
-      setAnalyzing(false);
-    }
+    await analyze();
   };
 
-  if (loading) return (
+  if (isLoading) return (
     <div className="min-h-screen bg-black text-white flex items-center justify-center">
       <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-white"></div>
     </div>

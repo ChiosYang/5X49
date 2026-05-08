@@ -5,11 +5,20 @@ import { Loader2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useRouter, usePathname } from "@/i18n/routing";
 
-// ... (inside SettingsPage component)
-
 import FileBrowser from "@/components/FileBrowser";
 import LibrarianTerminal from "@/components/LibrarianTerminal";
-import API from "@/lib/api";
+import {
+  useModelSettings,
+  useBaseUrl,
+  useMediaDir,
+  useLanguageSetting,
+  useUpdateModel,
+  useUpdateBaseUrl,
+  useUpdateMediaDir,
+  useUpdateLanguage,
+  useTestApiKey,
+  useScanLibrary,
+} from "@/hooks/useSettings";
 
 type SettingSection = "appearance" | "display" | "analysis" | "library";
 
@@ -17,209 +26,104 @@ export default function SettingsPage() {
   const t = useTranslations("Settings");
   const router = useRouter();
   const pathname = usePathname();
+
+  // ---- Server State (SWR) ----
+  const { data: modelData } = useModelSettings();
+  const { data: baseUrlData } = useBaseUrl();
+  const { data: mediaDirData } = useMediaDir();
+  const { data: langData } = useLanguageSetting();
+
+  const { trigger: updateModel, isMutating: modelSaving, data: modelSaveResult, reset: resetModelSave } = useUpdateModel();
+  const { trigger: updateBaseUrl, isMutating: baseUrlSaving, data: baseUrlSaveResult, reset: resetBaseUrlSave } = useUpdateBaseUrl();
+  const { trigger: updateMediaDir, isMutating: mediaDirSaving, data: mediaDirSaveResult, reset: resetMediaDirSave } = useUpdateMediaDir();
+  const { trigger: updateLanguage, isMutating: languageSaving } = useUpdateLanguage();
+  const { trigger: testApi, data: apiTestResult, isMutating: apiTesting } = useTestApiKey();
+  const { trigger: scanLibrary, isMutating: isScanning, data: scanResult, error: scanError } = useScanLibrary();
+
+  // ---- Client State (UI only) ----
   const [activeSection, setActiveSection] = useState<SettingSection>("appearance");
-  const [currentModel, setCurrentModel] = useState<string>("");
-  const [availableModels, setAvailableModels] = useState<string[]>([]);
-  const [modelSearch, setModelSearch] = useState<string>("");
-  const [dropdownOpen, setDropdownOpen] = useState<boolean>(false);
-  const [loading, setLoading] = useState(false);
-  const [saved, setSaved] = useState(false);
-  const [apiTesting, setApiTesting] = useState(false);
-  const [apiTestResult, setApiTestResult] = useState<{status: string; message: string} | null>(null);
-  const [baseUrl, setBaseUrl] = useState<string>("");
-  const [baseUrlSaving, setBaseUrlSaving] = useState(false);
-  const [baseUrlSaved, setBaseUrlSaved] = useState(false);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [modelSearch, setModelSearch] = useState("");
   const [fileBrowserOpen, setFileBrowserOpen] = useState(false);
   const [terminalOpen, setTerminalOpen] = useState(false);
-  const [language, setLanguage] = useState<"zh" | "en">("zh");
-  const [languageSaving, setLanguageSaving] = useState(false);
 
-  // Scan State
-  const [isScanning, setIsScanning] = useState(false);
-  const [scanMessage, setScanMessage] = useState("");
+  // Form edit state: local copies for user editing before save
+  const [baseUrlInput, setBaseUrlInput] = useState("");
+  const [mediaDirInput, setMediaDirInput] = useState("");
 
-  const handleScanLibrary = async () => {
-    setIsScanning(true);
-    setScanMessage("");
-    try {
-      const res = await fetch(API.systemScanLibrary(), {
-        method: "POST",
-      });
-      if (res.ok) {
-        setScanMessage("Scan started in background");
-        setTimeout(() => setScanMessage(""), 5000);
-      } else {
-        setScanMessage("Failed to start scan");
-      }
-    } catch (error) {
-      console.error("Scan failed:", error);
-      setScanMessage("Network error");
-    } finally {
-      setIsScanning(false);
+  // Sync server data into form inputs when loaded
+  useEffect(() => {
+    if (baseUrlData) setBaseUrlInput(baseUrlData.base_url);
+  }, [baseUrlData]);
+
+  useEffect(() => {
+    if (mediaDirData) setMediaDirInput(mediaDirData.media_dir);
+  }, [mediaDirData]);
+
+  // Auto-clear save success indicators
+  useEffect(() => {
+    if (modelSaveResult) {
+      const timer = setTimeout(() => resetModelSave(), 3000);
+      return () => clearTimeout(timer);
     }
-  };
+  }, [modelSaveResult, resetModelSave]);
 
-  // Filter models based on search
+  useEffect(() => {
+    if (baseUrlSaveResult) {
+      const timer = setTimeout(() => resetBaseUrlSave(), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [baseUrlSaveResult, resetBaseUrlSave]);
+
+  useEffect(() => {
+    if (mediaDirSaveResult) {
+      const timer = setTimeout(() => resetMediaDirSave(), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [mediaDirSaveResult, resetMediaDirSave]);
+
+  // Derived values
+  const currentModel = modelData?.current_model || "";
+  const availableModels = modelData?.available_models || [];
+
   const filteredModels = useMemo(() => {
     if (!modelSearch.trim()) return availableModels;
     const search = modelSearch.toLowerCase();
-    return availableModels.filter((model: string) => 
+    return availableModels.filter((model: string) =>
       model.toLowerCase().includes(search)
     );
   }, [availableModels, modelSearch]);
 
-  // Load model settings on mount
-  useEffect(() => {
-    fetchModelSettings();
-    fetchBaseUrl();
-    fetchMediaDir();
-    fetchLanguage();
-  }, []);
-
-  const fetchLanguage = async () => {
-    try {
-      const res = await fetch(API.settingsLanguage());
-      if (res.ok) {
-        const data = await res.json();
-        setLanguage(data.language);
-      }
-    } catch (error) {
-      console.error("Failed to fetch language:", error);
-    }
-  };
-
-  const fetchModelSettings = async () => {
-    try {
-      const res = await fetch(API.settingsModel());
-      if (res.ok) {
-        const data = await res.json();
-        setCurrentModel(data.current_model);
-        setAvailableModels(data.available_models);
-      }
-    } catch (error) {
-      console.error("Failed to load model settings:", error);
-    }
-  };
-
-  const fetchBaseUrl = async () => {
-    try {
-      const res = await fetch(API.settingsBaseUrl());
-      if (res.ok) {
-        const data = await res.json();
-        setBaseUrl(data.base_url);
-      }
-    } catch (error) {
-      console.error("Failed to fetch base URL:", error);
-    }
-  };
-
-  // State for Media Path
-  const [mediaDir, setMediaDir] = useState<string>("");
-  const [mediaDirSaving, setMediaDirSaving] = useState(false);
-  const [mediaDirSaved, setMediaDirSaved] = useState(false);
-
-  // Fetch Media Path
-  const fetchMediaDir = async () => {
-    try {
-      const res = await fetch(API.settingsMediaDir());
-      if (res.ok) {
-        const data = await res.json();
-        setMediaDir(data.media_dir);
-      }
-    } catch (error) {
-      console.error("Failed to fetch media dir:", error);
-    }
-  };
-
+  // ---- Handlers ----
   const handleModelChange = async (newModel: string) => {
-    setLoading(true);
-    setSaved(false);
-    try {
-      const res = await fetch(`${API.settingsModel()}?model_name=${encodeURIComponent(newModel)}`, {
-        method: "PUT",
-      });
-      if (res.ok) {
-        setCurrentModel(newModel);
-        setSaved(true);
-        setTimeout(() => setSaved(false), 3000);
-      }
-    } catch (error) {
-      console.error("Failed to update model:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const testApiKey = async () => {
-    setApiTesting(true);
-    setApiTestResult(null);
-    try {
-      const res = await fetch(API.settingsTestApiKey());
-      if (res.ok) {
-        const data = await res.json();
-        setApiTestResult(data);
-      }
-      setApiTestResult({
-        status: "error",
-        message: "Failed to connect to backend"
-      });
-    } finally {
-      setApiTesting(false);
-    }
+    await updateModel(newModel);
   };
 
   const handleBaseUrlChange = async () => {
-    setBaseUrlSaving(true);
-    setBaseUrlSaved(false);
-    try {
-      const res = await fetch(`${API.settingsBaseUrl()}?base_url=${encodeURIComponent(baseUrl)}`, {
-        method: "PUT",
-      });
-      if (res.ok) {
-        setBaseUrlSaved(true);
-        setTimeout(() => setBaseUrlSaved(false), 3000);
-      }
-    } catch (error) {
-      console.error("Failed to update base URL:", error);
-    } finally {
-      setBaseUrlSaving(false);
-    }
-  };
-
-  const handleLanguageChange = async (lang: "zh" | "en") => {
-    if (lang === language) return;
-    setLanguageSaving(true);
-    try {
-      const res = await fetch(`${API.settingsLanguage()}?language=${lang}`, {
-        method: "PUT",
-      });
-      if (res.ok) {
-        setLanguage(lang);
-        router.replace({ pathname }, { locale: lang });
-      }
-    } catch (error) {
-      console.error("Failed to update language:", error);
-    } finally {
-      setLanguageSaving(false);
-    }
+    await updateBaseUrl(baseUrlInput);
   };
 
   const handleMediaDirChange = async () => {
-    setMediaDirSaving(true);
-    try {
-      const res = await fetch(`${API.settingsMediaDir()}?media_dir=${encodeURIComponent(mediaDir)}`, {
-        method: "PUT",
-      });
-      if (res.ok) {
-        setMediaDirSaved(true);
-        setTimeout(() => setMediaDirSaved(false), 2000);
-      }
-    } catch (error) {
-      console.error("Failed to save media dir:", error);
-    } finally {
-      setMediaDirSaving(false);
-    }
+    await updateMediaDir(mediaDirInput);
   };
+
+  const handleLanguageChange = async (lang: "zh" | "en") => {
+    const currentLang = langData?.language;
+    if (lang === currentLang) return;
+    await updateLanguage(lang);
+    router.replace({ pathname }, { locale: lang });
+  };
+
+  const handleScanLibrary = async () => {
+    await scanLibrary();
+  };
+
+  // Scan message derived from mutation state
+  const scanMessage = scanResult
+    ? "Scan started in background"
+    : scanError
+      ? "Failed to start scan"
+      : "";
 
   return (
     <div className="min-h-screen bg-black text-white">
@@ -292,7 +196,6 @@ export default function SettingsPage() {
                   <p className="text-sm text-neutral-500 mb-8">Customize the visual experience</p>
                 </div>
 
-                {/* Settings items will go here */}
                 <div className="space-y-6">
                   <div className="border-b border-neutral-900 pb-6">
                     <div className="flex items-center justify-between">
@@ -306,7 +209,7 @@ export default function SettingsPage() {
                             onClick={() => handleLanguageChange("zh")}
                             disabled={languageSaving}
                             className={`px-4 py-2 text-xs font-medium uppercase tracking-widest transition-colors ${
-                              language === "zh" ? "bg-white text-black" : "text-neutral-500 hover:text-white"
+                              langData?.language === "zh" ? "bg-white text-black" : "text-neutral-500 hover:text-white"
                             }`}
                           >
                             ZH
@@ -315,7 +218,7 @@ export default function SettingsPage() {
                             onClick={() => handleLanguageChange("en")}
                             disabled={languageSaving}
                             className={`px-4 py-2 text-xs font-medium uppercase tracking-widest transition-colors ${
-                              language === "en" ? "bg-white text-black" : "text-neutral-500 hover:text-white"
+                              langData?.language === "en" ? "bg-white text-black" : "text-neutral-500 hover:text-white"
                             }`}
                           >
                             EN
@@ -455,10 +358,10 @@ export default function SettingsPage() {
                           )}
                         </div>
                         
-                        {saved && (
+                        {modelSaveResult && (
                           <p className="text-xs text-green-500 mt-2 uppercase tracking-widest">✓ Saved</p>
                         )}
-                        {loading && (
+                        {modelSaving && (
                           <p className="text-xs text-neutral-500 mt-2 uppercase tracking-widest">Saving...</p>
                         )}
                       </div>
@@ -482,7 +385,7 @@ export default function SettingsPage() {
                       <p className="text-xs text-neutral-600 mb-4">{t("apiDesc")}</p>
                       
                       <button
-                        onClick={testApiKey}
+                        onClick={() => testApi()}
                         disabled={apiTesting}
                         className="bg-white text-black px-6 py-3 text-xs font-medium uppercase tracking-widest hover:bg-neutral-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                       >
@@ -514,8 +417,8 @@ export default function SettingsPage() {
                       <div className="flex gap-3">
                         <input
                           type="text"
-                          value={baseUrl}
-                          onChange={(e) => setBaseUrl(e.target.value)}
+                          value={baseUrlInput}
+                          onChange={(e) => setBaseUrlInput(e.target.value)}
                           placeholder="https://openrouter.ai/api/v1"
                           className="flex-1 bg-neutral-900 border border-neutral-800 text-white px-4 py-3 text-sm placeholder:text-neutral-600 hover:border-neutral-600 focus:border-white focus:outline-none"
                         />
@@ -528,26 +431,26 @@ export default function SettingsPage() {
                         </button>
                       </div>
 
-                      {baseUrlSaved && (
+                      {baseUrlSaveResult && (
                         <p className="text-xs text-green-500 mt-2 uppercase tracking-widest">✓ {t("saved")}</p>
                       )}
                       
                       <div className="mt-4 space-y-2 text-xs text-neutral-600">
                         <p className="font-medium text-neutral-500">{t("commonProviders")}</p>
                         <button
-                          onClick={() => setBaseUrl("https://openrouter.ai/api/v1")}
+                          onClick={() => setBaseUrlInput("https://openrouter.ai/api/v1")}
                           className="block hover:text-white transition-colors"
                         >
                           • OpenRouter: https://openrouter.ai/api/v1
                         </button>
                         <button
-                          onClick={() => setBaseUrl("https://api.openai.com/v1")}
+                          onClick={() => setBaseUrlInput("https://api.openai.com/v1")}
                           className="block hover:text-white transition-colors"
                         >
                           • OpenAI: https://api.openai.com/v1
                         </button>
                         <button
-                          onClick={() => setBaseUrl("https://api.anthropic.com/v1")}
+                          onClick={() => setBaseUrlInput("https://api.anthropic.com/v1")}
                           className="block hover:text-white transition-colors"
                         >
                           • Anthropic: https://api.anthropic.com/v1
@@ -578,8 +481,8 @@ export default function SettingsPage() {
                       <div className="flex gap-3">
                         <input
                           type="text"
-                          value={mediaDir}
-                          onChange={(e) => setMediaDir(e.target.value)}
+                          value={mediaDirInput}
+                          onChange={(e) => setMediaDirInput(e.target.value)}
                           placeholder="/path/to/movies"
                           className="flex-1 bg-neutral-900 border border-neutral-800 text-white px-4 py-3 text-sm placeholder:text-neutral-600 hover:border-neutral-600 focus:border-white focus:outline-none"
                         />
@@ -601,15 +504,15 @@ export default function SettingsPage() {
                       {/* File Browser Modal */}
                       <FileBrowser
                         isOpen={fileBrowserOpen}
-                        initialPath={mediaDir}
+                        initialPath={mediaDirInput}
                         onSelect={(path) => {
-                          setMediaDir(path);
+                          setMediaDirInput(path);
                           setFileBrowserOpen(false);
                         }}
                         onCancel={() => setFileBrowserOpen(false)}
                       />
 
-                      {mediaDirSaved && (
+                      {mediaDirSaveResult && (
                         <p className="text-xs text-green-500 mt-2 uppercase tracking-widest">✓ {t("saved")}</p>
                       )}
                       
@@ -630,7 +533,7 @@ export default function SettingsPage() {
                         <div className="flex items-center gap-4">
                             {scanMessage && (
                                 <span className={`text-xs uppercase tracking-widest ${
-                                    scanMessage.includes("Failed") || scanMessage.includes("error") 
+                                    scanError 
                                     ? "text-red-500" 
                                     : "text-green-500"
                                 }`}>
