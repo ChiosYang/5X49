@@ -45,6 +45,19 @@ description: 电影族谱 API (FastAPI) 的接口调用指南
 | GET | `/settings` | 获取所有设置 |
 | GET | `/settings/model` | 获取当前模型 |
 | PUT | `/settings/model?model_name=xxx` | 更新模型 |
+| GET | `/settings/media-dir` | 获取媒体目录配置 |
+| PUT | `/settings/media-dir?media_dir=xxx` | 更新媒体目录 |
+| GET | `/settings/language` | 获取系统语言配置 |
+| PUT | `/settings/language?language=xxx` | 更新系统语言 |
+| POST | `/settings/models/refresh` | 刷新可用模型缓存 |
+
+### 系统与智能体 (Agents)
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| GET | `/sys/list-dirs?path=/` | 列出指定路径的子目录 |
+| POST | `/sys/scan-library` | 异步触发后台库扫描 |
+| GET | `/api/agents/clean-inbox` | 召唤 Librarian Agent 执行任务 (SSE返回) |
 
 ## 调用示例
 
