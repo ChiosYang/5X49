@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useDirectories } from "@/hooks/useDirectories";
 
 interface FileBrowserProps {
@@ -12,13 +12,6 @@ interface FileBrowserProps {
 
 export default function FileBrowser({ initialPath, onSelect, onCancel, isOpen }: FileBrowserProps) {
   const [currentPath, setCurrentPath] = useState(initialPath || "/");
-
-  // Reset path when opened with a new initialPath
-  useEffect(() => {
-    if (isOpen && initialPath) {
-      setCurrentPath(initialPath);
-    }
-  }, [isOpen, initialPath]);
 
   const { data, error, isLoading } = useDirectories(currentPath, isOpen);
 

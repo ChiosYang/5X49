@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { Terminal, X, Play, Loader2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -24,6 +24,23 @@ export default function LibrarianTerminal({ isOpen, onClose }: LibrarianTerminal
   const scrollRef = useRef<HTMLDivElement>(null);
   const eventSourceRef = useRef<EventSource | null>(null);
 
+  const closeAgentConnection = useCallback(() => {
+    if (eventSourceRef.current) {
+      eventSourceRef.current.close();
+      eventSourceRef.current = null;
+    }
+  }, []);
+
+  const stopAgent = useCallback(() => {
+    closeAgentConnection();
+    setIsRunning(false);
+  }, [closeAgentConnection]);
+
+  const handleClose = () => {
+    stopAgent();
+    onClose();
+  };
+
   // Auto-scroll to bottom
   useEffect(() => {
     if (scrollRef.current) {
@@ -34,18 +51,10 @@ export default function LibrarianTerminal({ isOpen, onClose }: LibrarianTerminal
   // Cleanup on unmount or close
   useEffect(() => {
     if (!isOpen) {
-      stopAgent();
+      closeAgentConnection();
     }
-    return () => stopAgent();
-  }, [isOpen]);
-
-  const stopAgent = () => {
-    if (eventSourceRef.current) {
-      eventSourceRef.current.close();
-      eventSourceRef.current = null;
-    }
-    setIsRunning(false);
-  };
+    return () => closeAgentConnection();
+  }, [isOpen, closeAgentConnection]);
 
   const startCleaning = () => {
     setLogs([]);
@@ -143,7 +152,7 @@ export default function LibrarianTerminal({ isOpen, onClose }: LibrarianTerminal
                 {isRunning && <Loader2 className="w-3 h-3 animate-spin ml-2 text-neutral-500" />}
               </div>
               <button
-                onClick={onClose}
+                onClick={handleClose}
                 className="text-neutral-600 hover:text-white transition-colors"
                 title="Close"
               >

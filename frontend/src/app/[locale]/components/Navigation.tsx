@@ -2,22 +2,16 @@
 
 import { useTranslations } from "next-intl";
 
-import { Link, usePathname } from "@/i18n/routing";
-import { Search, Menu, X } from "lucide-react";
+import { Link } from "@/i18n/routing";
+import { Search, Menu } from "lucide-react";
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
 export default function Navigation() {
   const t = useTranslations("Navigation");
   const [isOpen, setIsOpen] = useState(false);
-  const pathname = usePathname();
 
   const toggleMenu = () => setIsOpen(!isOpen);
-
-  // Close menu when route changes
-  if (isOpen && typeof window !== "undefined") {
-    // Optional: lock body scroll? A24 does.
-  }
 
   return (
     <>
