@@ -1,0 +1,4 @@
+interface:
+  display_name: "5x49 API Docs"
+  short_description: "API change and documentation workflow for 5X49."
+  default_prompt: "Use this skill when changing backend endpoints, response shapes, frontend API clients, docs/api.md, or skills/5x49-backend/SKILL.md in the 5X49 project."

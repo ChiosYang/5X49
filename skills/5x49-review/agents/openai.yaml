@@ -1,0 +1,4 @@
+interface:
+  display_name: "5x49 Review"
+  short_description: "Code review checklist for 5X49 diffs and PRs."
+  default_prompt: "Use this skill to review current diffs, commits, or PR-ready changes in the 5X49 project with focus on bugs, regressions, security, tests, and documentation."

@@ -1,0 +1,4 @@
+interface:
+  display_name: "5x49 Frontend"
+  short_description: "Next.js frontend workflow for 5X49."
+  default_prompt: "Use this skill for frontend page, component, hook, styling, i18n, routing, and verification work in the 5X49 project."
