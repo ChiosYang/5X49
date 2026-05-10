@@ -56,11 +56,9 @@ export default function LibraryPage() {
               >
                 {/* Landscape Still */}
                 <div className="relative aspect-video bg-neutral-900 overflow-hidden w-full">
-                  {(movie.backdrop_local || movie.backdrop_path) ? (
+                  {movie.backdrop_local ? (
                     <Image
-                      src={movie.backdrop_local 
-                        ? API.mediaUrl(movie.backdrop_local) 
-                        : `https://image.tmdb.org/t/p/w1280${movie.backdrop_path}`}
+                      src={API.mediaUrl(movie.backdrop_local)}
                       alt={movie.title}
                       fill
                       sizes="(min-width: 1536px) 20vw, (min-width: 1280px) 25vw, (min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"

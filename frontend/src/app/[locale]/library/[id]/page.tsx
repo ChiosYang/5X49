@@ -43,11 +43,10 @@ export default function MovieDetailPage() {
       <div className="relative h-screen w-full overflow-hidden">
         {/* Backdrop */}
         <div className="absolute inset-0">
+            {movie.backdrop_local && (
                 <div className="absolute inset-0">
                     <Image
-                      src={movie.backdrop_local 
-                        ? API.mediaUrl(movie.backdrop_local) 
-                        : `https://image.tmdb.org/t/p/original${movie.backdrop_path}`}
+                      src={API.mediaUrl(movie.backdrop_local)}
                       alt={movie.title}
                       fill
                       priority
@@ -55,6 +54,7 @@ export default function MovieDetailPage() {
                       className="object-cover"
                     />
                 </div>
+            )}
             <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent" />
         </div>
 
@@ -123,7 +123,7 @@ export default function MovieDetailPage() {
              </p>
 
              {/* Featured Poster - Single Poster Style */}
-             {(movie.poster_local || movie.poster_path) && (
+             {movie.poster_local && (
                <motion.div 
                  initial={{ opacity: 0, y: 40 }}
                  whileInView={{ opacity: 1, y: 0 }}
@@ -133,9 +133,7 @@ export default function MovieDetailPage() {
                >
                  <div className="w-full md:w-[37.5%]">
                    <Image
-                     src={movie.poster_local 
-                       ? API.mediaUrl(movie.poster_local) 
-                       : `https://image.tmdb.org/t/p/w780${movie.poster_path}`}
+                     src={API.mediaUrl(movie.poster_local)}
                      alt={`${movie.title} Poster`}
                      width={780}
                      height={1170}
