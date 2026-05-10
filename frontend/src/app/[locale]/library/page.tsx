@@ -24,8 +24,8 @@ export default function LibraryPage() {
   }
 
   return (
-    <div className="min-h-screen bg-black text-white p-6 md:p-12 selection:bg-white selection:text-black">
-      <div className="max-w-[1600px] mx-auto space-y-20 pt-32">
+    <div className="min-h-screen bg-black text-white px-8 py-6 md:px-12 md:py-12 selection:bg-white selection:text-black">
+      <div className="w-full space-y-20 pt-32">
         <header className="flex justify-between items-end border-b border-neutral-900 pb-8">
           <div>
             <h1 className="text-6xl md:text-9xl font-serif tracking-tighter leading-none">
@@ -44,7 +44,7 @@ export default function LibraryPage() {
             <p className="text-neutral-500 font-serif italic text-xl">{t("empty")}</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-16">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-x-5 xl:gap-x-6 gap-y-12 xl:gap-y-14">
             {movies.map((movie, i) => (
               <Link key={movie.id} href={`/library/${movie.id}`}>
               <motion.div
@@ -75,7 +75,7 @@ export default function LibraryPage() {
                 {/* Title & Info */}
                 <div className="flex justify-between items-start">
                   <div className="space-y-1">
-                    <h3 className="text-2xl md:text-3xl font-bold uppercase leading-none tracking-tight">
+                    <h3 className="text-xl md:text-2xl font-bold uppercase leading-none tracking-tight">
                       {movie.title_cn || movie.title}
                     </h3>
                     <p className="text-xs font-bold uppercase tracking-widest text-neutral-500">
