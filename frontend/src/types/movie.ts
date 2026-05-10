@@ -14,6 +14,19 @@ export interface AnalysisData {
   tmdb_metadata?: Record<string, unknown>;
 }
 
+export interface LibraryMovie {
+  id: string;
+  title: string;
+  title_cn?: string;
+  year: number;
+  backdrop_path?: string;
+  backdrop_local?: string;
+  poster_local?: string;
+  micro_genre?: string;
+  genres?: string[];
+  director?: string;
+}
+
 export interface MovieDetail {
   id: string;
   title: string;

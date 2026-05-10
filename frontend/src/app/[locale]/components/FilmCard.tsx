@@ -13,7 +13,7 @@ export default function FilmCard({ title, year, type, reason, variant }: FilmCar
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.6 }}
+      transition={{ duration: 0.14 }}
       className="group cursor-default"
     >
       {/* A24-style: Small grey uppercase label */}

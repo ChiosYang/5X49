@@ -118,7 +118,7 @@ export default function GenealogySection({
         <motion.div 
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ delay: 0.2 }}
+          transition={{ delay: 0.04, duration: 0.12 }}
           className="mb-16"
         >
           <p className="text-xl md:text-2xl font-serif italic text-neutral-300 leading-relaxed">

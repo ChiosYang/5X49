@@ -68,7 +68,7 @@ export default function Genealogy({ initialQuery = "", hideSearch = false }: Gen
           <motion.div 
             initial={{ opacity: 0, y: 40 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, ease: "circOut" }}
+            transition={{ duration: 0.16, ease: "circOut" }}
             className="space-y-24 pb-24"
           >
             {/* Hero Section */}

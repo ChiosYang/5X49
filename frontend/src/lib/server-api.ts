@@ -1,6 +1,6 @@
 import "server-only";
 
-import type { MovieDetail } from "@/types/movie";
+import type { LibraryMovie, MovieDetail } from "@/types/movie";
 
 const getBackendUrl = () => {
   if (process.env.NODE_ENV === "development") {
@@ -21,6 +21,18 @@ export async function getLibraryMovie(id: string): Promise<MovieDetail | null> {
 
   if (!res.ok) {
     throw new Error(`Failed to fetch movie detail: ${res.status}`);
+  }
+
+  return res.json();
+}
+
+export async function getLibrary(): Promise<LibraryMovie[]> {
+  const res = await fetch(`${getBackendUrl()}/library`, {
+    cache: "no-store",
+  });
+
+  if (!res.ok) {
+    throw new Error(`Failed to fetch library: ${res.status}`);
   }
 
   return res.json();

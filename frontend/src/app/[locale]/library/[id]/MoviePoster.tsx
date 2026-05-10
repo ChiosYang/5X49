@@ -14,7 +14,7 @@ export default function MoviePoster({ src, title }: MoviePosterProps) {
       initial={{ opacity: 0, y: 40 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: "-100px" }}
-      transition={{ duration: 1, ease: "circOut" }}
+      transition={{ duration: 0.16, ease: "circOut" }}
       className="w-full flex justify-start"
     >
       <div className="w-full md:w-[37.5%]">
