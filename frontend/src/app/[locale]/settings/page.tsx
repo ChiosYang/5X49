@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo } from "react";
 import { Loader2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useRouter, usePathname } from "@/i18n/routing";
+import Providers from "@/components/Providers";
 
 import FileBrowser from "@/components/FileBrowser";
 import LibrarianTerminal from "@/components/LibrarianTerminal";
@@ -22,7 +23,7 @@ import {
 
 type SettingSection = "appearance" | "display" | "analysis" | "library";
 
-export default function SettingsPage() {
+function SettingsContent() {
   const t = useTranslations("Settings");
   const router = useRouter();
   const pathname = usePathname();
@@ -593,5 +594,13 @@ export default function SettingsPage() {
         </main>
       </div>
     </div>
+  );
+}
+
+export default function SettingsPage() {
+  return (
+    <Providers>
+      <SettingsContent />
+    </Providers>
   );
 }

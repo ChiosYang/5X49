@@ -2,6 +2,7 @@ import { getTranslations } from "next-intl/server";
 import { Play } from "lucide-react";
 import { Link } from "@/i18n/routing";
 import { API } from "@/lib/api";
+import Providers from "@/components/Providers";
 import { getLibraryMovie } from "@/lib/server-api";
 import MovieAnalysisSection from "./MovieAnalysisSection";
 import MovieBackdrop from "./MovieBackdrop";
@@ -88,7 +89,9 @@ export default async function MovieDetailPage({ params }: MovieDetailPageProps) 
       </div>
 
       {/* Genealogy Analysis Section */}
-      <MovieAnalysisSection movieId={id} initialMovie={movie} />
+      <Providers>
+        <MovieAnalysisSection movieId={id} initialMovie={movie} />
+      </Providers>
     </div>
   );
 }
