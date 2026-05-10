@@ -1,6 +1,7 @@
 import createMiddleware from 'next-intl/middleware';
+import type { NextRequest } from 'next/server';
 
-export default createMiddleware({
+const intlProxy = createMiddleware({
     // A list of all locales that are supported
     locales: ['en', 'zh'],
 
@@ -12,6 +13,10 @@ export default createMiddleware({
     // or we can use "always" to be explicit.
     localePrefix: 'as-needed'
 });
+
+export function proxy(request: NextRequest) {
+    return intlProxy(request);
+}
 
 export const config = {
     // Match only internationalized pathnames
