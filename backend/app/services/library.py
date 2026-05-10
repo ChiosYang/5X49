@@ -2,6 +2,7 @@ import json
 import os
 from typing import List, Dict, Optional
 from pathlib import Path
+from sqlalchemy import or_
 from sqlmodel import Session, select, delete
 from app.database import engine, create_db_and_tables, get_session
 from app.models import Movie
@@ -26,6 +27,10 @@ class LibraryManager:
                     continue
                 
                 existing_movie = session.get(Movie, movie_id)
+                if not existing_movie and movie_dict.get("media_path"):
+                    existing_movie = self._get_by_media_path(session, movie_dict["media_path"])
+                    if existing_movie:
+                        movie_dict["id"] = existing_movie.id
                 if existing_movie:
                     # Update fields
                     for key, value in movie_dict.items():
@@ -39,6 +44,34 @@ class LibraryManager:
             session.commit()
         return added
 
+    def upsert_movie(self, movie_data: dict, preserve_id: Optional[str] = None) -> Optional[dict]:
+        """Insert or update one movie and return the stored record."""
+        movie_id = preserve_id or movie_data.get("id")
+        if not movie_id:
+            return None
+
+        movie_data = {**movie_data, "id": movie_id}
+        with Session(engine) as session:
+            existing_movie = session.get(Movie, movie_id)
+            if not existing_movie and movie_data.get("media_path"):
+                existing_movie = self._get_by_media_path(session, movie_data["media_path"])
+                if existing_movie:
+                    movie_data["id"] = existing_movie.id
+
+            if existing_movie:
+                for key, value in movie_data.items():
+                    setattr(existing_movie, key, value)
+                session.add(existing_movie)
+                session.commit()
+                session.refresh(existing_movie)
+                return existing_movie.model_dump()
+
+            new_movie = Movie(**movie_data)
+            session.add(new_movie)
+            session.commit()
+            session.refresh(new_movie)
+            return new_movie.model_dump()
+
     def get_movies(self) -> List[dict]:
         with Session(engine) as session:
             statement = select(Movie)
@@ -50,6 +83,40 @@ class LibraryManager:
         with Session(engine) as session:
             movie = session.get(Movie, movie_id)
             return movie.model_dump() if movie else None
+
+    def mark_missing_not_seen_since(self, seen_at: str) -> int:
+        """Mark available movies missing when they were not observed in a reconcile pass."""
+        from datetime import datetime, timezone
+
+        missing_at = datetime.now(timezone.utc).isoformat()
+        updated = 0
+        with Session(engine) as session:
+            statement = select(Movie).where(Movie.library_status != "missing")
+            movies = session.exec(statement).all()
+            for movie in movies:
+                if not movie.last_seen_at or movie.last_seen_at < seen_at:
+                    movie.library_status = "missing"
+                    movie.missing_since = missing_at
+                    session.add(movie)
+                    updated += 1
+            session.commit()
+        return updated
+
+    def mark_path_missing(self, path: str) -> int:
+        from datetime import datetime, timezone
+
+        missing_at = datetime.now(timezone.utc).isoformat()
+        updated = 0
+        with Session(engine) as session:
+            statement = select(Movie).where(or_(Movie.media_path == path, Movie.folder_path == path))
+            movies = session.exec(statement).all()
+            for movie in movies:
+                movie.library_status = "missing"
+                movie.missing_since = missing_at
+                session.add(movie)
+                updated += 1
+            session.commit()
+        return updated
 
     def clear_library(self):
         """Clear all movies from the library."""
@@ -70,5 +137,9 @@ class LibraryManager:
         # Add to DB
         self.add_movies(movies_list)
         return movies_list
+
+    def _get_by_media_path(self, session: Session, media_path: str) -> Optional[Movie]:
+        statement = select(Movie).where(Movie.media_path == media_path)
+        return session.exec(statement).first()
 
 library_manager = LibraryManager()

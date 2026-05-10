@@ -24,3 +24,14 @@ export function useAnalyzeMovie(id: string) {
     }
   );
 }
+
+export function useRefreshMovie(id: string) {
+  return useSWRMutation(
+    API.libraryMovie(id),
+    async () => {
+      const res = await fetch(API.libraryRefresh(id), { method: "POST" });
+      if (!res.ok) throw new Error("Failed to refresh movie");
+      return res.json();
+    }
+  );
+}

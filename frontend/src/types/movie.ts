@@ -25,6 +25,8 @@ export interface LibraryMovie {
   micro_genre?: string;
   genres?: string[];
   director?: string;
+  library_status?: "available" | "missing";
+  missing_since?: string | null;
 }
 
 export interface MovieDetail {
@@ -43,4 +45,12 @@ export interface MovieDetail {
   analysis_status: string;
   analysis_data?: AnalysisData | null;
   director?: string;
+  media_path?: string | null;
+  folder_path?: string | null;
+  file_size?: number | null;
+  file_mtime?: number | null;
+  last_seen_at?: string | null;
+  missing_since?: string | null;
+  library_status?: "available" | "missing";
+  metadata_updated_at?: string | null;
 }

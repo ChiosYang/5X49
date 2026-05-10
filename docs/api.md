@@ -55,7 +55,7 @@ This document describes the REST API endpoints available in the backend applicat
 ### Scan Library (from Directory)
 - **URL**: `/library/scan`
 - **Method**: `POST`
-- **Description**: Scans a directory for TMM-scraped movies (NFO files) and adds them to the library database.
+- **Description**: Reconciles a media directory, scans movie folders, upserts discovered records, and marks disappeared movies as missing.
 - **Query Parameters**:
   - `media_dir` (string, optional): Target directory to scan. Defaults to system media dir config.
 - **Response**: 
@@ -63,8 +63,58 @@ This document describes the REST API endpoints available in the backend applicat
   {
     "scanned": 10,
     "added": 10,
+    "missing": 1,
     "queued_for_analysis": 10,
     "media_dir": "/path/to/media"
+  }
+  ```
+
+### Reconcile Library
+- **URL**: `/library/reconcile`
+- **Method**: `POST`
+- **Description**: Performs a full library reconciliation and marks movies not seen in the pass as `missing`.
+- **Query Parameters**:
+  - `media_dir` (string, optional): Target directory to scan. Defaults to system media dir config.
+- **Response**: `{"scanned": 10, "added": 2, "missing": 1, "media_dir": "/path/to/media"}`
+
+### Scan Folder
+- **URL**: `/library/scan-folder`
+- **Method**: `POST`
+- **Description**: Scans a single movie folder and upserts the corresponding movie record.
+- **Query Parameters**:
+  - `folder_path` (string, required): Absolute path to a movie folder.
+- **Response**: `{"status": "success", "movie": Movie}`
+
+### Refresh Movie
+- **URL**: `/library/{movie_id}/refresh`
+- **Method**: `POST`
+- **Description**: Refreshes one movie from its known local folder while preserving the existing movie ID.
+- **Path Parameters**:
+  - `movie_id` (string): The ID of the movie.
+- **Response**: `{"status": "success", "movie_id": "...", "updated": true, "movie": Movie}`
+- **Errors**: `400 Invalid ID format`, `404 Movie not found`, `409 Movie does not have a folder path`.
+
+### Get Library Sync Status
+- **URL**: `/library/sync/status`
+- **Method**: `GET`
+- **Description**: Returns last reconciliation status and automatic watcher status.
+- **Response**:
+  ```json
+  {
+    "sync": {
+      "state": "idle",
+      "last_started_at": "2026-05-10T00:00:00+00:00",
+      "last_finished_at": "2026-05-10T00:00:03+00:00",
+      "last_error": null,
+      "last_result": {"scanned": 10, "added": 2, "missing": 1}
+    },
+    "watcher": {
+      "running": true,
+      "media_dir": "/media",
+      "last_event_at": 1778371200.0,
+      "last_error": null,
+      "pending": 0
+    }
   }
   ```
 
@@ -152,6 +202,20 @@ This document describes the REST API endpoints available in the backend applicat
 - **Query Parameters**:
   - `language` (string, required): Allowed values `zh` or `en`.
 
+### Get Library Watch Setting
+- **URL**: `/settings/library-watch`
+- **Method**: `GET`
+- **Description**: Gets whether automatic library watching is enabled and the current watcher status.
+- **Response**: `{"watch_library": true, "watcher": {...}}`
+
+### Update Library Watch Setting
+- **URL**: `/settings/library-watch`
+- **Method**: `PUT`
+- **Description**: Enables or disables the automatic library watcher immediately and persists the setting.
+- **Query Parameters**:
+  - `enabled` (boolean, required): Whether to run the watcher.
+  - The watcher uses polling with debounce so Docker and NAS-backed media folders can converge reliably.
+
 ### Get Base URL
 - **URL**: `/settings/base-url`
 - **Method**: `GET`
@@ -202,7 +266,7 @@ This document describes the REST API endpoints available in the backend applicat
 ### Trigger Manual Scan
 - **URL**: `/sys/scan-library`
 - **Method**: `POST`
-- **Description**: Starts a background scan for the configured media library. Differs functionally from `/library/scan` by enforcing no-blocking execution asynchronously in standard tasks structure without returning immediate scan stats.
+- **Description**: Starts a background reconciliation for the configured media library without returning immediate scan stats.
 - **Response**: `{"status": "success", "message": "Library scan started"}`
 
 ### Clean Inbox (Agent Stream)
@@ -235,3 +299,11 @@ The core database payload associated with movies.
 - `analysis_data` (JSON/Dictionary, Optional): Dense parsed metadata result
 - `folder_name` / `video_file` (String, Optional): Physical system locators
 - `nfo_source` (String, Optional): Indicator of metadata origin file
+- `media_path` (String, Optional): Absolute path to the primary video file
+- `folder_path` (String, Optional): Absolute path to the movie folder
+- `file_size` (Integer, Optional): Primary video file size in bytes
+- `file_mtime` (Float, Optional): Primary video file modification time
+- `last_seen_at` (String, Optional): Last successful scan timestamp
+- `missing_since` (String, Optional): Timestamp when the movie was first marked missing
+- `library_status` (String): Library availability status, `available` or `missing`
+- `metadata_updated_at` (String, Optional): Last metadata parse timestamp

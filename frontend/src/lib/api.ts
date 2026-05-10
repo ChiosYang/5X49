@@ -26,6 +26,9 @@ export const API = {
     library: () => `${API_BASE_URL}/library`,
     libraryMovie: (id: string) => `${API_BASE_URL}/library/${encodeURIComponent(id)}`,
     libraryAnalyze: (id: string) => `${API_BASE_URL}/library/analyze/${encodeURIComponent(id)}`,
+    libraryRefresh: (id: string) => `${API_BASE_URL}/library/${encodeURIComponent(id)}/refresh`,
+    libraryReconcile: () => `${API_BASE_URL}/library/reconcile`,
+    librarySyncStatus: () => `${API_BASE_URL}/library/sync/status`,
     librarySeed: () => `${API_BASE_URL}/library/seed`,
     libraryClear: () => `${API_BASE_URL}/library/clear`,
 
@@ -34,6 +37,7 @@ export const API = {
     settingsBaseUrl: () => `${API_BASE_URL}/settings/base-url`,
     settingsMediaDir: () => `${API_BASE_URL}/settings/media-dir`,
     settingsLanguage: () => `${API_BASE_URL}/settings/language`,
+    settingsLibraryWatch: () => `${API_BASE_URL}/settings/library-watch`,
 
     // System
     systemListDirs: () => `${API_BASE_URL}/sys/list-dirs`,

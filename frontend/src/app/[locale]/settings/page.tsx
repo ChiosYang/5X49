@@ -17,8 +17,12 @@ import {
   useUpdateBaseUrl,
   useUpdateMediaDir,
   useUpdateLanguage,
+  useUpdateLibraryWatch,
   useTestApiKey,
   useScanLibrary,
+  useReconcileLibrary,
+  useLibrarySyncStatus,
+  useLibraryWatchSetting,
 } from "@/hooks/useSettings";
 
 type SettingSection = "appearance" | "display" | "analysis" | "library";
@@ -33,13 +37,17 @@ function SettingsContent() {
   const { data: baseUrlData } = useBaseUrl();
   const { data: mediaDirData } = useMediaDir();
   const { data: langData } = useLanguageSetting();
+  const { data: libraryWatchData } = useLibraryWatchSetting();
+  const { data: syncStatus } = useLibrarySyncStatus();
 
   const { trigger: updateModel, isMutating: modelSaving, data: modelSaveResult, reset: resetModelSave } = useUpdateModel();
   const { trigger: updateBaseUrl, isMutating: baseUrlSaving, data: baseUrlSaveResult, reset: resetBaseUrlSave } = useUpdateBaseUrl();
   const { trigger: updateMediaDir, isMutating: mediaDirSaving, data: mediaDirSaveResult, reset: resetMediaDirSave } = useUpdateMediaDir();
   const { trigger: updateLanguage, isMutating: languageSaving } = useUpdateLanguage();
+  const { trigger: updateLibraryWatch, isMutating: watchSaving } = useUpdateLibraryWatch();
   const { trigger: testApi, data: apiTestResult, isMutating: apiTesting } = useTestApiKey();
   const { trigger: scanLibrary, isMutating: isScanning, data: scanResult, error: scanError } = useScanLibrary();
+  const { trigger: reconcileLibrary, isMutating: isReconciling, data: reconcileResult, error: reconcileError } = useReconcileLibrary();
 
   // ---- Client State (UI only) ----
   const [activeSection, setActiveSection] = useState<SettingSection>("appearance");
@@ -115,11 +123,24 @@ function SettingsContent() {
     await scanLibrary();
   };
 
+  const handleReconcileLibrary = async () => {
+    await reconcileLibrary();
+  };
+
+  const handleLibraryWatchChange = async () => {
+    await updateLibraryWatch(!libraryWatchData?.watch_library);
+  };
+
   // Scan message derived from mutation state
   const scanMessage = scanResult
     ? "Scan started in background"
     : scanError
       ? "Failed to start scan"
+      : "";
+  const reconcileMessage = reconcileResult
+    ? `Scanned ${reconcileResult.scanned ?? 0}, missing ${reconcileResult.missing ?? 0}`
+    : reconcileError
+      ? "Failed to reconcile"
       : "";
 
   return (
@@ -560,6 +581,43 @@ function SettingsContent() {
                   <div className="border-b border-neutral-900 pb-6">
                     <div className="flex items-center justify-between">
                       <div>
+                        <p className="text-sm font-medium uppercase tracking-widest mb-1">{t("reconcileLibrary")}</p>
+                        <p className="text-xs text-neutral-600">{t("reconcileLibraryDesc")}</p>
+                        {syncStatus?.sync.last_finished_at && (
+                          <p className="text-xs text-neutral-700 mt-2">
+                            Last sync: {new Date(syncStatus.sync.last_finished_at).toLocaleString()}
+                          </p>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-4">
+                        {reconcileMessage && (
+                          <span className={`text-xs uppercase tracking-widest ${
+                            reconcileError ? "text-red-500" : "text-green-500"
+                          }`}>
+                            {reconcileMessage}
+                          </span>
+                        )}
+                        <button
+                          onClick={handleReconcileLibrary}
+                          disabled={isReconciling}
+                          className="flex items-center gap-2 bg-neutral-900 border border-neutral-800 text-white px-4 py-3 text-xs font-medium uppercase tracking-widest hover:bg-neutral-800 hover:border-neutral-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {isReconciling ? (
+                            <>
+                              <Loader2 className="w-3 h-3 animate-spin" />
+                              {t("scanning")}
+                            </>
+                          ) : (
+                            t("reconcileNow")
+                          )}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="border-b border-neutral-900 pb-6">
+                    <div className="flex items-center justify-between">
+                      <div>
                         <p className="text-sm font-medium uppercase tracking-widest mb-1 flex items-center gap-2">
                           Librarian Agent <span className="text-[10px] bg-white text-black px-1.5 py-0.5 tracking-widest font-bold">AI</span>
                         </p>
@@ -581,11 +639,34 @@ function SettingsContent() {
                   <div className="border-b border-neutral-900 pb-6">
                     <label className="flex items-center justify-between">
                       <div>
-                        <p className="text-sm font-medium uppercase tracking-widest mb-1">Auto Scan</p>
-                        <p className="text-xs text-neutral-600">Periodically check for new films</p>
+                        <p className="text-sm font-medium uppercase tracking-widest mb-1">{t("autoScan")}</p>
+                        <p className="text-xs text-neutral-600">{t("autoScanDesc")}</p>
+                        {syncStatus?.watcher.last_error && (
+                          <p className="text-xs text-red-500 mt-2">{syncStatus.watcher.last_error}</p>
+                        )}
                       </div>
-                      <div className="text-neutral-600 text-xs uppercase">Coming Soon</div>
+                      <button
+                        type="button"
+                        onClick={handleLibraryWatchChange}
+                        disabled={watchSaving}
+                        className={`relative h-7 w-12 border transition-colors ${
+                          libraryWatchData?.watch_library
+                            ? "bg-white border-white"
+                            : "bg-neutral-900 border-neutral-700"
+                        } disabled:opacity-50`}
+                        aria-label={t("autoScan")}
+                      >
+                        <span
+                          className={`absolute top-1 h-5 w-5 bg-black transition-transform ${
+                            libraryWatchData?.watch_library ? "translate-x-5" : "translate-x-1"
+                          }`}
+                        />
+                      </button>
                     </label>
+                    <div className="mt-3 text-xs uppercase tracking-widest text-neutral-600">
+                      {syncStatus?.watcher.running ? t("watching") : t("notWatching")}
+                      {syncStatus?.watcher.pending ? ` · ${syncStatus.watcher.pending} pending` : ""}
+                    </div>
                   </div>
                 </div>
               </div>

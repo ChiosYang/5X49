@@ -6,6 +6,8 @@ from app.services.historian import FilmHistorian
 from app.services.library import library_manager
 from app.services.scanner import NFOScanner
 from app.services.analysis import analysis_service
+from app.services.library_sync import library_sync_service
+from app.services.watcher import library_watcher
 from app.database import create_db_and_tables
 from app.utils.security import validate_movie_id
 import os
@@ -14,7 +16,10 @@ from pathlib import Path
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     create_db_and_tables()
+    if get_watch_library():
+        library_watcher.start()
     yield
+    library_watcher.stop()
 
 app = FastAPI(lifespan=lifespan)
 
@@ -38,7 +43,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-from app.services.settings import get_default_settings, save_settings, get_available_models, get_current_model, set_current_model, get_base_url, set_base_url, refresh_models_cache, get_media_dir, set_media_dir, get_language, set_language
+from app.services.settings import get_default_settings, save_settings, get_available_models, get_current_model, set_current_model, get_base_url, set_base_url, refresh_models_cache, get_media_dir, set_media_dir, get_language, set_language, get_watch_library, set_watch_library
 
 # Configuration for media directory
 # Prioritize settings.json, then env var, then default
@@ -99,21 +104,59 @@ def scan_library(background_tasks: BackgroundTasks, media_dir: str = Query(defau
     if not os.path.exists(target_dir):
         raise HTTPException(status_code=400, detail=f"Directory not found: {target_dir}")
     
-    print(f"\n🔍 Scanning media directory: {target_dir}")
-    scanner = NFOScanner(target_dir)
-    movies = scanner.scan()
-    
-    added = library_manager.add_movies(movies)
+    print(f"\n🔍 Reconciling media directory: {target_dir}")
+    result = library_sync_service.reconcile(target_dir)
     
     # Analysis is now triggered manually or via separate process
     # for movie in movies:
     #     background_tasks.add_task(analysis_service.analyze_movie, movie["id"])
     
     return {
-        "scanned": len(movies),
-        "added": added,
-        "queued_for_analysis": len(movies),
+        "scanned": result["scanned"],
+        "added": result["added"],
+        "missing": result["missing"],
+        "queued_for_analysis": result["scanned"],
         "media_dir": target_dir
+    }
+
+@app.post("/library/reconcile")
+def reconcile_library(background_tasks: BackgroundTasks, media_dir: str = Query(default=None)):
+    """Scan all configured media folders and mark disappeared movies as missing."""
+    target_dir = media_dir or get_media_dir() or DEFAULT_MEDIA_DIR
+    if not os.path.exists(target_dir):
+        raise HTTPException(status_code=400, detail=f"Directory not found: {target_dir}")
+
+    return library_sync_service.reconcile(target_dir)
+
+@app.post("/library/scan-folder")
+def scan_library_folder(folder_path: str):
+    """Scan one movie folder and upsert its movie record."""
+    movie = library_sync_service.scan_folder(folder_path)
+    if not movie:
+        raise HTTPException(status_code=404, detail="Movie folder or video file not found")
+    return {"status": "success", "movie": movie}
+
+@app.post("/library/{movie_id}/refresh")
+def refresh_library_movie(movie_id: str):
+    """Refresh one movie from its known local folder."""
+    if not validate_movie_id(movie_id):
+        raise HTTPException(status_code=400, detail="Invalid movie ID format")
+
+    try:
+        return library_sync_service.refresh_movie(movie_id)
+    except LookupError:
+        raise HTTPException(status_code=404, detail="Movie not found")
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc))
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+
+@app.get("/library/sync/status")
+def get_library_sync_status():
+    """Get latest library sync and watcher status."""
+    return {
+        "sync": library_sync_service.get_status(),
+        "watcher": library_watcher.status(),
     }
 
 @app.post("/library/analyze/{movie_id}")
@@ -190,6 +233,23 @@ def update_language_setting(language: str):
         return {"status": "success", "language": language}
     else:
         raise HTTPException(status_code=500, detail="Failed to save settings")
+
+@app.get("/settings/library-watch")
+def get_library_watch_setting():
+    return {"watch_library": get_watch_library(), "watcher": library_watcher.status()}
+
+@app.put("/settings/library-watch")
+def update_library_watch_setting(enabled: bool):
+    success = set_watch_library(enabled)
+    if not success:
+        raise HTTPException(status_code=500, detail="Failed to save settings")
+
+    if enabled:
+        watcher_status = library_watcher.start()
+    else:
+        watcher_status = library_watcher.stop()
+
+    return {"status": "success", "watch_library": enabled, "watcher": watcher_status}
 
 @app.get("/settings/base-url")
 def get_base_url_setting():
@@ -314,9 +374,7 @@ def trigger_manual_scan(background_tasks: BackgroundTasks):
     Manually trigger a library scan.
     """
     try:
-        # Use background task to avoid blocking the request
-        # Pass the background_tasks object to scan_library so it can queue analysis tasks
-        background_tasks.add_task(scan_library, background_tasks=background_tasks, media_dir=None)
+        background_tasks.add_task(library_sync_service.reconcile, get_media_dir() or DEFAULT_MEDIA_DIR)
         return {"status": "success", "message": "Library scan started"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to start scan: {str(e)}")

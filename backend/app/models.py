@@ -40,3 +40,11 @@ class Movie(SQLModel, table=True):
     folder_name: Optional[str] = None
     video_file: Optional[str] = None
     nfo_source: Optional[str] = None
+    media_path: Optional[str] = Field(default=None, index=True)
+    folder_path: Optional[str] = None
+    file_size: Optional[int] = None
+    file_mtime: Optional[float] = None
+    last_seen_at: Optional[str] = None
+    missing_since: Optional[str] = None
+    library_status: str = Field(default="available", index=True)
+    metadata_updated_at: Optional[str] = None

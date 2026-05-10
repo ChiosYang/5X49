@@ -24,6 +24,37 @@ export function useLanguageSetting() {
   return useSWR<{ language: string }>(API.settingsLanguage());
 }
 
+export interface LibraryWatchStatus {
+  running: boolean;
+  media_dir: string | null;
+  last_event_at: number | null;
+  last_error: string | null;
+  pending: number;
+}
+
+export interface LibrarySyncStatus {
+  sync: {
+    state: string;
+    last_started_at: string | null;
+    last_finished_at: string | null;
+    last_error: string | null;
+    last_result: Record<string, unknown> | null;
+  };
+  watcher: LibraryWatchStatus;
+}
+
+export function useLibraryWatchSetting() {
+  return useSWR<{ watch_library: boolean; watcher: LibraryWatchStatus }>(
+    API.settingsLibraryWatch()
+  );
+}
+
+export function useLibrarySyncStatus() {
+  return useSWR<LibrarySyncStatus>(API.librarySyncStatus(), {
+    refreshInterval: 5000,
+  });
+}
+
 // =====================
 // Mutations
 // =====================
@@ -83,6 +114,19 @@ export function useUpdateLanguage() {
   );
 }
 
+export function useUpdateLibraryWatch() {
+  return useSWRMutation(
+    API.settingsLibraryWatch(),
+    async (url: string, { arg: enabled }: { arg: boolean }) => {
+      const res = await fetch(`${url}?enabled=${enabled}`, {
+        method: "PUT",
+      });
+      if (!res.ok) throw new Error("Failed to update library watch setting");
+      return res.json();
+    }
+  );
+}
+
 export function useTestApiKey() {
   return useSWRMutation(
     API.settingsTestApiKey(),
@@ -100,6 +144,17 @@ export function useScanLibrary() {
     async (url: string) => {
       const res = await fetch(url, { method: "POST" });
       if (!res.ok) throw new Error("Failed to start scan");
+      return res.json();
+    }
+  );
+}
+
+export function useReconcileLibrary() {
+  return useSWRMutation(
+    API.libraryReconcile(),
+    async (url: string) => {
+      const res = await fetch(url, { method: "POST" });
+      if (!res.ok) throw new Error("Failed to reconcile library");
       return res.json();
     }
   );

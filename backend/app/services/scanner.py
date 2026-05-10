@@ -7,16 +7,19 @@ import glob
 import xml.etree.ElementTree as ET
 from pathlib import Path
 from typing import Optional
+from datetime import datetime, timezone
 
 
 class NFOScanner:
     """Scans a directory for TMM-scraped movie folders and parses .nfo files."""
 
+    video_extensions = ['.mp4', '.mkv', '.avi', '.mov', '.wmv', '.m4v', '.ts', '.iso']
+
     def __init__(self, media_dir: str):
         self.media_dir = Path(media_dir)
 
     def scan(self) -> list[dict]:
-        """Scan all subdirectories for .nfo files and parse them."""
+        """Scan all subdirectories for movies and parse metadata when available."""
         movies = []
         
         if not self.media_dir.exists():
@@ -27,16 +30,48 @@ class NFOScanner:
             if not folder.is_dir() or folder.name.startswith('.'):
                 continue
             
-            # Find .nfo files in the folder
-            nfo_files = list(folder.glob("*.nfo"))
-            if nfo_files:
-                movie_data = self.parse_nfo(nfo_files[0], folder)
-                if movie_data:
-                    movies.append(movie_data)
-                    print(f"  ✅ Parsed: {movie_data['title']} ({movie_data['year']})")
+            movie_data = self.scan_folder(folder)
+            if movie_data:
+                movies.append(movie_data)
+                print(f"  ✅ Parsed: {movie_data['title']} ({movie_data['year']})")
         
         print(f"\n📚 Total movies scanned: {len(movies)}")
         return movies
+
+    def scan_folder(self, folder: Path | str) -> Optional[dict]:
+        """Scan a single movie folder, using NFO when present and filename fallback otherwise."""
+        folder = Path(folder)
+        if not folder.exists() or not folder.is_dir():
+            return None
+
+        nfo_files = list(folder.glob("*.nfo"))
+        if nfo_files:
+            return self.parse_nfo(nfo_files[0], folder)
+
+        video_file = self._find_video_file(folder)
+        if not video_file:
+            return None
+
+        title, year = self._parse_title_year(folder.name)
+        safe_title = "".join(c if c.isalnum() or c in (' ', '-', '_') else '' for c in title)
+        safe_title = safe_title.replace(' ', '_') or "Unknown"
+
+        movie_data = {
+            "id": f"{safe_title}_{year}" if year else safe_title,
+            "title": title,
+            "title_cn": title,
+            "year": year,
+            "genres": [],
+            "actors": [],
+            "folder_name": folder.name,
+            "video_file": video_file.name,
+            "nfo_source": "filename",
+            "poster_local": None,
+            "backdrop_local": None,
+            "poster_path": None,
+            "backdrop_path": None,
+        }
+        return self._with_file_info(movie_data, folder, video_file)
 
     def parse_nfo(self, nfo_path: Path, folder: Path) -> Optional[dict]:
         """Parse a single .nfo XML file and return standardized movie dict."""
@@ -107,16 +142,9 @@ class NFOScanner:
                 safe_title = safe_title.replace(' ', '_')
                 movie_id = f"{safe_title}_{year}"
             
-            # Find video file
-            video_extensions = ['.mp4', '.mkv', '.avi', '.mov', '.wmv']
-            video_file = None
-            for ext in video_extensions:
-                videos = list(folder.glob(f"*{ext}"))
-                if videos:
-                    video_file = videos[0].name
-                    break
+            video_file = self._find_video_file(folder)
             
-            return {
+            movie_data = {
                 "id": movie_id,
                 "title": title,
                 "title_cn": title_cn,
@@ -137,10 +165,11 @@ class NFOScanner:
                 "backdrop_path": self._extract_tmdb_path(fanart_url),
                 # Folder info
                 "folder_name": folder_name,
-                "video_file": video_file,
+                "video_file": video_file.name if video_file else None,
                 "nfo_source": "tmm"
             }
-            
+            return self._with_file_info(movie_data, folder, video_file)
+
         except ET.ParseError as e:
             print(f"  ❌ XML Parse Error in {nfo_path}: {e}")
             return None
@@ -155,6 +184,48 @@ class NFOScanner:
             if matches:
                 return matches[0].name
         return None
+
+    def _find_video_file(self, folder: Path) -> Optional[Path]:
+        """Find the primary video file in a movie folder."""
+        for ext in self.video_extensions:
+            videos = list(folder.glob(f"*{ext}")) + list(folder.glob(f"*{ext.upper()}"))
+            if videos:
+                return sorted(videos, key=lambda path: path.name.lower())[0]
+        return None
+
+    def _with_file_info(self, movie_data: dict, folder: Path, video_file: Optional[Path]) -> dict:
+        now = datetime.now(timezone.utc).isoformat()
+        movie_data.update({
+            "folder_name": folder.name,
+            "folder_path": str(folder.resolve()),
+            "last_seen_at": now,
+            "missing_since": None,
+            "library_status": "available",
+            "metadata_updated_at": now,
+        })
+
+        if video_file:
+            stat = video_file.stat()
+            movie_data.update({
+                "media_path": str(video_file.resolve()),
+                "video_file": video_file.name,
+                "file_size": stat.st_size,
+                "file_mtime": stat.st_mtime,
+            })
+
+        return movie_data
+
+    def _parse_title_year(self, name: str) -> tuple[str, int]:
+        """Extract a usable title and year from a folder or filename."""
+        import re
+
+        stem = Path(name).stem
+        match = re.search(r"(19\d{2}|20\d{2})", stem)
+        year = int(match.group(1)) if match else 0
+        title_part = stem[:match.start()] if match else stem
+        title = re.sub(r"[\._\-\[\]\(\)]+", " ", title_part).strip()
+        title = re.sub(r"\s+", " ", title) or stem
+        return title, year
 
     def _extract_tmdb_path(self, url: Optional[str]) -> Optional[str]:
         """Extract TMDB path from full URL for use with image.tmdb.org prefix."""

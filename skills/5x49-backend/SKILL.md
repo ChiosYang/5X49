@@ -28,7 +28,11 @@ description: 电影族谱 API (FastAPI) 的接口调用指南
 | GET | `/library` | 获取所有电影 |
 | GET | `/library/{movie_id}` | 获取指定电影详情 |
 | POST | `/library/seed` | 填充测试数据 |
-| POST | `/library/scan?media_dir=/path` | 扫描目录添加电影 |
+| POST | `/library/scan?media_dir=/path` | 扫描并校准目录，新增/更新电影并标记缺失 |
+| POST | `/library/reconcile?media_dir=/path` | 全量校准资料库 |
+| POST | `/library/scan-folder?folder_path=/path` | 扫描单个电影文件夹 |
+| POST | `/library/{movie_id}/refresh` | 按已知本地文件夹刷新单部电影 |
+| GET | `/library/sync/status` | 获取校准与自动监听状态 |
 | DELETE | `/library` | 清空电影库 |
 
 ### 分析功能
@@ -49,6 +53,8 @@ description: 电影族谱 API (FastAPI) 的接口调用指南
 | PUT | `/settings/media-dir?media_dir=xxx` | 更新媒体目录 |
 | GET | `/settings/language` | 获取系统语言配置 |
 | PUT | `/settings/language?language=xxx` | 更新系统语言 |
+| GET | `/settings/library-watch` | 获取自动监听配置和状态 |
+| PUT | `/settings/library-watch?enabled=true` | 开启或关闭自动监听 |
 | POST | `/settings/models/refresh` | 刷新可用模型缓存 |
 
 ### 系统与智能体 (Agents)
@@ -76,6 +82,21 @@ curl -s http://127.0.0.1:11548/library/96721_2013
 curl -s -X POST http://127.0.0.1:11548/library/analyze/96721_2013
 ```
 
+### 刷新单部电影
+```bash
+curl -s -X POST http://127.0.0.1:11548/library/96721_2013/refresh
+```
+
+### 全量校准资料库
+```bash
+curl -s -X POST http://127.0.0.1:11548/library/reconcile
+```
+
+### 开启自动监听
+```bash
+curl -s -X PUT "http://127.0.0.1:11548/settings/library-watch?enabled=true"
+```
+
 ### 更新模型设置
 ```bash
 curl -s -X PUT "http://127.0.0.1:11548/settings/model?model_name=moonshotai/kimi-k2.5"
@@ -86,4 +107,6 @@ curl -s -X PUT "http://127.0.0.1:11548/settings/model?model_name=moonshotai/kimi
 1. **路径参数** - 如 `{movie_id}` 直接拼接到 URL 中
 2. **查询参数** - 使用 `?key=value` 格式
 3. **电影 ID 格式** - 通常是 `tmdb_id_year` 如 `96721_2013`，或中文标题如 `季_1_2019`
-4. **推荐使用 http_request 插件** - 如果有安装的话，比 curl 更安全
+4. **缺失策略** - 资料库校准和监听删除事件默认将电影标记为 `library_status=missing`，不会直接删除数据库记录
+5. **自动监听** - 当前监听器使用轮询和去抖，适合 Docker volume、NAS、SMB 等场景；最终一致性由 `/library/reconcile` 保底
+6. **推荐使用 http_request 插件** - 如果有安装的话，比 curl 更安全

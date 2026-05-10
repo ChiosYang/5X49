@@ -8,6 +8,7 @@ import MovieAnalysisSection from "./MovieAnalysisSection";
 import MovieBackdrop from "./MovieBackdrop";
 import MovieHeroTitle from "./MovieHeroTitle";
 import MoviePoster from "./MoviePoster";
+import MovieRefreshButton from "./MovieRefreshButton";
 
 interface MovieDetailPageProps {
   params: Promise<{
@@ -43,7 +44,7 @@ export default async function MovieDetailPage({ params }: MovieDetailPageProps) 
       </div>
 
       {/* Info Grid */}
-      <div className="border-t border-neutral-800 grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x divide-neutral-800 bg-black text-neutral-300">
+      <div className="border-t border-neutral-800 grid grid-cols-1 md:grid-cols-4 divide-y md:divide-y-0 md:divide-x divide-neutral-800 bg-black text-neutral-300">
          <div className="p-8 md:px-16 space-y-2">
              <span className="block text-xs font-bold uppercase tracking-widest text-neutral-500">{t("directedBy")}</span>
              <span className="block text-xl md:text-2xl font-bold text-white uppercase">{movie.director || "Unknown Director"}</span>
@@ -56,6 +57,9 @@ export default async function MovieDetailPage({ params }: MovieDetailPageProps) 
              <span className="text-xl md:text-2xl font-bold uppercase">{t("watchNow")}</span>
              <Play className="w-6 h-6 fill-current" />
          </div>
+         <Providers>
+           <MovieRefreshButton movieId={id} />
+         </Providers>
       </div>
 
       {/* Synopsis & Meta */}

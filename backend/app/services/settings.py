@@ -102,7 +102,11 @@ def get_default_settings():
     return {
         "model_name": os.getenv("MODEL_NAME", "openrouter/pony-alpha"),
         "base_url": os.getenv("API_BASE_URL", "https://openrouter.ai/api/v1"),
-        "available_models": get_available_models()
+        "available_models": get_available_models(),
+        "watch_library": os.getenv("WATCH_LIBRARY", "false").lower() == "true",
+        "watch_debounce_seconds": int(os.getenv("WATCH_DEBOUNCE_SECONDS", "5")),
+        "watch_interval_seconds": int(os.getenv("WATCH_INTERVAL_SECONDS", "5")),
+        "missing_policy": os.getenv("MISSING_POLICY", "mark_missing"),
     }
 
 def load_settings():
@@ -188,3 +192,25 @@ def set_language(language: str):
     settings = load_settings()
     settings["language"] = language
     return save_settings(settings)
+
+def get_watch_library():
+    """Return whether automatic library watching is enabled."""
+    settings = load_settings()
+    return bool(settings.get("watch_library", False))
+
+def set_watch_library(enabled: bool):
+    settings = load_settings()
+    settings["watch_library"] = bool(enabled)
+    return save_settings(settings)
+
+def get_watch_debounce_seconds():
+    settings = load_settings()
+    return int(settings.get("watch_debounce_seconds", 5))
+
+def get_watch_interval_seconds():
+    settings = load_settings()
+    return int(settings.get("watch_interval_seconds", 5))
+
+def get_missing_policy():
+    settings = load_settings()
+    return settings.get("missing_policy", "mark_missing")
