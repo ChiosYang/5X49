@@ -3,11 +3,24 @@
 
 const API_BASE_URL = '/api';
 
+const encodePathSegment = (segment: string) => {
+    try {
+        return encodeURIComponent(decodeURIComponent(segment));
+    } catch {
+        return encodeURIComponent(segment);
+    }
+};
+
+const encodeMediaPath = (path: string) => {
+    const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+    return normalizedPath.split('/').map(encodePathSegment).join('/');
+};
+
 export const API = {
     baseUrl: API_BASE_URL,
 
     // === Media / Static Resources ===
-    mediaUrl: (path: string) => `${API_BASE_URL}${path}`,
+    mediaUrl: (path: string) => `${API_BASE_URL}${encodeMediaPath(path)}`,
 
     // === Library ===
     library: () => `${API_BASE_URL}/library`,

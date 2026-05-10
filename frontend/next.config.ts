@@ -9,6 +9,15 @@ const backendUrl = process.env.NODE_ENV === 'development'
 
 const nextConfig: NextConfig = {
   output: "standalone",
+  images: {
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "image.tmdb.org",
+        pathname: "/t/p/**",
+      },
+    ],
+  },
   async rewrites() {
     return [
       {

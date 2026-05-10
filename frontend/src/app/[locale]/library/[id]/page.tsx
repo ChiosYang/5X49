@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useParams, useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { useTranslations } from "next-intl";
@@ -43,12 +44,15 @@ export default function MovieDetailPage() {
         {/* Backdrop */}
         <div className="absolute inset-0">
                 <div className="absolute inset-0">
-                    <img 
+                    <Image
                       src={movie.backdrop_local 
                         ? API.mediaUrl(movie.backdrop_local) 
                         : `https://image.tmdb.org/t/p/original${movie.backdrop_path}`}
                       alt={movie.title}
-                      className="w-full h-full object-cover"
+                      fill
+                      priority
+                      sizes="100vw"
+                      className="object-cover"
                     />
                 </div>
             <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent" />
@@ -128,11 +132,14 @@ export default function MovieDetailPage() {
                  className="w-full flex justify-start"
                >
                  <div className="w-full md:w-[37.5%]">
-                   <img 
+                   <Image
                      src={movie.poster_local 
                        ? API.mediaUrl(movie.poster_local) 
                        : `https://image.tmdb.org/t/p/w780${movie.poster_path}`}
                      alt={`${movie.title} Poster`}
+                     width={780}
+                     height={1170}
+                     sizes="(min-width: 768px) 37.5vw, 100vw"
                      className="w-full h-auto object-cover"
                    />
                  </div>

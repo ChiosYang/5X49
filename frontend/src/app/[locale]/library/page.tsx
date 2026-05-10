@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import { useTranslations } from "next-intl";
 import { motion } from "framer-motion";
 import { Loader2 } from "lucide-react";
@@ -56,12 +57,14 @@ export default function LibraryPage() {
                 {/* Landscape Still */}
                 <div className="relative aspect-video bg-neutral-900 overflow-hidden w-full">
                   {(movie.backdrop_local || movie.backdrop_path) ? (
-                    <img
+                    <Image
                       src={movie.backdrop_local 
                         ? API.mediaUrl(movie.backdrop_local) 
                         : `https://image.tmdb.org/t/p/w1280${movie.backdrop_path}`}
                       alt={movie.title}
-                      className="w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-105"
+                      fill
+                      sizes="(min-width: 1536px) 20vw, (min-width: 1280px) 25vw, (min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
+                      className="object-cover transition-transform duration-700 ease-out group-hover:scale-105"
                     />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center border border-neutral-800">
