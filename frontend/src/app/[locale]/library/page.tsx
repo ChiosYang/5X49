@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef } from "react";
+import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { motion } from "framer-motion";
 import { Loader2 } from "lucide-react";
@@ -13,8 +13,7 @@ export default function LibraryPage() {
   const { data: movies = [], isLoading } = useLibrary();
 
   // Skip entrance animation when data comes from SWR cache (e.g. navigating back)
-  const isFromCache = useRef(!isLoading && movies.length > 0);
-  const skipAnimation = isFromCache.current;
+  const [skipAnimation] = useState(() => !isLoading && movies.length > 0);
 
   if (isLoading) {
     return (

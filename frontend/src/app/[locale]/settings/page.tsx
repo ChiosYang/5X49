@@ -47,18 +47,9 @@ export default function SettingsPage() {
   const [fileBrowserOpen, setFileBrowserOpen] = useState(false);
   const [terminalOpen, setTerminalOpen] = useState(false);
 
-  // Form edit state: local copies for user editing before save
-  const [baseUrlInput, setBaseUrlInput] = useState("");
-  const [mediaDirInput, setMediaDirInput] = useState("");
-
-  // Sync server data into form inputs when loaded
-  useEffect(() => {
-    if (baseUrlData) setBaseUrlInput(baseUrlData.base_url);
-  }, [baseUrlData]);
-
-  useEffect(() => {
-    if (mediaDirData) setMediaDirInput(mediaDirData.media_dir);
-  }, [mediaDirData]);
+  // Form edit state: local drafts for user editing before save.
+  const [baseUrlDraft, setBaseUrlInput] = useState<string>();
+  const [mediaDirDraft, setMediaDirInput] = useState<string>();
 
   // Auto-clear save success indicators
   useEffect(() => {
@@ -84,7 +75,12 @@ export default function SettingsPage() {
 
   // Derived values
   const currentModel = modelData?.current_model || "";
-  const availableModels = modelData?.available_models || [];
+  const availableModels = useMemo(
+    () => modelData?.available_models || [],
+    [modelData?.available_models]
+  );
+  const baseUrlInput = baseUrlDraft ?? baseUrlData?.base_url ?? "";
+  const mediaDirInput = mediaDirDraft ?? mediaDirData?.media_dir ?? "";
 
   const filteredModels = useMemo(() => {
     if (!modelSearch.trim()) return availableModels;
@@ -502,15 +498,17 @@ export default function SettingsPage() {
                       </div>
 
                       {/* File Browser Modal */}
-                      <FileBrowser
-                        isOpen={fileBrowserOpen}
-                        initialPath={mediaDirInput}
-                        onSelect={(path) => {
-                          setMediaDirInput(path);
-                          setFileBrowserOpen(false);
-                        }}
-                        onCancel={() => setFileBrowserOpen(false)}
-                      />
+                      {fileBrowserOpen && (
+                        <FileBrowser
+                          isOpen={fileBrowserOpen}
+                          initialPath={mediaDirInput}
+                          onSelect={(path) => {
+                            setMediaDirInput(path);
+                            setFileBrowserOpen(false);
+                          }}
+                          onCancel={() => setFileBrowserOpen(false)}
+                        />
+                      )}
 
                       {mediaDirSaveResult && (
                         <p className="text-xs text-green-500 mt-2 uppercase tracking-widest">✓ {t("saved")}</p>
