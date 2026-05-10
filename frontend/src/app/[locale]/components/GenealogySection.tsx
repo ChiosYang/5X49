@@ -1,22 +1,9 @@
+"use client";
+
 import { motion } from 'framer-motion';
 import { useTranslations } from "next-intl";
+import type { AnalysisData } from "@/types/movie";
 import FilmCard from './FilmCard';
-
-interface FilmReference {
-  title: string;
-  year: number;
-  type: string;
-  reason: string;
-}
-
-interface AnalysisData {
-  thought_chain: string;
-  micro_genre: string;
-  influence_impact: string;
-  ancestors: FilmReference[];
-  descendants: FilmReference[];
-  tmdb_metadata?: Record<string, unknown>;
-}
 
 interface GenealogySectionProps {
   analysisData: AnalysisData | null;

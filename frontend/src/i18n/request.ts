@@ -5,7 +5,7 @@ const locales = ['en', 'zh'];
 
 export default getRequestConfig(async ({ requestLocale }) => {
     // This typically comes from the locale parameter in the URL segment
-    // But here we might read it from a cookie in middleware, 
+    // But here we might read it from a cookie in proxy,
     // For the getRequestConfig, Next.js passes the resolved locale
     let locale = await requestLocale;
 

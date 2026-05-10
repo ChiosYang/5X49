@@ -1,86 +1,44 @@
-"use client";
-
-import Image from "next/image";
-import { useParams, useRouter } from "next/navigation";
-import { motion } from "framer-motion";
-import { useTranslations } from "next-intl";
+import { getTranslations } from "next-intl/server";
 import { Play } from "lucide-react";
+import { Link } from "@/i18n/routing";
 import { API } from "@/lib/api";
-import { useMovie, useAnalyzeMovie } from "@/hooks/useMovie";
-import GenealogySection from "../../components/GenealogySection";
+import { getLibraryMovie } from "@/lib/server-api";
+import MovieAnalysisSection from "./MovieAnalysisSection";
+import MovieBackdrop from "./MovieBackdrop";
+import MovieHeroTitle from "./MovieHeroTitle";
+import MoviePoster from "./MoviePoster";
 
-export default function MovieDetailPage() {
-  const t = useTranslations("FilmDetail");
-  const { id } = useParams();
-  const router = useRouter();
+interface MovieDetailPageProps {
+  params: Promise<{
+    id: string;
+  }>;
+}
 
-  const { data: movie, isLoading } = useMovie(id as string);
-  const { trigger: analyze, isMutating: analyzing } = useAnalyzeMovie(id as string);
+export default async function MovieDetailPage({ params }: MovieDetailPageProps) {
+  const t = await getTranslations("FilmDetail");
+  const { id } = await params;
+  const movie = await getLibraryMovie(id);
 
-  const triggerAnalysis = async () => {
-    if (!id || analyzing) return;
-    await analyze();
-  };
+  if (!movie) {
+    return (
+      <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center space-y-4">
+        <h1 className="text-4xl font-serif font-bold">{t("notFound")}</h1>
+        <Link href="/library" className="text-neutral-400 hover:text-white underline">
+          {t("return")}
+        </Link>
+      </div>
+    );
+  }
 
-  if (isLoading) return (
-    <div className="min-h-screen bg-black text-white flex items-center justify-center">
-      <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-white"></div>
-    </div>
-  );
-  
-  if (!movie) return (
-    <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center space-y-4">
-      <h1 className="text-4xl font-serif font-bold">{t("notFound")}</h1>
-      <button onClick={() => router.push('/library')} className="text-neutral-400 hover:text-white underline">
-        {t("return")}
-      </button>
-    </div>
-  );
+  const backdropSrc = movie.backdrop_local ? API.mediaUrl(movie.backdrop_local) : null;
+  const posterSrc = movie.poster_local ? API.mediaUrl(movie.poster_local) : null;
 
   return (
     <div className="min-h-screen bg-black text-white selection:bg-white selection:text-black">
       {/* Hero Section */}
       <div className="relative h-screen w-full overflow-hidden">
-        {/* Backdrop */}
-        <div className="absolute inset-0">
-            {movie.backdrop_local && (
-                <div className="absolute inset-0">
-                    <Image
-                      src={API.mediaUrl(movie.backdrop_local)}
-                      alt={movie.title}
-                      fill
-                      priority
-                      sizes="100vw"
-                      className="object-cover"
-                    />
-                </div>
-            )}
-            <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent" />
-        </div>
-
-
-
-        {/* Title Block */}
-        <div className="absolute bottom-0 left-0 p-8 md:p-16 w-full z-40">
-           <motion.h1 
-             initial={{ y: 100, opacity: 0 }}
-             animate={{ y: 0, opacity: 1 }}
-             transition={{ duration: 1, ease: "circOut" }}
-             className="text-6xl md:text-8xl lg:text-9xl font-bold uppercase tracking-tighter leading-none mb-6"
-           >
-             {movie.title_cn || movie.title}
-           </motion.h1>
-           {movie.title_cn && (
-             <motion.p 
-               initial={{ opacity: 0 }}
-               animate={{ opacity: 1 }}
-               transition={{ delay: 0.5, duration: 1 }}
-               className="text-2xl md:text-3xl font-serif italic text-neutral-400"
-             >
-               {movie.title}
-             </motion.p>
-           )}
-        </div>
+        <MovieBackdrop src={backdropSrc} title={movie.title} />
+        <MovieHeroTitle title={movie.title} titleCn={movie.title_cn} />
       </div>
 
       {/* Info Grid */}
@@ -123,37 +81,14 @@ export default function MovieDetailPage() {
              </p>
 
              {/* Featured Poster - Single Poster Style */}
-             {movie.poster_local && (
-               <motion.div 
-                 initial={{ opacity: 0, y: 40 }}
-                 whileInView={{ opacity: 1, y: 0 }}
-                 viewport={{ once: true, margin: "-100px" }}
-                 transition={{ duration: 1, ease: "circOut" }}
-                 className="w-full flex justify-start"
-               >
-                 <div className="w-full md:w-[37.5%]">
-                   <Image
-                     src={API.mediaUrl(movie.poster_local)}
-                     alt={`${movie.title} Poster`}
-                     width={780}
-                     height={1170}
-                     sizes="(min-width: 768px) 37.5vw, 100vw"
-                     className="w-full h-auto object-cover"
-                   />
-                 </div>
-               </motion.div>
+             {posterSrc && (
+               <MoviePoster src={posterSrc} title={movie.title} />
              )}
          </div>
       </div>
 
       {/* Genealogy Analysis Section */}
-      <GenealogySection 
-        analysisData={movie.analysis_data || null}
-        analysisStatus={movie.analysis_status}
-        onTriggerAnalysis={triggerAnalysis}
-        analyzing={analyzing}
-      />
-
+      <MovieAnalysisSection movieId={id} initialMovie={movie} />
     </div>
   );
 }
