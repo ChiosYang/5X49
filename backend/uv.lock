@@ -48,6 +48,7 @@ dependencies = [
     { name = "sqlmodel" },
     { name = "urllib3" },
     { name = "uvicorn", extra = ["standard"] },
+    { name = "watchfiles" },
 ]
 
 [package.metadata]
@@ -63,6 +64,7 @@ requires-dist = [
     { name = "sqlmodel" },
     { name = "urllib3" },
     { name = "uvicorn", extras = ["standard"] },
+    { name = "watchfiles" },
 ]
 
 [[package]]

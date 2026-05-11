@@ -111,6 +111,7 @@ This document describes the REST API endpoints available in the backend applicat
     "watcher": {
       "running": true,
       "media_dir": "/media",
+      "mode": "events",
       "last_event_at": 1778371200.0,
       "last_error": null,
       "pending": 0
@@ -153,6 +154,7 @@ This document describes the REST API endpoints available in the backend applicat
 - **URL**: `/settings`
 - **Method**: `GET`
 - **Description**: Retrieves whole current system settings dictionary.
+- **Response Notes**: Includes library watcher fields such as `watch_library`, `watch_mode` (`events` or `polling`), `watch_debounce_seconds`, and `watch_interval_seconds`.
 
 ### Get Model Setting
 - **URL**: `/settings/model`
@@ -214,7 +216,8 @@ This document describes the REST API endpoints available in the backend applicat
 - **Description**: Enables or disables the automatic library watcher immediately and persists the setting.
 - **Query Parameters**:
   - `enabled` (boolean, required): Whether to run the watcher.
-  - The watcher uses polling with debounce so Docker and NAS-backed media folders can converge reliably.
+  - The watcher defaults to native filesystem events with debounce to avoid repeated full-tree scans.
+  - Set `watch_mode` to `polling` in settings or `WATCH_MODE=polling` to use the legacy polling fallback for mounts where native events are unreliable.
 
 ### Get Base URL
 - **URL**: `/settings/base-url`

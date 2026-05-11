@@ -104,6 +104,7 @@ def get_default_settings():
         "base_url": os.getenv("API_BASE_URL", "https://openrouter.ai/api/v1"),
         "available_models": get_available_models(),
         "watch_library": os.getenv("WATCH_LIBRARY", "false").lower() == "true",
+        "watch_mode": os.getenv("WATCH_MODE", "events"),
         "watch_debounce_seconds": int(os.getenv("WATCH_DEBOUNCE_SECONDS", "5")),
         "watch_interval_seconds": int(os.getenv("WATCH_INTERVAL_SECONDS", "5")),
         "missing_policy": os.getenv("MISSING_POLICY", "mark_missing"),
@@ -210,6 +211,11 @@ def get_watch_debounce_seconds():
 def get_watch_interval_seconds():
     settings = load_settings()
     return int(settings.get("watch_interval_seconds", 5))
+
+def get_watch_mode():
+    settings = load_settings()
+    mode = str(settings.get("watch_mode", "events")).lower()
+    return mode if mode in {"events", "polling"} else "events"
 
 def get_missing_policy():
     settings = load_settings()

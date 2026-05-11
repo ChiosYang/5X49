@@ -108,5 +108,5 @@ curl -s -X PUT "http://127.0.0.1:11548/settings/model?model_name=moonshotai/kimi
 2. **查询参数** - 使用 `?key=value` 格式
 3. **电影 ID 格式** - 使用 URL-safe ASCII；通常是 `tmdb_id_year` 如 `96721_2013`、`imdb_id_year`，没有外部 ID 时是 `local_<hash>`
 4. **缺失策略** - 资料库校准和监听删除事件默认将电影标记为 `library_status=missing`，不会直接删除数据库记录
-5. **自动监听** - 当前监听器使用轮询和去抖，适合 Docker volume、NAS、SMB 等场景；最终一致性由 `/library/reconcile` 保底
+5. **自动监听** - 当前监听器默认使用 `watchfiles` 原生文件事件和去抖，避免频繁全目录轮询；如遇 Docker volume、NAS、SMB 事件不可靠，可设置 `watch_mode=polling` 或 `WATCH_MODE=polling` 回退；最终一致性由 `/library/reconcile` 保底
 6. **推荐使用 http_request 插件** - 如果有安装的话，比 curl 更安全

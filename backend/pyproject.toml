@@ -16,4 +16,5 @@ dependencies = [
     "sqlmodel",
     "urllib3",
     "uvicorn[standard]",
+    "watchfiles",
 ]
