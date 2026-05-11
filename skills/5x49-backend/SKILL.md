@@ -26,6 +26,7 @@ description: 电影族谱 API (FastAPI) 的接口调用指南
 | 方法 | 路径 | 说明 |
 |------|------|------|
 | GET | `/library` | 获取所有电影 |
+| GET | `/library/events` | 订阅资料库变更 SSE |
 | GET | `/library/{movie_id}` | 获取指定电影详情 |
 | POST | `/library/seed` | 填充测试数据 |
 | POST | `/library/scan?media_dir=/path` | 扫描并校准目录，新增/更新电影并标记缺失 |

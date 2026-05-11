@@ -37,6 +37,21 @@ This document describes the REST API endpoints available in the backend applicat
 - **Description**: Get all movies currently stored in the local library.
 - **Response**: Array of `Movie` objects.
 
+### Subscribe To Library Events
+- **URL**: `/library/events`
+- **Method**: `GET`
+- **Description**: Opens a Server-Sent Events stream for library invalidation events.
+- **Response Type**: `text/event-stream`
+- **Events**:
+  - `connected`: Emitted when the stream is established.
+  - `library_changed`: Emitted after library records are scanned, reconciled, seeded, cleared, or marked missing.
+  - `heartbeat`: Emitted periodically to keep long-lived connections open.
+- **Example Event**:
+  ```text
+  event: library_changed
+  data: {"reason":"folder_scanned","movie_id":"603_1999","folder_path":"/media/The Matrix (1999)","timestamp":"2026-05-11T00:00:00+00:00"}
+  ```
+
 ### Get Movie Details
 - **URL**: `/library/{movie_id}`
 - **Method**: `GET`

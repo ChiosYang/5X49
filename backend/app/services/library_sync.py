@@ -3,6 +3,7 @@ from pathlib import Path
 from threading import Lock
 from typing import Optional
 
+from app.services.event_bus import library_event_bus
 from app.services.library import library_manager
 from app.services.scanner import NFOScanner
 from app.services.settings import get_media_dir
@@ -51,6 +52,7 @@ class LibrarySyncService:
                 last_finished_at=datetime.now(timezone.utc).isoformat(),
                 last_result=result,
             )
+            library_event_bus.publish_library_changed("reconcile", result=result)
             return result
         except Exception as exc:
             self._set_status(
@@ -93,10 +95,25 @@ class LibrarySyncService:
         if not movie_data:
             return None
 
-        return library_manager.upsert_movie(movie_data, preserve_id=preserve_id)
+        movie = library_manager.upsert_movie(movie_data, preserve_id=preserve_id)
+        if movie:
+            library_event_bus.publish_library_changed(
+                "folder_scanned",
+                folder_path=str(folder.resolve()),
+                movie_id=movie.get("id"),
+            )
+        return movie
 
     def mark_path_missing(self, path: str | Path) -> int:
-        return library_manager.mark_path_missing(str(Path(path).resolve()))
+        normalized_path = str(Path(path).resolve())
+        updated = library_manager.mark_path_missing(normalized_path)
+        if updated:
+            library_event_bus.publish_library_changed(
+                "path_missing",
+                path=normalized_path,
+                updated=updated,
+            )
+        return updated
 
     def _set_status(self, **updates):
         with self._lock:

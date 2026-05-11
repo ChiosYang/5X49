@@ -1,8 +1,10 @@
-from fastapi import FastAPI, HTTPException, Query, BackgroundTasks
+from fastapi import FastAPI, HTTPException, Query, BackgroundTasks, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from contextlib import asynccontextmanager
 from app.services.historian import FilmHistorian
+from app.services.event_bus import library_event_bus
 from app.services.library import library_manager
 from app.services.scanner import NFOScanner
 from app.services.analysis import analysis_service
@@ -76,6 +78,19 @@ def get_library():
     """Get all movies in the local library."""
     return library_manager.get_movies()
 
+@app.get("/library/events")
+async def get_library_events(request: Request):
+    """Subscribe to library change events via Server-Sent Events."""
+    return StreamingResponse(
+        library_event_bus.subscribe(request),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
+    )
+
 @app.get("/library/{movie_id}")
 def get_library_movie(movie_id: str):
     """Get details for a specific movie."""
@@ -90,7 +105,9 @@ def get_library_movie(movie_id: str):
 @app.post("/library/seed")
 def seed_library():
     """Seed the library with test data."""
-    return library_manager.seed_test_data()
+    movies = library_manager.seed_test_data()
+    library_event_bus.publish_library_changed("seed", count=len(movies))
+    return movies
 
 @app.post("/library/scan")
 def scan_library(background_tasks: BackgroundTasks, media_dir: str = Query(default=None)):
@@ -172,6 +189,7 @@ def trigger_analysis(movie_id: str, background_tasks: BackgroundTasks):
 def clear_library():
     """Clear all movies from the library."""
     library_manager.clear_library()
+    library_event_bus.publish_library_changed("clear")
     return {"message": "Library cleared"}
 
 # Settings endpoints

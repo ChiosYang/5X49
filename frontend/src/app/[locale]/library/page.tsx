@@ -1,5 +1,6 @@
 import { getTranslations } from "next-intl/server";
 import { getLibrary } from "@/lib/server-api";
+import LibraryEventsRefresher from "./LibraryEventsRefresher";
 import LibraryMovieCard from "./LibraryMovieCard";
 import LibraryRefreshButton from "./LibraryRefreshButton";
 
@@ -10,6 +11,7 @@ export default async function LibraryPage() {
 
   return (
     <div className="min-h-screen bg-black text-white px-8 py-6 md:px-12 md:py-12 selection:bg-white selection:text-black">
+      <LibraryEventsRefresher />
       <div className="w-full space-y-20 pt-32">
         <header className="flex justify-between items-end border-b border-neutral-900 pb-8">
           <div>
