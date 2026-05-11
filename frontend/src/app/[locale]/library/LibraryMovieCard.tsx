@@ -43,9 +43,6 @@ export default function LibraryMovieCard({ movie, priority = false }: LibraryMov
             <h3 className="text-xl md:text-2xl font-bold uppercase leading-none tracking-tight">
               {movie.title_cn || movie.title}
             </h3>
-            <p className="text-xs font-bold uppercase tracking-widest text-neutral-500">
-              {movie.micro_genre || movie.genres?.join(" / ") || movie.director || ""}
-            </p>
           </div>
           <span className="font-serif text-xl italic text-neutral-400">
             {movie.year}
