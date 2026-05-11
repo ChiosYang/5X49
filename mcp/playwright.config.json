@@ -1,0 +1,18 @@
+{
+  "browser": {
+    "browserName": "chromium",
+    "isolated": true,
+    "contextOptions": {
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      }
+    }
+  },
+  "capabilities": ["core", "devtools"],
+  "console": {
+    "level": "warning"
+  },
+  "outputDir": ".mcp-artifacts/playwright",
+  "saveSession": true
+}

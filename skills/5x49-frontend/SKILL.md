@@ -41,3 +41,12 @@ npm run build
 ```
 
 If verification cannot run because of missing dependencies, environment constraints, or external services, report the exact command and reason.
+
+## Browser Verification
+
+When Playwright MCP is available, use it for browser-level checks after UI
+changes that affect interaction, layout, or responsive behavior. See
+`docs/playwright-mcp.md` for the project MCP configuration and recommended
+verification prompts. Treat browser checks as additional evidence on top of
+`npm run lint`, `npm run typecheck`, and `npm run build` when those commands
+apply.

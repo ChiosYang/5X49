@@ -22,6 +22,7 @@ dist/
 out/
 build/
 .next/
+.mcp-artifacts/
 
 # Logs
 *.log

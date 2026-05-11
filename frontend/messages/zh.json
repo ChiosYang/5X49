@@ -9,6 +9,8 @@
     "title": "资料库",
     "subtitle": "探索电影的谱系与传承",
     "scan": "立即扫描",
+    "refreshLibrary": "刷新媒体库",
+    "refreshFailed": "媒体库刷新失败",
     "empty": "资料库为空。点击扫描添加电影。"
   },
   "FilmDetail": {

@@ -9,6 +9,8 @@
     "title": "LIBRARY",
     "subtitle": "Discover the ancestry and legacy of cinema.",
     "scan": "Scan Now",
+    "refreshLibrary": "Refresh library",
+    "refreshFailed": "Library refresh failed",
     "empty": "Your library is empty. Click Scan Now to add movies."
   },
   "FilmDetail": {
