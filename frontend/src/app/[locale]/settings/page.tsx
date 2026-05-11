@@ -637,8 +637,8 @@ function SettingsContent() {
                   <LibrarianTerminal isOpen={terminalOpen} onClose={() => setTerminalOpen(false)} />
 
                   <div className="border-b border-neutral-900 pb-6">
-                    <label className="flex items-center justify-between">
-                      <div>
+                    <div className="flex items-center justify-between gap-4">
+                      <div className="min-w-0">
                         <p className="text-sm font-medium uppercase tracking-widest mb-1">{t("autoScan")}</p>
                         <p className="text-xs text-neutral-600">{t("autoScanDesc")}</p>
                         {syncStatus?.watcher.last_error && (
@@ -649,7 +649,7 @@ function SettingsContent() {
                         type="button"
                         onClick={handleLibraryWatchChange}
                         disabled={watchSaving}
-                        className={`relative h-7 w-12 border transition-colors ${
+                        className={`relative h-7 w-12 shrink-0 border transition-colors ${
                           libraryWatchData?.watch_library
                             ? "bg-white border-white"
                             : "bg-neutral-900 border-neutral-700"
@@ -657,15 +657,11 @@ function SettingsContent() {
                         aria-label={t("autoScan")}
                       >
                         <span
-                          className={`absolute top-1 h-5 w-5 bg-black transition-transform ${
-                            libraryWatchData?.watch_library ? "translate-x-5" : "translate-x-1"
+                          className={`absolute left-1 top-1 h-5 w-5 bg-black transition-transform ${
+                            libraryWatchData?.watch_library ? "translate-x-5" : "translate-x-0"
                           }`}
                         />
                       </button>
-                    </label>
-                    <div className="mt-3 text-xs uppercase tracking-widest text-neutral-600">
-                      {syncStatus?.watcher.running ? t("watching") : t("notWatching")}
-                      {syncStatus?.watcher.pending ? ` · ${syncStatus.watcher.pending} pending` : ""}
                     </div>
                   </div>
                 </div>
