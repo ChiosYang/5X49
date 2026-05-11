@@ -9,7 +9,7 @@ interface LibraryMovieCardProps {
 }
 
 export default function LibraryMovieCard({ movie, priority = false }: LibraryMovieCardProps) {
-  const showBackdrop = movie.library_status !== "missing" && Boolean(movie.backdrop_local);
+  const showBackdrop = Boolean(movie.backdrop_local);
 
   return (
     <Link href={`/library/${movie.id}`}>
@@ -32,11 +32,6 @@ export default function LibraryMovieCard({ movie, priority = false }: LibraryMov
           )}
           {/* Hover Overlay */}
           <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors" />
-          {movie.library_status === "missing" && (
-            <div className="absolute left-3 top-3 bg-red-600 px-2 py-1 text-[10px] font-bold uppercase tracking-widest text-white">
-              Missing
-            </div>
-          )}
         </div>
 
         {/* Title & Info */}
