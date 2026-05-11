@@ -45,7 +45,7 @@ export default function NavigationMenu() {
             {t("library")}
           </Link>
           <Link
-            href="/"
+            href="/search"
             onClick={closeMenu}
             className="block text-5xl md:text-7xl font-bold tracking-tighter text-white hover:text-neutral-400 transition-colors"
           >
