@@ -2,8 +2,8 @@
 NFO File Scanner for tinyMediaManager (TMM) scraped movies.
 Parses .nfo XML files to extract rich metadata.
 """
-import os
-import glob
+import hashlib
+import re
 import xml.etree.ElementTree as ET
 from pathlib import Path
 from typing import Optional
@@ -53,11 +53,9 @@ class NFOScanner:
             return None
 
         title, year = self._parse_title_year(folder.name)
-        safe_title = "".join(c if c.isalnum() or c in (' ', '-', '_') else '' for c in title)
-        safe_title = safe_title.replace(' ', '_') or "Unknown"
 
         movie_data = {
-            "id": f"{safe_title}_{year}" if year else safe_title,
+            "id": self._build_movie_id(None, None, year, folder, video_file),
             "title": title,
             "title_cn": title,
             "year": year,
@@ -128,21 +126,8 @@ class NFOScanner:
             if fanart_elem is not None and fanart_elem.text:
                 fanart_url = fanart_elem.text
             
-            # Generate unique ID
-            # 1. Prioritize TMDB ID (cleanest URL)
-            if tmdb_id:
-                movie_id = f"{tmdb_id}_{year}"
-            # 2. Fallback to IMDB ID
-            elif imdb_id:
-                movie_id = f"{imdb_id}_{year}"
-            # 3. Fallback to Title (sanitize strictly)
-            else:
-                # Remove special chars, keep only alphanumeric, underscore, hyphen
-                safe_title = "".join(c if c.isalnum() or c in (' ', '-', '_') else '' for c in title)
-                safe_title = safe_title.replace(' ', '_')
-                movie_id = f"{safe_title}_{year}"
-            
             video_file = self._find_video_file(folder)
+            movie_id = self._build_movie_id(tmdb_id, imdb_id, year, folder, video_file)
             
             movie_data = {
                 "id": movie_id,
@@ -180,10 +165,49 @@ class NFOScanner:
     def _find_image(self, folder: Path, suffix: str) -> Optional[str]:
         """Find an image file with the given suffix (-poster, -fanart, etc.)."""
         for ext in ['.jpg', '.jpeg', '.png', '.webp']:
-            matches = list(folder.glob(f"*{suffix}{ext}"))
+            matches = sorted(folder.glob(f"*{suffix}{ext}"), key=lambda path: path.name.lower())
             if matches:
                 return matches[0].name
+
+        fallback_names = {
+            "-poster": ["poster"],
+            "-fanart": ["fanart", "thumb"],
+        }.get(suffix, [])
+        for name in fallback_names:
+            for ext in ['.jpg', '.jpeg', '.png', '.webp']:
+                image_path = folder / f"{name}{ext}"
+                if image_path.exists():
+                    return image_path.name
+
         return None
+
+    def _build_movie_id(
+        self,
+        tmdb_id: Optional[str],
+        imdb_id: Optional[str],
+        year: int,
+        folder: Path,
+        video_file: Optional[Path],
+    ) -> str:
+        """Build a stable ASCII ID suitable for URL path segments."""
+        tmdb_part = self._sanitize_id_part(tmdb_id)
+        if tmdb_part:
+            return f"{tmdb_part}_{year}" if year else tmdb_part
+
+        imdb_part = self._sanitize_id_part(imdb_id)
+        if imdb_part:
+            return f"{imdb_part}_{year}" if year else imdb_part
+
+        source_path = video_file.resolve() if video_file else folder.resolve()
+        digest = hashlib.sha256(str(source_path).encode("utf-8")).hexdigest()[:16]
+        return f"local_{digest}"
+
+    def _sanitize_id_part(self, value: Optional[str]) -> Optional[str]:
+        if not value:
+            return None
+
+        cleaned = re.sub(r"[^a-zA-Z0-9_-]+", "", value.strip())
+        return cleaned or None
 
     def _find_video_file(self, folder: Path) -> Optional[Path]:
         """Find the primary video file in a movie folder."""

@@ -29,8 +29,6 @@ class LibraryManager:
                 existing_movie = session.get(Movie, movie_id)
                 if not existing_movie and movie_dict.get("media_path"):
                     existing_movie = self._get_by_media_path(session, movie_dict["media_path"])
-                    if existing_movie:
-                        movie_dict["id"] = existing_movie.id
                 if existing_movie:
                     # Update fields
                     for key, value in movie_dict.items():
@@ -55,8 +53,6 @@ class LibraryManager:
             existing_movie = session.get(Movie, movie_id)
             if not existing_movie and movie_data.get("media_path"):
                 existing_movie = self._get_by_media_path(session, movie_data["media_path"])
-                if existing_movie:
-                    movie_data["id"] = existing_movie.id
 
             if existing_movie:
                 for key, value in movie_data.items():

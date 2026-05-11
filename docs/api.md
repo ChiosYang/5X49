@@ -42,7 +42,7 @@ This document describes the REST API endpoints available in the backend applicat
 - **Method**: `GET`
 - **Description**: Get detailed information for a specific movie by ID.
 - **Path Parameters**:
-  - `movie_id` (string): The ID of the movie.
+  - `movie_id` (string): ASCII movie ID, such as `603_1999`, `tt0133093_1999`, or `local_<hash>`.
 - **Response**: `Movie` object.
 - **Errors**: `400 Invalid ID format`, `404 Movie not found`.
 
@@ -281,7 +281,7 @@ This document describes the REST API endpoints available in the backend applicat
 ### Movie schema
 The core database payload associated with movies.
 
-- `id` (String): Primary key identifier
+- `id` (String): Primary key identifier. IDs are URL-safe ASCII strings. Movies with TMDB/IMDb metadata use that external ID plus year; local-only movies use a stable `local_<hash>` derived from the media path.
 - `title` (String): Movie canonical title
 - `title_cn` (String, Optional): Chinese localized title
 - `year` (Integer): Release year
