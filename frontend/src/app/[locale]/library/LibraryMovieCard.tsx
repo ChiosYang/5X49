@@ -9,14 +9,16 @@ interface LibraryMovieCardProps {
 }
 
 export default function LibraryMovieCard({ movie, priority = false }: LibraryMovieCardProps) {
+  const showBackdrop = movie.library_status !== "missing" && Boolean(movie.backdrop_local);
+
   return (
     <Link href={`/library/${movie.id}`}>
       <div className="group cursor-pointer space-y-4">
         {/* Landscape Still */}
         <div className="relative aspect-video bg-neutral-900 overflow-hidden w-full">
-          {movie.backdrop_local ? (
+          {showBackdrop ? (
             <Image
-              src={API.mediaUrl(movie.backdrop_local)}
+              src={API.mediaUrl(movie.backdrop_local!)}
               alt={movie.title}
               fill
               priority={priority}
