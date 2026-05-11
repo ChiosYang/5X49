@@ -74,7 +74,7 @@ class LibraryManager:
 
     def get_movies(self) -> List[dict]:
         with Session(engine) as session:
-            statement = select(Movie)
+            statement = select(Movie).order_by(Movie.title, Movie.year, Movie.id)
             results = session.exec(statement).all()
             # Convert to dicts for frontend compatibility
             return [movie.model_dump() for movie in results]
