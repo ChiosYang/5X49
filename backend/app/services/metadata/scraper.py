@@ -79,10 +79,11 @@ class MetadataScraper:
             details = self.tmdb.movie_details(selected_id, language=language)
             poster_url = self.tmdb.image_url(details.get("poster_path"), "original")
             backdrop_url = self.tmdb.image_url(details.get("backdrop_path"), "original")
+            filename_prefix = self._filename_prefix(movie, folder)
 
             if options.download_artwork:
-                self.artwork.download(poster_url, folder / "poster.jpg", overwrite=options.overwrite)
-                self.artwork.download(backdrop_url, folder / "fanart.jpg", overwrite=options.overwrite)
+                self.artwork.download(poster_url, folder / f"{filename_prefix}-poster.jpg", overwrite=options.overwrite)
+                self.artwork.download(backdrop_url, folder / f"{filename_prefix}-fanart.jpg", overwrite=options.overwrite)
 
             if options.write_nfo:
                 self.nfo_writer.write_movie_nfo(
@@ -90,6 +91,7 @@ class MetadataScraper:
                     details,
                     poster_url=poster_url,
                     backdrop_url=backdrop_url,
+                    filename_prefix=filename_prefix,
                     overwrite=options.overwrite,
                 )
 
@@ -204,6 +206,33 @@ class MetadataScraper:
             if folder.exists() and folder.is_dir():
                 return folder
         return None
+
+    def _filename_prefix(self, movie: dict, folder: Path) -> str:
+        video_file = movie.get("video_file")
+        if video_file:
+            return Path(video_file).stem
+
+        media_path = movie.get("media_path")
+        if media_path:
+            return Path(media_path).stem
+
+        first_video = self._first_video_file(folder)
+        if first_video:
+            return first_video.stem
+
+        return folder.name
+
+    def _first_video_file(self, folder: Path) -> Optional[Path]:
+        video_extensions = {".mp4", ".mkv", ".avi", ".mov", ".wmv", ".m4v", ".ts", ".iso"}
+        try:
+            videos = [
+                path
+                for path in folder.iterdir()
+                if path.is_file() and path.suffix.lower() in video_extensions
+            ]
+        except OSError:
+            return None
+        return sorted(videos, key=lambda path: path.name.lower())[0] if videos else None
 
     def _mark_failed(self, movie_id: str, message: str) -> ScrapeResult:
         self._update_scrape_state(movie_id, scrape_status="failed", scrape_error=message)

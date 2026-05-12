@@ -10,9 +10,11 @@ class NFOWriter:
         metadata: dict,
         poster_url: Optional[str],
         backdrop_url: Optional[str],
+        filename_prefix: Optional[str] = None,
         overwrite: bool = False,
     ) -> Path:
-        nfo_path = folder / "movie.nfo"
+        nfo_name = f"{filename_prefix}.nfo" if filename_prefix else "movie.nfo"
+        nfo_path = folder / nfo_name
         if nfo_path.exists() and not overwrite:
             return nfo_path
 

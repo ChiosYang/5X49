@@ -111,7 +111,7 @@ curl -s -X POST http://127.0.0.1:11548/library/local_xxx/scrape \
   -d '{"mode":"auto","overwrite":false,"write_nfo":true,"download_artwork":true}'
 ```
 
-成功时会下载 `poster.jpg` / `fanart.jpg`、写入 `movie.nfo`、重新扫描电影文件夹并更新数据库。低置信度匹配会返回 `status=needs_review` 和候选列表。
+成功时会按主视频文件名前缀下载 `<video-stem>-poster.jpg` / `<video-stem>-fanart.jpg`、写入 `<video-stem>.nfo`，然后重新扫描电影文件夹并更新数据库。低置信度匹配会返回 `status=needs_review` 和候选列表。
 
 ### 确认候选并刮削
 ```bash

@@ -138,7 +138,7 @@ This document describes the REST API endpoints available in the backend applicat
 ### Scrape Movie Metadata
 - **URL**: `/library/{movie_id}/scrape`
 - **Method**: `POST`
-- **Description**: Uses TMDB to enrich one movie, optionally downloading `poster.jpg` / `fanart.jpg`, writing `movie.nfo`, rescanning the folder, and updating the database.
+- **Description**: Uses TMDB to enrich one movie, optionally downloading `<video-stem>-poster.jpg` / `<video-stem>-fanart.jpg`, writing `<video-stem>.nfo`, rescanning the folder, and updating the database.
 - **Body**:
   ```json
   {
