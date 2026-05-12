@@ -22,6 +22,8 @@ export interface LibraryMovie {
   backdrop_path?: string;
   backdrop_local?: string;
   poster_local?: string;
+  overview?: string;
+  plot?: string;
   micro_genre?: string;
   genres?: string[];
   director?: string;
