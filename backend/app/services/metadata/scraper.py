@@ -181,18 +181,19 @@ class MetadataScraper:
         )
 
     def _query_from_movie(self, movie: dict) -> tuple[str, int]:
-        title = movie.get("title") or movie.get("folder_name") or movie.get("video_file") or ""
-        year = int(movie.get("year") or 0)
-
-        if not year and movie.get("video_file"):
+        if movie.get("video_file"):
             parsed_title, parsed_year = parse_title_year(movie["video_file"])
-            title = parsed_title or title
-            year = parsed_year
-        elif not year and movie.get("folder_name"):
+            return parsed_title, parsed_year
+
+        if movie.get("media_path"):
+            parsed_title, parsed_year = parse_title_year(Path(movie["media_path"]).name)
+            return parsed_title, parsed_year
+
+        if movie.get("folder_name"):
             parsed_title, parsed_year = parse_title_year(movie["folder_name"])
-            title = parsed_title or title
-            year = parsed_year
-        return title, year
+            return parsed_title, parsed_year
+
+        return movie.get("title") or "", int(movie.get("year") or 0)
 
     def _movie_folder(self, movie: dict) -> Optional[Path]:
         folder_path = movie.get("folder_path")

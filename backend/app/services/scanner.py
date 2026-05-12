@@ -50,24 +50,22 @@ class NFOScanner:
         if not folder.exists() or not folder.is_dir():
             return None
 
-        nfo_files = list(folder.glob("*.nfo"))
-        if nfo_files:
-            return self.parse_nfo(nfo_files[0], folder)
-
         video_file = self._find_video_file(folder)
+
+        nfo_file = self._find_nfo_file(folder, video_file)
+        if nfo_file:
+            return self.parse_nfo(nfo_file, folder)
+
         if not video_file:
             return None
 
-        folder_title, folder_year = self._parse_title_year(folder.name)
         file_title, file_year = self._parse_title_year(video_file.name)
-        title = file_title if file_year and not folder_year else folder_title
-        year = file_year if file_year and not folder_year else folder_year
 
         movie_data = {
-            "id": self._build_movie_id(None, None, year, folder, video_file),
-            "title": title,
-            "title_cn": title,
-            "year": year,
+            "id": self._build_movie_id(None, None, file_year, folder, video_file),
+            "title": file_title,
+            "title_cn": file_title,
+            "year": file_year,
             "genres": [],
             "actors": [],
             "folder_name": folder.name,
@@ -199,6 +197,19 @@ class NFOScanner:
                     return image_path.name
 
         return None
+
+    def _find_nfo_file(self, folder: Path, video_file: Optional[Path]) -> Optional[Path]:
+        if video_file:
+            preferred = folder / f"{video_file.stem}.nfo"
+            if preferred.exists():
+                return preferred
+
+        movie_nfo = folder / "movie.nfo"
+        if movie_nfo.exists():
+            return movie_nfo
+
+        nfo_files = sorted(folder.glob("*.nfo"), key=lambda path: path.name.lower())
+        return nfo_files[0] if nfo_files else None
 
     def _parse_audio_tracks(self, root: ET.Element) -> list[dict]:
         """Extract compact audio stream metadata from TMM/Kodi-style NFO."""

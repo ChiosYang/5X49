@@ -454,4 +454,4 @@ The core database payload associated with movies.
 - `scraped_at` (String, Optional): Last successful metadata scrape timestamp
 - `tmdb_confidence` (Float, Optional): Automatic TMDB match confidence score
 
-Filename-only records are discovery records, not confirmed identity metadata. They are created with `metadata_source=filename` and `scrape_status=pending`; high-confidence or user-confirmed TMDB scraping changes them to `scrape_status=matched`.
+Filename-only records are discovery records, not confirmed identity metadata. They are created with `metadata_source=filename` and `scrape_status=pending`; high-confidence or user-confirmed TMDB scraping changes them to `scrape_status=matched`. For discovery records and TMDB matching, the primary video filename is the source of the parsed title/year; folder names are treated as physical containers, not movie identity.
