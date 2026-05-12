@@ -72,11 +72,13 @@ description: 电影族谱 API (FastAPI) 的接口调用指南
 ```bash
 curl -s http://127.0.0.1:11548/library
 ```
+返回 `Movie[]`，电影对象包含标题、年份、图片路径、简介、导演、类型，以及可选的 `runtime`、`countries`、`audio_tracks` 等本地 NFO 媒体信息。
 
 ### 获取单部电影详情
 ```bash
 curl -s http://127.0.0.1:11548/library/96721_2013
 ```
+返回单个 `Movie` 对象；`audio_tracks` 中的音轨项在可用时包含 `codec`、`language`、`channels`。
 
 ### 触发电影分析
 ```bash

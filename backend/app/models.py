@@ -20,6 +20,8 @@ class Movie(SQLModel, table=True):
     plot: Optional[str] = None  # Sometimes used as overview
     director: Optional[str] = None
     runtime: Optional[int] = None
+    countries: Optional[List[str]] = Field(default=None, sa_column=Column(JSON))
+    audio_tracks: Optional[List[dict]] = Field(default=None, sa_column=Column(JSON))
     imdb_rating: Optional[float] = None
     
     # Complex fields stored as JSON

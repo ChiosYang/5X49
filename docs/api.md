@@ -309,6 +309,8 @@ The core database payload associated with movies.
 - `overview` / `plot` (String, Optional): Descriptive summary
 - `director` (String, Optional)
 - `runtime` (Integer, Optional): Runtime length
+- `countries` (Array of Strings, Optional): Production countries parsed from NFO metadata
+- `audio_tracks` (Array of Dicts, Optional): Audio stream summaries with `codec`, `language`, and `channels` when available
 - `imdb_rating` (Float, Optional): Score
 - `genres` (Array of Strings, Optional)
 - `actors` (Array of Dicts, Optional): Detailed cast

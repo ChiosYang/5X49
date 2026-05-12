@@ -88,6 +88,8 @@ class NFOScanner:
             
             # Genres (multiple <genre> tags)
             genres = [g.text for g in root.findall('genre') if g.text]
+            countries = [c.text for c in root.findall('country') if c.text]
+            audio_tracks = self._parse_audio_tracks(root)
             
             # Director
             director = root.findtext('director') or ""
@@ -138,6 +140,8 @@ class NFOScanner:
                 "imdb_id": imdb_id,
                 "plot": plot,
                 "runtime": runtime,
+                "countries": countries,
+                "audio_tracks": audio_tracks,
                 "genres": genres,
                 "director": director,
                 "imdb_rating": imdb_rating,
@@ -180,6 +184,21 @@ class NFOScanner:
                     return image_path.name
 
         return None
+
+    def _parse_audio_tracks(self, root: ET.Element) -> list[dict]:
+        """Extract compact audio stream metadata from TMM/Kodi-style NFO."""
+        tracks = []
+        for audio in root.findall('.//streamdetails/audio'):
+            codec = audio.findtext('codec') or ""
+            language = audio.findtext('language') or ""
+            channels = audio.findtext('channels') or ""
+            if codec or language or channels:
+                tracks.append({
+                    "codec": codec,
+                    "language": language,
+                    "channels": channels,
+                })
+        return tracks
 
     def _build_movie_id(
         self,

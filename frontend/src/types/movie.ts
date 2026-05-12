@@ -14,6 +14,12 @@ export interface AnalysisData {
   tmdb_metadata?: Record<string, unknown>;
 }
 
+export interface AudioTrack {
+  codec?: string;
+  language?: string;
+  channels?: string;
+}
+
 export interface LibraryMovie {
   id: string;
   title: string;
@@ -24,6 +30,9 @@ export interface LibraryMovie {
   poster_local?: string;
   overview?: string;
   plot?: string;
+  runtime?: number | null;
+  countries?: string[] | null;
+  audio_tracks?: AudioTrack[] | null;
   micro_genre?: string;
   genres?: string[];
   director?: string;
@@ -42,6 +51,9 @@ export interface MovieDetail {
   poster_local?: string;
   overview?: string;
   plot?: string;
+  runtime?: number | null;
+  countries?: string[] | null;
+  audio_tracks?: AudioTrack[] | null;
   micro_genre: string;
   micro_genre_definition?: string;
   analysis_status: string;

@@ -34,6 +34,8 @@ MOVIE_SCHEMA_COLUMNS = {
     "missing_since": "VARCHAR",
     "library_status": "VARCHAR DEFAULT 'available'",
     "metadata_updated_at": "VARCHAR",
+    "countries": "JSON",
+    "audio_tracks": "JSON",
 }
 
 

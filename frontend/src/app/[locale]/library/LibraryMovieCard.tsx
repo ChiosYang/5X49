@@ -1,18 +1,48 @@
 import Image from "next/image";
-import { MessageSquare, Plus, Play, Star, VolumeX } from "lucide-react";
+import { MessageSquare, Plus, Play, Star } from "lucide-react";
 import { Link } from "@/i18n/routing";
 import { API } from "@/lib/api";
-import type { LibraryMovie } from "@/types/movie";
+import type { AudioTrack, LibraryMovie } from "@/types/movie";
 
 interface LibraryMovieCardProps {
   movie: LibraryMovie;
   priority?: boolean;
 }
 
+function formatRuntime(minutes?: number | null) {
+  if (!minutes) {
+    return null;
+  }
+
+  const hours = Math.floor(minutes / 60);
+  const remainingMinutes = minutes % 60;
+
+  if (hours === 0) {
+    return `${remainingMinutes}m`;
+  }
+
+  return remainingMinutes > 0 ? `${hours}h ${remainingMinutes}m` : `${hours}h`;
+}
+
+function formatAudioTrack(track?: AudioTrack | null) {
+  if (!track) {
+    return null;
+  }
+
+  return [track.language, track.codec, track.channels ? `${track.channels}ch` : null]
+    .filter(Boolean)
+    .join(" ");
+}
+
 export default function LibraryMovieCard({ movie, priority = false }: LibraryMovieCardProps) {
   const showBackdrop = Boolean(movie.backdrop_local);
   const title = movie.title_cn || movie.title;
   const description = movie.overview || movie.plot || movie.micro_genre || "";
+  const runtime = formatRuntime(movie.runtime);
+  const country = movie.countries?.[0];
+  const extraCountryCount = Math.max((movie.countries?.length || 0) - 1, 0);
+  const audio = formatAudioTrack(movie.audio_tracks?.[0]);
+  const extraAudioCount = Math.max((movie.audio_tracks?.length || 0) - 1, 0);
   const tags = [
     movie.micro_genre,
     ...(movie.genres || []),
@@ -24,9 +54,9 @@ export default function LibraryMovieCard({ movie, priority = false }: LibraryMov
 
   return (
     <Link href={`/library/${movie.id}`} className="block">
-      <div className="group relative z-0 cursor-pointer space-y-4 hover:z-30">
+      <div className="cursor-pointer space-y-4">
         {/* Landscape Still */}
-        <div className="relative aspect-video w-full bg-neutral-900">
+        <div className="group relative z-0 aspect-video w-full bg-neutral-900 hover:z-30">
           <div className="relative h-full w-full overflow-hidden rounded-md">
             {showBackdrop ? (
               <Image
@@ -52,12 +82,9 @@ export default function LibraryMovieCard({ movie, priority = false }: LibraryMov
                 {movie.director || movie.title} {movie.year}
               </p>
             </div>
-            <span className="invisible absolute right-4 top-4 text-white/90 opacity-0 transition-opacity delay-0 duration-200 group-hover:visible group-hover:opacity-100 group-hover:delay-500">
-              <VolumeX className="h-5 w-5 fill-white/30" />
-            </span>
           </div>
 
-          <div className="invisible absolute left-0 right-0 top-full z-20 origin-top translate-y-1 scale-95 rounded-b-md border border-white/10 border-t-0 bg-neutral-950 p-5 text-white opacity-0 shadow-2xl shadow-black/70 transition-[opacity,transform] delay-0 duration-200 ease-out group-hover:visible group-hover:translate-y-0 group-hover:scale-100 group-hover:opacity-100 group-hover:delay-500">
+          <div className="invisible absolute left-0 right-0 top-full z-20 origin-top translate-y-1 scale-95 rounded-b-md border border-white/10 border-t-0 bg-neutral-950 p-5 text-white opacity-0 transition-[opacity,transform] delay-0 duration-200 ease-out group-hover:visible group-hover:translate-y-0 group-hover:scale-100 group-hover:opacity-100 group-hover:delay-500">
             <div className="space-y-4">
               <div className="flex items-center gap-3">
                 <span
@@ -93,6 +120,19 @@ export default function LibraryMovieCard({ movie, priority = false }: LibraryMov
                   <span className="h-3 w-3 rounded-full border-2 border-neutral-500 bg-neutral-800" />
                   {movie.year}
                 </span>
+                {runtime && <span>{runtime}</span>}
+                {country && (
+                  <span>
+                    {country}
+                    {extraCountryCount > 0 && ` +${extraCountryCount}`}
+                  </span>
+                )}
+                {audio && (
+                  <span>
+                    {audio}
+                    {extraAudioCount > 0 && ` +${extraAudioCount}`}
+                  </span>
+                )}
                 {movie.genres?.[0] && (
                   <span className="flex items-center gap-1">
                     <MessageSquare className="h-3.5 w-3.5 fill-neutral-500 text-neutral-500" />
