@@ -7,7 +7,7 @@ services:
     ports:
       - "11548:8000"
     volumes:
-      - ./backend/data:/app/data
+      - backend_data:/app/data
       - ${MEDIA_DIR:-./media}:/media
     environment:
       - TMDB_API_KEY=${TMDB_API_KEY:-}

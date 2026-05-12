@@ -39,7 +39,7 @@
 
 Docker 部署会自动创建以下 Volume 保持数据：
 
-- `sqlite_data`: 数据库文件
+- `backend_data`: 后端数据库、设置和模型缓存
 - `./media`: 你的电影 NFO 目录（默认映射到宿主机的 `./media`，可在 `docker-compose.yml` 中修改）
 
 ## 🛠️ 常用命令

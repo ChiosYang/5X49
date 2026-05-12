@@ -62,9 +62,9 @@ services:
       - "8000:8000"
     environment:
       - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
-      - MEDIA_DIR=${MEDIA_DIR:-/media}
+      - MEDIA_DIR=/media
     volumes:
-      - ./data:/app/data
+      - backend_data:/app/data
       - ${MEDIA_DIR:-./media}:/media  # Map your local movie folder here
 
   frontend:
@@ -73,6 +73,9 @@ services:
       - "3000:3000"
     depends_on:
       - backend
+
+volumes:
+  backend_data:
 ```
 
 ### 3. Setup Configuration (Optional but Recommended)
