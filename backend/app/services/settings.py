@@ -108,6 +108,9 @@ def get_default_settings():
         "watch_debounce_seconds": int(os.getenv("WATCH_DEBOUNCE_SECONDS", "5")),
         "watch_interval_seconds": int(os.getenv("WATCH_INTERVAL_SECONDS", "5")),
         "media_file_stable_seconds": int(os.getenv("MEDIA_FILE_STABLE_SECONDS", "15")),
+        "auto_organize_root_videos": os.getenv("AUTO_ORGANIZE_ROOT_VIDEOS", "false").lower() == "true",
+        "organize_min_confidence": float(os.getenv("ORGANIZE_MIN_CONFIDENCE", "85")),
+        "organize_rename_style": os.getenv("ORGANIZE_RENAME_STYLE", "preserve_stem"),
         "missing_policy": os.getenv("MISSING_POLICY", "mark_missing"),
     }
 
@@ -221,6 +224,24 @@ def get_watch_mode():
 def get_media_file_stable_seconds():
     settings = load_settings()
     return int(settings.get("media_file_stable_seconds", 15))
+
+def get_auto_organize_root_videos():
+    settings = load_settings()
+    return bool(settings.get("auto_organize_root_videos", False))
+
+def set_auto_organize_root_videos(enabled: bool):
+    settings = load_settings()
+    settings["auto_organize_root_videos"] = bool(enabled)
+    return save_settings(settings)
+
+def get_organize_min_confidence():
+    settings = load_settings()
+    return float(settings.get("organize_min_confidence", 85))
+
+def get_organize_rename_style():
+    settings = load_settings()
+    style = str(settings.get("organize_rename_style", "preserve_stem"))
+    return style if style in {"preserve_stem", "title_year"} else "preserve_stem"
 
 def get_missing_policy():
     settings = load_settings()

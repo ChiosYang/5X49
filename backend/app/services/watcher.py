@@ -5,6 +5,7 @@ from typing import Optional
 
 from app.services.library_sync import library_sync_service
 from app.services.settings import (
+    get_auto_organize_root_videos,
     get_media_dir,
     get_media_file_stable_seconds,
     get_watch_debounce_seconds,
@@ -275,9 +276,19 @@ class LibraryWatcher:
             self._status["pending"] = len(self._pending_folders)
 
         for folder in ready:
-            if Path(folder).exists():
+            folder_path = Path(folder)
+            if folder_path.exists():
                 if self._has_recent_video(folder):
                     self._queue_folder(folder)
+                    continue
+                if self._is_media_root(folder_path):
+                    if get_auto_organize_root_videos():
+                        try:
+                            from app.services.metadata.organizer import root_video_organizer
+
+                            root_video_organizer.organize_root(str(folder_path))
+                        except Exception as exc:
+                            self._record_error(str(exc))
                     continue
                 library_sync_service.scan_folder(folder)
 
@@ -316,6 +327,12 @@ class LibraryWatcher:
         except OSError:
             return False
         return False
+
+    def _is_media_root(self, folder: Path) -> bool:
+        try:
+            return folder.resolve() == Path(get_media_dir()).resolve()
+        except OSError:
+            return False
 
     def _record_error(self, error: Optional[str]):
         with self._lock:

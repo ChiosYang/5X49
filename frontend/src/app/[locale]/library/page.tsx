@@ -2,6 +2,7 @@ import { getTranslations } from "next-intl/server";
 import { getLibrary } from "@/lib/server-api";
 import LibraryEventsRefresher from "./LibraryEventsRefresher";
 import LibraryMovieCard from "./LibraryMovieCard";
+import LibraryOrganizeRootButton from "./LibraryOrganizeRootButton";
 import LibraryRefreshButton from "./LibraryRefreshButton";
 
 export default async function LibraryPage() {
@@ -25,7 +26,10 @@ export default async function LibraryPage() {
             <span className="text-neutral-500 text-xs font-bold uppercase tracking-widest hidden md:inline-block">
               {visibleMovies.length} FILMS
             </span>
-            <LibraryRefreshButton />
+            <div className="flex items-center gap-2">
+              <LibraryOrganizeRootButton />
+              <LibraryRefreshButton />
+            </div>
           </div>
         </header>
 

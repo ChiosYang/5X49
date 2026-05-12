@@ -35,6 +35,8 @@ export const API = {
     libraryIgnore: (id: string) => `${API_BASE_URL}/library/${encodeURIComponent(id)}/ignore`,
     libraryScrapeBatch: () => `${API_BASE_URL}/library/scrape`,
     libraryScrapeStatus: () => `${API_BASE_URL}/library/scrape/status`,
+    libraryOrganizeRoot: () => `${API_BASE_URL}/library/organize-root`,
+    libraryOrganizeStatus: () => `${API_BASE_URL}/library/organize/status`,
     libraryReconcile: () => `${API_BASE_URL}/library/reconcile`,
     libraryCleanupMissing: () => `${API_BASE_URL}/library/missing`,
     librarySyncStatus: () => `${API_BASE_URL}/library/sync/status`,
@@ -47,6 +49,7 @@ export const API = {
     settingsMediaDir: () => `${API_BASE_URL}/settings/media-dir`,
     settingsLanguage: () => `${API_BASE_URL}/settings/language`,
     settingsLibraryWatch: () => `${API_BASE_URL}/settings/library-watch`,
+    settingsAutoOrganizeRoot: () => `${API_BASE_URL}/settings/auto-organize-root`,
 
     // System
     systemListDirs: () => `${API_BASE_URL}/sys/list-dirs`,

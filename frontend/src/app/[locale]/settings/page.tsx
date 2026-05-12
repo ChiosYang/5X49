@@ -24,6 +24,10 @@ import {
   useScrapeLibrary,
   useLibraryScrapeStatus,
   useCleanupMissingMovies,
+  useAutoOrganizeRootSetting,
+  useUpdateAutoOrganizeRoot,
+  useOrganizeRootVideos,
+  useLibraryOrganizeStatus,
   useLibrarySyncStatus,
   useLibraryWatchSetting,
 } from "@/hooks/useSettings";
@@ -41,18 +45,22 @@ function SettingsContent() {
   const { data: mediaDirData } = useMediaDir();
   const { data: langData } = useLanguageSetting();
   const { data: libraryWatchData } = useLibraryWatchSetting();
+  const { data: autoOrganizeRootData } = useAutoOrganizeRootSetting();
   const { data: syncStatus } = useLibrarySyncStatus();
   const { data: scrapeStatus } = useLibraryScrapeStatus();
+  const { data: organizeStatus } = useLibraryOrganizeStatus();
 
   const { trigger: updateModel, isMutating: modelSaving, data: modelSaveResult, reset: resetModelSave } = useUpdateModel();
   const { trigger: updateBaseUrl, isMutating: baseUrlSaving, data: baseUrlSaveResult, reset: resetBaseUrlSave } = useUpdateBaseUrl();
   const { trigger: updateMediaDir, isMutating: mediaDirSaving, data: mediaDirSaveResult, reset: resetMediaDirSave } = useUpdateMediaDir();
   const { trigger: updateLanguage, isMutating: languageSaving } = useUpdateLanguage();
   const { trigger: updateLibraryWatch, isMutating: watchSaving } = useUpdateLibraryWatch();
+  const { trigger: updateAutoOrganizeRoot, isMutating: autoOrganizeSaving } = useUpdateAutoOrganizeRoot();
   const { trigger: testApi, data: apiTestResult, isMutating: apiTesting } = useTestApiKey();
   const { trigger: scanLibrary, isMutating: isScanning, data: scanResult, error: scanError } = useScanLibrary();
   const { trigger: reconcileLibrary, isMutating: isReconciling, data: reconcileResult, error: reconcileError } = useReconcileLibrary();
   const { trigger: scrapeLibrary, isMutating: isScrapingMetadata, data: scrapeResult, error: scrapeError } = useScrapeLibrary();
+  const { trigger: organizeRootVideos, isMutating: isOrganizingRoot, data: organizeResult, error: organizeError } = useOrganizeRootVideos();
   const { trigger: cleanupMissing, isMutating: isCleaningMissing, data: cleanupResult, error: cleanupError } = useCleanupMissingMovies();
 
   // ---- Client State (UI only) ----
@@ -137,12 +145,20 @@ function SettingsContent() {
     await scrapeLibrary();
   };
 
+  const handleOrganizeRootVideos = async () => {
+    await organizeRootVideos();
+  };
+
   const handleCleanupMissing = async () => {
     await cleanupMissing();
   };
 
   const handleLibraryWatchChange = async () => {
     await updateLibraryWatch(!libraryWatchData?.watch_library);
+  };
+
+  const handleAutoOrganizeRootChange = async () => {
+    await updateAutoOrganizeRoot(!autoOrganizeRootData?.auto_organize_root_videos);
   };
 
   // Scan message derived from mutation state
@@ -162,6 +178,13 @@ function SettingsContent() {
       ? "Failed to start metadata scrape"
       : scrapeStatus?.last_result
         ? `Scraped ${scrapeStatus.last_result.succeeded ?? 0}, review ${scrapeStatus.last_result.needs_review ?? 0}`
+        : "";
+  const organizeMessage = organizeResult
+    ? "Root organization started"
+    : organizeError
+      ? "Failed to organize root videos"
+      : organizeStatus?.last_result
+        ? `Organized ${organizeStatus.last_result.organized ?? 0}, review ${organizeStatus.last_result.needs_review ?? 0}`
         : "";
   const cleanupMessage = cleanupResult
     ? `Deleted ${cleanupResult.deleted ?? 0}`
@@ -679,6 +702,41 @@ function SettingsContent() {
                   <div className="border-b border-neutral-900 pb-6">
                     <div className="flex items-center justify-between gap-4">
                       <div>
+                        <p className="text-sm font-medium uppercase tracking-widest mb-1">{t("organizeRoot")}</p>
+                        <p className="text-xs text-neutral-600">{t("organizeRootDesc")}</p>
+                        {organizeStatus?.last_error && (
+                          <p className="text-xs text-red-500 mt-2">{organizeStatus.last_error}</p>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-4">
+                        {organizeMessage && (
+                          <span className={`text-xs uppercase tracking-widest ${
+                            organizeError ? "text-red-500" : "text-green-500"
+                          }`}>
+                            {organizeMessage}
+                          </span>
+                        )}
+                        <button
+                          onClick={handleOrganizeRootVideos}
+                          disabled={isOrganizingRoot || organizeStatus?.state === "running"}
+                          className="flex items-center gap-2 bg-neutral-900 border border-neutral-800 text-white px-4 py-3 text-xs font-medium uppercase tracking-widest hover:bg-neutral-800 hover:border-neutral-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {isOrganizingRoot || organizeStatus?.state === "running" ? (
+                            <>
+                              <Loader2 className="w-3 h-3 animate-spin" />
+                              {t("organizing")}
+                            </>
+                          ) : (
+                            t("organizeNow")
+                          )}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="border-b border-neutral-900 pb-6">
+                    <div className="flex items-center justify-between gap-4">
+                      <div>
                         <p className="text-sm font-medium uppercase tracking-widest mb-1">{t("cleanupMissing")}</p>
                         <p className="text-xs text-neutral-600">{t("cleanupMissingDesc")}</p>
                       </div>
@@ -752,6 +810,32 @@ function SettingsContent() {
                         <span
                           className={`absolute left-1 top-1 h-5 w-5 bg-black transition-transform ${
                             libraryWatchData?.watch_library ? "translate-x-5" : "translate-x-0"
+                          }`}
+                        />
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="border-b border-neutral-900 pb-6">
+                    <div className="flex items-center justify-between gap-4">
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium uppercase tracking-widest mb-1">{t("autoOrganizeRoot")}</p>
+                        <p className="text-xs text-neutral-600">{t("autoOrganizeRootDesc")}</p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleAutoOrganizeRootChange}
+                        disabled={autoOrganizeSaving}
+                        className={`relative h-7 w-12 shrink-0 border transition-colors ${
+                          autoOrganizeRootData?.auto_organize_root_videos
+                            ? "bg-white border-white"
+                            : "bg-neutral-900 border-neutral-700"
+                        } disabled:opacity-50`}
+                        aria-label={t("autoOrganizeRoot")}
+                      >
+                        <span
+                          className={`absolute left-1 top-1 h-5 w-5 bg-black transition-transform ${
+                            autoOrganizeRootData?.auto_organize_root_videos ? "translate-x-5" : "translate-x-0"
                           }`}
                         />
                       </button>

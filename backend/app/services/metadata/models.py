@@ -33,6 +33,15 @@ class BatchScrapeOptions(BaseModel):
     download_artwork: bool = True
 
 
+class RootOrganizeOptions(BaseModel):
+    min_confidence: Optional[float] = None
+    rename_style: Literal["preserve_stem", "title_year"] = "preserve_stem"
+    overwrite: bool = False
+    write_nfo: bool = True
+    download_artwork: bool = True
+    language: Optional[str] = None
+
+
 class ScrapeResult(BaseModel):
     status: Literal["success", "needs_review", "failed", "skipped"]
     movie_id: str

@@ -10,7 +10,8 @@ from app.services.scanner import NFOScanner
 from app.services.analysis import analysis_service
 from app.services.library_sync import library_sync_service
 from app.services.watcher import library_watcher
-from app.services.metadata.models import BatchScrapeOptions, ScrapeOptions
+from app.services.metadata.models import BatchScrapeOptions, RootOrganizeOptions, ScrapeOptions
+from app.services.metadata.organizer import root_video_organizer
 from app.services.metadata.scraper import metadata_scraper
 from app.database import create_db_and_tables
 from app.utils.security import validate_movie_id
@@ -228,6 +229,17 @@ def get_library_scrape_status():
     """Get latest metadata scrape status."""
     return metadata_scraper.get_status()
 
+@app.post("/library/organize-root")
+def organize_root_library_videos(background_tasks: BackgroundTasks, options: RootOrganizeOptions | None = None):
+    """Start background organization of direct video files in the media root."""
+    background_tasks.add_task(root_video_organizer.organize_root, get_media_dir() or DEFAULT_MEDIA_DIR, options)
+    return {"status": "started", "message": "Root video organization started"}
+
+@app.get("/library/organize/status")
+def get_library_organize_status():
+    """Get latest root video organization status."""
+    return root_video_organizer.get_status()
+
 @app.get("/library/sync/status")
 def get_library_sync_status():
     """Get latest library sync and watcher status."""
@@ -261,7 +273,7 @@ def cleanup_missing_library_movies():
     return {"status": "success", "deleted": deleted}
 
 # Settings endpoints
-from app.services.settings import load_settings, save_settings, get_current_model, set_current_model, get_base_url, set_base_url, refresh_models_cache
+from app.services.settings import load_settings, save_settings, get_current_model, set_current_model, get_base_url, set_base_url, refresh_models_cache, get_auto_organize_root_videos, set_auto_organize_root_videos
 
 @app.get("/settings")
 def get_settings():
@@ -336,6 +348,17 @@ def update_library_watch_setting(enabled: bool):
         watcher_status = library_watcher.stop()
 
     return {"status": "success", "watch_library": enabled, "watcher": watcher_status}
+
+@app.get("/settings/auto-organize-root")
+def get_auto_organize_root_setting():
+    return {"auto_organize_root_videos": get_auto_organize_root_videos()}
+
+@app.put("/settings/auto-organize-root")
+def update_auto_organize_root_setting(enabled: bool):
+    success = set_auto_organize_root_videos(enabled)
+    if not success:
+        raise HTTPException(status_code=500, detail="Failed to save settings")
+    return {"status": "success", "auto_organize_root_videos": enabled}
 
 @app.get("/settings/base-url")
 def get_base_url_setting():

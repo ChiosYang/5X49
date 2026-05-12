@@ -57,9 +57,30 @@ export interface LibraryScrapeStatus {
   } | null;
 }
 
+export interface LibraryOrganizeStatus {
+  state: string;
+  last_started_at: string | null;
+  last_finished_at: string | null;
+  last_error: string | null;
+  last_result: {
+    processed?: number;
+    organized?: number;
+    scraped?: number;
+    needs_review?: number;
+    failed?: number;
+    skipped?: number;
+  } | null;
+}
+
 export function useLibraryWatchSetting() {
   return useSWR<{ watch_library: boolean; watcher: LibraryWatchStatus }>(
     API.settingsLibraryWatch()
+  );
+}
+
+export function useAutoOrganizeRootSetting() {
+  return useSWR<{ auto_organize_root_videos: boolean }>(
+    API.settingsAutoOrganizeRoot()
   );
 }
 
@@ -71,6 +92,12 @@ export function useLibrarySyncStatus() {
 
 export function useLibraryScrapeStatus() {
   return useSWR<LibraryScrapeStatus>(API.libraryScrapeStatus(), {
+    refreshInterval: 5000,
+  });
+}
+
+export function useLibraryOrganizeStatus() {
+  return useSWR<LibraryOrganizeStatus>(API.libraryOrganizeStatus(), {
     refreshInterval: 5000,
   });
 }
@@ -147,6 +174,19 @@ export function useUpdateLibraryWatch() {
   );
 }
 
+export function useUpdateAutoOrganizeRoot() {
+  return useSWRMutation(
+    API.settingsAutoOrganizeRoot(),
+    async (url: string, { arg: enabled }: { arg: boolean }) => {
+      const res = await fetch(`${url}?enabled=${enabled}`, {
+        method: "PUT",
+      });
+      if (!res.ok) throw new Error("Failed to update auto organize setting");
+      return res.json();
+    }
+  );
+}
+
 export function useTestApiKey() {
   return useSWRMutation(
     API.settingsTestApiKey(),
@@ -195,6 +235,27 @@ export function useScrapeLibrary() {
         }),
       });
       if (!res.ok) throw new Error("Failed to start metadata scrape");
+      return res.json();
+    }
+  );
+}
+
+export function useOrganizeRootVideos() {
+  return useSWRMutation(
+    API.libraryOrganizeRoot(),
+    async (url: string) => {
+      const res = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          min_confidence: 85,
+          rename_style: "preserve_stem",
+          overwrite: false,
+          write_nfo: true,
+          download_artwork: true,
+        }),
+      });
+      if (!res.ok) throw new Error("Failed to organize root videos");
       return res.json();
     }
   );

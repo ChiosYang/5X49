@@ -215,6 +215,46 @@ This document describes the REST API endpoints available in the backend applicat
   }
   ```
 
+### Organize Root Videos
+- **URL**: `/library/organize-root`
+- **Method**: `POST`
+- **Description**: Starts a background job that looks only at video files placed directly in the configured media root, waits for stable files, matches them with TMDB, moves high-confidence matches into movie folders, then scrapes metadata/artwork/NFO.
+- **Body**:
+  ```json
+  {
+    "min_confidence": 85,
+    "rename_style": "preserve_stem",
+    "overwrite": false,
+    "write_nfo": true,
+    "download_artwork": true,
+    "language": "zh-CN"
+  }
+  ```
+- **Rename Styles**:
+  - `preserve_stem`: Keep the original video filename and move it into a matched movie folder.
+  - `title_year`: Rename the video to the matched title/year.
+- **Response**: `{"status": "started", "message": "Root video organization started"}`
+
+### Get Root Organization Status
+- **URL**: `/library/organize/status`
+- **Method**: `GET`
+- **Description**: Returns latest root video organization state.
+- **Response**:
+  ```json
+  {
+    "state": "idle",
+    "last_error": null,
+    "last_result": {
+      "processed": 1,
+      "organized": 1,
+      "scraped": 1,
+      "needs_review": 0,
+      "failed": 0,
+      "skipped": 0
+    }
+  }
+  ```
+
 ### Get Library Sync Status
 - **URL**: `/library/sync/status`
 - **Method**: `GET`
@@ -355,6 +395,19 @@ This document describes the REST API endpoints available in the backend applicat
   - The watcher defaults to native filesystem events with debounce to avoid repeated full-tree scans.
   - Set `watch_mode` to `polling` in settings or `WATCH_MODE=polling` to use the legacy polling fallback for mounts where native events are unreliable.
 
+### Get Auto Organize Root Setting
+- **URL**: `/settings/auto-organize-root`
+- **Method**: `GET`
+- **Description**: Gets whether stable direct video files in the media root are automatically organized when the watcher is running.
+- **Response**: `{"auto_organize_root_videos": false}`
+
+### Update Auto Organize Root Setting
+- **URL**: `/settings/auto-organize-root`
+- **Method**: `PUT`
+- **Description**: Enables or disables automatic root video organization.
+- **Query Parameters**:
+  - `enabled` (boolean, required): Whether to organize root videos automatically.
+
 ### Get Base URL
 - **URL**: `/settings/base-url`
 - **Method**: `GET`
@@ -455,3 +508,5 @@ The core database payload associated with movies.
 - `tmdb_confidence` (Float, Optional): Automatic TMDB match confidence score
 
 Filename-only records are discovery records, not confirmed identity metadata. They are created with `metadata_source=filename` and `scrape_status=pending`; high-confidence or user-confirmed TMDB scraping changes them to `scrape_status=matched`. For discovery records and TMDB matching, the primary video filename is the source of the parsed title/year; folder names are treated as physical containers, not movie identity.
+
+Root video organization only processes direct files under the media root. It does not scan nested folders as root videos, skips unstable or temporary files, and requires a high-confidence TMDB match before moving files.
