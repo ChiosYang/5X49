@@ -34,6 +34,11 @@ MOVIE_SCHEMA_COLUMNS = {
     "missing_since": "VARCHAR",
     "library_status": "VARCHAR DEFAULT 'available'",
     "metadata_updated_at": "VARCHAR",
+    "metadata_source": "VARCHAR",
+    "scrape_status": "VARCHAR DEFAULT 'pending'",
+    "scrape_error": "VARCHAR",
+    "scraped_at": "VARCHAR",
+    "tmdb_confidence": "FLOAT",
     "countries": "JSON",
     "audio_tracks": "JSON",
 }
@@ -69,6 +74,10 @@ def migrate_sqlite_schema():
         if "library_status" in dict(missing_columns):
             connection.execute(
                 text("UPDATE movie SET library_status = 'available' WHERE library_status IS NULL")
+            )
+        if "scrape_status" in dict(missing_columns):
+            connection.execute(
+                text("UPDATE movie SET scrape_status = 'pending' WHERE scrape_status IS NULL")
             )
 
 def create_db_and_tables():

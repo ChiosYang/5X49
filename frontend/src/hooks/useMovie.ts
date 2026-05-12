@@ -1,7 +1,7 @@
 import useSWR from "swr";
 import useSWRMutation from "swr/mutation";
 import { API } from "@/lib/api";
-import type { MovieDetail } from "@/types/movie";
+import type { MovieDetail, ScrapeResult } from "@/types/movie";
 
 export function useMovie(id: string, fallbackData?: MovieDetail) {
   return useSWR<MovieDetail>(id ? API.libraryMovie(id) : null, {
@@ -31,6 +31,63 @@ export function useRefreshMovie(id: string) {
     async () => {
       const res = await fetch(API.libraryRefresh(id), { method: "POST" });
       if (!res.ok) throw new Error("Failed to refresh movie");
+      return res.json();
+    }
+  );
+}
+
+export function useScrapeMovie(id: string) {
+  return useSWRMutation(
+    API.libraryMovie(id),
+    async (): Promise<ScrapeResult> => {
+      const res = await fetch(API.libraryScrape(id), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          mode: "auto",
+          overwrite: false,
+          write_nfo: true,
+          download_artwork: true,
+        }),
+      });
+      if (!res.ok) {
+        const errorBody = await res.json().catch(() => null);
+        throw new Error(errorBody?.detail?.message || "Failed to scrape metadata");
+      }
+      return res.json();
+    }
+  );
+}
+
+export function useConfirmScrapeMovie(id: string) {
+  return useSWRMutation(
+    API.libraryMovie(id),
+    async (_url: string, { arg: tmdbId }: { arg: number }): Promise<ScrapeResult> => {
+      const res = await fetch(`${API.libraryScrapeConfirm(id)}?tmdb_id=${tmdbId}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          mode: "manual",
+          overwrite: false,
+          write_nfo: true,
+          download_artwork: true,
+        }),
+      });
+      if (!res.ok) {
+        const errorBody = await res.json().catch(() => null);
+        throw new Error(errorBody?.detail?.message || "Failed to scrape metadata");
+      }
+      return res.json();
+    }
+  );
+}
+
+export function useIgnoreMovie(id: string) {
+  return useSWRMutation(
+    API.libraryMovie(id),
+    async () => {
+      const res = await fetch(API.libraryIgnore(id), { method: "POST" });
+      if (!res.ok) throw new Error("Failed to ignore movie");
       return res.json();
     }
   );

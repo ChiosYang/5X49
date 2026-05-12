@@ -33,7 +33,14 @@ description: 电影族谱 API (FastAPI) 的接口调用指南
 | POST | `/library/reconcile?media_dir=/path` | 全量校准资料库 |
 | POST | `/library/scan-folder?folder_path=/path` | 扫描单个电影文件夹 |
 | POST | `/library/{movie_id}/refresh` | 按已知本地文件夹刷新单部电影 |
+| GET | `/metadata/search?query=xxx&year=1999` | 使用 TMDB 搜索候选元数据 |
+| POST | `/library/{movie_id}/scrape` | 使用 TMDB 刮削单部电影，写入图片和 NFO |
+| POST | `/library/{movie_id}/scrape/confirm?tmdb_id=123` | 使用人工确认的 TMDB ID 刮削 |
+| POST | `/library/scrape` | 后台批量刮削未匹配/缺图片/指定电影 |
+| GET | `/library/scrape/status` | 获取批量刮削状态 |
 | GET | `/library/sync/status` | 获取校准与自动监听状态 |
+| POST | `/library/{movie_id}/ignore` | 忽略一条误扫描记录 |
+| DELETE | `/library/missing` | 删除已标记为 missing 的记录 |
 | DELETE | `/library` | 清空电影库 |
 
 ### 分析功能
@@ -90,6 +97,47 @@ curl -s -X POST http://127.0.0.1:11548/library/analyze/96721_2013
 curl -s -X POST http://127.0.0.1:11548/library/96721_2013/refresh
 ```
 
+### 搜索 TMDB 元数据
+```bash
+curl -s "http://127.0.0.1:11548/metadata/search?query=Inception&year=2010"
+```
+
+返回带 `score` 的候选列表。后端使用用户配置的 `TMDB_API_KEY`。
+
+### 刮削单部电影
+```bash
+curl -s -X POST http://127.0.0.1:11548/library/local_xxx/scrape \
+  -H "Content-Type: application/json" \
+  -d '{"mode":"auto","overwrite":false,"write_nfo":true,"download_artwork":true}'
+```
+
+成功时会下载 `poster.jpg` / `fanart.jpg`、写入 `movie.nfo`、重新扫描电影文件夹并更新数据库。低置信度匹配会返回 `status=needs_review` 和候选列表。
+
+### 确认候选并刮削
+```bash
+curl -s -X POST "http://127.0.0.1:11548/library/local_xxx/scrape/confirm?tmdb_id=27205" \
+  -H "Content-Type: application/json" \
+  -d '{"overwrite":false,"write_nfo":true,"download_artwork":true}'
+```
+
+### 批量刮削未匹配电影
+```bash
+curl -s -X POST http://127.0.0.1:11548/library/scrape \
+  -H "Content-Type: application/json" \
+  -d '{"scope":"unscraped","overwrite":false,"write_nfo":true,"download_artwork":true}'
+```
+`unscraped` 只处理 `metadata_source=filename` 且 `scrape_status=pending/failed` 的可用电影；`ignored` 和 `missing` 会跳过。
+
+### 忽略误扫描记录
+```bash
+curl -s -X POST http://127.0.0.1:11548/library/local_xxx/ignore
+```
+
+### 清理缺失记录
+```bash
+curl -s -X DELETE http://127.0.0.1:11548/library/missing
+```
+
 ### 全量校准资料库
 ```bash
 curl -s -X POST http://127.0.0.1:11548/library/reconcile
@@ -111,5 +159,8 @@ curl -s -X PUT "http://127.0.0.1:11548/settings/model?model_name=moonshotai/kimi
 2. **查询参数** - 使用 `?key=value` 格式
 3. **电影 ID 格式** - 使用 URL-safe ASCII；通常是 `tmdb_id_year` 如 `96721_2013`、`imdb_id_year`，没有外部 ID 时是 `local_<hash>`
 4. **缺失策略** - 资料库校准和监听删除事件默认将电影标记为 `library_status=missing`，不会直接删除数据库记录
-5. **自动监听** - 当前监听器默认使用 `watchfiles` 原生文件事件和去抖，避免频繁全目录轮询；如遇 Docker volume、NAS、SMB 事件不可靠，可设置 `watch_mode=polling` 或 `WATCH_MODE=polling` 回退；最终一致性由 `/library/reconcile` 保底
-6. **推荐使用 http_request 插件** - 如果有安装的话，比 curl 更安全
+5. **忽略策略** - `library_status=ignored` 的记录会从正常资料库隐藏，并跳过校准缺失标记和批量刮削
+6. **自动监听** - 当前监听器默认使用 `watchfiles` 原生文件事件和去抖，避免频繁全目录轮询；如遇 Docker volume、NAS、SMB 事件不可靠，可设置 `watch_mode=polling` 或 `WATCH_MODE=polling` 回退；新增视频会等待 `media_file_stable_seconds` 后再扫描；最终一致性由 `/library/reconcile` 保底
+7. **TMDB 刮削** - 需要用户自己的 `TMDB_API_KEY`。默认不覆盖已有文件，优先用于 `metadata_source=filename` 且 `scrape_status=pending/failed` 的电影
+8. **发现记录** - 无 NFO 视频会作为发现记录入库，通常是 `metadata_source=filename`、`scrape_status=pending`；它不是已确认电影身份，需刮削或人工确认后变为 `matched`
+9. **推荐使用 http_request 插件** - 如果有安装的话，比 curl 更安全

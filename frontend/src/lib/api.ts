@@ -22,12 +22,21 @@ export const API = {
     // === Media / Static Resources ===
     mediaUrl: (path: string) => `${API_BASE_URL}${encodeMediaPath(path)}`,
 
+    // === Metadata ===
+    metadataSearch: () => `${API_BASE_URL}/metadata/search`,
+
     // === Library ===
     library: () => `${API_BASE_URL}/library`,
     libraryMovie: (id: string) => `${API_BASE_URL}/library/${encodeURIComponent(id)}`,
     libraryAnalyze: (id: string) => `${API_BASE_URL}/library/analyze/${encodeURIComponent(id)}`,
     libraryRefresh: (id: string) => `${API_BASE_URL}/library/${encodeURIComponent(id)}/refresh`,
+    libraryScrape: (id: string) => `${API_BASE_URL}/library/${encodeURIComponent(id)}/scrape`,
+    libraryScrapeConfirm: (id: string) => `${API_BASE_URL}/library/${encodeURIComponent(id)}/scrape/confirm`,
+    libraryIgnore: (id: string) => `${API_BASE_URL}/library/${encodeURIComponent(id)}/ignore`,
+    libraryScrapeBatch: () => `${API_BASE_URL}/library/scrape`,
+    libraryScrapeStatus: () => `${API_BASE_URL}/library/scrape/status`,
     libraryReconcile: () => `${API_BASE_URL}/library/reconcile`,
+    libraryCleanupMissing: () => `${API_BASE_URL}/library/missing`,
     librarySyncStatus: () => `${API_BASE_URL}/library/sync/status`,
     librarySeed: () => `${API_BASE_URL}/library/seed`,
     libraryClear: () => `${API_BASE_URL}/library/clear`,

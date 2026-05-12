@@ -36,8 +36,13 @@ export interface LibraryMovie {
   micro_genre?: string;
   genres?: string[];
   director?: string;
-  library_status?: "available" | "missing";
+  library_status?: "available" | "missing" | "ignored";
   missing_since?: string | null;
+  metadata_source?: string | null;
+  scrape_status?: "pending" | "matched" | "needs_review" | "failed";
+  scrape_error?: string | null;
+  scraped_at?: string | null;
+  tmdb_confidence?: number | null;
 }
 
 export interface MovieDetail {
@@ -65,6 +70,31 @@ export interface MovieDetail {
   file_mtime?: number | null;
   last_seen_at?: string | null;
   missing_since?: string | null;
-  library_status?: "available" | "missing";
+  library_status?: "available" | "missing" | "ignored";
   metadata_updated_at?: string | null;
+  metadata_source?: string | null;
+  scrape_status?: "pending" | "matched" | "needs_review" | "failed";
+  scrape_error?: string | null;
+  scraped_at?: string | null;
+  tmdb_confidence?: number | null;
+}
+
+export interface MetadataSearchResult {
+  tmdb_id: number;
+  title: string;
+  original_title?: string | null;
+  year: number;
+  overview: string;
+  poster_path?: string | null;
+  backdrop_path?: string | null;
+  popularity: number;
+  score: number;
+}
+
+export interface ScrapeResult {
+  status: "success" | "needs_review" | "failed" | "skipped";
+  movie_id: string;
+  message: string;
+  movie?: MovieDetail;
+  candidates: MetadataSearchResult[];
 }

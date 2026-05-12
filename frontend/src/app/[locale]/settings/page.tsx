@@ -21,6 +21,9 @@ import {
   useTestApiKey,
   useScanLibrary,
   useReconcileLibrary,
+  useScrapeLibrary,
+  useLibraryScrapeStatus,
+  useCleanupMissingMovies,
   useLibrarySyncStatus,
   useLibraryWatchSetting,
 } from "@/hooks/useSettings";
@@ -39,6 +42,7 @@ function SettingsContent() {
   const { data: langData } = useLanguageSetting();
   const { data: libraryWatchData } = useLibraryWatchSetting();
   const { data: syncStatus } = useLibrarySyncStatus();
+  const { data: scrapeStatus } = useLibraryScrapeStatus();
 
   const { trigger: updateModel, isMutating: modelSaving, data: modelSaveResult, reset: resetModelSave } = useUpdateModel();
   const { trigger: updateBaseUrl, isMutating: baseUrlSaving, data: baseUrlSaveResult, reset: resetBaseUrlSave } = useUpdateBaseUrl();
@@ -48,6 +52,8 @@ function SettingsContent() {
   const { trigger: testApi, data: apiTestResult, isMutating: apiTesting } = useTestApiKey();
   const { trigger: scanLibrary, isMutating: isScanning, data: scanResult, error: scanError } = useScanLibrary();
   const { trigger: reconcileLibrary, isMutating: isReconciling, data: reconcileResult, error: reconcileError } = useReconcileLibrary();
+  const { trigger: scrapeLibrary, isMutating: isScrapingMetadata, data: scrapeResult, error: scrapeError } = useScrapeLibrary();
+  const { trigger: cleanupMissing, isMutating: isCleaningMissing, data: cleanupResult, error: cleanupError } = useCleanupMissingMovies();
 
   // ---- Client State (UI only) ----
   const [activeSection, setActiveSection] = useState<SettingSection>("appearance");
@@ -127,6 +133,14 @@ function SettingsContent() {
     await reconcileLibrary();
   };
 
+  const handleScrapeLibrary = async () => {
+    await scrapeLibrary();
+  };
+
+  const handleCleanupMissing = async () => {
+    await cleanupMissing();
+  };
+
   const handleLibraryWatchChange = async () => {
     await updateLibraryWatch(!libraryWatchData?.watch_library);
   };
@@ -141,6 +155,18 @@ function SettingsContent() {
     ? `Scanned ${reconcileResult.scanned ?? 0}, missing ${reconcileResult.missing ?? 0}`
     : reconcileError
       ? "Failed to reconcile"
+      : "";
+  const scrapeMessage = scrapeResult
+    ? "Metadata scrape started"
+    : scrapeError
+      ? "Failed to start metadata scrape"
+      : scrapeStatus?.last_result
+        ? `Scraped ${scrapeStatus.last_result.succeeded ?? 0}, review ${scrapeStatus.last_result.needs_review ?? 0}`
+        : "";
+  const cleanupMessage = cleanupResult
+    ? `Deleted ${cleanupResult.deleted ?? 0}`
+    : cleanupError
+      ? "Failed to clean missing"
       : "";
 
   return (
@@ -609,6 +635,73 @@ function SettingsContent() {
                             </>
                           ) : (
                             t("reconcileNow")
+                          )}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="border-b border-neutral-900 pb-6">
+                    <div className="flex items-center justify-between gap-4">
+                      <div>
+                        <p className="text-sm font-medium uppercase tracking-widest mb-1">{t("scrapeMetadata")}</p>
+                        <p className="text-xs text-neutral-600">{t("scrapeMetadataDesc")}</p>
+                        {scrapeStatus?.last_error && (
+                          <p className="text-xs text-red-500 mt-2">{scrapeStatus.last_error}</p>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-4">
+                        {scrapeMessage && (
+                          <span className={`text-xs uppercase tracking-widest ${
+                            scrapeError ? "text-red-500" : "text-green-500"
+                          }`}>
+                            {scrapeMessage}
+                          </span>
+                        )}
+                        <button
+                          onClick={handleScrapeLibrary}
+                          disabled={isScrapingMetadata || scrapeStatus?.state === "running"}
+                          className="flex items-center gap-2 bg-neutral-900 border border-neutral-800 text-white px-4 py-3 text-xs font-medium uppercase tracking-widest hover:bg-neutral-800 hover:border-neutral-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {isScrapingMetadata || scrapeStatus?.state === "running" ? (
+                            <>
+                              <Loader2 className="w-3 h-3 animate-spin" />
+                              {t("scraping")}
+                            </>
+                          ) : (
+                            t("scrapeNow")
+                          )}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="border-b border-neutral-900 pb-6">
+                    <div className="flex items-center justify-between gap-4">
+                      <div>
+                        <p className="text-sm font-medium uppercase tracking-widest mb-1">{t("cleanupMissing")}</p>
+                        <p className="text-xs text-neutral-600">{t("cleanupMissingDesc")}</p>
+                      </div>
+                      <div className="flex items-center gap-4">
+                        {cleanupMessage && (
+                          <span className={`text-xs uppercase tracking-widest ${
+                            cleanupError ? "text-red-500" : "text-green-500"
+                          }`}>
+                            {cleanupMessage}
+                          </span>
+                        )}
+                        <button
+                          onClick={handleCleanupMissing}
+                          disabled={isCleaningMissing}
+                          className="flex items-center gap-2 bg-neutral-900 border border-neutral-800 text-white px-4 py-3 text-xs font-medium uppercase tracking-widest hover:bg-neutral-800 hover:border-neutral-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {isCleaningMissing ? (
+                            <>
+                              <Loader2 className="w-3 h-3 animate-spin" />
+                              {t("cleaning")}
+                            </>
+                          ) : (
+                            t("cleanupNow")
                           )}
                         </button>
                       </div>

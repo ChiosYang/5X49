@@ -14,6 +14,12 @@ class NFOScanner:
     """Scans a directory for TMM-scraped movie folders and parses .nfo files."""
 
     video_extensions = ['.mp4', '.mkv', '.avi', '.mov', '.wmv', '.m4v', '.ts', '.iso']
+    ignored_file_suffixes = (
+        ".part",
+        ".tmp",
+        ".download",
+        ".crdownload",
+    )
 
     def __init__(self, media_dir: str):
         self.media_dir = Path(media_dir)
@@ -52,7 +58,10 @@ class NFOScanner:
         if not video_file:
             return None
 
-        title, year = self._parse_title_year(folder.name)
+        folder_title, folder_year = self._parse_title_year(folder.name)
+        file_title, file_year = self._parse_title_year(video_file.name)
+        title = file_title if file_year and not folder_year else folder_title
+        year = file_year if file_year and not folder_year else folder_year
 
         movie_data = {
             "id": self._build_movie_id(None, None, year, folder, video_file),
@@ -64,6 +73,8 @@ class NFOScanner:
             "folder_name": folder.name,
             "video_file": video_file.name,
             "nfo_source": "filename",
+            "metadata_source": "filename",
+            "scrape_status": "pending",
             "poster_local": None,
             "backdrop_local": None,
             "poster_path": None,
@@ -130,6 +141,8 @@ class NFOScanner:
             
             video_file = self._find_video_file(folder)
             movie_id = self._build_movie_id(tmdb_id, imdb_id, year, folder, video_file)
+            generator = root.findtext('generator') or ""
+            nfo_source = "tmdb" if generator.strip().lower() == "5x49" else "tmm"
             
             movie_data = {
                 "id": movie_id,
@@ -155,7 +168,9 @@ class NFOScanner:
                 # Folder info
                 "folder_name": folder_name,
                 "video_file": video_file.name if video_file else None,
-                "nfo_source": "tmm"
+                "nfo_source": nfo_source,
+                "metadata_source": nfo_source,
+                "scrape_status": "matched",
             }
             return self._with_file_info(movie_data, folder, video_file)
 
@@ -232,9 +247,19 @@ class NFOScanner:
         """Find the primary video file in a movie folder."""
         for ext in self.video_extensions:
             videos = list(folder.glob(f"*{ext}")) + list(folder.glob(f"*{ext.upper()}"))
-            if videos:
-                return sorted(videos, key=lambda path: path.name.lower())[0]
+            usable_videos = [video for video in videos if self._is_usable_video_file(video)]
+            if usable_videos:
+                return sorted(usable_videos, key=lambda path: path.name.lower())[0]
         return None
+
+    def _is_usable_video_file(self, path: Path) -> bool:
+        lower_name = path.name.lower()
+        if lower_name.endswith(self.ignored_file_suffixes):
+            return False
+        try:
+            return path.is_file() and path.stat().st_size > 0
+        except OSError:
+            return False
 
     def _with_file_info(self, movie_data: dict, folder: Path, video_file: Optional[Path]) -> dict:
         now = datetime.now(timezone.utc).isoformat()

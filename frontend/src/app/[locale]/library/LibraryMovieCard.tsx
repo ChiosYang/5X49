@@ -34,6 +34,20 @@ function formatAudioTrack(track?: AudioTrack | null) {
     .join(" ");
 }
 
+function getMetadataBadge(movie: LibraryMovie) {
+  if (movie.metadata_source !== "filename" && movie.scrape_status !== "failed") {
+    return null;
+  }
+
+  if (movie.scrape_status === "needs_review") {
+    return "Needs review";
+  }
+  if (movie.scrape_status === "failed") {
+    return "Match failed";
+  }
+  return "Unmatched";
+}
+
 export default function LibraryMovieCard({ movie, priority = false }: LibraryMovieCardProps) {
   const showBackdrop = Boolean(movie.backdrop_local);
   const title = movie.title_cn || movie.title;
@@ -42,6 +56,7 @@ export default function LibraryMovieCard({ movie, priority = false }: LibraryMov
   const country = movie.countries?.[0];
   const extraCountryCount = Math.max((movie.countries?.length || 0) - 1, 0);
   const audio = formatAudioTrack(movie.audio_tracks?.[0]);
+  const metadataBadge = getMetadataBadge(movie);
   const extraAudioCount = Math.max((movie.audio_tracks?.length || 0) - 1, 0);
   const tags = [
     movie.micro_genre,
@@ -71,6 +86,11 @@ export default function LibraryMovieCard({ movie, priority = false }: LibraryMov
               <div className="flex h-full w-full items-center justify-center border border-neutral-800 transition-transform delay-0 duration-200 ease-out group-hover:scale-[1.05] group-hover:delay-500">
                 <span className="font-serif text-4xl text-neutral-800">?</span>
               </div>
+            )}
+            {metadataBadge && (
+              <span className="absolute left-3 top-3 z-10 rounded-sm bg-black/80 px-2 py-1 text-[10px] font-black uppercase tracking-widest text-white">
+                {metadataBadge}
+              </span>
             )}
             {/* Hover Overlay */}
             <div className="absolute inset-0 bg-black/0 transition-colors delay-0 duration-200 group-hover:bg-black/35 group-hover:delay-500" />
@@ -164,6 +184,11 @@ export default function LibraryMovieCard({ movie, priority = false }: LibraryMov
             <h3 className="text-xl md:text-2xl font-bold uppercase leading-none tracking-tight">
               {title}
             </h3>
+            {metadataBadge && (
+              <p className="text-[10px] font-black uppercase tracking-widest text-neutral-500">
+                {metadataBadge}
+              </p>
+            )}
           </div>
           <span className="font-serif text-xl italic text-neutral-400">
             {movie.year}

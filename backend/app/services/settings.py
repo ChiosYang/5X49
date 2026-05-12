@@ -107,6 +107,7 @@ def get_default_settings():
         "watch_mode": os.getenv("WATCH_MODE", "events"),
         "watch_debounce_seconds": int(os.getenv("WATCH_DEBOUNCE_SECONDS", "5")),
         "watch_interval_seconds": int(os.getenv("WATCH_INTERVAL_SECONDS", "5")),
+        "media_file_stable_seconds": int(os.getenv("MEDIA_FILE_STABLE_SECONDS", "15")),
         "missing_policy": os.getenv("MISSING_POLICY", "mark_missing"),
     }
 
@@ -216,6 +217,10 @@ def get_watch_mode():
     settings = load_settings()
     mode = str(settings.get("watch_mode", "events")).lower()
     return mode if mode in {"events", "polling"} else "events"
+
+def get_media_file_stable_seconds():
+    settings = load_settings()
+    return int(settings.get("media_file_stable_seconds", 15))
 
 def get_missing_policy():
     settings = load_settings()

@@ -31,6 +31,32 @@ This document describes the REST API endpoints available in the backend applicat
 
 ## Library Management
 
+### Search Metadata
+- **URL**: `/metadata/search`
+- **Method**: `GET`
+- **Description**: Searches TMDB using the configured `TMDB_API_KEY` and returns scored movie candidates.
+- **Query Parameters**:
+  - `query` (string, required): Title or filename-derived query.
+  - `year` (integer, optional): Release year hint.
+  - `language` (string, optional): TMDB language such as `zh-CN` or `en-US`. Defaults to the app language.
+- **Response**:
+  ```json
+  [
+    {
+      "tmdb_id": 27205,
+      "title": "Inception",
+      "original_title": "Inception",
+      "year": 2010,
+      "overview": "...",
+      "poster_path": "/...",
+      "backdrop_path": "/...",
+      "popularity": 80.5,
+      "score": 95.0
+    }
+  ]
+  ```
+- **Errors**: `503 TMDB_API_KEY is not configured`, `502 Metadata search failed`.
+
 ### Get All Movies
 - **URL**: `/library`
 - **Method**: `GET`
@@ -109,6 +135,86 @@ This document describes the REST API endpoints available in the backend applicat
 - **Response**: `{"status": "success", "movie_id": "...", "updated": true, "movie": Movie}`
 - **Errors**: `400 Invalid ID format`, `404 Movie not found`, `409 Movie does not have a folder path`.
 
+### Scrape Movie Metadata
+- **URL**: `/library/{movie_id}/scrape`
+- **Method**: `POST`
+- **Description**: Uses TMDB to enrich one movie, optionally downloading `poster.jpg` / `fanart.jpg`, writing `movie.nfo`, rescanning the folder, and updating the database.
+- **Body**:
+  ```json
+  {
+    "mode": "auto",
+    "language": "zh-CN",
+    "overwrite": false,
+    "write_nfo": true,
+    "download_artwork": true,
+    "tmdb_id": null
+  }
+  ```
+- **Response**:
+  ```json
+  {
+    "status": "success",
+    "movie_id": "local_...",
+    "message": "Metadata scraped",
+    "movie": {},
+    "candidates": []
+  }
+  ```
+- **Needs Review**: If the best automatic match has low confidence, returns `status: "needs_review"` with up to five scored `candidates`.
+- **Errors**: `400 Invalid ID format`, `409` with a scrape result payload when scraping fails.
+
+### Confirm Movie Metadata Match
+- **URL**: `/library/{movie_id}/scrape/confirm`
+- **Method**: `POST`
+- **Description**: Scrapes one movie using a user-selected TMDB ID.
+- **Query Parameters**:
+  - `tmdb_id` (integer, required): Confirmed TMDB movie ID.
+- **Body**: Same options as Scrape Movie Metadata.
+- **Response**: Same shape as Scrape Movie Metadata.
+
+### Scrape Library Metadata
+- **URL**: `/library/scrape`
+- **Method**: `POST`
+- **Description**: Starts a background metadata scrape for movies matching the requested scope.
+- **Body**:
+  ```json
+  {
+    "scope": "unscraped",
+    "movie_ids": null,
+    "language": "zh-CN",
+    "overwrite": false,
+    "write_nfo": true,
+    "download_artwork": true
+  }
+  ```
+- **Scopes**:
+  - `unscraped`: Available movies with `metadata_source=filename` and `scrape_status` of `pending` or `failed`.
+  - `missing_artwork`: Movies missing local poster or backdrop.
+  - `all`: Every available movie.
+  - `selected`: Only IDs listed in `movie_ids`.
+- **Response**: `{"status": "started", "message": "Metadata scrape started"}`
+
+### Get Metadata Scrape Status
+- **URL**: `/library/scrape/status`
+- **Method**: `GET`
+- **Description**: Returns latest batch metadata scrape state.
+- **Response**:
+  ```json
+  {
+    "state": "idle",
+    "last_started_at": "2026-05-12T00:00:00+00:00",
+    "last_finished_at": "2026-05-12T00:01:00+00:00",
+    "last_error": null,
+    "last_result": {
+      "processed": 10,
+      "succeeded": 8,
+      "needs_review": 1,
+      "failed": 1,
+      "skipped": 0
+    }
+  }
+  ```
+
 ### Get Library Sync Status
 - **URL**: `/library/sync/status`
 - **Method**: `GET`
@@ -140,6 +246,21 @@ This document describes the REST API endpoints available in the backend applicat
 - **Description**: Clears all movies from the library database.
 - **Response**: `{"message": "Library cleared"}`
 
+### Ignore Movie
+- **URL**: `/library/{movie_id}/ignore`
+- **Method**: `POST`
+- **Description**: Marks one movie as `library_status=ignored` so it is hidden from normal library views and skipped by reconciliation/scrape batches.
+- **Path Parameters**:
+  - `movie_id` (string): The ID of the movie.
+- **Response**: `{"status": "success", "movie": Movie}`
+- **Errors**: `400 Invalid ID format`, `404 Movie not found`.
+
+### Clean Missing Records
+- **URL**: `/library/missing`
+- **Method**: `DELETE`
+- **Description**: Deletes database records already marked as `library_status=missing`.
+- **Response**: `{"status": "success", "deleted": 3}`
+
 ---
 
 ## Analysis
@@ -169,7 +290,7 @@ This document describes the REST API endpoints available in the backend applicat
 - **URL**: `/settings`
 - **Method**: `GET`
 - **Description**: Retrieves whole current system settings dictionary.
-- **Response Notes**: Includes library watcher fields such as `watch_library`, `watch_mode` (`events` or `polling`), `watch_debounce_seconds`, and `watch_interval_seconds`.
+- **Response Notes**: Includes library watcher fields such as `watch_library`, `watch_mode` (`events` or `polling`), `watch_debounce_seconds`, `watch_interval_seconds`, and `media_file_stable_seconds`.
 
 ### Get Model Setting
 - **URL**: `/settings/model`
@@ -325,5 +446,12 @@ The core database payload associated with movies.
 - `file_mtime` (Float, Optional): Primary video file modification time
 - `last_seen_at` (String, Optional): Last successful scan timestamp
 - `missing_since` (String, Optional): Timestamp when the movie was first marked missing
-- `library_status` (String): Library availability status, `available` or `missing`
+- `library_status` (String): Library availability status, `available`, `missing`, or `ignored`
 - `metadata_updated_at` (String, Optional): Last metadata parse timestamp
+- `metadata_source` (String, Optional): Metadata origin such as `filename`, `tmm`, or `tmdb`
+- `scrape_status` (String): Metadata scrape status, `pending`, `matched`, `needs_review`, or `failed`
+- `scrape_error` (String, Optional): Last metadata scrape error
+- `scraped_at` (String, Optional): Last successful metadata scrape timestamp
+- `tmdb_confidence` (Float, Optional): Automatic TMDB match confidence score
+
+Filename-only records are discovery records, not confirmed identity metadata. They are created with `metadata_source=filename` and `scrape_status=pending`; high-confidence or user-confirmed TMDB scraping changes them to `scrape_status=matched`.

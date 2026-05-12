@@ -1,0 +1,234 @@
+from datetime import datetime, timezone
+from pathlib import Path
+from threading import Lock
+from typing import Optional
+
+from app.services.event_bus import library_event_bus
+from app.services.library import library_manager
+from app.services.metadata.artwork import ArtworkDownloader
+from app.services.metadata.matcher import parse_title_year, score_candidates
+from app.services.metadata.models import BatchScrapeOptions, MetadataSearchResult, ScrapeOptions, ScrapeResult
+from app.services.metadata.nfo_writer import NFOWriter
+from app.services.metadata.tmdb import TMDBClient
+from app.services.settings import get_language
+
+
+class MetadataScraper:
+    def __init__(self):
+        self.tmdb = TMDBClient()
+        self.artwork = ArtworkDownloader()
+        self.nfo_writer = NFOWriter()
+        self._lock = Lock()
+        self._status = {
+            "state": "idle",
+            "last_started_at": None,
+            "last_finished_at": None,
+            "last_error": None,
+            "last_result": None,
+        }
+
+    def get_status(self) -> dict:
+        with self._lock:
+            return dict(self._status)
+
+    def search(self, query: str, year: Optional[int] = None, language: Optional[str] = None) -> list[MetadataSearchResult]:
+        target_language = self._language(language)
+        results = self.tmdb.search_movies(query, year=year, language=target_language)
+        return score_candidates(query, year or 0, results)
+
+    def scrape_movie(self, movie_id: str, options: ScrapeOptions) -> ScrapeResult:
+        movie = library_manager.get_movie(movie_id)
+        if not movie:
+            return ScrapeResult(status="failed", movie_id=movie_id, message="Movie not found")
+
+        folder = self._movie_folder(movie)
+        if not folder:
+            return self._mark_failed(movie_id, "Movie does not have an existing folder path")
+
+        language = self._language(options.language)
+        try:
+            if options.tmdb_id:
+                selected_id = options.tmdb_id
+                candidates = []
+            elif movie.get("tmdb_id"):
+                selected_id = int(movie["tmdb_id"])
+                candidates = []
+            else:
+                query, year = self._query_from_movie(movie)
+                candidates = self.search(query, year=year, language=language)
+                if not candidates:
+                    return self._mark_failed(movie_id, "No TMDB matches found")
+
+                best = candidates[0]
+                if options.mode == "auto" and best.score < 80:
+                    self._update_scrape_state(
+                        movie_id,
+                        scrape_status="needs_review",
+                        tmdb_confidence=best.score,
+                        scrape_error="Low confidence TMDB match",
+                    )
+                    return ScrapeResult(
+                        status="needs_review",
+                        movie_id=movie_id,
+                        message="Choose a TMDB match to continue",
+                        movie=library_manager.get_movie(movie_id),
+                        candidates=candidates[:5],
+                    )
+                selected_id = best.tmdb_id
+
+            details = self.tmdb.movie_details(selected_id, language=language)
+            poster_url = self.tmdb.image_url(details.get("poster_path"), "original")
+            backdrop_url = self.tmdb.image_url(details.get("backdrop_path"), "original")
+
+            if options.download_artwork:
+                self.artwork.download(poster_url, folder / "poster.jpg", overwrite=options.overwrite)
+                self.artwork.download(backdrop_url, folder / "fanart.jpg", overwrite=options.overwrite)
+
+            if options.write_nfo:
+                self.nfo_writer.write_movie_nfo(
+                    folder,
+                    details,
+                    poster_url=poster_url,
+                    backdrop_url=backdrop_url,
+                    overwrite=options.overwrite,
+                )
+
+            from app.services.library_sync import library_sync_service
+
+            updated_movie = library_sync_service.scan_folder(folder, preserve_id=movie_id)
+            if not updated_movie:
+                return self._mark_failed(movie_id, "Scrape completed but folder rescan failed")
+
+            enriched = {
+                **updated_movie,
+                "overview": details.get("overview") or updated_movie.get("overview"),
+                "metadata_source": "tmdb",
+                "nfo_source": "tmdb" if options.write_nfo else updated_movie.get("nfo_source"),
+                "scrape_status": "matched",
+                "scrape_error": None,
+                "scraped_at": datetime.now(timezone.utc).isoformat(),
+                "tmdb_confidence": candidates[0].score if candidates else 100,
+            }
+            stored = library_manager.upsert_movie(enriched, preserve_id=movie_id)
+            library_event_bus.publish_library_changed("metadata_scraped", movie_id=movie_id)
+            return ScrapeResult(
+                status="success",
+                movie_id=movie_id,
+                message="Metadata scraped",
+                movie=stored,
+                candidates=candidates[:5] if candidates else [],
+            )
+        except Exception as exc:
+            return self._mark_failed(movie_id, str(exc))
+
+    def scrape_library(self, options: BatchScrapeOptions) -> dict:
+        started_at = datetime.now(timezone.utc).isoformat()
+        self._set_status(state="running", last_started_at=started_at, last_error=None)
+        result = {"processed": 0, "succeeded": 0, "needs_review": 0, "failed": 0, "skipped": 0}
+        try:
+            for movie in library_manager.get_movies():
+                if not self._in_scope(movie, options):
+                    continue
+                result["processed"] += 1
+                scrape_result = self.scrape_movie(
+                    movie["id"],
+                    ScrapeOptions(
+                        mode="auto",
+                        language=options.language,
+                        overwrite=options.overwrite,
+                        write_nfo=options.write_nfo,
+                        download_artwork=options.download_artwork,
+                    ),
+                )
+                if scrape_result.status == "success":
+                    result["succeeded"] += 1
+                elif scrape_result.status == "needs_review":
+                    result["needs_review"] += 1
+                elif scrape_result.status == "skipped":
+                    result["skipped"] += 1
+                else:
+                    result["failed"] += 1
+
+            self._set_status(
+                state="idle",
+                last_finished_at=datetime.now(timezone.utc).isoformat(),
+                last_result=result,
+            )
+            library_event_bus.publish_library_changed("metadata_batch_scraped", result=result)
+            return result
+        except Exception as exc:
+            self._set_status(
+                state="error",
+                last_finished_at=datetime.now(timezone.utc).isoformat(),
+                last_error=str(exc),
+            )
+            raise
+
+    def _in_scope(self, movie: dict, options: BatchScrapeOptions) -> bool:
+        if movie.get("library_status") in {"missing", "ignored"}:
+            return False
+        if options.scope == "selected":
+            return bool(options.movie_ids and movie.get("id") in options.movie_ids)
+        if options.scope == "all":
+            return True
+        if options.scope == "missing_artwork":
+            return not movie.get("poster_local") or not movie.get("backdrop_local")
+        return (
+            movie.get("metadata_source") == "filename"
+            and movie.get("scrape_status") in {None, "pending", "failed"}
+        )
+
+    def _query_from_movie(self, movie: dict) -> tuple[str, int]:
+        title = movie.get("title") or movie.get("folder_name") or movie.get("video_file") or ""
+        year = int(movie.get("year") or 0)
+
+        if not year and movie.get("video_file"):
+            parsed_title, parsed_year = parse_title_year(movie["video_file"])
+            title = parsed_title or title
+            year = parsed_year
+        elif not year and movie.get("folder_name"):
+            parsed_title, parsed_year = parse_title_year(movie["folder_name"])
+            title = parsed_title or title
+            year = parsed_year
+        return title, year
+
+    def _movie_folder(self, movie: dict) -> Optional[Path]:
+        folder_path = movie.get("folder_path")
+        if folder_path:
+            folder = Path(folder_path).resolve()
+            if folder.exists() and folder.is_dir():
+                return folder
+        media_path = movie.get("media_path")
+        if media_path:
+            folder = Path(media_path).resolve().parent
+            if folder.exists() and folder.is_dir():
+                return folder
+        return None
+
+    def _mark_failed(self, movie_id: str, message: str) -> ScrapeResult:
+        self._update_scrape_state(movie_id, scrape_status="failed", scrape_error=message)
+        return ScrapeResult(
+            status="failed",
+            movie_id=movie_id,
+            message=message,
+            movie=library_manager.get_movie(movie_id),
+        )
+
+    def _update_scrape_state(self, movie_id: str, **updates):
+        movie = library_manager.get_movie(movie_id)
+        if not movie:
+            return
+        library_manager.upsert_movie({**movie, **updates}, preserve_id=movie_id)
+        library_event_bus.publish_library_changed("metadata_scrape_status", movie_id=movie_id)
+
+    def _language(self, value: Optional[str]) -> str:
+        if value:
+            return value
+        return "zh-CN" if get_language() == "zh" else "en-US"
+
+    def _set_status(self, **updates):
+        with self._lock:
+            self._status.update(updates)
+
+
+metadata_scraper = MetadataScraper()

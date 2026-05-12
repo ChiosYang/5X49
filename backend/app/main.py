@@ -10,6 +10,8 @@ from app.services.scanner import NFOScanner
 from app.services.analysis import analysis_service
 from app.services.library_sync import library_sync_service
 from app.services.watcher import library_watcher
+from app.services.metadata.models import BatchScrapeOptions, ScrapeOptions
+from app.services.metadata.scraper import metadata_scraper
 from app.database import create_db_and_tables
 from app.utils.security import validate_movie_id
 import os
@@ -77,6 +79,16 @@ def analyze_movie(movie_name: str):
 def get_library():
     """Get all movies in the local library."""
     return library_manager.get_movies()
+
+@app.get("/metadata/search")
+def search_metadata(query: str, year: int | None = Query(default=None), language: str | None = Query(default=None)):
+    """Search TMDB movie metadata using the configured TMDB_API_KEY."""
+    try:
+        return [candidate.model_dump() for candidate in metadata_scraper.search(query, year, language)]
+    except RuntimeError as exc:
+        raise HTTPException(status_code=503, detail=str(exc))
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"Metadata search failed: {str(exc)}")
 
 @app.get("/library/events")
 async def get_library_events(request: Request):
@@ -168,6 +180,54 @@ def refresh_library_movie(movie_id: str):
     except FileNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc))
 
+@app.post("/library/{movie_id}/scrape")
+def scrape_library_movie(movie_id: str, options: ScrapeOptions | None = None):
+    """Scrape TMDB metadata for one movie, optionally writing local artwork and NFO files."""
+    if not validate_movie_id(movie_id):
+        raise HTTPException(status_code=400, detail="Invalid movie ID format")
+
+    result = metadata_scraper.scrape_movie(movie_id, options or ScrapeOptions())
+    if result.status == "failed":
+        raise HTTPException(status_code=409, detail=result.model_dump())
+    return result.model_dump()
+
+@app.post("/library/{movie_id}/ignore")
+def ignore_library_movie(movie_id: str):
+    """Mark one movie as ignored so it is hidden from normal library views."""
+    if not validate_movie_id(movie_id):
+        raise HTTPException(status_code=400, detail="Invalid movie ID format")
+
+    movie = library_manager.ignore_movie(movie_id)
+    if not movie:
+        raise HTTPException(status_code=404, detail="Movie not found")
+    library_event_bus.publish_library_changed("ignored", movie_id=movie_id)
+    return {"status": "success", "movie": movie}
+
+@app.post("/library/{movie_id}/scrape/confirm")
+def confirm_library_movie_scrape(movie_id: str, tmdb_id: int, options: ScrapeOptions | None = None):
+    """Scrape one movie using a user-confirmed TMDB ID."""
+    if not validate_movie_id(movie_id):
+        raise HTTPException(status_code=400, detail="Invalid movie ID format")
+
+    scrape_options = options or ScrapeOptions()
+    scrape_options.tmdb_id = tmdb_id
+    scrape_options.mode = "manual"
+    result = metadata_scraper.scrape_movie(movie_id, scrape_options)
+    if result.status == "failed":
+        raise HTTPException(status_code=409, detail=result.model_dump())
+    return result.model_dump()
+
+@app.post("/library/scrape")
+def scrape_library(background_tasks: BackgroundTasks, options: BatchScrapeOptions | None = None):
+    """Start a background metadata scrape for movies matching the requested scope."""
+    background_tasks.add_task(metadata_scraper.scrape_library, options or BatchScrapeOptions())
+    return {"status": "started", "message": "Metadata scrape started"}
+
+@app.get("/library/scrape/status")
+def get_library_scrape_status():
+    """Get latest metadata scrape status."""
+    return metadata_scraper.get_status()
+
 @app.get("/library/sync/status")
 def get_library_sync_status():
     """Get latest library sync and watcher status."""
@@ -191,6 +251,14 @@ def clear_library():
     library_manager.clear_library()
     library_event_bus.publish_library_changed("clear")
     return {"message": "Library cleared"}
+
+@app.delete("/library/missing")
+def cleanup_missing_library_movies():
+    """Delete records already marked as missing."""
+    deleted = library_manager.cleanup_missing()
+    if deleted:
+        library_event_bus.publish_library_changed("missing_cleanup", deleted=deleted)
+    return {"status": "success", "deleted": deleted}
 
 # Settings endpoints
 from app.services.settings import load_settings, save_settings, get_current_model, set_current_model, get_base_url, set_base_url, refresh_models_cache

@@ -30,6 +30,8 @@ class LibraryManager:
                 if not existing_movie and movie_dict.get("media_path"):
                     existing_movie = self._get_by_media_path(session, movie_dict["media_path"])
                 if existing_movie:
+                    if existing_movie.library_status == "ignored" and movie_dict.get("library_status") == "available":
+                        movie_dict = {**movie_dict, "library_status": "ignored", "missing_since": None}
                     # Update fields
                     for key, value in movie_dict.items():
                         setattr(existing_movie, key, value)
@@ -55,6 +57,8 @@ class LibraryManager:
                 existing_movie = self._get_by_media_path(session, movie_data["media_path"])
 
             if existing_movie:
+                if existing_movie.library_status == "ignored" and movie_data.get("library_status") == "available":
+                    movie_data = {**movie_data, "library_status": "ignored", "missing_since": None}
                 for key, value in movie_data.items():
                     setattr(existing_movie, key, value)
                 session.add(existing_movie)
@@ -87,7 +91,7 @@ class LibraryManager:
         missing_at = datetime.now(timezone.utc).isoformat()
         updated = 0
         with Session(engine) as session:
-            statement = select(Movie).where(Movie.library_status != "missing")
+            statement = select(Movie).where(Movie.library_status.not_in(["missing", "ignored"]))
             movies = session.exec(statement).all()
             for movie in movies:
                 if not movie.last_seen_at or movie.last_seen_at < seen_at:
@@ -107,12 +111,35 @@ class LibraryManager:
             statement = select(Movie).where(or_(Movie.media_path == path, Movie.folder_path == path))
             movies = session.exec(statement).all()
             for movie in movies:
+                if movie.library_status == "ignored":
+                    continue
                 movie.library_status = "missing"
                 movie.missing_since = missing_at
                 session.add(movie)
                 updated += 1
             session.commit()
         return updated
+
+    def ignore_movie(self, movie_id: str) -> Optional[dict]:
+        """Mark one movie as ignored so it is hidden from the normal library."""
+        with Session(engine) as session:
+            movie = session.get(Movie, movie_id)
+            if not movie:
+                return None
+            movie.library_status = "ignored"
+            movie.missing_since = None
+            session.add(movie)
+            session.commit()
+            session.refresh(movie)
+            return movie.model_dump()
+
+    def cleanup_missing(self) -> int:
+        """Delete records already marked as missing."""
+        with Session(engine) as session:
+            statement = delete(Movie).where(Movie.library_status == "missing")
+            result = session.exec(statement)
+            session.commit()
+            return result.rowcount or 0
 
     def clear_library(self):
         """Clear all movies from the library."""

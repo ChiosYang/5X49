@@ -6,6 +6,7 @@ from typing import Optional
 from app.services.library_sync import library_sync_service
 from app.services.settings import (
     get_media_dir,
+    get_media_file_stable_seconds,
     get_watch_debounce_seconds,
     get_watch_interval_seconds,
     get_watch_mode,
@@ -275,6 +276,9 @@ class LibraryWatcher:
 
         for folder in ready:
             if Path(folder).exists():
+                if self._has_recent_video(folder):
+                    self._queue_folder(folder)
+                    continue
                 library_sync_service.scan_folder(folder)
 
     def _watch_filter(self, change, path: str) -> bool:
@@ -297,6 +301,21 @@ class LibraryWatcher:
             except OSError:
                 return None
         return str(path.absolute())
+
+    def _has_recent_video(self, folder: str) -> bool:
+        stable_seconds = get_media_file_stable_seconds()
+        if stable_seconds <= 0:
+            return False
+
+        cutoff = time.time() - stable_seconds
+        try:
+            for path in Path(folder).iterdir():
+                if path.is_file() and path.suffix.lower() in self.video_extensions:
+                    if path.stat().st_mtime > cutoff:
+                        return True
+        except OSError:
+            return False
+        return False
 
     def _record_error(self, error: Optional[str]):
         with self._lock:

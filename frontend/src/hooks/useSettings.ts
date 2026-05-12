@@ -43,6 +43,20 @@ export interface LibrarySyncStatus {
   watcher: LibraryWatchStatus;
 }
 
+export interface LibraryScrapeStatus {
+  state: string;
+  last_started_at: string | null;
+  last_finished_at: string | null;
+  last_error: string | null;
+  last_result: {
+    processed?: number;
+    succeeded?: number;
+    needs_review?: number;
+    failed?: number;
+    skipped?: number;
+  } | null;
+}
+
 export function useLibraryWatchSetting() {
   return useSWR<{ watch_library: boolean; watcher: LibraryWatchStatus }>(
     API.settingsLibraryWatch()
@@ -51,6 +65,12 @@ export function useLibraryWatchSetting() {
 
 export function useLibrarySyncStatus() {
   return useSWR<LibrarySyncStatus>(API.librarySyncStatus(), {
+    refreshInterval: 5000,
+  });
+}
+
+export function useLibraryScrapeStatus() {
+  return useSWR<LibraryScrapeStatus>(API.libraryScrapeStatus(), {
     refreshInterval: 5000,
   });
 }
@@ -155,6 +175,37 @@ export function useReconcileLibrary() {
     async (url: string) => {
       const res = await fetch(url, { method: "POST" });
       if (!res.ok) throw new Error("Failed to reconcile library");
+      return res.json();
+    }
+  );
+}
+
+export function useScrapeLibrary() {
+  return useSWRMutation(
+    API.libraryScrapeBatch(),
+    async (url: string) => {
+      const res = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          scope: "unscraped",
+          overwrite: false,
+          write_nfo: true,
+          download_artwork: true,
+        }),
+      });
+      if (!res.ok) throw new Error("Failed to start metadata scrape");
+      return res.json();
+    }
+  );
+}
+
+export function useCleanupMissingMovies() {
+  return useSWRMutation(
+    API.libraryCleanupMissing(),
+    async (url: string) => {
+      const res = await fetch(url, { method: "DELETE" });
+      if (!res.ok) throw new Error("Failed to clean missing movies");
       return res.json();
     }
   );

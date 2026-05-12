@@ -50,3 +50,8 @@ class Movie(SQLModel, table=True):
     missing_since: Optional[str] = None
     library_status: str = Field(default="available", index=True)
     metadata_updated_at: Optional[str] = None
+    metadata_source: Optional[str] = None
+    scrape_status: str = Field(default="pending", index=True)
+    scrape_error: Optional[str] = None
+    scraped_at: Optional[str] = None
+    tmdb_confidence: Optional[float] = None

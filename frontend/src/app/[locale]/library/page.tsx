@@ -7,7 +7,9 @@ import LibraryRefreshButton from "./LibraryRefreshButton";
 export default async function LibraryPage() {
   const t = await getTranslations("Library");
   const movies = await getLibrary();
-  const visibleMovies = movies.filter((movie) => movie.library_status !== "missing");
+  const visibleMovies = movies.filter(
+    (movie) => !["missing", "ignored"].includes(movie.library_status || "")
+  );
 
   return (
     <div className="min-h-screen bg-black text-white px-8 py-6 md:px-12 md:py-12 selection:bg-white selection:text-black">
