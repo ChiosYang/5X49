@@ -22,6 +22,7 @@
     "rootConfirmFailed": "Confirmed organization failed",
     "rootInvalidTmdbId": "Enter a TMDB ID or link",
     "rootSearchPlaceholder": "Search title",
+    "rootUnifiedSearchPlaceholder": "Title, year, TMDB ID, or link",
     "rootYearPlaceholder": "Year",
     "rootTmdbPlaceholder": "TMDB ID or link",
     "rootLookupId": "Lookup ID",

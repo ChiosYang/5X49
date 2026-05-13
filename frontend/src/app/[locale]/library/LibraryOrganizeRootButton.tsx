@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { Check, FolderInput, Loader2, Search } from "lucide-react";
+import { FolderInput, Loader2, Search } from "lucide-react";
 import { useOrganizeRootVideos } from "@/hooks/useSettings";
 import { API } from "@/lib/api";
 import type { MetadataSearchResult, RootVideo } from "@/types/movie";
@@ -23,6 +23,14 @@ const parseTmdbId = (value: string) => {
   const trimmed = value.trim();
   const match = trimmed.match(/(?:movie\/)?(\d+)/);
   return match ? Number(match[1]) : null;
+};
+
+const parseSearchInput = (value: string) => {
+  const yearMatch = value.match(/\b(19\d{2}|20\d{2})\b/);
+  return {
+    query: value.replace(/\b(19\d{2}|20\d{2})\b/, "").trim() || value.trim(),
+    year: yearMatch ? Number(yearMatch[1]) : null,
+  };
 };
 
 const prependCandidate = (
@@ -48,8 +56,6 @@ export default function LibraryOrganizeRootButton({
   const [confirmingKey, setConfirmingKey] = useState<string | null>(null);
   const [reviewError, setReviewError] = useState<string>("");
   const [searchDrafts, setSearchDrafts] = useState<Record<string, string>>({});
-  const [yearDrafts, setYearDrafts] = useState<Record<string, string>>({});
-  const [tmdbInputs, setTmdbInputs] = useState<Record<string, string>>({});
   const [expandedPaths, setExpandedPaths] = useState<Record<string, boolean>>({});
 
   const handleOrganize = async () => {
@@ -77,14 +83,30 @@ export default function LibraryOrganizeRootButton({
     setActiveReviewPath(video.path);
     setReviewingPath(video.path);
     try {
-      const query = searchDrafts[video.path]?.trim() || video.parsed_title || video.filename;
-      const yearValue = yearDrafts[video.path] ?? (video.parsed_year ? String(video.parsed_year) : "");
-      setSearchDrafts((current) => ({ ...current, [video.path]: query }));
-      setYearDrafts((current) => ({ ...current, [video.path]: yearValue }));
+      const input = searchDrafts[video.path]?.trim() || [
+        video.parsed_title || video.filename,
+        video.parsed_year || "",
+      ].filter(Boolean).join(" ");
+      const tmdbId = parseTmdbId(input);
+      setSearchDrafts((current) => ({ ...current, [video.path]: input }));
 
+      if (tmdbId) {
+        const res = await fetch(API.metadataMovie(tmdbId));
+        if (!res.ok) {
+          throw new Error("lookup_failed");
+        }
+        const candidate = await res.json() as MetadataSearchResult;
+        setCandidatesByPath((current) => ({
+          ...current,
+          [video.path]: prependCandidate(current[video.path] || [], candidate),
+        }));
+        setExpandedPaths((current) => ({ ...current, [video.path]: false }));
+        return;
+      }
+
+      const { query, year } = parseSearchInput(input);
       const params = new URLSearchParams({ query });
-      const year = Number(yearValue);
-      if (Number.isInteger(year) && year > 0) {
+      if (year) {
         params.set("year", String(year));
       }
       const res = await fetch(`${API.metadataSearch()}?${params.toString()}`);
@@ -137,33 +159,6 @@ export default function LibraryOrganizeRootButton({
       setReviewError(t("rootConfirmFailed"));
     } finally {
       setConfirmingKey(null);
-    }
-  };
-
-  const handleDirectConfirm = async (video: RootVideo) => {
-    const tmdbId = parseTmdbId(tmdbInputs[video.path] || "");
-    if (!tmdbId) {
-      setReviewError(t("rootInvalidTmdbId"));
-      return;
-    }
-    setReviewError("");
-    setActiveReviewPath(video.path);
-    setReviewingPath(video.path);
-    try {
-      const res = await fetch(API.metadataMovie(tmdbId));
-      if (!res.ok) {
-        throw new Error("lookup_failed");
-      }
-      const candidate = await res.json() as MetadataSearchResult;
-      setCandidatesByPath((current) => ({
-        ...current,
-        [video.path]: prependCandidate(current[video.path] || [], candidate),
-      }));
-      setExpandedPaths((current) => ({ ...current, [video.path]: false }));
-    } catch {
-      setReviewError(t("rootTmdbLookupFailed"));
-    } finally {
-      setReviewingPath(null);
     }
   };
 
@@ -221,23 +216,8 @@ export default function LibraryOrganizeRootButton({
                       <p className="text-xs text-neutral-500">
                         {video.stable ? t("rootReady") : t("rootWaitingForStability")}
                       </p>
-                      {video.stable && (
-                        <button
-                          type="button"
-                          onClick={() => handleReview(video)}
-                          disabled={reviewingPath === video.path || Boolean(confirmingKey)}
-                          className="flex h-7 items-center gap-1.5 border border-neutral-800 bg-neutral-950 px-2 text-[10px] font-bold uppercase tracking-widest text-white transition-colors hover:border-neutral-500 hover:bg-neutral-900 disabled:cursor-not-allowed disabled:opacity-50"
-                        >
-                          {reviewingPath === video.path ? (
-                            <Loader2 className="h-3 w-3 animate-spin" />
-                          ) : (
-                            <Search className="h-3 w-3" />
-                          )}
-                          {t("rootReview")}
-                        </button>
-                      )}
                     </div>
-                    {activeReviewPath === video.path && (
+                    {video.stable && (
                       <div className="mt-3 space-y-2">
                         <div className="flex gap-2">
                           <input
@@ -247,52 +227,35 @@ export default function LibraryOrganizeRootButton({
                               ...current,
                               [video.path]: event.target.value,
                             }))}
-                            placeholder={t("rootSearchPlaceholder")}
+                            onFocus={() => {
+                              setActiveReviewPath(video.path);
+                              setSearchDrafts((current) => ({
+                                ...current,
+                                [video.path]: current[video.path] ?? [
+                                  video.parsed_title || video.filename,
+                                  video.parsed_year || "",
+                                ].filter(Boolean).join(" "),
+                              }));
+                            }}
+                            placeholder={t("rootUnifiedSearchPlaceholder")}
                             className="min-w-0 flex-1 border border-neutral-800 bg-neutral-950 px-3 py-2 text-xs text-white placeholder:text-neutral-600 focus:border-neutral-500 focus:outline-none"
-                          />
-                          <input
-                            type="number"
-                            value={yearDrafts[video.path] ?? ""}
-                            onChange={(event) => setYearDrafts((current) => ({
-                              ...current,
-                              [video.path]: event.target.value,
-                            }))}
-                            placeholder={t("rootYearPlaceholder")}
-                            className="w-20 border border-neutral-800 bg-neutral-950 px-2 py-2 text-xs text-white placeholder:text-neutral-600 focus:border-neutral-500 focus:outline-none"
                           />
                           <button
                             type="button"
                             onClick={() => handleReview(video)}
-                            disabled={reviewingPath === video.path || Boolean(confirmingKey) || !searchDrafts[video.path]?.trim()}
-                            className="flex h-9 items-center justify-center border border-neutral-800 bg-neutral-950 px-2 text-[10px] font-bold uppercase tracking-widest text-white transition-colors hover:border-neutral-500 disabled:cursor-not-allowed disabled:opacity-50"
+                            disabled={reviewingPath === video.path || Boolean(confirmingKey)}
+                            className="flex h-9 w-24 items-center justify-center gap-1.5 border border-neutral-800 bg-neutral-950 px-2 text-[10px] font-bold uppercase tracking-widest text-white transition-colors hover:border-neutral-500 disabled:cursor-not-allowed disabled:opacity-50"
                           >
                             {reviewingPath === video.path ? (
                               <Loader2 className="h-3 w-3 animate-spin" />
                             ) : (
                               <Search className="h-3 w-3" />
                             )}
+                            {activeReviewPath === video.path ? t("rootLookupId") : t("rootReview")}
                           </button>
                         </div>
-                        <div className="flex gap-2">
-                          <input
-                            type="text"
-                            value={tmdbInputs[video.path] ?? ""}
-                            onChange={(event) => setTmdbInputs((current) => ({
-                              ...current,
-                              [video.path]: event.target.value,
-                            }))}
-                            placeholder={t("rootTmdbPlaceholder")}
-                            className="min-w-0 flex-1 border border-neutral-800 bg-neutral-950 px-3 py-2 text-xs text-white placeholder:text-neutral-600 focus:border-neutral-500 focus:outline-none"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => handleDirectConfirm(video)}
-                            disabled={reviewingPath === video.path || Boolean(confirmingKey) || !tmdbInputs[video.path]?.trim()}
-                            className="h-9 border border-neutral-800 bg-neutral-950 px-2 text-[10px] font-bold uppercase tracking-widest text-white transition-colors hover:border-neutral-500 disabled:cursor-not-allowed disabled:opacity-50"
-                          >
-                            {t("rootLookupId")}
-                          </button>
-                        </div>
+                        {activeReviewPath === video.path && (
+                          <>
                         {(expandedPaths[video.path]
                           ? candidatesByPath[video.path] || []
                           : (candidatesByPath[video.path] || []).slice(0, DEFAULT_VISIBLE_CANDIDATES)
@@ -315,11 +278,7 @@ export default function LibraryOrganizeRootButton({
                                     TMDB {candidate.tmdb_id} · {Math.round(candidate.score)}%
                                   </span>
                                 </span>
-                                {confirmingKey === key ? (
-                                  <Loader2 className="mt-0.5 h-3 w-3 shrink-0 animate-spin" />
-                                ) : (
-                                  <Check className="mt-0.5 h-3 w-3 shrink-0" />
-                                )}
+                                {confirmingKey === key && <Loader2 className="mt-0.5 h-3 w-3 shrink-0 animate-spin" />}
                               </span>
                             </button>
                           );
@@ -339,6 +298,8 @@ export default function LibraryOrganizeRootButton({
                                 count: (candidatesByPath[video.path] || []).length - DEFAULT_VISIBLE_CANDIDATES,
                               })}
                           </button>
+                        )}
+                          </>
                         )}
                       </div>
                     )}
