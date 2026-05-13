@@ -145,6 +145,49 @@ def save_settings(settings: dict):
         print(f"Error saving settings: {e}")
         return False
 
+def _get_saved_tmdb_api_key():
+    try:
+        if not os.path.exists(SETTINGS_FILE):
+            return None
+        with open(SETTINGS_FILE, 'r') as f:
+            settings = json.load(f)
+        saved_key = settings.get("tmdb_api_key")
+        return saved_key.strip() if isinstance(saved_key, str) and saved_key.strip() else None
+    except Exception as e:
+        print(f"Error reading TMDB API key setting: {e}")
+        return None
+
+def get_tmdb_api_key():
+    """Get the TMDB API key from env first, then saved settings."""
+    env_key = os.getenv("TMDB_API_KEY")
+    if env_key:
+        return env_key
+
+    return _get_saved_tmdb_api_key()
+
+def get_tmdb_key_status():
+    """Return TMDB key status without exposing the key value."""
+    if os.getenv("TMDB_API_KEY"):
+        return {"configured": True, "source": "environment"}
+
+    if _get_saved_tmdb_api_key():
+        return {"configured": True, "source": "settings"}
+
+    return {"configured": False, "source": None}
+
+def set_tmdb_api_key(api_key: str):
+    """Persist a TMDB API key in settings.json when env does not own it."""
+    if os.getenv("TMDB_API_KEY"):
+        return False
+
+    settings = load_settings()
+    key = api_key.strip()
+    if key:
+        settings["tmdb_api_key"] = key
+    else:
+        settings.pop("tmdb_api_key", None)
+    return save_settings(settings)
+
 def get_current_model():
     """Get currently selected model"""
     settings = load_settings()

@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from contextlib import asynccontextmanager
+from pydantic import BaseModel
 from app.services.historian import FilmHistorian
 from app.services.event_bus import library_event_bus
 from app.services.library import library_manager
@@ -17,6 +18,11 @@ from app.database import create_db_and_tables
 from app.utils.security import validate_movie_id
 import os
 from pathlib import Path
+import requests
+
+
+class TmdbApiKeyUpdate(BaseModel):
+    api_key: str = ""
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -48,7 +54,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-from app.services.settings import get_default_settings, save_settings, get_available_models, get_current_model, set_current_model, get_base_url, set_base_url, refresh_models_cache, get_media_dir, set_media_dir, get_language, set_language, get_watch_library, set_watch_library
+from app.services.settings import get_default_settings, save_settings, get_available_models, get_current_model, set_current_model, get_base_url, set_base_url, refresh_models_cache, get_media_dir, set_media_dir, get_language, set_language, get_watch_library, set_watch_library, get_tmdb_key_status, set_tmdb_api_key
 
 # Configuration for media directory
 # Prioritize settings.json, then env var, then default
@@ -287,6 +293,8 @@ from app.services.settings import load_settings, save_settings, get_current_mode
 def get_settings():
     """Get current system settings"""
     settings = load_settings()
+    settings.pop("tmdb_api_key", None)
+    settings["tmdb"] = get_tmdb_key_status()
     return settings
 
 @app.get("/settings/model")
@@ -367,6 +375,38 @@ def update_auto_organize_root_setting(enabled: bool):
     if not success:
         raise HTTPException(status_code=500, detail="Failed to save settings")
     return {"status": "success", "auto_organize_root_videos": enabled}
+
+@app.get("/settings/tmdb")
+def get_tmdb_setting():
+    """Get TMDB API key configuration status without exposing the key."""
+    return get_tmdb_key_status()
+
+@app.put("/settings/tmdb")
+def update_tmdb_setting(payload: TmdbApiKeyUpdate):
+    """Persist a TMDB API key unless TMDB_API_KEY is managed by the environment."""
+    if get_tmdb_key_status()["source"] == "environment":
+        raise HTTPException(status_code=409, detail="TMDB_API_KEY is configured by environment")
+
+    success = set_tmdb_api_key(payload.api_key)
+    if not success:
+        raise HTTPException(status_code=500, detail="Failed to save settings")
+    return {"status": "success", **get_tmdb_key_status()}
+
+@app.post("/settings/tmdb/test")
+def test_tmdb_api_key():
+    """Test the currently configured TMDB API key."""
+    try:
+        metadata_scraper.tmdb.configuration()
+        return {"status": "success", "message": "TMDB API key is valid"}
+    except RuntimeError as exc:
+        raise HTTPException(status_code=503, detail=str(exc))
+    except requests.HTTPError as exc:
+        status_code = exc.response.status_code if exc.response is not None else 502
+        if status_code == 401:
+            return {"status": "error", "message": "Invalid TMDB API key"}
+        raise HTTPException(status_code=502, detail=f"TMDB API test failed: {str(exc)}")
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"TMDB API test failed: {str(exc)}")
 
 @app.get("/settings/base-url")
 def get_base_url_setting():

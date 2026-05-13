@@ -1,4 +1,4 @@
-import useSWR from "swr";
+import useSWR, { useSWRConfig } from "swr";
 import useSWRMutation from "swr/mutation";
 import { API } from "@/lib/api";
 
@@ -72,6 +72,16 @@ export interface LibraryOrganizeStatus {
   } | null;
 }
 
+export interface TmdbSettings {
+  configured: boolean;
+  source: "environment" | "settings" | null;
+}
+
+export interface TmdbTestResult {
+  status: "success" | "error";
+  message: string;
+}
+
 export function useLibraryWatchSetting() {
   return useSWR<{ watch_library: boolean; watcher: LibraryWatchStatus }>(
     API.settingsLibraryWatch()
@@ -82,6 +92,10 @@ export function useAutoOrganizeRootSetting() {
   return useSWR<{ auto_organize_root_videos: boolean }>(
     API.settingsAutoOrganizeRoot()
   );
+}
+
+export function useTmdbSettings() {
+  return useSWR<TmdbSettings>(API.settingsTmdb());
 }
 
 export function useLibrarySyncStatus() {
@@ -182,6 +196,42 @@ export function useUpdateAutoOrganizeRoot() {
         method: "PUT",
       });
       if (!res.ok) throw new Error("Failed to update auto organize setting");
+      return res.json();
+    }
+  );
+}
+
+export function useUpdateTmdbKey() {
+  const { mutate } = useSWRConfig();
+
+  return useSWRMutation(
+    API.settingsTmdb(),
+    async (url: string, { arg: apiKey }: { arg: string }): Promise<TmdbSettings & { status: string }> => {
+      const res = await fetch(url, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ api_key: apiKey }),
+      });
+      if (!res.ok) {
+        const errorBody = await res.json().catch(() => null);
+        throw new Error(errorBody?.detail || "Failed to update TMDB API key");
+      }
+      const data = await res.json();
+      await mutate(API.settingsTmdb(), { configured: data.configured, source: data.source }, false);
+      return data;
+    }
+  );
+}
+
+export function useTestTmdbKey() {
+  return useSWRMutation(
+    API.settingsTmdbTest(),
+    async (url: string): Promise<TmdbTestResult> => {
+      const res = await fetch(url, { method: "POST" });
+      if (!res.ok) {
+        const errorBody = await res.json().catch(() => null);
+        throw new Error(errorBody?.detail || "Failed to test TMDB API key");
+      }
       return res.json();
     }
   );

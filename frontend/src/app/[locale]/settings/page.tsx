@@ -30,6 +30,9 @@ import {
   useLibraryOrganizeStatus,
   useLibrarySyncStatus,
   useLibraryWatchSetting,
+  useTmdbSettings,
+  useUpdateTmdbKey,
+  useTestTmdbKey,
 } from "@/hooks/useSettings";
 
 type SettingSection = "appearance" | "display" | "analysis" | "library";
@@ -46,6 +49,7 @@ function SettingsContent() {
   const { data: langData } = useLanguageSetting();
   const { data: libraryWatchData } = useLibraryWatchSetting();
   const { data: autoOrganizeRootData } = useAutoOrganizeRootSetting();
+  const { data: tmdbData } = useTmdbSettings();
   const { data: syncStatus } = useLibrarySyncStatus();
   const { data: scrapeStatus } = useLibraryScrapeStatus();
   const { data: organizeStatus } = useLibraryOrganizeStatus();
@@ -56,6 +60,8 @@ function SettingsContent() {
   const { trigger: updateLanguage, isMutating: languageSaving } = useUpdateLanguage();
   const { trigger: updateLibraryWatch, isMutating: watchSaving } = useUpdateLibraryWatch();
   const { trigger: updateAutoOrganizeRoot, isMutating: autoOrganizeSaving } = useUpdateAutoOrganizeRoot();
+  const { trigger: updateTmdbKey, isMutating: tmdbSaving, data: tmdbSaveResult, error: tmdbSaveError, reset: resetTmdbSave } = useUpdateTmdbKey();
+  const { trigger: testTmdbKey, data: tmdbTestResult, isMutating: tmdbTesting, error: tmdbTestError } = useTestTmdbKey();
   const { trigger: testApi, data: apiTestResult, isMutating: apiTesting } = useTestApiKey();
   const { trigger: scanLibrary, isMutating: isScanning, data: scanResult, error: scanError } = useScanLibrary();
   const { trigger: reconcileLibrary, isMutating: isReconciling, data: reconcileResult, error: reconcileError } = useReconcileLibrary();
@@ -73,6 +79,7 @@ function SettingsContent() {
   // Form edit state: local drafts for user editing before save.
   const [baseUrlDraft, setBaseUrlInput] = useState<string>();
   const [mediaDirDraft, setMediaDirInput] = useState<string>();
+  const [tmdbKeyDraft, setTmdbKeyDraft] = useState("");
 
   // Auto-clear save success indicators
   useEffect(() => {
@@ -96,6 +103,13 @@ function SettingsContent() {
     }
   }, [mediaDirSaveResult, resetMediaDirSave]);
 
+  useEffect(() => {
+    if (tmdbSaveResult) {
+      const timer = setTimeout(() => resetTmdbSave(), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [tmdbSaveResult, resetTmdbSave]);
+
   // Derived values
   const currentModel = modelData?.current_model || "";
   const availableModels = useMemo(
@@ -104,6 +118,14 @@ function SettingsContent() {
   );
   const baseUrlInput = baseUrlDraft ?? baseUrlData?.base_url ?? "";
   const mediaDirInput = mediaDirDraft ?? mediaDirData?.media_dir ?? "";
+  const tmdbStatus = tmdbSaveResult ?? tmdbData;
+  const tmdbSourceLabel = tmdbStatus?.source === "environment"
+    ? t("tmdbSourceEnvironment")
+    : tmdbStatus?.source === "settings"
+      ? t("tmdbSourceSettings")
+      : t("tmdbSourceMissing");
+  const tmdbCanSave = tmdbStatus?.source !== "environment";
+  const scrapeBlocked = tmdbStatus?.configured === false;
 
   const filteredModels = useMemo(() => {
     if (!modelSearch.trim()) return availableModels;
@@ -161,6 +183,15 @@ function SettingsContent() {
     await updateAutoOrganizeRoot(!autoOrganizeRootData?.auto_organize_root_videos);
   };
 
+  const handleTmdbKeySave = async () => {
+    await updateTmdbKey(tmdbKeyDraft);
+    setTmdbKeyDraft("");
+  };
+
+  const handleTmdbKeyTest = async () => {
+    await testTmdbKey();
+  };
+
   // Scan message derived from mutation state
   const scanMessage = scanResult
     ? "Scan started in background"
@@ -176,6 +207,8 @@ function SettingsContent() {
     ? "Metadata scrape started"
     : scrapeError
       ? "Failed to start metadata scrape"
+      : scrapeBlocked
+        ? t("tmdbRequiredForScrape")
       : scrapeStatus?.last_result
         ? `Scraped ${scrapeStatus.last_result.succeeded ?? 0}, review ${scrapeStatus.last_result.needs_review ?? 0}`
         : "";
@@ -594,6 +627,66 @@ function SettingsContent() {
                   </div>
 
                   <div className="border-b border-neutral-900 pb-6">
+                    <div>
+                      <div className="flex items-start justify-between gap-4 mb-4">
+                        <div>
+                          <p className="text-sm font-medium uppercase tracking-widest mb-1">{t("tmdbApiKey")}</p>
+                          <p className="text-xs text-neutral-600">{t("tmdbApiKeyDesc")}</p>
+                        </div>
+                        <span className={`shrink-0 text-xs uppercase tracking-widest ${
+                          tmdbStatus?.configured ? "text-green-500" : "text-neutral-600"
+                        }`}>
+                          {tmdbSourceLabel}
+                        </span>
+                      </div>
+
+                      <div className="flex flex-col gap-3 md:flex-row">
+                        <input
+                          type="password"
+                          value={tmdbKeyDraft}
+                          onChange={(e) => setTmdbKeyDraft(e.target.value)}
+                          disabled={!tmdbCanSave}
+                          placeholder={tmdbCanSave ? t("tmdbApiKeyPlaceholder") : t("tmdbApiKeyEnvironment")}
+                          className="flex-1 bg-neutral-900 border border-neutral-800 text-white px-4 py-3 text-sm placeholder:text-neutral-600 hover:border-neutral-600 focus:border-white focus:outline-none disabled:opacity-50"
+                        />
+                        <button
+                          type="button"
+                          onClick={handleTmdbKeySave}
+                          disabled={!tmdbCanSave || tmdbSaving}
+                          className="bg-white text-black px-6 py-3 text-xs font-medium uppercase tracking-widest hover:bg-neutral-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {tmdbSaving ? t("saving") : t("save")}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleTmdbKeyTest}
+                          disabled={tmdbTesting || !tmdbStatus?.configured}
+                          className="bg-neutral-900 border border-neutral-800 text-white px-4 py-3 text-xs font-medium uppercase tracking-widest hover:bg-neutral-800 hover:border-neutral-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {tmdbTesting ? t("testingBtn") : t("tmdbTestBtn")}
+                        </button>
+                      </div>
+
+                      {tmdbSaveResult && (
+                        <p className="text-xs text-green-500 mt-2 uppercase tracking-widest">✓ {t("saved")}</p>
+                      )}
+                      {tmdbSaveError && (
+                        <p className="text-xs text-red-500 mt-2">{tmdbSaveError instanceof Error ? tmdbSaveError.message : t("tmdbSaveFailed")}</p>
+                      )}
+                      {tmdbTestResult && (
+                        <p className={`text-xs mt-2 ${
+                          tmdbTestResult.status === "success" ? "text-green-500" : "text-red-500"
+                        }`}>
+                          {tmdbTestResult.message}
+                        </p>
+                      )}
+                      {tmdbTestError && (
+                        <p className="text-xs text-red-500 mt-2">{tmdbTestError instanceof Error ? tmdbTestError.message : t("tmdbTestFailed")}</p>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="border-b border-neutral-900 pb-6">
                     <div className="flex items-center justify-between">
                         <div>
                             <p className="text-sm font-medium uppercase tracking-widest mb-1">{t("manualScan")}</p>
@@ -683,7 +776,7 @@ function SettingsContent() {
                         )}
                         <button
                           onClick={handleScrapeLibrary}
-                          disabled={isScrapingMetadata || scrapeStatus?.state === "running"}
+                          disabled={isScrapingMetadata || scrapeStatus?.state === "running" || scrapeBlocked}
                           className="flex items-center gap-2 bg-neutral-900 border border-neutral-800 text-white px-4 py-3 text-xs font-medium uppercase tracking-widest hover:bg-neutral-800 hover:border-neutral-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                           {isScrapingMetadata || scrapeStatus?.state === "running" ? (

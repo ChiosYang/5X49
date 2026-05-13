@@ -1,7 +1,8 @@
-import os
 from typing import Optional
 
 import requests
+
+from app.services.settings import get_tmdb_api_key
 
 
 class TMDBClient:
@@ -9,15 +10,16 @@ class TMDBClient:
     image_base_url = "https://image.tmdb.org/t/p"
 
     def __init__(self, api_key: Optional[str] = None):
-        self.api_key = api_key or os.getenv("TMDB_API_KEY")
+        self.api_key = api_key
 
     def is_configured(self) -> bool:
-        return bool(self.api_key)
+        return bool(self._api_key())
 
     def search_movies(self, query: str, year: Optional[int] = None, language: str = "zh-CN") -> list[dict]:
         self._require_api_key()
+        api_key = self._api_key()
         params = {
-            "api_key": self.api_key,
+            "api_key": api_key,
             "query": query,
             "language": language,
             "include_adult": "false",
@@ -30,15 +32,20 @@ class TMDBClient:
 
     def movie_details(self, tmdb_id: int, language: str = "zh-CN") -> dict:
         self._require_api_key()
+        api_key = self._api_key()
         return self._get(
             f"/movie/{tmdb_id}",
             params={
-                "api_key": self.api_key,
+                "api_key": api_key,
                 "language": language,
                 "append_to_response": "credits,external_ids,images",
                 "include_image_language": self._image_languages(language),
             },
         )
+
+    def configuration(self) -> dict:
+        self._require_api_key()
+        return self._get("/configuration", params={"api_key": self._api_key()})
 
     def image_url(self, path: Optional[str], size: str = "original") -> Optional[str]:
         if not path:
@@ -50,8 +57,11 @@ class TMDBClient:
         response.raise_for_status()
         return response.json()
 
+    def _api_key(self) -> Optional[str]:
+        return self.api_key or get_tmdb_api_key()
+
     def _require_api_key(self):
-        if not self.api_key:
+        if not self._api_key():
             raise RuntimeError("TMDB_API_KEY is not configured")
 
     def _image_languages(self, language: str) -> str:

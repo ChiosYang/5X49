@@ -51,6 +51,8 @@ export const API = {
     settingsLanguage: () => `${API_BASE_URL}/settings/language`,
     settingsLibraryWatch: () => `${API_BASE_URL}/settings/library-watch`,
     settingsAutoOrganizeRoot: () => `${API_BASE_URL}/settings/auto-organize-root`,
+    settingsTmdb: () => `${API_BASE_URL}/settings/tmdb`,
+    settingsTmdbTest: () => `${API_BASE_URL}/settings/tmdb/test`,
 
     // System
     systemListDirs: () => `${API_BASE_URL}/sys/list-dirs`,

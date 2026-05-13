@@ -68,6 +68,9 @@ description: 电影族谱 API (FastAPI) 的接口调用指南
 | PUT | `/settings/library-watch?enabled=true` | 开启或关闭自动监听 |
 | GET | `/settings/auto-organize-root` | 获取根目录自动整理设置 |
 | PUT | `/settings/auto-organize-root?enabled=true` | 开启或关闭根目录自动整理 |
+| GET | `/settings/tmdb` | 获取 TMDB API Key 配置状态，不返回明文 |
+| PUT | `/settings/tmdb` | 保存或清除 settings 中的 TMDB API Key |
+| POST | `/settings/tmdb/test` | 测试当前 TMDB API Key 连通性 |
 | POST | `/settings/models/refresh` | 刷新可用模型缓存 |
 
 ### 系统与智能体 (Agents)
@@ -182,7 +185,7 @@ curl -s -X PUT "http://127.0.0.1:11548/settings/model?model_name=moonshotai/kimi
 4. **缺失策略** - 资料库校准和监听删除事件默认将电影标记为 `library_status=missing`，不会直接删除数据库记录
 5. **忽略策略** - `library_status=ignored` 的记录会从正常资料库隐藏，并跳过校准缺失标记和批量刮削
 6. **自动监听** - 当前监听器默认使用 `watchfiles` 原生文件事件和去抖，避免频繁全目录轮询；如遇 Docker volume、NAS、SMB 事件不可靠，可设置 `watch_mode=polling` 或 `WATCH_MODE=polling` 回退；新增视频会等待 `media_file_stable_seconds` 后再扫描；最终一致性由 `/library/reconcile` 保底
-7. **TMDB 刮削** - 需要用户自己的 `TMDB_API_KEY`。默认不覆盖已有文件，优先用于 `metadata_source=filename` 且 `scrape_status=pending/failed` 的电影
+7. **TMDB 刮削** - 需要用户自己的 TMDB API Key；优先读取环境变量 `TMDB_API_KEY`，否则读取 `/settings/tmdb` 保存的设置。`GET /settings/tmdb` 只返回配置状态，不返回明文。默认不覆盖已有文件，优先用于 `metadata_source=filename` 且 `scrape_status=pending/failed` 的电影
 8. **发现记录** - 无 NFO 视频会作为发现记录入库，通常是 `metadata_source=filename`、`scrape_status=pending`；它不是已确认电影身份，需刮削或人工确认后变为 `matched`。发现记录和 TMDB 匹配都以主视频文件名解析标题/年份，目录名只作为物理容器
 9. **根目录整理** - `auto_organize_root_videos` 开启后，watcher 会整理媒体根目录直属稳定视频；默认保留原视频文件名，只移动到匹配电影目录并刮削。`/library/root-videos` 会列出待整理文件，避免用户看不见根目录散片
 10. **推荐使用 http_request 插件** - 如果有安装的话，比 curl 更安全

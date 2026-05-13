@@ -350,7 +350,7 @@ This document describes the REST API endpoints available in the backend applicat
 - **URL**: `/settings`
 - **Method**: `GET`
 - **Description**: Retrieves whole current system settings dictionary.
-- **Response Notes**: Includes library watcher fields such as `watch_library`, `watch_mode` (`events` or `polling`), `watch_debounce_seconds`, `watch_interval_seconds`, and `media_file_stable_seconds`.
+- **Response Notes**: Includes library watcher fields such as `watch_library`, `watch_mode` (`events` or `polling`), `watch_debounce_seconds`, `watch_interval_seconds`, and `media_file_stable_seconds`. Secret values such as `tmdb_api_key` are not returned; TMDB configuration is represented by the `tmdb` status object.
 
 ### Get Model Setting
 - **URL**: `/settings/model`
@@ -427,6 +427,47 @@ This document describes the REST API endpoints available in the backend applicat
 - **Description**: Enables or disables automatic root video organization.
 - **Query Parameters**:
   - `enabled` (boolean, required): Whether to organize root videos automatically.
+
+### Get TMDB Setting
+- **URL**: `/settings/tmdb`
+- **Method**: `GET`
+- **Description**: Gets TMDB API key configuration status without exposing the key.
+- **Response**:
+  ```json
+  {
+    "configured": true,
+    "source": "environment"
+  }
+  ```
+- **Response Fields**:
+  - `configured` (boolean): Whether a TMDB API key is available.
+  - `source` (string, nullable): `environment`, `settings`, or `null`.
+
+### Update TMDB Setting
+- **URL**: `/settings/tmdb`
+- **Method**: `PUT`
+- **Description**: Saves a TMDB API key in settings when `TMDB_API_KEY` is not managed by the process environment. Sending an empty `api_key` clears the saved settings key.
+- **Request Body**:
+  ```json
+  {
+    "api_key": "..."
+  }
+  ```
+- **Response**: `{"status": "success", "configured": true, "source": "settings"}`
+- **Errors**: `409 TMDB_API_KEY is configured by environment`, `500 Failed to save settings`
+
+### Test TMDB API Key
+- **URL**: `/settings/tmdb/test`
+- **Method**: `POST`
+- **Description**: Tests the currently configured TMDB API key by calling TMDB configuration.
+- **Response**:
+  ```json
+  {
+    "status": "success",
+    "message": "TMDB API key is valid"
+  }
+  ```
+- **Errors**: `503 TMDB_API_KEY is not configured`, `502 TMDB API test failed`
 
 ### Get Base URL
 - **URL**: `/settings/base-url`
