@@ -42,6 +42,12 @@ class RootOrganizeOptions(BaseModel):
     language: Optional[str] = None
 
 
+class RootOrganizeConfirmRequest(BaseModel):
+    path: str
+    tmdb_id: int
+    options: Optional[RootOrganizeOptions] = None
+
+
 class ScrapeResult(BaseModel):
     status: Literal["success", "needs_review", "failed", "skipped"]
     movie_id: str

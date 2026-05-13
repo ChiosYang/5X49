@@ -10,7 +10,7 @@ from app.services.metadata.matcher import generate_search_queries, parse_title_y
 from app.services.metadata.models import BatchScrapeOptions, MetadataSearchResult, ScrapeOptions, ScrapeResult
 from app.services.metadata.nfo_writer import NFOWriter
 from app.services.metadata.tmdb import TMDBClient
-from app.services.settings import get_language
+from app.services.settings import get_language, get_scrape_require_confirmation
 
 
 class MetadataScraper:
@@ -59,11 +59,27 @@ class MetadataScraper:
 
         language = self._language(options.language)
         try:
+            require_confirmation = get_scrape_require_confirmation()
             if options.tmdb_id:
                 selected_id = options.tmdb_id
                 candidates = []
             elif movie.get("tmdb_id"):
                 selected_id = int(movie["tmdb_id"])
+                if require_confirmation:
+                    candidate = self._candidate_from_existing_movie(movie, selected_id)
+                    self._update_scrape_state(
+                        movie_id,
+                        scrape_status="needs_review",
+                        tmdb_confidence=candidate.score,
+                        scrape_error="Manual confirmation required",
+                    )
+                    return ScrapeResult(
+                        status="needs_review",
+                        movie_id=movie_id,
+                        message="Choose a TMDB match to continue",
+                        movie=library_manager.get_movie(movie_id),
+                        candidates=[candidate],
+                    )
                 candidates = []
             else:
                 query, year = self._query_from_movie(movie)
@@ -72,6 +88,20 @@ class MetadataScraper:
                     return self._mark_failed(movie_id, "No TMDB matches found")
 
                 best = candidates[0]
+                if require_confirmation:
+                    self._update_scrape_state(
+                        movie_id,
+                        scrape_status="needs_review",
+                        tmdb_confidence=best.score,
+                        scrape_error="Manual confirmation required",
+                    )
+                    return ScrapeResult(
+                        status="needs_review",
+                        movie_id=movie_id,
+                        message="Choose a TMDB match to continue",
+                        movie=library_manager.get_movie(movie_id),
+                        candidates=candidates[:5],
+                    )
                 if options.mode == "auto" and best.score < 80:
                     self._update_scrape_state(
                         movie_id,
@@ -206,6 +236,16 @@ class MetadataScraper:
             return parsed_title, parsed_year
 
         return movie.get("title") or "", int(movie.get("year") or 0)
+
+    def _candidate_from_existing_movie(self, movie: dict, tmdb_id: int) -> MetadataSearchResult:
+        return MetadataSearchResult(
+            tmdb_id=tmdb_id,
+            title=movie.get("title") or movie.get("original_title") or f"TMDB {tmdb_id}",
+            original_title=movie.get("original_title"),
+            year=int(movie.get("year") or 0),
+            overview=movie.get("overview") or "",
+            score=100,
+        )
 
     def _movie_folder(self, movie: dict) -> Optional[Path]:
         folder_path = movie.get("folder_path")

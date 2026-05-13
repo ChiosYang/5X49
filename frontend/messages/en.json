@@ -16,6 +16,10 @@
     "rootPending": "{count, plural, one {# root video waiting} other {# root videos waiting}}",
     "rootReady": "ready",
     "rootWaitingForStability": "waiting for file stability",
+    "rootReview": "Review",
+    "rootNoCandidates": "No candidates found",
+    "rootReviewFailed": "Candidate search failed",
+    "rootConfirmFailed": "Confirmed organization failed",
     "empty": "Your library is empty. Click Scan Now to add movies."
   },
   "FilmDetail": {
@@ -79,6 +83,8 @@
     "tmdbSaveFailed": "Failed to save TMDB API key",
     "tmdbTestFailed": "Failed to test TMDB API key",
     "tmdbRequiredForScrape": "Configure TMDB before scraping",
+    "scrapeRequireConfirmation": "Confirm Before Scraping",
+    "scrapeRequireConfirmationDesc": "When enabled, each automatic TMDB match stops for review before artwork or NFO files are written",
     "manualScan": "Manual Scan",
     "manualScanDesc": "Force a re-scan of the library folder",
     "scanNow": "Scan Now",

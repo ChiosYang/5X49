@@ -111,6 +111,7 @@ def get_default_settings():
         "auto_organize_root_videos": os.getenv("AUTO_ORGANIZE_ROOT_VIDEOS", "false").lower() == "true",
         "organize_min_confidence": float(os.getenv("ORGANIZE_MIN_CONFIDENCE", "85")),
         "organize_rename_style": os.getenv("ORGANIZE_RENAME_STYLE", "preserve_stem"),
+        "scrape_require_confirmation": os.getenv("SCRAPE_REQUIRE_CONFIRMATION", "false").lower() == "true",
         "missing_policy": os.getenv("MISSING_POLICY", "mark_missing"),
     }
 
@@ -275,6 +276,15 @@ def get_auto_organize_root_videos():
 def set_auto_organize_root_videos(enabled: bool):
     settings = load_settings()
     settings["auto_organize_root_videos"] = bool(enabled)
+    return save_settings(settings)
+
+def get_scrape_require_confirmation():
+    settings = load_settings()
+    return bool(settings.get("scrape_require_confirmation", False))
+
+def set_scrape_require_confirmation(enabled: bool):
+    settings = load_settings()
+    settings["scrape_require_confirmation"] = bool(enabled)
     return save_settings(settings)
 
 def get_organize_min_confidence():

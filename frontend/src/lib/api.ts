@@ -36,6 +36,7 @@ export const API = {
     libraryScrapeBatch: () => `${API_BASE_URL}/library/scrape`,
     libraryScrapeStatus: () => `${API_BASE_URL}/library/scrape/status`,
     libraryOrganizeRoot: () => `${API_BASE_URL}/library/organize-root`,
+    libraryOrganizeRootConfirm: () => `${API_BASE_URL}/library/organize-root/confirm`,
     libraryOrganizeStatus: () => `${API_BASE_URL}/library/organize/status`,
     libraryRootVideos: () => `${API_BASE_URL}/library/root-videos`,
     libraryReconcile: () => `${API_BASE_URL}/library/reconcile`,
@@ -51,6 +52,7 @@ export const API = {
     settingsLanguage: () => `${API_BASE_URL}/settings/language`,
     settingsLibraryWatch: () => `${API_BASE_URL}/settings/library-watch`,
     settingsAutoOrganizeRoot: () => `${API_BASE_URL}/settings/auto-organize-root`,
+    settingsScrapeConfirmation: () => `${API_BASE_URL}/settings/scrape-confirmation`,
     settingsTmdb: () => `${API_BASE_URL}/settings/tmdb`,
     settingsTmdbTest: () => `${API_BASE_URL}/settings/tmdb/test`,
 

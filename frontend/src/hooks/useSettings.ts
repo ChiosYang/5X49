@@ -94,6 +94,12 @@ export function useAutoOrganizeRootSetting() {
   );
 }
 
+export function useScrapeConfirmationSetting() {
+  return useSWR<{ scrape_require_confirmation: boolean }>(
+    API.settingsScrapeConfirmation()
+  );
+}
+
 export function useTmdbSettings() {
   return useSWR<TmdbSettings>(API.settingsTmdb());
 }
@@ -197,6 +203,25 @@ export function useUpdateAutoOrganizeRoot() {
       });
       if (!res.ok) throw new Error("Failed to update auto organize setting");
       return res.json();
+    }
+  );
+}
+
+export function useUpdateScrapeConfirmation() {
+  const { mutate } = useSWRConfig();
+
+  return useSWRMutation(
+    API.settingsScrapeConfirmation(),
+    async (url: string, { arg: enabled }: { arg: boolean }) => {
+      const res = await fetch(`${url}?enabled=${enabled}`, {
+        method: "PUT",
+      });
+      if (!res.ok) throw new Error("Failed to update scrape confirmation setting");
+      const data = await res.json();
+      await mutate(API.settingsScrapeConfirmation(), {
+        scrape_require_confirmation: data.scrape_require_confirmation,
+      }, false);
+      return data;
     }
   );
 }

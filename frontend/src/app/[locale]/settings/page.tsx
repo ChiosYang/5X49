@@ -26,6 +26,8 @@ import {
   useCleanupMissingMovies,
   useAutoOrganizeRootSetting,
   useUpdateAutoOrganizeRoot,
+  useScrapeConfirmationSetting,
+  useUpdateScrapeConfirmation,
   useOrganizeRootVideos,
   useLibraryOrganizeStatus,
   useLibrarySyncStatus,
@@ -49,6 +51,7 @@ function SettingsContent() {
   const { data: langData } = useLanguageSetting();
   const { data: libraryWatchData } = useLibraryWatchSetting();
   const { data: autoOrganizeRootData } = useAutoOrganizeRootSetting();
+  const { data: scrapeConfirmationData } = useScrapeConfirmationSetting();
   const { data: tmdbData } = useTmdbSettings();
   const { data: syncStatus } = useLibrarySyncStatus();
   const { data: scrapeStatus } = useLibraryScrapeStatus();
@@ -60,6 +63,7 @@ function SettingsContent() {
   const { trigger: updateLanguage, isMutating: languageSaving } = useUpdateLanguage();
   const { trigger: updateLibraryWatch, isMutating: watchSaving } = useUpdateLibraryWatch();
   const { trigger: updateAutoOrganizeRoot, isMutating: autoOrganizeSaving } = useUpdateAutoOrganizeRoot();
+  const { trigger: updateScrapeConfirmation, isMutating: scrapeConfirmationSaving } = useUpdateScrapeConfirmation();
   const { trigger: updateTmdbKey, isMutating: tmdbSaving, data: tmdbSaveResult, error: tmdbSaveError, reset: resetTmdbSave } = useUpdateTmdbKey();
   const { trigger: testTmdbKey, data: tmdbTestResult, isMutating: tmdbTesting, error: tmdbTestError } = useTestTmdbKey();
   const { trigger: testApi, data: apiTestResult, isMutating: apiTesting } = useTestApiKey();
@@ -181,6 +185,10 @@ function SettingsContent() {
 
   const handleAutoOrganizeRootChange = async () => {
     await updateAutoOrganizeRoot(!autoOrganizeRootData?.auto_organize_root_videos);
+  };
+
+  const handleScrapeConfirmationChange = async () => {
+    await updateScrapeConfirmation(!scrapeConfirmationData?.scrape_require_confirmation);
   };
 
   const handleTmdbKeySave = async () => {
@@ -683,6 +691,32 @@ function SettingsContent() {
                       {tmdbTestError && (
                         <p className="text-xs text-red-500 mt-2">{tmdbTestError instanceof Error ? tmdbTestError.message : t("tmdbTestFailed")}</p>
                       )}
+                    </div>
+                  </div>
+
+                  <div className="border-b border-neutral-900 pb-6">
+                    <div className="flex items-center justify-between gap-4">
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium uppercase tracking-widest mb-1">{t("scrapeRequireConfirmation")}</p>
+                        <p className="text-xs text-neutral-600">{t("scrapeRequireConfirmationDesc")}</p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleScrapeConfirmationChange}
+                        disabled={scrapeConfirmationSaving}
+                        className={`relative h-7 w-12 shrink-0 border transition-colors ${
+                          scrapeConfirmationData?.scrape_require_confirmation
+                            ? "bg-white border-white"
+                            : "bg-neutral-900 border-neutral-700"
+                        } disabled:opacity-50`}
+                        aria-label={t("scrapeRequireConfirmation")}
+                      >
+                        <span
+                          className={`absolute left-1 top-1 h-5 w-5 bg-black transition-transform ${
+                            scrapeConfirmationData?.scrape_require_confirmation ? "translate-x-5" : "translate-x-0"
+                          }`}
+                        />
+                      </button>
                     </div>
                   </div>
 

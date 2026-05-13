@@ -39,6 +39,8 @@ description: 电影族谱 API (FastAPI) 的接口调用指南
 | POST | `/library/scrape` | 后台批量刮削未匹配/缺图片/指定电影 |
 | GET | `/library/scrape/status` | 获取批量刮削状态 |
 | POST | `/library/organize-root` | 整理媒体根目录直属视频并刮削 |
+| POST | `/library/organize-root/confirm` | 使用人工确认的 TMDB ID 整理根目录直属视频 |
+| GET/PUT | `/settings/scrape-confirmation` | 获取/设置自动刮削前是否必须人工确认 |
 | GET | `/library/organize/status` | 获取根目录整理状态 |
 | GET | `/library/root-videos` | 列出待整理的媒体根目录直属视频 |
 | GET | `/library/sync/status` | 获取校准与自动监听状态 |
@@ -119,7 +121,7 @@ curl -s -X POST http://127.0.0.1:11548/library/local_xxx/scrape \
   -d '{"mode":"auto","overwrite":false,"write_nfo":true,"download_artwork":true}'
 ```
 
-成功时会按主视频文件名前缀下载 `<video-stem>-poster.jpg` / `<video-stem>-fanart.jpg`、写入 `<video-stem>.nfo`，然后重新扫描电影文件夹并更新数据库。低置信度匹配会返回 `status=needs_review` 和候选列表。
+成功时会按主视频文件名前缀下载 `<video-stem>-poster.jpg` / `<video-stem>-fanart.jpg`、写入 `<video-stem>.nfo`，然后重新扫描电影文件夹并更新数据库。低置信度匹配会返回 `status=needs_review` 和候选列表；如果 `/settings/scrape-confirmation` 已开启，高置信度匹配也会先返回 `needs_review`，确认后才写入。
 
 ### 确认候选并刮削
 ```bash
@@ -135,6 +137,7 @@ curl -s -X POST http://127.0.0.1:11548/library/scrape \
   -d '{"scope":"unscraped","overwrite":false,"write_nfo":true,"download_artwork":true}'
 ```
 `unscraped` 只处理 `metadata_source=filename` 且 `scrape_status=pending/failed` 的可用电影；`ignored` 和 `missing` 会跳过。
+如果已开启 `/settings/scrape-confirmation`，批量刮削会把自动匹配项计入 `needs_review`，不会直接写图片、NFO 或匹配元数据。
 
 ### 整理媒体根目录直属视频
 ```bash
@@ -143,7 +146,16 @@ curl -s -X POST http://127.0.0.1:11548/library/organize-root \
   -d '{"min_confidence":85,"rename_style":"preserve_stem","overwrite":false,"write_nfo":true,"download_artwork":true}'
 ```
 
-只处理直接放在媒体根目录下的视频文件。高置信度 TMDB 匹配后会创建电影目录、移动视频、扫描入库并刮削；低置信度会跳过并在状态中返回 `needs_review`。
+只处理直接放在媒体根目录下的视频文件。高置信度 TMDB 匹配后会创建电影目录、移动视频、扫描入库并刮削；低置信度会跳过并在状态中返回 `needs_review`。如果已开启 `/settings/scrape-confirmation`，匹配项会在移动文件前返回 `needs_review`。
+
+### 确认根目录视频并整理
+```bash
+curl -s -X POST http://127.0.0.1:11548/library/organize-root/confirm \
+  -H "Content-Type: application/json" \
+  -d '{"path":"/media/The.Matrix.1999.1080p.mkv","tmdb_id":603,"options":{"rename_style":"preserve_stem","overwrite":false,"write_nfo":true,"download_artwork":true}}'
+```
+
+用于 `scrape_require_confirmation` 开启后的根目录视频确认流程。确认前不会移动文件；确认后才创建电影目录、移动视频、扫描入库并用该 TMDB ID 刮削。
 
 ### 查看待整理根目录视频
 ```bash
@@ -185,7 +197,7 @@ curl -s -X PUT "http://127.0.0.1:11548/settings/model?model_name=moonshotai/kimi
 4. **缺失策略** - 资料库校准和监听删除事件默认将电影标记为 `library_status=missing`，不会直接删除数据库记录
 5. **忽略策略** - `library_status=ignored` 的记录会从正常资料库隐藏，并跳过校准缺失标记和批量刮削
 6. **自动监听** - 当前监听器默认使用 `watchfiles` 原生文件事件和去抖，避免频繁全目录轮询；如遇 Docker volume、NAS、SMB 事件不可靠，可设置 `watch_mode=polling` 或 `WATCH_MODE=polling` 回退；新增视频会等待 `media_file_stable_seconds` 后再扫描；最终一致性由 `/library/reconcile` 保底
-7. **TMDB 刮削** - 需要用户自己的 TMDB API Key；优先读取环境变量 `TMDB_API_KEY`，否则读取 `/settings/tmdb` 保存的设置。`GET /settings/tmdb` 只返回配置状态，不返回明文。默认不覆盖已有文件，优先用于 `metadata_source=filename` 且 `scrape_status=pending/failed` 的电影
+7. **TMDB 刮削** - 需要用户自己的 TMDB API Key；优先读取环境变量 `TMDB_API_KEY`，否则读取 `/settings/tmdb` 保存的设置。`GET /settings/tmdb` 只返回配置状态，不返回明文。默认不覆盖已有文件，优先用于 `metadata_source=filename` 且 `scrape_status=pending/failed` 的电影。`/settings/scrape-confirmation` 开启后，自动 TMDB 匹配都会先进入 `needs_review`，必须调用 `/library/{movie_id}/scrape/confirm` 后才写入文件和 matched 元数据
 8. **发现记录** - 无 NFO 视频会作为发现记录入库，通常是 `metadata_source=filename`、`scrape_status=pending`；它不是已确认电影身份，需刮削或人工确认后变为 `matched`。发现记录和 TMDB 匹配都以主视频文件名解析标题/年份，目录名只作为物理容器
-9. **根目录整理** - `auto_organize_root_videos` 开启后，watcher 会整理媒体根目录直属稳定视频；默认保留原视频文件名，只移动到匹配电影目录并刮削。`/library/root-videos` 会列出待整理文件，避免用户看不见根目录散片
+9. **根目录整理** - `auto_organize_root_videos` 开启后，watcher 会整理媒体根目录直属稳定视频；默认保留原视频文件名，只移动到匹配电影目录并刮削。`/library/root-videos` 会列出待整理文件，避免用户看不见根目录散片。`scrape_require_confirmation` 开启时会在移动文件前停在 `needs_review`，需通过 `/library/organize-root/confirm` 传入确认的 `path` 和 `tmdb_id`
 10. **推荐使用 http_request 插件** - 如果有安装的话，比 curl 更安全

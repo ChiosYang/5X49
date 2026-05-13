@@ -8,13 +8,14 @@ from typing import Optional
 
 from app.services.event_bus import library_event_bus
 from app.services.metadata.matcher import parse_title_year
-from app.services.metadata.models import RootOrganizeOptions, ScrapeOptions
+from app.services.metadata.models import MetadataSearchResult, RootOrganizeOptions, ScrapeOptions
 from app.services.metadata.scraper import metadata_scraper
 from app.services.settings import (
     get_media_dir,
     get_media_file_stable_seconds,
     get_organize_min_confidence,
     get_organize_rename_style,
+    get_scrape_require_confirmation,
 )
 
 
@@ -138,10 +139,53 @@ class RootVideoOrganizer:
                 "message": "Low confidence TMDB match",
                 "candidate": best.model_dump(),
             }
+        if get_scrape_require_confirmation():
+            return {
+                "status": "needs_review",
+                "path": str(video_path),
+                "message": "Manual confirmation required",
+                "candidate": best.model_dump(),
+            }
 
-        target_dir = self._target_dir(root, best.title, best.year or year)
+        return self._organize_matched_file(video_path, root, best, year, options)
+
+    def organize_file_confirmed(self, video_path: Path, root: Path, tmdb_id: int, options: RootOrganizeOptions) -> dict:
+        video_path = video_path.resolve()
+        if not self._is_usable_root_video(video_path, root):
+            return {"status": "skipped", "path": str(video_path), "message": "Not a stable root video"}
+
+        _, year = parse_title_year(video_path.name)
+        details = metadata_scraper.tmdb.movie_details(tmdb_id, language=options.language)
+        release_year = self._release_year(details.get("release_date"))
+        candidate = MetadataSearchResult(
+            tmdb_id=tmdb_id,
+            title=details.get("title") or details.get("original_title") or f"TMDB {tmdb_id}",
+            original_title=details.get("original_title"),
+            year=release_year,
+            overview=details.get("overview") or "",
+            poster_path=details.get("poster_path"),
+            backdrop_path=details.get("backdrop_path"),
+            popularity=float(details.get("popularity") or 0),
+            score=100,
+        )
+        return self._organize_matched_file(video_path, root, candidate, year, options)
+
+    def _organize_matched_file(
+        self,
+        video_path: Path,
+        root: Path,
+        candidate: MetadataSearchResult,
+        parsed_year: int,
+        options: RootOrganizeOptions,
+    ) -> dict:
+        target_dir = self._target_dir(root, candidate.title, candidate.year or parsed_year)
         target_dir.mkdir(parents=True, exist_ok=True)
-        target_video = target_dir / self._target_video_name(video_path, best.title, best.year or year, options.rename_style)
+        target_video = target_dir / self._target_video_name(
+            video_path,
+            candidate.title,
+            candidate.year or parsed_year,
+            options.rename_style,
+        )
         if target_video.exists() and not options.overwrite:
             return {
                 "status": "failed",
@@ -167,7 +211,7 @@ class RootVideoOrganizer:
             movie["id"],
             ScrapeOptions(
                 mode="manual",
-                tmdb_id=best.tmdb_id,
+                tmdb_id=candidate.tmdb_id,
                 language=options.language,
                 overwrite=options.overwrite,
                 write_nfo=options.write_nfo,
@@ -181,8 +225,8 @@ class RootVideoOrganizer:
             "target_path": str(target_video),
             "target_dir": str(target_dir),
             "movie_id": movie["id"],
-            "tmdb_id": best.tmdb_id,
-            "score": best.score,
+            "tmdb_id": candidate.tmdb_id,
+            "score": candidate.score,
             "scrape_status": scrape_result.status,
             "sidecars": moved_sidecars,
         }
@@ -235,6 +279,14 @@ class RootVideoOrganizer:
         cleaned = re.sub(r'[<>:"/\\|?*\x00-\x1f]+', " ", value)
         cleaned = re.sub(r"\s+", " ", cleaned).strip().rstrip(".")
         return cleaned[:180]
+
+    def _release_year(self, release_date: Optional[str]) -> int:
+        if not release_date:
+            return 0
+        try:
+            return int(str(release_date).split("-", 1)[0])
+        except ValueError:
+            return 0
 
     def _set_status(self, **updates):
         with self._lock:

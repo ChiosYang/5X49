@@ -11,7 +11,7 @@ from app.services.scanner import NFOScanner
 from app.services.analysis import analysis_service
 from app.services.library_sync import library_sync_service
 from app.services.watcher import library_watcher
-from app.services.metadata.models import BatchScrapeOptions, RootOrganizeOptions, ScrapeOptions
+from app.services.metadata.models import BatchScrapeOptions, RootOrganizeConfirmRequest, RootOrganizeOptions, ScrapeOptions
 from app.services.metadata.organizer import root_video_organizer
 from app.services.metadata.scraper import metadata_scraper
 from app.database import create_db_and_tables
@@ -249,6 +249,28 @@ def organize_root_library_videos(background_tasks: BackgroundTasks, options: Roo
     background_tasks.add_task(root_video_organizer.organize_root, get_media_dir() or DEFAULT_MEDIA_DIR, options)
     return {"status": "started", "message": "Root video organization started"}
 
+@app.post("/library/organize-root/confirm")
+def confirm_root_library_video(payload: RootOrganizeConfirmRequest):
+    """Organize one root video using a user-confirmed TMDB ID."""
+    try:
+        result = root_video_organizer.organize_file_confirmed(
+            Path(payload.path),
+            Path(get_media_dir() or DEFAULT_MEDIA_DIR).resolve(),
+            payload.tmdb_id,
+            payload.options or RootOrganizeOptions(),
+        )
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+    except Exception as exc:
+        raise HTTPException(status_code=409, detail=str(exc))
+
+    if result.get("status") == "failed":
+        raise HTTPException(status_code=409, detail=result)
+    if result.get("status") == "skipped":
+        raise HTTPException(status_code=400, detail=result)
+    library_event_bus.publish_library_changed("root_video_confirmed", result=result)
+    return result
+
 @app.get("/library/organize/status")
 def get_library_organize_status():
     """Get latest root video organization status."""
@@ -287,7 +309,7 @@ def cleanup_missing_library_movies():
     return {"status": "success", "deleted": deleted}
 
 # Settings endpoints
-from app.services.settings import load_settings, save_settings, get_current_model, set_current_model, get_base_url, set_base_url, refresh_models_cache, get_auto_organize_root_videos, set_auto_organize_root_videos
+from app.services.settings import load_settings, save_settings, get_current_model, set_current_model, get_base_url, set_base_url, refresh_models_cache, get_auto_organize_root_videos, set_auto_organize_root_videos, get_scrape_require_confirmation, set_scrape_require_confirmation
 
 @app.get("/settings")
 def get_settings():
@@ -375,6 +397,17 @@ def update_auto_organize_root_setting(enabled: bool):
     if not success:
         raise HTTPException(status_code=500, detail="Failed to save settings")
     return {"status": "success", "auto_organize_root_videos": enabled}
+
+@app.get("/settings/scrape-confirmation")
+def get_scrape_confirmation_setting():
+    return {"scrape_require_confirmation": get_scrape_require_confirmation()}
+
+@app.put("/settings/scrape-confirmation")
+def update_scrape_confirmation_setting(enabled: bool):
+    success = set_scrape_require_confirmation(enabled)
+    if not success:
+        raise HTTPException(status_code=500, detail="Failed to save settings")
+    return {"status": "success", "scrape_require_confirmation": enabled}
 
 @app.get("/settings/tmdb")
 def get_tmdb_setting():

@@ -160,7 +160,7 @@ This document describes the REST API endpoints available in the backend applicat
     "candidates": []
   }
   ```
-- **Needs Review**: If the best automatic match has low confidence, returns `status: "needs_review"` with up to five scored `candidates`.
+- **Needs Review**: If the best automatic match has low confidence, or `/settings/scrape-confirmation` is enabled, returns `status: "needs_review"` with up to five scored `candidates`.
 - **Errors**: `400 Invalid ID format`, `409` with a scrape result payload when scraping fails.
 
 ### Confirm Movie Metadata Match
@@ -192,6 +192,7 @@ This document describes the REST API endpoints available in the backend applicat
   - `missing_artwork`: Movies missing local poster or backdrop.
   - `all`: Every available movie.
   - `selected`: Only IDs listed in `movie_ids`.
+- **Confirmation Mode**: When `/settings/scrape-confirmation` is enabled, automatic matches are counted as `needs_review` and are not written until confirmed with `/library/{movie_id}/scrape/confirm`.
 - **Response**: `{"status": "started", "message": "Metadata scrape started"}`
 
 ### Get Metadata Scrape Status
@@ -218,7 +219,7 @@ This document describes the REST API endpoints available in the backend applicat
 ### Organize Root Videos
 - **URL**: `/library/organize-root`
 - **Method**: `POST`
-- **Description**: Starts a background job that looks only at video files placed directly in the configured media root, waits for stable files, matches them with TMDB, moves high-confidence matches into movie folders, then scrapes metadata/artwork/NFO.
+- **Description**: Starts a background job that looks only at video files placed directly in the configured media root, waits for stable files, matches them with TMDB, moves high-confidence matches into movie folders, then scrapes metadata/artwork/NFO. When `/settings/scrape-confirmation` is enabled, matched files return `needs_review` before any move or scrape writes occur.
 - **Body**:
   ```json
   {
@@ -234,6 +235,37 @@ This document describes the REST API endpoints available in the backend applicat
   - `preserve_stem`: Keep the original video filename and move it into a matched movie folder.
   - `title_year`: Rename the video to the matched title/year.
 - **Response**: `{"status": "started", "message": "Root video organization started"}`
+
+### Confirm Root Video Organization
+- **URL**: `/library/organize-root/confirm`
+- **Method**: `POST`
+- **Description**: Moves one stable direct media-root video into a movie folder and scrapes it using a user-confirmed TMDB ID. This is the confirmation path for root videos when `/settings/scrape-confirmation` is enabled.
+- **Body**:
+  ```json
+  {
+    "path": "/media/The.Matrix.1999.1080p.mkv",
+    "tmdb_id": 603,
+    "options": {
+      "rename_style": "preserve_stem",
+      "overwrite": false,
+      "write_nfo": true,
+      "download_artwork": true,
+      "language": "zh-CN"
+    }
+  }
+  ```
+- **Response**:
+  ```json
+  {
+    "status": "success",
+    "source_path": "/media/The.Matrix.1999.1080p.mkv",
+    "target_path": "/media/The Matrix (1999)/The.Matrix.1999.1080p.mkv",
+    "movie_id": "local_...",
+    "tmdb_id": 603,
+    "scrape_status": "success"
+  }
+  ```
+- **Errors**: `400` when the file is not a stable direct root video, `409` when the target exists or organization fails.
 
 ### Get Root Organization Status
 - **URL**: `/library/organize/status`
@@ -350,7 +382,7 @@ This document describes the REST API endpoints available in the backend applicat
 - **URL**: `/settings`
 - **Method**: `GET`
 - **Description**: Retrieves whole current system settings dictionary.
-- **Response Notes**: Includes library watcher fields such as `watch_library`, `watch_mode` (`events` or `polling`), `watch_debounce_seconds`, `watch_interval_seconds`, and `media_file_stable_seconds`. Secret values such as `tmdb_api_key` are not returned; TMDB configuration is represented by the `tmdb` status object.
+- **Response Notes**: Includes library watcher fields such as `watch_library`, `watch_mode` (`events` or `polling`), `watch_debounce_seconds`, `watch_interval_seconds`, `media_file_stable_seconds`, and `scrape_require_confirmation`. Secret values such as `tmdb_api_key` are not returned; TMDB configuration is represented by the `tmdb` status object.
 
 ### Get Model Setting
 - **URL**: `/settings/model`
@@ -427,6 +459,19 @@ This document describes the REST API endpoints available in the backend applicat
 - **Description**: Enables or disables automatic root video organization.
 - **Query Parameters**:
   - `enabled` (boolean, required): Whether to organize root videos automatically.
+
+### Get Scrape Confirmation Setting
+- **URL**: `/settings/scrape-confirmation`
+- **Method**: `GET`
+- **Description**: Gets whether automatic TMDB matches require manual confirmation before writing artwork, NFO files, or matched metadata.
+- **Response**: `{"scrape_require_confirmation": false}`
+
+### Update Scrape Confirmation Setting
+- **URL**: `/settings/scrape-confirmation`
+- **Method**: `PUT`
+- **Description**: Enables or disables manual confirmation before automatic metadata scraping writes files or matched metadata.
+- **Query Parameters**:
+  - `enabled` (boolean, required): Whether every automatic TMDB match must be confirmed first.
 
 ### Get TMDB Setting
 - **URL**: `/settings/tmdb`

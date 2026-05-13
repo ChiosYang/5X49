@@ -1,6 +1,7 @@
 import tempfile
 import unittest
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import patch
 
 from sqlmodel import SQLModel, create_engine
@@ -9,7 +10,8 @@ import app.database as database
 import app.services.library as library_module
 from app.services.library import library_manager
 from app.services.library_sync import library_sync_service
-from app.services.metadata.models import ScrapeOptions
+from app.services.metadata.models import RootOrganizeOptions, ScrapeOptions
+from app.services.metadata.organizer import root_video_organizer
 from app.services.metadata.scraper import metadata_scraper
 
 
@@ -45,6 +47,7 @@ class MetadataScraperIntegrationTests(unittest.TestCase):
             return destination
 
         with (
+            patch("app.services.metadata.scraper.get_scrape_require_confirmation", return_value=False),
             patch.object(metadata_scraper.tmdb, "search_movies") as search_movies,
             patch.object(metadata_scraper.tmdb, "movie_details") as movie_details,
             patch.object(metadata_scraper.artwork, "download", side_effect=fake_download) as download,
@@ -110,6 +113,118 @@ class MetadataScraperIntegrationTests(unittest.TestCase):
         self.assertEqual(stored["backdrop_local"], "/media/The.Matrix.1999/The.Matrix.1999.1080p-fanart.jpg")
         self.assertEqual(stored["tmdb_confidence"], 95)
         self.assertIsNone(stored["scrape_error"])
+
+    def test_scrape_movie_requires_confirmation_when_enabled(self):
+        movie_dir = self.tmp_path / "The.Matrix.1999"
+        movie_dir.mkdir()
+        video = movie_dir / "The.Matrix.1999.1080p.mkv"
+        video.write_bytes(b"fake video")
+
+        movie = library_sync_service.scan_folder(movie_dir)
+        self.assertIsNotNone(movie)
+
+        with (
+            patch("app.services.metadata.scraper.get_scrape_require_confirmation", return_value=True),
+            patch.object(metadata_scraper.tmdb, "search_movies") as search_movies,
+            patch.object(metadata_scraper.tmdb, "movie_details") as movie_details,
+            patch.object(metadata_scraper.artwork, "download") as download,
+        ):
+            search_movies.return_value = [
+                {
+                    "id": 603,
+                    "title": "The Matrix",
+                    "original_title": "The Matrix",
+                    "release_date": "1999-03-31",
+                    "overview": "A computer hacker learns about the true nature of reality.",
+                    "poster_path": "/matrix-poster.jpg",
+                    "backdrop_path": "/matrix-backdrop.jpg",
+                    "popularity": 100,
+                }
+            ]
+
+            result = metadata_scraper.scrape_movie(movie["id"], ScrapeOptions())
+
+        self.assertEqual(result.status, "needs_review")
+        self.assertEqual(len(result.candidates), 1)
+        movie_details.assert_not_called()
+        download.assert_not_called()
+        self.assertFalse((movie_dir / "The.Matrix.1999.1080p.nfo").exists())
+
+        stored = library_manager.get_movie(movie["id"])
+        self.assertIsNotNone(stored)
+        self.assertEqual(stored["metadata_source"], "filename")
+        self.assertEqual(stored["scrape_status"], "needs_review")
+        self.assertEqual(stored["scrape_error"], "Manual confirmation required")
+        self.assertEqual(stored["tmdb_confidence"], 95)
+
+    def test_scrape_movie_requires_confirmation_for_existing_tmdb_id(self):
+        movie_dir = self.tmp_path / "The.Matrix.1999"
+        movie_dir.mkdir()
+        video = movie_dir / "The.Matrix.1999.1080p.mkv"
+        video.write_bytes(b"fake video")
+
+        movie = library_sync_service.scan_folder(movie_dir)
+        self.assertIsNotNone(movie)
+        library_manager.upsert_movie(
+            {
+                **movie,
+                "title": "The Matrix",
+                "year": 1999,
+                "tmdb_id": "603",
+                "metadata_source": "tmdb",
+                "scrape_status": "matched",
+            },
+            preserve_id=movie["id"],
+        )
+
+        with (
+            patch("app.services.metadata.scraper.get_scrape_require_confirmation", return_value=True),
+            patch.object(metadata_scraper.tmdb, "movie_details") as movie_details,
+        ):
+            result = metadata_scraper.scrape_movie(movie["id"], ScrapeOptions())
+
+        self.assertEqual(result.status, "needs_review")
+        self.assertEqual(result.candidates[0].tmdb_id, 603)
+        self.assertEqual(result.candidates[0].score, 100)
+        movie_details.assert_not_called()
+
+        stored = library_manager.get_movie(movie["id"])
+        self.assertEqual(stored["scrape_status"], "needs_review")
+        self.assertEqual(stored["scrape_error"], "Manual confirmation required")
+
+    def test_confirmed_root_video_organize_moves_and_scrapes(self):
+        video = self.tmp_path / "The.Matrix.1999.1080p.mkv"
+        video.write_bytes(b"fake video")
+
+        with (
+            patch("app.services.metadata.organizer.get_media_file_stable_seconds", return_value=0),
+            patch.object(metadata_scraper.tmdb, "movie_details") as movie_details,
+            patch.object(metadata_scraper, "scrape_movie", return_value=SimpleNamespace(status="success")) as scrape_movie,
+        ):
+            movie_details.return_value = {
+                "id": 603,
+                "title": "The Matrix",
+                "original_title": "The Matrix",
+                "release_date": "1999-03-31",
+                "overview": "A computer hacker learns about the true nature of reality.",
+            }
+
+            result = root_video_organizer.organize_file_confirmed(
+                video,
+                self.tmp_path.resolve(),
+                603,
+                RootOrganizeOptions(rename_style="preserve_stem"),
+            )
+
+        self.assertEqual(result["status"], "success")
+        self.assertEqual(result["tmdb_id"], 603)
+        self.assertEqual(result["scrape_status"], "success")
+        self.assertFalse(video.exists())
+        self.assertTrue((self.tmp_path / "The Matrix (1999)" / "The.Matrix.1999.1080p.mkv").exists())
+        scrape_movie.assert_called_once()
+        scrape_options = scrape_movie.call_args.args[1]
+        self.assertEqual(scrape_options.mode, "manual")
+        self.assertEqual(scrape_options.tmdb_id, 603)
 
 
 if __name__ == "__main__":

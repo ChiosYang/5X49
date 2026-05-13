@@ -16,6 +16,10 @@
     "rootPending": "{count} 个根目录视频待整理",
     "rootReady": "可整理",
     "rootWaitingForStability": "等待文件稳定",
+    "rootReview": "确认",
+    "rootNoCandidates": "未找到候选",
+    "rootReviewFailed": "候选搜索失败",
+    "rootConfirmFailed": "确认整理失败",
     "empty": "资料库为空。点击扫描添加电影。"
   },
   "FilmDetail": {
@@ -79,6 +83,8 @@
     "tmdbSaveFailed": "保存 TMDB API 密钥失败",
     "tmdbTestFailed": "测试 TMDB API 密钥失败",
     "tmdbRequiredForScrape": "请先配置 TMDB 再刮削",
+    "scrapeRequireConfirmation": "刮削前手动确认",
+    "scrapeRequireConfirmationDesc": "开启后，每次自动匹配到 TMDB 候选都会先进入确认状态，不会直接写入图片或 NFO",
     "manualScan": "手动扫描",
     "manualScanDesc": "强制重新扫描资料库文件夹",
     "scanNow": "立即扫描",
