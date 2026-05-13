@@ -6,7 +6,7 @@ from typing import Optional
 from app.services.event_bus import library_event_bus
 from app.services.library import library_manager
 from app.services.metadata.artwork import ArtworkDownloader
-from app.services.metadata.matcher import parse_title_year, score_candidates
+from app.services.metadata.matcher import generate_search_queries, parse_title_year, score_candidates
 from app.services.metadata.models import BatchScrapeOptions, MetadataSearchResult, ScrapeOptions, ScrapeResult
 from app.services.metadata.nfo_writer import NFOWriter
 from app.services.metadata.tmdb import TMDBClient
@@ -33,8 +33,20 @@ class MetadataScraper:
 
     def search(self, query: str, year: Optional[int] = None, language: Optional[str] = None) -> list[MetadataSearchResult]:
         target_language = self._language(language)
-        results = self.tmdb.search_movies(query, year=year, language=target_language)
-        return score_candidates(query, year or 0, results)
+        candidates_by_id: dict[int, MetadataSearchResult] = {}
+        for search_query in generate_search_queries(query):
+            results = self.tmdb.search_movies(search_query, year=year, language=target_language)
+            if not results and year:
+                results = self.tmdb.search_movies(search_query, language=target_language)
+
+            for candidate in score_candidates(search_query, year or 0, results):
+                existing = candidates_by_id.get(candidate.tmdb_id)
+                if not existing or (candidate.score, candidate.popularity) > (existing.score, existing.popularity):
+                    candidates_by_id[candidate.tmdb_id] = candidate
+
+        candidates = list(candidates_by_id.values())
+        candidates.sort(key=lambda candidate: (candidate.score, candidate.popularity), reverse=True)
+        return candidates
 
     def scrape_movie(self, movie_id: str, options: ScrapeOptions) -> ScrapeResult:
         movie = library_manager.get_movie(movie_id)
