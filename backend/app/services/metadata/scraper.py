@@ -13,6 +13,9 @@ from app.services.metadata.tmdb import TMDBClient
 from app.services.settings import get_language, get_scrape_require_confirmation
 
 
+REVIEW_CANDIDATE_LIMIT = 20
+
+
 class MetadataScraper:
     def __init__(self):
         self.tmdb = TMDBClient()
@@ -47,6 +50,20 @@ class MetadataScraper:
         candidates = list(candidates_by_id.values())
         candidates.sort(key=lambda candidate: (candidate.score, candidate.popularity), reverse=True)
         return candidates
+
+    def get_candidate(self, tmdb_id: int, language: Optional[str] = None) -> MetadataSearchResult:
+        details = self.tmdb.movie_details(tmdb_id, language=self._language(language))
+        return MetadataSearchResult(
+            tmdb_id=tmdb_id,
+            title=details.get("title") or details.get("original_title") or f"TMDB {tmdb_id}",
+            original_title=details.get("original_title"),
+            year=self._release_year(details.get("release_date")),
+            overview=details.get("overview") or "",
+            poster_path=details.get("poster_path"),
+            backdrop_path=details.get("backdrop_path"),
+            popularity=float(details.get("popularity") or 0),
+            score=100,
+        )
 
     def scrape_movie(self, movie_id: str, options: ScrapeOptions) -> ScrapeResult:
         movie = library_manager.get_movie(movie_id)
@@ -100,7 +117,7 @@ class MetadataScraper:
                         movie_id=movie_id,
                         message="Choose a TMDB match to continue",
                         movie=library_manager.get_movie(movie_id),
-                        candidates=candidates[:5],
+                        candidates=candidates[:REVIEW_CANDIDATE_LIMIT],
                     )
                 if options.mode == "auto" and best.score < 80:
                     self._update_scrape_state(
@@ -114,7 +131,7 @@ class MetadataScraper:
                         movie_id=movie_id,
                         message="Choose a TMDB match to continue",
                         movie=library_manager.get_movie(movie_id),
-                        candidates=candidates[:5],
+                        candidates=candidates[:REVIEW_CANDIDATE_LIMIT],
                     )
                 selected_id = best.tmdb_id
 
@@ -160,7 +177,7 @@ class MetadataScraper:
                 movie_id=movie_id,
                 message="Metadata scraped",
                 movie=stored,
-                candidates=candidates[:5] if candidates else [],
+                candidates=candidates[:REVIEW_CANDIDATE_LIMIT] if candidates else [],
             )
         except Exception as exc:
             return self._mark_failed(movie_id, str(exc))
@@ -246,6 +263,14 @@ class MetadataScraper:
             overview=movie.get("overview") or "",
             score=100,
         )
+
+    def _release_year(self, release_date: Optional[str]) -> int:
+        if not release_date:
+            return 0
+        try:
+            return int(str(release_date).split("-", 1)[0])
+        except ValueError:
+            return 0
 
     def _movie_folder(self, movie: dict) -> Optional[Path]:
         folder_path = movie.get("folder_path")

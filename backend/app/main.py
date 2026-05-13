@@ -97,6 +97,19 @@ def search_metadata(query: str, year: int | None = Query(default=None), language
     except Exception as exc:
         raise HTTPException(status_code=502, detail=f"Metadata search failed: {str(exc)}")
 
+@app.get("/metadata/movie/{tmdb_id}")
+def get_metadata_movie(tmdb_id: int, language: str | None = Query(default=None)):
+    """Get one TMDB movie as a scored candidate for manual confirmation."""
+    try:
+        return metadata_scraper.get_candidate(tmdb_id, language).model_dump()
+    except RuntimeError as exc:
+        raise HTTPException(status_code=503, detail=str(exc))
+    except requests.HTTPError as exc:
+        status_code = exc.response.status_code if exc.response is not None else 502
+        raise HTTPException(status_code=status_code, detail=f"TMDB movie lookup failed: {str(exc)}")
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"TMDB movie lookup failed: {str(exc)}")
+
 @app.get("/library/events")
 async def get_library_events(request: Request):
     """Subscribe to library change events via Server-Sent Events."""

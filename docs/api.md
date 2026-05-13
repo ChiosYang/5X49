@@ -57,6 +57,29 @@ This document describes the REST API endpoints available in the backend applicat
   ```
 - **Errors**: `503 TMDB_API_KEY is not configured`, `502 Metadata search failed`.
 
+### Get Metadata Movie Candidate
+- **URL**: `/metadata/movie/{tmdb_id}`
+- **Method**: `GET`
+- **Description**: Looks up one TMDB movie ID and returns it in the same candidate shape used by metadata search. This is used to review a manually entered TMDB ID before confirming a scrape or root video organization.
+- **Path Parameters**:
+  - `tmdb_id` (integer): TMDB movie ID.
+- **Query Parameters**:
+  - `language` (string, optional): TMDB language such as `zh-CN` or `en-US`.
+- **Response**:
+  ```json
+  {
+    "tmdb_id": 603,
+    "title": "The Matrix",
+    "original_title": "The Matrix",
+    "year": 1999,
+    "overview": "...",
+    "poster_path": "/poster.jpg",
+    "backdrop_path": "/backdrop.jpg",
+    "popularity": 100,
+    "score": 100
+  }
+  ```
+
 ### Get All Movies
 - **URL**: `/library`
 - **Method**: `GET`
@@ -160,7 +183,7 @@ This document describes the REST API endpoints available in the backend applicat
     "candidates": []
   }
   ```
-- **Needs Review**: If the best automatic match has low confidence, or `/settings/scrape-confirmation` is enabled, returns `status: "needs_review"` with up to five scored `candidates`.
+- **Needs Review**: If the best automatic match has low confidence, or `/settings/scrape-confirmation` is enabled, returns `status: "needs_review"` with up to 20 scored `candidates`.
 - **Errors**: `400 Invalid ID format`, `409` with a scrape result payload when scraping fails.
 
 ### Confirm Movie Metadata Match

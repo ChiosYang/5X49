@@ -47,6 +47,7 @@ description: 电影族谱 API (FastAPI) 的接口调用指南
 | POST | `/library/{movie_id}/ignore` | 忽略一条误扫描记录 |
 | DELETE | `/library/missing` | 删除已标记为 missing 的记录 |
 | DELETE | `/library` | 清空电影库 |
+| GET | `/metadata/movie/{tmdb_id}` | 按 TMDB ID 获取候选信息，用于确认前预览 |
 
 ### 分析功能
 
@@ -114,6 +115,13 @@ curl -s "http://127.0.0.1:11548/metadata/search?query=Inception&year=2010"
 
 返回带 `score` 的候选列表。后端使用用户配置的 `TMDB_API_KEY`。
 
+### 按 TMDB ID 预览候选
+```bash
+curl -s http://127.0.0.1:11548/metadata/movie/603
+```
+
+返回单个候选对象，用于用户输入 TMDB ID 或链接后先预览电影，再点击确认执行刮削/整理。
+
 ### 刮削单部电影
 ```bash
 curl -s -X POST http://127.0.0.1:11548/library/local_xxx/scrape \
@@ -121,7 +129,7 @@ curl -s -X POST http://127.0.0.1:11548/library/local_xxx/scrape \
   -d '{"mode":"auto","overwrite":false,"write_nfo":true,"download_artwork":true}'
 ```
 
-成功时会按主视频文件名前缀下载 `<video-stem>-poster.jpg` / `<video-stem>-fanart.jpg`、写入 `<video-stem>.nfo`，然后重新扫描电影文件夹并更新数据库。低置信度匹配会返回 `status=needs_review` 和候选列表；如果 `/settings/scrape-confirmation` 已开启，高置信度匹配也会先返回 `needs_review`，确认后才写入。
+成功时会按主视频文件名前缀下载 `<video-stem>-poster.jpg` / `<video-stem>-fanart.jpg`、写入 `<video-stem>.nfo`，然后重新扫描电影文件夹并更新数据库。低置信度匹配会返回 `status=needs_review` 和最多 20 个候选；如果 `/settings/scrape-confirmation` 已开启，高置信度匹配也会先返回 `needs_review`，确认后才写入。
 
 ### 确认候选并刮削
 ```bash

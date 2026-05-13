@@ -2,9 +2,23 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Clapperboard, EyeOff, Loader2, RefreshCw } from "lucide-react";
+import { Clapperboard, EyeOff, Loader2, RefreshCw, Search } from "lucide-react";
 import { useConfirmScrapeMovie, useIgnoreMovie, useRefreshMovie, useScrapeMovie } from "@/hooks/useMovie";
+import { API } from "@/lib/api";
 import type { MetadataSearchResult } from "@/types/movie";
+
+const DEFAULT_VISIBLE_CANDIDATES = 5;
+
+const parseTmdbId = (value: string) => {
+  const trimmed = value.trim();
+  const match = trimmed.match(/(?:movie\/)?(\d+)/);
+  return match ? Number(match[1]) : null;
+};
+
+const prependCandidate = (
+  candidates: MetadataSearchResult[],
+  candidate: MetadataSearchResult,
+) => [candidate, ...candidates.filter((item) => item.tmdb_id !== candidate.tmdb_id)];
 
 export default function MovieRefreshButton({ movieId }: { movieId: string }) {
   const router = useRouter();
@@ -26,6 +40,12 @@ export default function MovieRefreshButton({ movieId }: { movieId: string }) {
   } = useIgnoreMovie(movieId);
   const [candidates, setCandidates] = useState<MetadataSearchResult[]>([]);
   const [message, setMessage] = useState<string>("");
+  const [reviewOpen, setReviewOpen] = useState(false);
+  const [showAllCandidates, setShowAllCandidates] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchYear, setSearchYear] = useState("");
+  const [tmdbInput, setTmdbInput] = useState("");
+  const [isSearching, setIsSearching] = useState(false);
 
   const handleRefresh = async () => {
     await trigger();
@@ -35,9 +55,12 @@ export default function MovieRefreshButton({ movieId }: { movieId: string }) {
   const handleScrape = async () => {
     setMessage("");
     setCandidates([]);
+    setReviewOpen(false);
+    setShowAllCandidates(false);
     const result = await scrape();
     if (result.status === "needs_review") {
       setCandidates(result.candidates);
+      setReviewOpen(true);
       setMessage(result.message);
       return;
     }
@@ -48,8 +71,60 @@ export default function MovieRefreshButton({ movieId }: { movieId: string }) {
   const handleConfirm = async (tmdbId: number) => {
     const result = await confirmScrape(tmdbId);
     setCandidates([]);
+    setReviewOpen(false);
+    setShowAllCandidates(false);
+    setTmdbInput("");
     setMessage(result.message);
     router.refresh();
+  };
+
+  const handleSearch = async () => {
+    if (!searchQuery.trim()) return;
+    setIsSearching(true);
+    setShowAllCandidates(false);
+    try {
+      const params = new URLSearchParams({ query: searchQuery.trim() });
+      const year = Number(searchYear);
+      if (Number.isInteger(year) && year > 0) {
+        params.set("year", String(year));
+      }
+      const res = await fetch(`${API.metadataSearch()}?${params.toString()}`);
+      if (!res.ok) {
+        throw new Error("Metadata search failed");
+      }
+      const results = await res.json() as MetadataSearchResult[];
+      setCandidates(results);
+      setReviewOpen(true);
+      setMessage(results.length ? "Choose a TMDB match to continue" : "No TMDB matches found");
+    } catch {
+      setMessage("Metadata search failed");
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  const handleDirectConfirm = async () => {
+    const tmdbId = parseTmdbId(tmdbInput);
+    if (!tmdbId) {
+      setMessage("Enter a TMDB ID or movie link");
+      return;
+    }
+    setIsSearching(true);
+    setShowAllCandidates(false);
+    try {
+      const res = await fetch(API.metadataMovie(tmdbId));
+      if (!res.ok) {
+        throw new Error("TMDB movie lookup failed");
+      }
+      const candidate = await res.json() as MetadataSearchResult;
+      setCandidates((current) => prependCandidate(current, candidate));
+      setReviewOpen(true);
+      setMessage("Review the TMDB match, then click it to confirm");
+    } catch {
+      setMessage("TMDB movie lookup failed");
+    } finally {
+      setIsSearching(false);
+    }
   };
 
   const handleIgnore = async () => {
@@ -59,7 +134,10 @@ export default function MovieRefreshButton({ movieId }: { movieId: string }) {
   };
 
   const anyError = error || scrapeError || confirmError || ignoreError;
-  const busy = isMutating || isScraping || isConfirming || isIgnoring;
+  const busy = isMutating || isScraping || isConfirming || isIgnoring || isSearching;
+  const visibleCandidates = showAllCandidates
+    ? candidates
+    : candidates.slice(0, DEFAULT_VISIBLE_CANDIDATES);
 
   return (
     <div className="p-8 md:px-16 flex items-center justify-between gap-4">
@@ -77,9 +155,51 @@ export default function MovieRefreshButton({ movieId }: { movieId: string }) {
             Metadata action failed
           </span>
         )}
-        {candidates.length > 0 && (
+        {reviewOpen && (
           <div className="mt-3 space-y-2">
-            {candidates.map((candidate) => (
+            <div className="flex flex-col gap-2 md:flex-row">
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(event) => setSearchQuery(event.target.value)}
+                placeholder="Search title"
+                className="min-w-0 flex-1 border border-neutral-800 bg-neutral-950 px-3 py-2 text-xs text-white placeholder:text-neutral-600 focus:border-neutral-500 focus:outline-none"
+              />
+              <input
+                type="number"
+                value={searchYear}
+                onChange={(event) => setSearchYear(event.target.value)}
+                placeholder="Year"
+                className="w-24 border border-neutral-800 bg-neutral-950 px-3 py-2 text-xs text-white placeholder:text-neutral-600 focus:border-neutral-500 focus:outline-none"
+              />
+              <button
+                type="button"
+                onClick={handleSearch}
+                disabled={busy || !searchQuery.trim()}
+                className="flex h-9 items-center justify-center gap-2 border border-neutral-800 bg-neutral-950 px-3 text-[11px] font-bold uppercase tracking-widest text-white hover:border-neutral-500 disabled:opacity-50"
+              >
+                {isSearching ? <Loader2 className="h-3 w-3 animate-spin" /> : <Search className="h-3 w-3" />}
+                Search
+              </button>
+            </div>
+            <div className="flex flex-col gap-2 md:flex-row">
+              <input
+                type="text"
+                value={tmdbInput}
+                onChange={(event) => setTmdbInput(event.target.value)}
+                placeholder="TMDB ID or movie link"
+                className="min-w-0 flex-1 border border-neutral-800 bg-neutral-950 px-3 py-2 text-xs text-white placeholder:text-neutral-600 focus:border-neutral-500 focus:outline-none"
+              />
+              <button
+                type="button"
+                onClick={handleDirectConfirm}
+                disabled={busy || !tmdbInput.trim()}
+                className="h-9 border border-neutral-800 bg-neutral-950 px-3 text-[11px] font-bold uppercase tracking-widest text-white hover:border-neutral-500 disabled:opacity-50"
+              >
+                Lookup ID
+              </button>
+            </div>
+            {visibleCandidates.map((candidate) => (
               <button
                 key={candidate.tmdb_id}
                 type="button"
@@ -95,6 +215,15 @@ export default function MovieRefreshButton({ movieId }: { movieId: string }) {
                 </span>
               </button>
             ))}
+            {candidates.length > DEFAULT_VISIBLE_CANDIDATES && (
+              <button
+                type="button"
+                onClick={() => setShowAllCandidates((value) => !value)}
+                className="text-xs font-bold uppercase tracking-widest text-neutral-500 hover:text-white"
+              >
+                {showAllCandidates ? "Show fewer" : `Show ${candidates.length - DEFAULT_VISIBLE_CANDIDATES} more`}
+              </button>
+            )}
           </div>
         )}
       </div>

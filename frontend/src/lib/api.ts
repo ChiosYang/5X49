@@ -24,6 +24,7 @@ export const API = {
 
     // === Metadata ===
     metadataSearch: () => `${API_BASE_URL}/metadata/search`,
+    metadataMovie: (tmdbId: number) => `${API_BASE_URL}/metadata/movie/${tmdbId}`,
 
     // === Library ===
     library: () => `${API_BASE_URL}/library`,

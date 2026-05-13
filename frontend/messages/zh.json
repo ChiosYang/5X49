@@ -20,6 +20,14 @@
     "rootNoCandidates": "未找到候选",
     "rootReviewFailed": "候选搜索失败",
     "rootConfirmFailed": "确认整理失败",
+    "rootInvalidTmdbId": "请输入 TMDB ID 或链接",
+    "rootSearchPlaceholder": "搜索片名",
+    "rootYearPlaceholder": "年份",
+    "rootTmdbPlaceholder": "TMDB ID 或链接",
+    "rootLookupId": "查找 ID",
+    "rootTmdbLookupFailed": "TMDB ID 查询失败",
+    "rootShowMore": "显示另外 {count} 个",
+    "rootShowFewer": "收起",
     "empty": "资料库为空。点击扫描添加电影。"
   },
   "FilmDetail": {
