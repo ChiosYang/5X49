@@ -27,35 +27,11 @@ export default async function LibraryPage() {
               {visibleMovies.length} FILMS
             </span>
             <div className="flex items-center gap-2">
-              <LibraryOrganizeRootButton />
+              <LibraryOrganizeRootButton rootVideos={rootVideos} />
               <LibraryRefreshButton />
             </div>
           </div>
         </header>
-
-        {rootVideos.length > 0 && (
-          <section className="border-y border-neutral-900 py-5">
-            <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-              <div className="space-y-2">
-                <p className="text-xs font-bold uppercase tracking-widest text-neutral-500">
-                  {t("rootPending", { count: rootVideos.length })}
-                </p>
-                <p className="text-sm text-neutral-400">
-                  {rootVideos
-                    .slice(0, 3)
-                    .map((video) =>
-                      `${video.filename} · ${
-                        video.stable ? t("rootReady") : t("rootWaitingForStability")
-                      }`
-                    )
-                    .join(" / ")}
-                  {rootVideos.length > 3 ? ` / +${rootVideos.length - 3}` : ""}
-                </p>
-              </div>
-              <LibraryOrganizeRootButton />
-            </div>
-          </section>
-        )}
 
         {visibleMovies.length === 0 ? (
           <div className="py-24 text-center space-y-4">
