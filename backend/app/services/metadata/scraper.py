@@ -10,7 +10,7 @@ from app.services.metadata.matcher import generate_search_queries, parse_title_y
 from app.services.metadata.models import BatchScrapeOptions, MetadataSearchResult, ScrapeOptions, ScrapeResult
 from app.services.metadata.nfo_writer import NFOWriter
 from app.services.metadata.tmdb import TMDBClient
-from app.services.settings import get_language, get_scrape_require_confirmation
+from app.services.settings import get_artwork_language, get_language, get_scrape_require_confirmation
 
 
 REVIEW_CANDIDATE_LIMIT = 20
@@ -135,9 +135,12 @@ class MetadataScraper:
                     )
                 selected_id = best.tmdb_id
 
-            details = self.tmdb.movie_details(selected_id, language=language)
-            poster_url = self.tmdb.image_url(details.get("poster_path"), "original")
-            backdrop_url = self.tmdb.image_url(details.get("backdrop_path"), "original")
+            artwork_language = self._artwork_language(options.artwork_language)
+            details = self.tmdb.movie_details(selected_id, language=language, artwork_language=artwork_language)
+            poster_path = self._select_image_path(details, "posters", details.get("poster_path"), artwork_language, language)
+            backdrop_path = self._select_image_path(details, "backdrops", details.get("backdrop_path"), artwork_language, language)
+            poster_url = self.tmdb.image_url(poster_path, "original")
+            backdrop_url = self.tmdb.image_url(backdrop_path, "original")
             filename_prefix = self._filename_prefix(movie, folder)
 
             if options.download_artwork:
@@ -196,6 +199,7 @@ class MetadataScraper:
                     ScrapeOptions(
                         mode="auto",
                         language=options.language,
+                        artwork_language=options.artwork_language,
                         overwrite=options.overwrite,
                         write_nfo=options.write_nfo,
                         download_artwork=options.download_artwork,
@@ -332,6 +336,58 @@ class MetadataScraper:
         if value:
             return value
         return "zh-CN" if get_language() == "zh" else "en-US"
+
+    def _artwork_language(self, value: Optional[str]) -> str:
+        if value in {"metadata", "zh", "en", "none"}:
+            return value
+        return get_artwork_language()
+
+    def _select_image_path(
+        self,
+        details: dict,
+        image_type: str,
+        default_path: Optional[str],
+        artwork_language: str,
+        metadata_language: str,
+    ) -> Optional[str]:
+        if artwork_language == "metadata":
+            return default_path
+
+        images = details.get("images", {}).get(image_type, [])
+        if not isinstance(images, list):
+            return default_path
+
+        preferred_languages = [artwork_language]
+        if artwork_language != "none":
+            preferred_languages.append("none")
+
+        for language in preferred_languages:
+            candidate = self._best_image(images, language)
+            if candidate:
+                return candidate
+
+        metadata_lang = (metadata_language or "").split("-", 1)[0]
+        return self._best_image(images, metadata_lang) or default_path
+
+    def _best_image(self, images: list[dict], language: str) -> Optional[str]:
+        iso_value = None if language == "none" else language
+        candidates = [
+            image
+            for image in images
+            if image.get("file_path") and image.get("iso_639_1") == iso_value
+        ]
+        if not candidates:
+            return None
+
+        best = max(
+            candidates,
+            key=lambda image: (
+                float(image.get("vote_average") or 0),
+                int(image.get("vote_count") or 0),
+                int(image.get("width") or 0) * int(image.get("height") or 0),
+            ),
+        )
+        return best.get("file_path")
 
     def _set_status(self, **updates):
         with self._lock:

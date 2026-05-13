@@ -30,7 +30,7 @@ class TMDBClient:
         data = self._get("/search/movie", params=params)
         return data.get("results", [])
 
-    def movie_details(self, tmdb_id: int, language: str = "zh-CN") -> dict:
+    def movie_details(self, tmdb_id: int, language: str = "zh-CN", artwork_language: Optional[str] = None) -> dict:
         self._require_api_key()
         api_key = self._api_key()
         return self._get(
@@ -39,7 +39,7 @@ class TMDBClient:
                 "api_key": api_key,
                 "language": language,
                 "append_to_response": "credits,external_ids,images",
-                "include_image_language": self._image_languages(language),
+                "include_image_language": self._image_languages(language, artwork_language),
             },
         )
 
@@ -64,7 +64,14 @@ class TMDBClient:
         if not self._api_key():
             raise RuntimeError("TMDB_API_KEY is not configured")
 
-    def _image_languages(self, language: str) -> str:
+    def _image_languages(self, language: str, artwork_language: Optional[str] = None) -> str:
         lang = (language or "zh-CN").split("-")[0]
         fallback = "en" if lang != "en" else "zh"
-        return f"{lang},null,{fallback}"
+        if artwork_language == "none":
+            preferred = "null"
+        elif artwork_language in {"zh", "en"}:
+            preferred = artwork_language
+        else:
+            preferred = lang
+        languages = [preferred, "null", fallback, lang]
+        return ",".join(dict.fromkeys(languages))

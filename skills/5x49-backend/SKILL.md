@@ -41,6 +41,7 @@ description: 电影族谱 API (FastAPI) 的接口调用指南
 | POST | `/library/organize-root` | 整理媒体根目录直属视频并刮削 |
 | POST | `/library/organize-root/confirm` | 使用人工确认的 TMDB ID 整理根目录直属视频 |
 | GET/PUT | `/settings/scrape-confirmation` | 获取/设置自动刮削前是否必须人工确认 |
+| GET/PUT | `/settings/artwork-language` | 获取/设置 TMDB 图片语言，独立于元数据语言 |
 | GET | `/library/organize/status` | 获取根目录整理状态 |
 | GET | `/library/root-videos` | 列出待整理的媒体根目录直属视频 |
 | GET | `/library/sync/status` | 获取校准与自动监听状态 |
@@ -67,6 +68,8 @@ description: 电影族谱 API (FastAPI) 的接口调用指南
 | PUT | `/settings/media-dir?media_dir=xxx` | 更新媒体目录 |
 | GET | `/settings/language` | 获取系统语言配置 |
 | PUT | `/settings/language?language=xxx` | 更新系统语言 |
+| GET | `/settings/artwork-language` | 获取 TMDB 图片语言配置 |
+| PUT | `/settings/artwork-language?language=en` | 更新 TMDB 图片语言 |
 | GET | `/settings/library-watch` | 获取自动监听配置和状态 |
 | PUT | `/settings/library-watch?enabled=true` | 开启或关闭自动监听 |
 | GET | `/settings/auto-organize-root` | 获取根目录自动整理设置 |
@@ -126,10 +129,10 @@ curl -s http://127.0.0.1:11548/metadata/movie/603
 ```bash
 curl -s -X POST http://127.0.0.1:11548/library/local_xxx/scrape \
   -H "Content-Type: application/json" \
-  -d '{"mode":"auto","overwrite":false,"write_nfo":true,"download_artwork":true}'
+  -d '{"mode":"auto","language":"zh-CN","artwork_language":"en","overwrite":false,"write_nfo":true,"download_artwork":true}'
 ```
 
-成功时会按主视频文件名前缀下载 `<video-stem>-poster.jpg` / `<video-stem>-fanart.jpg`、写入 `<video-stem>.nfo`，然后重新扫描电影文件夹并更新数据库。低置信度匹配会返回 `status=needs_review` 和最多 20 个候选；如果 `/settings/scrape-confirmation` 已开启，高置信度匹配也会先返回 `needs_review`，确认后才写入。
+成功时会按主视频文件名前缀下载 `<video-stem>-poster.jpg` / `<video-stem>-fanart.jpg`、写入 `<video-stem>.nfo`，然后重新扫描电影文件夹并更新数据库。`language` 控制标题/简介等元数据语言；`artwork_language` 可选，支持 `metadata`、`zh`、`en`、`none`，用于单独选择海报/背景图语言，省略时使用 `/settings/artwork-language`。低置信度匹配会返回 `status=needs_review` 和最多 20 个候选；如果 `/settings/scrape-confirmation` 已开启，高置信度匹配也会先返回 `needs_review`，确认后才写入。
 
 ### 确认候选并刮削
 ```bash
@@ -206,6 +209,7 @@ curl -s -X PUT "http://127.0.0.1:11548/settings/model?model_name=moonshotai/kimi
 5. **忽略策略** - `library_status=ignored` 的记录会从正常资料库隐藏，并跳过校准缺失标记和批量刮削
 6. **自动监听** - 当前监听器默认使用 `watchfiles` 原生文件事件和去抖，避免频繁全目录轮询；如遇 Docker volume、NAS、SMB 事件不可靠，可设置 `watch_mode=polling` 或 `WATCH_MODE=polling` 回退；新增视频会等待 `media_file_stable_seconds` 后再扫描；最终一致性由 `/library/reconcile` 保底
 7. **TMDB 刮削** - 需要用户自己的 TMDB API Key；优先读取环境变量 `TMDB_API_KEY`，否则读取 `/settings/tmdb` 保存的设置。`GET /settings/tmdb` 只返回配置状态，不返回明文。默认不覆盖已有文件，优先用于 `metadata_source=filename` 且 `scrape_status=pending/failed` 的电影。`/settings/scrape-confirmation` 开启后，自动 TMDB 匹配都会先进入 `needs_review`，必须调用 `/library/{movie_id}/scrape/confirm` 后才写入文件和 matched 元数据
-8. **发现记录** - 无 NFO 视频会作为发现记录入库，通常是 `metadata_source=filename`、`scrape_status=pending`；它不是已确认电影身份，需刮削或人工确认后变为 `matched`。发现记录和 TMDB 匹配都以主视频文件名解析标题/年份，目录名只作为物理容器
-9. **根目录整理** - `auto_organize_root_videos` 开启后，watcher 会整理媒体根目录直属稳定视频；默认保留原视频文件名，只移动到匹配电影目录并刮削。`/library/root-videos` 会列出待整理文件，避免用户看不见根目录散片。`scrape_require_confirmation` 开启时会在移动文件前停在 `needs_review`，需通过 `/library/organize-root/confirm` 传入确认的 `path` 和 `tmdb_id`
-10. **推荐使用 http_request 插件** - 如果有安装的话，比 curl 更安全
+8. **图片语言** - `artwork_language` 独立控制 TMDB 海报/背景图语言，支持 `metadata`（跟随元数据语言）、`zh`、`en`、`none`（无文字）；请求体省略时读取 `/settings/artwork-language`
+9. **发现记录** - 无 NFO 视频会作为发现记录入库，通常是 `metadata_source=filename`、`scrape_status=pending`；它不是已确认电影身份，需刮削或人工确认后变为 `matched`。发现记录和 TMDB 匹配都以主视频文件名解析标题/年份，目录名只作为物理容器
+10. **根目录整理** - `auto_organize_root_videos` 开启后，watcher 会整理媒体根目录直属稳定视频；默认保留原视频文件名，只移动到匹配电影目录并刮削。`/library/root-videos` 会列出待整理文件，避免用户看不见根目录散片。`scrape_require_confirmation` 开启时会在移动文件前停在 `needs_review`，需通过 `/library/organize-root/confirm` 传入确认的 `path` 和 `tmdb_id`
+11. **推荐使用 http_request 插件** - 如果有安装的话，比 curl 更安全

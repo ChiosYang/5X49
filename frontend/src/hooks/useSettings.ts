@@ -24,6 +24,14 @@ export function useLanguageSetting() {
   return useSWR<{ language: string }>(API.settingsLanguage());
 }
 
+export type ArtworkLanguage = "metadata" | "zh" | "en" | "none";
+
+export function useArtworkLanguageSetting() {
+  return useSWR<{ artwork_language: ArtworkLanguage }>(
+    API.settingsArtworkLanguage()
+  );
+}
+
 export interface LibraryWatchStatus {
   running: boolean;
   media_dir: string | null;
@@ -177,6 +185,25 @@ export function useUpdateLanguage() {
       });
       if (!res.ok) throw new Error("Failed to update language");
       return res.json();
+    }
+  );
+}
+
+export function useUpdateArtworkLanguage() {
+  const { mutate } = useSWRConfig();
+
+  return useSWRMutation(
+    API.settingsArtworkLanguage(),
+    async (url: string, { arg: language }: { arg: ArtworkLanguage }) => {
+      const res = await fetch(`${url}?language=${language}`, {
+        method: "PUT",
+      });
+      if (!res.ok) throw new Error("Failed to update artwork language");
+      const data = await res.json();
+      await mutate(API.settingsArtworkLanguage(), {
+        artwork_language: data.artwork_language,
+      }, false);
+      return data;
     }
   );
 }

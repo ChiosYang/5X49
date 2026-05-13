@@ -167,12 +167,14 @@ This document describes the REST API endpoints available in the backend applicat
   {
     "mode": "auto",
     "language": "zh-CN",
+    "artwork_language": "en",
     "overwrite": false,
     "write_nfo": true,
     "download_artwork": true,
     "tmdb_id": null
   }
   ```
+- **Artwork Language**: `artwork_language` is optional and controls posters/backdrops independently from metadata text. Supported values are `metadata` (follow `language`), `zh`, `en`, and `none` (textless). When omitted, the saved `/settings/artwork-language` value is used.
 - **Response**:
   ```json
   {
@@ -205,6 +207,7 @@ This document describes the REST API endpoints available in the backend applicat
     "scope": "unscraped",
     "movie_ids": null,
     "language": "zh-CN",
+    "artwork_language": "en",
     "overwrite": false,
     "write_nfo": true,
     "download_artwork": true
@@ -217,6 +220,8 @@ This document describes the REST API endpoints available in the backend applicat
   - `selected`: Only IDs listed in `movie_ids`.
 - **Confirmation Mode**: When `/settings/scrape-confirmation` is enabled, automatic matches are counted as `needs_review` and are not written until confirmed with `/library/{movie_id}/scrape/confirm`.
 - **Response**: `{"status": "started", "message": "Metadata scrape started"}`
+
+Root video organization accepts the same `language` and `artwork_language` scrape options when moving and scraping direct media-root videos.
 
 ### Get Metadata Scrape Status
 - **URL**: `/library/scrape/status`
@@ -405,7 +410,7 @@ This document describes the REST API endpoints available in the backend applicat
 - **URL**: `/settings`
 - **Method**: `GET`
 - **Description**: Retrieves whole current system settings dictionary.
-- **Response Notes**: Includes library watcher fields such as `watch_library`, `watch_mode` (`events` or `polling`), `watch_debounce_seconds`, `watch_interval_seconds`, `media_file_stable_seconds`, and `scrape_require_confirmation`. Secret values such as `tmdb_api_key` are not returned; TMDB configuration is represented by the `tmdb` status object.
+- **Response Notes**: Includes library watcher fields such as `watch_library`, `watch_mode` (`events` or `polling`), `watch_debounce_seconds`, `watch_interval_seconds`, `media_file_stable_seconds`, `scrape_require_confirmation`, and `artwork_language`. Secret values such as `tmdb_api_key` are not returned; TMDB configuration is represented by the `tmdb` status object.
 
 ### Get Model Setting
 - **URL**: `/settings/model`
@@ -495,6 +500,19 @@ This document describes the REST API endpoints available in the backend applicat
 - **Description**: Enables or disables manual confirmation before automatic metadata scraping writes files or matched metadata.
 - **Query Parameters**:
   - `enabled` (boolean, required): Whether every automatic TMDB match must be confirmed first.
+
+### Get Artwork Language Setting
+- **URL**: `/settings/artwork-language`
+- **Method**: `GET`
+- **Description**: Gets the poster/backdrop language used by TMDB scraping when a request does not provide `artwork_language`.
+- **Response**: `{"artwork_language": "metadata"}`
+
+### Update Artwork Language Setting
+- **URL**: `/settings/artwork-language`
+- **Method**: `PUT`
+- **Description**: Sets poster/backdrop language separately from metadata text language.
+- **Query Parameters**:
+  - `language` (string, required): One of `metadata`, `zh`, `en`, or `none`.
 
 ### Get TMDB Setting
 - **URL**: `/settings/tmdb`

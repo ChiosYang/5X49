@@ -9,6 +9,7 @@ from datetime import datetime, timedelta
 SETTINGS_FILE = "data/settings.json"
 MODELS_CACHE_FILE = "data/models_cache.json"
 CACHE_DURATION = timedelta(hours=24)  # Cache models for 24 hours
+ARTWORK_LANGUAGES = {"metadata", "zh", "en", "none"}
 
 def fetch_openrouter_models():
     """Fetch available models from OpenRouter API"""
@@ -112,6 +113,7 @@ def get_default_settings():
         "organize_min_confidence": float(os.getenv("ORGANIZE_MIN_CONFIDENCE", "85")),
         "organize_rename_style": os.getenv("ORGANIZE_RENAME_STYLE", "preserve_stem"),
         "scrape_require_confirmation": os.getenv("SCRAPE_REQUIRE_CONFIRMATION", "false").lower() == "true",
+        "artwork_language": _normalize_artwork_language(os.getenv("ARTWORK_LANGUAGE", "metadata")),
         "missing_policy": os.getenv("MISSING_POLICY", "mark_missing"),
     }
 
@@ -286,6 +288,19 @@ def set_scrape_require_confirmation(enabled: bool):
     settings = load_settings()
     settings["scrape_require_confirmation"] = bool(enabled)
     return save_settings(settings)
+
+def get_artwork_language():
+    settings = load_settings()
+    return _normalize_artwork_language(settings.get("artwork_language", "metadata"))
+
+def set_artwork_language(language: str):
+    settings = load_settings()
+    settings["artwork_language"] = _normalize_artwork_language(language)
+    return save_settings(settings)
+
+def _normalize_artwork_language(language) -> str:
+    language = str(language)
+    return language if language in ARTWORK_LANGUAGES else "metadata"
 
 def get_organize_min_confidence():
     settings = load_settings()

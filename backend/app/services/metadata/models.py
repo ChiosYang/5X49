@@ -18,6 +18,7 @@ class MetadataSearchResult(BaseModel):
 class ScrapeOptions(BaseModel):
     mode: Literal["auto", "manual"] = "auto"
     language: Optional[str] = None
+    artwork_language: Optional[Literal["metadata", "zh", "en", "none"]] = None
     overwrite: bool = False
     write_nfo: bool = True
     download_artwork: bool = True
@@ -28,6 +29,7 @@ class BatchScrapeOptions(BaseModel):
     scope: Literal["unscraped", "missing_artwork", "all", "selected"] = "unscraped"
     movie_ids: Optional[list[str]] = None
     language: Optional[str] = None
+    artwork_language: Optional[Literal["metadata", "zh", "en", "none"]] = None
     overwrite: bool = False
     write_nfo: bool = True
     download_artwork: bool = True
@@ -40,6 +42,7 @@ class RootOrganizeOptions(BaseModel):
     write_nfo: bool = True
     download_artwork: bool = True
     language: Optional[str] = None
+    artwork_language: Optional[Literal["metadata", "zh", "en", "none"]] = None
 
 
 class RootOrganizeConfirmRequest(BaseModel):

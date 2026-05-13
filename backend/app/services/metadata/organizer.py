@@ -155,7 +155,11 @@ class RootVideoOrganizer:
             return {"status": "skipped", "path": str(video_path), "message": "Not a stable root video"}
 
         _, year = parse_title_year(video_path.name)
-        details = metadata_scraper.tmdb.movie_details(tmdb_id, language=options.language)
+        details = metadata_scraper.tmdb.movie_details(
+            tmdb_id,
+            language=metadata_scraper._language(options.language),
+            artwork_language=metadata_scraper._artwork_language(options.artwork_language),
+        )
         release_year = self._release_year(details.get("release_date"))
         candidate = MetadataSearchResult(
             tmdb_id=tmdb_id,
@@ -213,6 +217,7 @@ class RootVideoOrganizer:
                 mode="manual",
                 tmdb_id=candidate.tmdb_id,
                 language=options.language,
+                artwork_language=options.artwork_language,
                 overwrite=options.overwrite,
                 write_nfo=options.write_nfo,
                 download_artwork=options.download_artwork,

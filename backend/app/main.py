@@ -54,7 +54,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-from app.services.settings import get_default_settings, save_settings, get_available_models, get_current_model, set_current_model, get_base_url, set_base_url, refresh_models_cache, get_media_dir, set_media_dir, get_language, set_language, get_watch_library, set_watch_library, get_tmdb_key_status, set_tmdb_api_key
+from app.services.settings import get_default_settings, save_settings, get_available_models, get_current_model, set_current_model, get_base_url, set_base_url, refresh_models_cache, get_media_dir, set_media_dir, get_language, set_language, get_watch_library, set_watch_library, get_tmdb_key_status, set_tmdb_api_key, get_artwork_language, set_artwork_language
 
 # Configuration for media directory
 # Prioritize settings.json, then env var, then default
@@ -380,6 +380,20 @@ def update_language_setting(language: str):
     success = set_language(language)
     if success:
         return {"status": "success", "language": language}
+    else:
+        raise HTTPException(status_code=500, detail="Failed to save settings")
+
+@app.get("/settings/artwork-language")
+def get_artwork_language_setting():
+    return {"artwork_language": get_artwork_language()}
+
+@app.put("/settings/artwork-language")
+def update_artwork_language_setting(language: str):
+    if language not in {"metadata", "zh", "en", "none"}:
+        raise HTTPException(status_code=400, detail="Artwork language must be 'metadata', 'zh', 'en', or 'none'")
+    success = set_artwork_language(language)
+    if success:
+        return {"status": "success", "artwork_language": language}
     else:
         raise HTTPException(status_code=500, detail="Failed to save settings")
 

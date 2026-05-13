@@ -51,6 +51,7 @@ export const API = {
     settingsBaseUrl: () => `${API_BASE_URL}/settings/base-url`,
     settingsMediaDir: () => `${API_BASE_URL}/settings/media-dir`,
     settingsLanguage: () => `${API_BASE_URL}/settings/language`,
+    settingsArtworkLanguage: () => `${API_BASE_URL}/settings/artwork-language`,
     settingsLibraryWatch: () => `${API_BASE_URL}/settings/library-watch`,
     settingsAutoOrganizeRoot: () => `${API_BASE_URL}/settings/auto-organize-root`,
     settingsScrapeConfirmation: () => `${API_BASE_URL}/settings/scrape-confirmation`,

@@ -13,10 +13,12 @@ import {
   useBaseUrl,
   useMediaDir,
   useLanguageSetting,
+  useArtworkLanguageSetting,
   useUpdateModel,
   useUpdateBaseUrl,
   useUpdateMediaDir,
   useUpdateLanguage,
+  useUpdateArtworkLanguage,
   useUpdateLibraryWatch,
   useTestApiKey,
   useScanLibrary,
@@ -49,6 +51,7 @@ function SettingsContent() {
   const { data: baseUrlData } = useBaseUrl();
   const { data: mediaDirData } = useMediaDir();
   const { data: langData } = useLanguageSetting();
+  const { data: artworkLanguageData } = useArtworkLanguageSetting();
   const { data: libraryWatchData } = useLibraryWatchSetting();
   const { data: autoOrganizeRootData } = useAutoOrganizeRootSetting();
   const { data: scrapeConfirmationData } = useScrapeConfirmationSetting();
@@ -61,6 +64,7 @@ function SettingsContent() {
   const { trigger: updateBaseUrl, isMutating: baseUrlSaving, data: baseUrlSaveResult, reset: resetBaseUrlSave } = useUpdateBaseUrl();
   const { trigger: updateMediaDir, isMutating: mediaDirSaving, data: mediaDirSaveResult, reset: resetMediaDirSave } = useUpdateMediaDir();
   const { trigger: updateLanguage, isMutating: languageSaving } = useUpdateLanguage();
+  const { trigger: updateArtworkLanguage, isMutating: artworkLanguageSaving } = useUpdateArtworkLanguage();
   const { trigger: updateLibraryWatch, isMutating: watchSaving } = useUpdateLibraryWatch();
   const { trigger: updateAutoOrganizeRoot, isMutating: autoOrganizeSaving } = useUpdateAutoOrganizeRoot();
   const { trigger: updateScrapeConfirmation, isMutating: scrapeConfirmationSaving } = useUpdateScrapeConfirmation();
@@ -130,6 +134,12 @@ function SettingsContent() {
       : t("tmdbSourceMissing");
   const tmdbCanSave = tmdbStatus?.source !== "environment";
   const scrapeBlocked = tmdbStatus?.configured === false;
+  const artworkLanguageOptions = [
+    { value: "metadata" as const, label: t("artworkLanguageMetadata") },
+    { value: "zh" as const, label: t("artworkLanguageZh") },
+    { value: "en" as const, label: t("artworkLanguageEn") },
+    { value: "none" as const, label: t("artworkLanguageNone") },
+  ];
 
   const filteredModels = useMemo(() => {
     if (!modelSearch.trim()) return availableModels;
@@ -157,6 +167,11 @@ function SettingsContent() {
     if (lang === currentLang) return;
     await updateLanguage(lang);
     router.replace({ pathname }, { locale: lang });
+  };
+
+  const handleArtworkLanguageChange = async (language: "metadata" | "zh" | "en" | "none") => {
+    if (language === artworkLanguageData?.artwork_language) return;
+    await updateArtworkLanguage(language);
   };
 
   const handleScanLibrary = async () => {
@@ -691,6 +706,34 @@ function SettingsContent() {
                       {tmdbTestError && (
                         <p className="text-xs text-red-500 mt-2">{tmdbTestError instanceof Error ? tmdbTestError.message : t("tmdbTestFailed")}</p>
                       )}
+                    </div>
+                  </div>
+
+                  <div className="border-b border-neutral-900 pb-6">
+                    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium uppercase tracking-widest mb-1">{t("artworkLanguage")}</p>
+                        <p className="text-xs text-neutral-600">{t("artworkLanguageDesc")}</p>
+                      </div>
+                      <div className="flex items-center">
+                        <div className="flex flex-wrap bg-neutral-900 border border-neutral-800 p-1">
+                          {artworkLanguageOptions.map((option) => (
+                            <button
+                              key={option.value}
+                              type="button"
+                              onClick={() => handleArtworkLanguageChange(option.value)}
+                              disabled={artworkLanguageSaving}
+                              className={`px-3 py-2 text-xs font-medium uppercase tracking-widest transition-colors ${
+                                (artworkLanguageData?.artwork_language ?? "metadata") === option.value
+                                  ? "bg-white text-black"
+                                  : "text-neutral-500 hover:text-white"
+                              }`}
+                            >
+                              {option.label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
                     </div>
                   </div>
 

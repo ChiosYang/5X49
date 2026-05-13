@@ -192,6 +192,70 @@ class MetadataScraperIntegrationTests(unittest.TestCase):
         self.assertEqual(stored["scrape_status"], "needs_review")
         self.assertEqual(stored["scrape_error"], "Manual confirmation required")
 
+    def test_scrape_movie_can_use_separate_artwork_language(self):
+        movie_dir = self.tmp_path / "The.Matrix.1999"
+        movie_dir.mkdir()
+        video = movie_dir / "The.Matrix.1999.1080p.mkv"
+        video.write_bytes(b"fake video")
+
+        movie = library_sync_service.scan_folder(movie_dir)
+        self.assertIsNotNone(movie)
+
+        downloaded = []
+
+        def fake_download(url, destination, overwrite=False):
+            downloaded.append(url)
+            destination.write_bytes(f"downloaded {url}".encode("utf-8"))
+            return destination
+
+        with (
+            patch("app.services.metadata.scraper.get_scrape_require_confirmation", return_value=False),
+            patch.object(metadata_scraper.tmdb, "search_movies") as search_movies,
+            patch.object(metadata_scraper.tmdb, "movie_details") as movie_details,
+            patch.object(metadata_scraper.artwork, "download", side_effect=fake_download),
+        ):
+            search_movies.return_value = [
+                {
+                    "id": 603,
+                    "title": "黑客帝国",
+                    "original_title": "The Matrix",
+                    "release_date": "1999-03-31",
+                    "overview": "中文简介",
+                    "poster_path": "/zh-default.jpg",
+                    "backdrop_path": "/zh-backdrop.jpg",
+                    "popularity": 100,
+                }
+            ]
+            movie_details.return_value = {
+                "id": 603,
+                "title": "黑客帝国",
+                "original_title": "The Matrix",
+                "release_date": "1999-03-31",
+                "overview": "中文简介",
+                "poster_path": "/zh-default.jpg",
+                "backdrop_path": "/zh-backdrop.jpg",
+                "images": {
+                    "posters": [
+                        {"file_path": "/zh-poster.jpg", "iso_639_1": "zh", "vote_average": 8, "vote_count": 10, "width": 1000, "height": 1500},
+                        {"file_path": "/en-poster-low.jpg", "iso_639_1": "en", "vote_average": 7, "vote_count": 20, "width": 1000, "height": 1500},
+                        {"file_path": "/en-poster.jpg", "iso_639_1": "en", "vote_average": 9, "vote_count": 20, "width": 1000, "height": 1500},
+                    ],
+                    "backdrops": [
+                        {"file_path": "/textless-backdrop.jpg", "iso_639_1": None, "vote_average": 9, "vote_count": 20, "width": 1920, "height": 1080},
+                    ],
+                },
+            }
+
+            result = metadata_scraper.scrape_movie(
+                movie["id"],
+                ScrapeOptions(language="zh-CN", artwork_language="en"),
+            )
+
+        self.assertEqual(result.status, "success")
+        movie_details.assert_called_once_with(603, language="zh-CN", artwork_language="en")
+        self.assertIn("https://image.tmdb.org/t/p/original/en-poster.jpg", downloaded)
+        self.assertIn("https://image.tmdb.org/t/p/original/textless-backdrop.jpg", downloaded)
+
     def test_confirmed_root_video_organize_moves_and_scrapes(self):
         video = self.tmp_path / "The.Matrix.1999.1080p.mkv"
         video.write_bytes(b"fake video")
