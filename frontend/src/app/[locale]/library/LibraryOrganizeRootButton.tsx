@@ -4,19 +4,9 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { FolderInput, Loader2, Search } from "lucide-react";
-import { useOrganizeRootVideos } from "@/hooks/useSettings";
 import { API } from "@/lib/api";
 import type { MetadataSearchResult, RootVideo } from "@/types/movie";
 
-type OrganizeStatus = {
-  state: string;
-  last_started_at: string | null;
-  last_finished_at: string | null;
-  last_error: string | null;
-  last_result: Record<string, unknown> | null;
-};
-
-const sleep = (ms: number) => new Promise((resolve) => window.setTimeout(resolve, ms));
 const DEFAULT_VISIBLE_CANDIDATES = 5;
 
 const parseTmdbId = (value: string) => {
@@ -47,9 +37,6 @@ export default function LibraryOrganizeRootButton({
 }: LibraryOrganizeRootButtonProps) {
   const t = useTranslations("Library");
   const router = useRouter();
-  const { trigger, isMutating, error } = useOrganizeRootVideos();
-  const [isWaiting, setIsWaiting] = useState(false);
-  const [taskFailed, setTaskFailed] = useState(false);
   const [candidatesByPath, setCandidatesByPath] = useState<Record<string, MetadataSearchResult[]>>({});
   const [reviewingPath, setReviewingPath] = useState<string | null>(null);
   const [activeReviewPath, setActiveReviewPath] = useState<string | null>(null);
@@ -58,24 +45,6 @@ export default function LibraryOrganizeRootButton({
   const [searchDrafts, setSearchDrafts] = useState<Record<string, string>>({});
   const [expandedPaths, setExpandedPaths] = useState<Record<string, boolean>>({});
 
-  const handleOrganize = async () => {
-    setTaskFailed(false);
-    setIsWaiting(true);
-    try {
-      const previousStatus = await readOrganizeStatus().catch(() => null);
-      await trigger();
-      const status = await waitForOrganize(previousStatus?.last_started_at ?? null);
-      setTaskFailed(status?.state === "error" || Boolean(status?.last_error));
-      router.refresh();
-    } catch {
-      setTaskFailed(true);
-    } finally {
-      setIsWaiting(false);
-    }
-  };
-
-  const isBusy = isMutating || isWaiting;
-  const hasError = Boolean(error) || taskFailed;
   const pendingCount = rootVideos.length;
 
   const handleReview = async (video: RootVideo) => {
@@ -164,29 +133,18 @@ export default function LibraryOrganizeRootButton({
 
   return (
     <div className="group/root-organize relative">
-      <button
-        type="button"
-        onClick={handleOrganize}
-        disabled={isBusy}
-        className={`relative flex h-10 w-10 items-center justify-center border bg-neutral-950 text-white transition-colors hover:bg-neutral-900 disabled:cursor-not-allowed disabled:opacity-50 ${
-          hasError
-            ? "border-red-700 hover:border-red-500"
-            : "border-neutral-800 hover:border-neutral-500"
-        }`}
-        aria-label={hasError ? t("organizeRootFailed") : t("organizeRoot")}
-        title={hasError ? t("organizeRootFailed") : t("organizeRoot")}
+      <div
+        className="relative flex h-10 w-10 items-center justify-center border border-neutral-800 bg-neutral-950 text-white transition-colors"
+        aria-label={t("rootPending", { count: pendingCount })}
+        title={t("organizeRoot")}
       >
-        {isBusy ? (
-          <Loader2 className="h-4 w-4 animate-spin" />
-        ) : (
-          <FolderInput className="h-4 w-4" />
-        )}
+        <FolderInput className="h-4 w-4" />
         {pendingCount > 0 && (
           <span className="absolute -right-1.5 -top-1.5 flex min-h-4 min-w-4 items-center justify-center border border-black bg-white px-1 text-[10px] font-bold leading-none text-black">
             {pendingCount > 99 ? "99+" : pendingCount}
           </span>
         )}
-      </button>
+      </div>
 
       {pendingCount > 0 && (
         <div className="pointer-events-none absolute right-0 top-full z-50 w-[min(24rem,calc(100vw-4rem))] pt-3 opacity-0 transition-opacity duration-150 group-hover/root-organize:pointer-events-auto group-hover/root-organize:opacity-100 group-focus-within/root-organize:pointer-events-auto group-focus-within/root-organize:opacity-100">
@@ -195,15 +153,6 @@ export default function LibraryOrganizeRootButton({
               <p className="text-xs font-bold uppercase tracking-widest text-neutral-400">
                 {t("rootPending", { count: pendingCount })}
               </p>
-              <button
-                type="button"
-                onClick={handleOrganize}
-                disabled={isBusy}
-                className="flex h-8 items-center gap-2 border border-neutral-800 bg-neutral-950 px-3 text-[11px] font-bold uppercase tracking-widest text-white transition-colors hover:border-neutral-500 hover:bg-neutral-900 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                {isBusy && <Loader2 className="h-3 w-3 animate-spin" />}
-                {t("organizeRoot")}
-              </button>
             </div>
             <div className="scrollbar-minimal max-h-72 overflow-y-auto pr-1">
               <ul className="space-y-3">
@@ -317,33 +266,4 @@ export default function LibraryOrganizeRootButton({
       )}
     </div>
   );
-}
-
-async function waitForOrganize(previousStartedAt: string | null): Promise<OrganizeStatus | null> {
-  let sawCurrentTask = false;
-
-  for (let attempt = 0; attempt < 45; attempt += 1) {
-    await sleep(attempt === 0 ? 500 : 1000);
-    const status = await readOrganizeStatus();
-    const isCurrentTask = status.last_started_at !== previousStartedAt;
-    sawCurrentTask ||= isCurrentTask;
-    if (status.state === "running") {
-      sawCurrentTask = true;
-      continue;
-    }
-
-    if (sawCurrentTask) {
-      return status;
-    }
-  }
-
-  return null;
-}
-
-async function readOrganizeStatus(): Promise<OrganizeStatus> {
-  const res = await fetch(API.libraryOrganizeStatus(), { cache: "no-store" });
-  if (!res.ok) {
-    throw new Error("Failed to read organize status");
-  }
-  return res.json();
 }

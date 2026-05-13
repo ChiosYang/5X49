@@ -3,6 +3,7 @@ import time
 from pathlib import Path
 from typing import Optional
 
+from app.services.event_bus import library_event_bus
 from app.services.library_sync import library_sync_service
 from app.services.settings import (
     get_auto_organize_root_videos,
@@ -242,6 +243,8 @@ class LibraryWatcher:
                 library_sync_service.mark_path_missing(normalized)
             elif path_obj.suffix.lower() in self.video_extensions:
                 library_sync_service.mark_path_missing(normalized)
+                if self._is_direct_media_root_child(path_obj):
+                    library_event_bus.publish_library_changed("root_videos_changed")
             else:
                 self._queue_folder(str(path_obj.parent))
             return
@@ -289,6 +292,8 @@ class LibraryWatcher:
                             root_video_organizer.organize_root(str(folder_path))
                         except Exception as exc:
                             self._record_error(str(exc))
+                    else:
+                        library_event_bus.publish_library_changed("root_videos_changed")
                     continue
                 library_sync_service.scan_folder(folder)
 
@@ -331,6 +336,12 @@ class LibraryWatcher:
     def _is_media_root(self, folder: Path) -> bool:
         try:
             return folder.resolve() == Path(get_media_dir()).resolve()
+        except OSError:
+            return False
+
+    def _is_direct_media_root_child(self, path: Path) -> bool:
+        try:
+            return path.parent.resolve() == Path(get_media_dir()).resolve()
         except OSError:
             return False
 
