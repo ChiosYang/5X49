@@ -13,6 +13,9 @@
     "refreshFailed": "媒体库刷新失败",
     "organizeRoot": "整理根目录视频",
     "organizeRootFailed": "根目录整理失败",
+    "rootPending": "{count} 个根目录视频待整理",
+    "rootReady": "可整理",
+    "rootWaitingForStability": "等待文件稳定",
     "empty": "资料库为空。点击扫描添加电影。"
   },
   "FilmDetail": {

@@ -13,6 +13,9 @@
     "refreshFailed": "Library refresh failed",
     "organizeRoot": "Organize root videos",
     "organizeRootFailed": "Root organization failed",
+    "rootPending": "{count, plural, one {# root video waiting} other {# root videos waiting}}",
+    "rootReady": "ready",
+    "rootWaitingForStability": "waiting for file stability",
     "empty": "Your library is empty. Click Scan Now to add movies."
   },
   "FilmDetail": {

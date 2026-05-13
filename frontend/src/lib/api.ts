@@ -37,6 +37,7 @@ export const API = {
     libraryScrapeStatus: () => `${API_BASE_URL}/library/scrape/status`,
     libraryOrganizeRoot: () => `${API_BASE_URL}/library/organize-root`,
     libraryOrganizeStatus: () => `${API_BASE_URL}/library/organize/status`,
+    libraryRootVideos: () => `${API_BASE_URL}/library/root-videos`,
     libraryReconcile: () => `${API_BASE_URL}/library/reconcile`,
     libraryCleanupMissing: () => `${API_BASE_URL}/library/missing`,
     librarySyncStatus: () => `${API_BASE_URL}/library/sync/status`,

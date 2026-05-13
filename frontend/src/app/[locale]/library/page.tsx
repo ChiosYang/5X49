@@ -1,5 +1,5 @@
 import { getTranslations } from "next-intl/server";
-import { getLibrary } from "@/lib/server-api";
+import { getLibrary, getRootVideos } from "@/lib/server-api";
 import LibraryEventsRefresher from "./LibraryEventsRefresher";
 import LibraryMovieCard from "./LibraryMovieCard";
 import LibraryOrganizeRootButton from "./LibraryOrganizeRootButton";
@@ -7,7 +7,7 @@ import LibraryRefreshButton from "./LibraryRefreshButton";
 
 export default async function LibraryPage() {
   const t = await getTranslations("Library");
-  const movies = await getLibrary();
+  const [movies, rootVideos] = await Promise.all([getLibrary(), getRootVideos()]);
   const visibleMovies = movies.filter(
     (movie) => !["missing", "ignored"].includes(movie.library_status || "")
   );
@@ -32,6 +32,30 @@ export default async function LibraryPage() {
             </div>
           </div>
         </header>
+
+        {rootVideos.length > 0 && (
+          <section className="border-y border-neutral-900 py-5">
+            <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+              <div className="space-y-2">
+                <p className="text-xs font-bold uppercase tracking-widest text-neutral-500">
+                  {t("rootPending", { count: rootVideos.length })}
+                </p>
+                <p className="text-sm text-neutral-400">
+                  {rootVideos
+                    .slice(0, 3)
+                    .map((video) =>
+                      `${video.filename} · ${
+                        video.stable ? t("rootReady") : t("rootWaitingForStability")
+                      }`
+                    )
+                    .join(" / ")}
+                  {rootVideos.length > 3 ? ` / +${rootVideos.length - 3}` : ""}
+                </p>
+              </div>
+              <LibraryOrganizeRootButton />
+            </div>
+          </section>
+        )}
 
         {visibleMovies.length === 0 ? (
           <div className="py-24 text-center space-y-4">

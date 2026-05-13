@@ -248,7 +248,6 @@ export function useOrganizeRootVideos() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          min_confidence: 85,
           rename_style: "preserve_stem",
           overwrite: false,
           write_nfo: true,

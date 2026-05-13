@@ -37,6 +37,36 @@ class RootVideoOrganizer:
         with self._lock:
             return dict(self._status)
 
+    def list_root_videos(self, media_dir: Optional[str] = None) -> list[dict]:
+        root = Path(media_dir or get_media_dir()).resolve()
+        if not root.exists() or not root.is_dir():
+            raise FileNotFoundError(f"Directory not found: {root}")
+
+        videos = []
+        for path in self._root_videos(root):
+            lower_name = path.name.lower()
+            if lower_name.endswith(self.ignored_suffixes):
+                continue
+            try:
+                stat = path.stat()
+            except OSError:
+                continue
+            if stat.st_size <= 0:
+                continue
+            parsed_title, parsed_year = parse_title_year(path.name)
+            stable = self._is_usable_root_video(path, root)
+            videos.append({
+                "path": str(path.resolve()),
+                "filename": path.name,
+                "size": stat.st_size,
+                "mtime": stat.st_mtime,
+                "stable": stable,
+                "parsed_title": parsed_title,
+                "parsed_year": parsed_year,
+                "status": "needs_organize" if stable else "waiting_for_stability",
+            })
+        return videos
+
     def organize_root(self, media_dir: Optional[str] = None, options: Optional[RootOrganizeOptions] = None) -> dict:
         options = options or RootOrganizeOptions(rename_style=get_organize_rename_style())
         root = Path(media_dir or get_media_dir()).resolve()

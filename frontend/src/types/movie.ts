@@ -98,3 +98,14 @@ export interface ScrapeResult {
   movie?: MovieDetail;
   candidates: MetadataSearchResult[];
 }
+
+export interface RootVideo {
+  path: string;
+  filename: string;
+  size: number;
+  mtime: number;
+  stable: boolean;
+  parsed_title: string;
+  parsed_year: number;
+  status: "needs_organize" | "waiting_for_stability";
+}

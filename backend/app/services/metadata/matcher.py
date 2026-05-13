@@ -65,7 +65,7 @@ def _score_match(
         elif diff <= 2:
             year_score = 8
 
-    exact_score = 10 if query_norm and query_norm in {
+    exact_score = 25 if query_norm and query_norm in {
         _normalize_title(title),
         _normalize_title(original_title or ""),
     } else 0

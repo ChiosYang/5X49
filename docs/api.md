@@ -255,6 +255,26 @@ This document describes the REST API endpoints available in the backend applicat
   }
   ```
 
+### List Root Videos
+- **URL**: `/library/root-videos`
+- **Method**: `GET`
+- **Description**: Lists direct video files under the configured media root that are waiting for organization. This endpoint is read-only and does not create library records.
+- **Response**:
+  ```json
+  [
+    {
+      "path": "/media/output.mp4",
+      "filename": "output.mp4",
+      "size": 7697577,
+      "mtime": 1778580000.0,
+      "stable": true,
+      "parsed_title": "output",
+      "parsed_year": 0,
+      "status": "needs_organize"
+    }
+  ]
+  ```
+
 ### Get Library Sync Status
 - **URL**: `/library/sync/status`
 - **Method**: `GET`
@@ -509,4 +529,4 @@ The core database payload associated with movies.
 
 Filename-only records are discovery records, not confirmed identity metadata. They are created with `metadata_source=filename` and `scrape_status=pending`; high-confidence or user-confirmed TMDB scraping changes them to `scrape_status=matched`. For discovery records and TMDB matching, the primary video filename is the source of the parsed title/year; folder names are treated as physical containers, not movie identity.
 
-Root video organization only processes direct files under the media root. It does not scan nested folders as root videos, skips unstable or temporary files, and requires a high-confidence TMDB match before moving files.
+Root video organization only processes direct files under the media root. It does not scan nested folders as root videos, skips unstable or temporary files, and requires a high-confidence TMDB match before moving files. Root videos are surfaced by `/library/root-videos` so the UI can show pending files without treating the media root as a movie folder.

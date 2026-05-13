@@ -40,6 +40,7 @@ description: 电影族谱 API (FastAPI) 的接口调用指南
 | GET | `/library/scrape/status` | 获取批量刮削状态 |
 | POST | `/library/organize-root` | 整理媒体根目录直属视频并刮削 |
 | GET | `/library/organize/status` | 获取根目录整理状态 |
+| GET | `/library/root-videos` | 列出待整理的媒体根目录直属视频 |
 | GET | `/library/sync/status` | 获取校准与自动监听状态 |
 | POST | `/library/{movie_id}/ignore` | 忽略一条误扫描记录 |
 | DELETE | `/library/missing` | 删除已标记为 missing 的记录 |
@@ -141,6 +142,13 @@ curl -s -X POST http://127.0.0.1:11548/library/organize-root \
 
 只处理直接放在媒体根目录下的视频文件。高置信度 TMDB 匹配后会创建电影目录、移动视频、扫描入库并刮削；低置信度会跳过并在状态中返回 `needs_review`。
 
+### 查看待整理根目录视频
+```bash
+curl -s http://127.0.0.1:11548/library/root-videos
+```
+
+这是只读接口，不会写数据库；用于让 UI 提示根目录下有视频等待整理。
+
 ### 忽略误扫描记录
 ```bash
 curl -s -X POST http://127.0.0.1:11548/library/local_xxx/ignore
@@ -176,5 +184,5 @@ curl -s -X PUT "http://127.0.0.1:11548/settings/model?model_name=moonshotai/kimi
 6. **自动监听** - 当前监听器默认使用 `watchfiles` 原生文件事件和去抖，避免频繁全目录轮询；如遇 Docker volume、NAS、SMB 事件不可靠，可设置 `watch_mode=polling` 或 `WATCH_MODE=polling` 回退；新增视频会等待 `media_file_stable_seconds` 后再扫描；最终一致性由 `/library/reconcile` 保底
 7. **TMDB 刮削** - 需要用户自己的 `TMDB_API_KEY`。默认不覆盖已有文件，优先用于 `metadata_source=filename` 且 `scrape_status=pending/failed` 的电影
 8. **发现记录** - 无 NFO 视频会作为发现记录入库，通常是 `metadata_source=filename`、`scrape_status=pending`；它不是已确认电影身份，需刮削或人工确认后变为 `matched`。发现记录和 TMDB 匹配都以主视频文件名解析标题/年份，目录名只作为物理容器
-9. **根目录整理** - `auto_organize_root_videos` 开启后，watcher 会整理媒体根目录直属稳定视频；默认保留原视频文件名，只移动到匹配电影目录并刮削
+9. **根目录整理** - `auto_organize_root_videos` 开启后，watcher 会整理媒体根目录直属稳定视频；默认保留原视频文件名，只移动到匹配电影目录并刮削。`/library/root-videos` 会列出待整理文件，避免用户看不见根目录散片
 10. **推荐使用 http_request 插件** - 如果有安装的话，比 curl 更安全

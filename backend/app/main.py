@@ -104,6 +104,14 @@ async def get_library_events(request: Request):
         },
     )
 
+@app.get("/library/root-videos")
+def get_library_root_videos():
+    """List direct video files in the media root that are waiting for organization."""
+    try:
+        return root_video_organizer.list_root_videos(get_media_dir() or DEFAULT_MEDIA_DIR)
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
 @app.get("/library/{movie_id}")
 def get_library_movie(movie_id: str):
     """Get details for a specific movie."""
