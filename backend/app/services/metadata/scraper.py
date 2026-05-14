@@ -18,7 +18,7 @@ from app.services.metadata.models import (
 )
 from app.services.metadata.nfo_writer import NFOWriter
 from app.services.metadata.tmdb import TMDBClient
-from app.services.settings import get_artwork_language, get_language, get_scrape_require_confirmation
+from app.services.settings import get_artwork_language, get_language, get_media_dir, get_scrape_require_confirmation
 
 
 REVIEW_CANDIDATE_LIMIT = 20
@@ -418,6 +418,14 @@ class MetadataScraper:
             folder = Path(folder_path).resolve()
             if folder.exists() and folder.is_dir():
                 return folder
+
+        folder_name = movie.get("folder_name")
+        media_dir = get_media_dir()
+        if folder_name and media_dir:
+            folder = (Path(media_dir) / folder_name).resolve()
+            if folder.exists() and folder.is_dir():
+                return folder
+
         media_path = movie.get("media_path")
         if media_path:
             folder = Path(media_path).resolve().parent
