@@ -43,3 +43,4 @@ backend/data/
 *.mp4
 plan.md
 .codex
+.plan
