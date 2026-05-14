@@ -39,6 +39,7 @@ export interface LibraryMovie {
   library_status?: "available" | "missing" | "ignored";
   missing_since?: string | null;
   metadata_source?: string | null;
+  metadata_updated_at?: string | null;
   scrape_status?: "pending" | "matched" | "needs_review" | "failed";
   scrape_error?: string | null;
   scraped_at?: string | null;

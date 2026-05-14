@@ -23,6 +23,7 @@ export default function MovieBackdrop({ src, title }: MovieBackdropProps) {
             fill
             priority
             sizes="100vw"
+            unoptimized
             onLoad={() => setLoadedSrc(src)}
             className={`object-cover transition-opacity duration-150 ease-out ${loaded ? "opacity-100" : "opacity-0"}`}
           />

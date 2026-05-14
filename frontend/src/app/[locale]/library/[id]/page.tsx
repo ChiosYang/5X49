@@ -32,8 +32,9 @@ export default async function MovieDetailPage({ params }: MovieDetailPageProps) 
     );
   }
 
-  const backdropSrc = movie.backdrop_local ? API.mediaUrl(movie.backdrop_local) : null;
-  const posterSrc = movie.poster_local ? API.mediaUrl(movie.poster_local) : null;
+  const artworkVersion = movie.metadata_updated_at ? `?v=${encodeURIComponent(movie.metadata_updated_at)}` : "";
+  const backdropSrc = movie.backdrop_local ? `${API.mediaUrl(movie.backdrop_local)}${artworkVersion}` : null;
+  const posterSrc = movie.poster_local ? `${API.mediaUrl(movie.poster_local)}${artworkVersion}` : null;
 
   return (
     <div className="min-h-screen bg-black text-white selection:bg-white selection:text-black">

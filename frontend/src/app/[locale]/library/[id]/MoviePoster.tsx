@@ -24,6 +24,7 @@ export default function MoviePoster({ src, title }: MoviePosterProps) {
           width={780}
           height={1170}
           sizes="(min-width: 768px) 37.5vw, 100vw"
+          unoptimized
           className="w-full h-auto object-cover"
         />
       </div>
