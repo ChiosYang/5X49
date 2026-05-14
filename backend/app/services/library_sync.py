@@ -36,7 +36,7 @@ class LibrarySyncService:
             if not target_dir.exists():
                 raise FileNotFoundError(f"Directory not found: {target_dir}")
 
-            scanner = NFOScanner(str(target_dir))
+            scanner = NFOScanner(str(target_dir), video_probe_cache=self._video_probe_cache())
             movies = scanner.scan()
             added = library_manager.add_movies(movies)
             missing = library_manager.mark_missing_not_seen_since(started_at)
@@ -90,7 +90,7 @@ class LibrarySyncService:
         if not folder.exists() or not folder.is_dir():
             return None
 
-        scanner = NFOScanner(str(folder.parent))
+        scanner = NFOScanner(str(folder.parent), video_probe_cache=self._video_probe_cache())
         movie_data = scanner.scan_folder(folder)
         if not movie_data:
             return None
@@ -118,6 +118,13 @@ class LibrarySyncService:
     def _set_status(self, **updates):
         with self._lock:
             self._status.update(updates)
+
+    def _video_probe_cache(self) -> dict[str, dict]:
+        return {
+            movie["media_path"]: movie
+            for movie in library_manager.get_movies()
+            if movie.get("media_path")
+        }
 
 
 library_sync_service = LibrarySyncService()

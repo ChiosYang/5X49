@@ -10,12 +10,23 @@ from pathlib import Path
 from typing import Optional
 
 from app.services.artwork_cache import artwork_cache
+from app.services.video_probe import video_probe_service
 
 
 class NFOScanner:
     """Scans a directory for TMM-scraped movie folders and parses .nfo files."""
 
     video_extensions = ['.mp4', '.mkv', '.avi', '.mov', '.wmv', '.m4v', '.ts', '.iso']
+    video_probe_fields = (
+        "video_width",
+        "video_height",
+        "video_codec",
+        "video_bitrate",
+        "video_duration",
+        "video_fps",
+        "video_dynamic_range",
+        "video_bit_depth",
+    )
     ignored_file_suffixes = (
         ".part",
         ".tmp",
@@ -23,8 +34,9 @@ class NFOScanner:
         ".crdownload",
     )
 
-    def __init__(self, media_dir: str):
+    def __init__(self, media_dir: str, video_probe_cache: Optional[dict[str, dict]] = None):
         self.media_dir = Path(media_dir)
+        self.video_probe_cache = video_probe_cache or {}
 
     def scan(self) -> list[dict]:
         """Scan all subdirectories for movies and parse metadata when available."""
@@ -291,14 +303,38 @@ class NFOScanner:
 
         if video_file:
             stat = video_file.stat()
+            media_path = str(video_file.resolve())
             movie_data.update({
-                "media_path": str(video_file.resolve()),
+                "media_path": media_path,
                 "video_file": video_file.name,
                 "file_size": stat.st_size,
                 "file_mtime": stat.st_mtime,
             })
+            probe_data = self._cached_video_probe(media_path, stat.st_size, stat.st_mtime)
+            if not probe_data:
+                probe_data = video_probe_service.probe(video_file)
+            if probe_data:
+                if movie_data.get("audio_tracks"):
+                    probe_data.pop("audio_tracks", None)
+                movie_data.update(probe_data)
 
         return movie_data
+
+    def _cached_video_probe(self, media_path: str, file_size: int, file_mtime: float) -> dict:
+        cached = self.video_probe_cache.get(media_path)
+        if not cached:
+            return {}
+        if cached.get("file_size") != file_size or cached.get("file_mtime") != file_mtime:
+            return {}
+
+        probe_data = {
+            field: cached.get(field)
+            for field in self.video_probe_fields
+            if cached.get(field) is not None
+        }
+        if cached.get("audio_tracks"):
+            probe_data["audio_tracks"] = cached["audio_tracks"]
+        return probe_data
 
     def _parse_title_year(self, name: str) -> tuple[str, int]:
         """Extract a usable title and year from a folder or filename."""

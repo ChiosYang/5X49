@@ -700,6 +700,13 @@ The core database payload associated with movies.
 - `folder_path` (String, Optional): Absolute path to the movie folder
 - `file_size` (Integer, Optional): Primary video file size in bytes
 - `file_mtime` (Float, Optional): Primary video file modification time
+- `video_width` / `video_height` (Integer, Optional): Primary video resolution from `ffprobe`
+- `video_codec` (String, Optional): Primary video stream codec, for example `h264`, `hevc`, or `av1`
+- `video_bitrate` (Integer, Optional): Primary video bitrate in bits per second, falling back to container bitrate when stream bitrate is unavailable
+- `video_duration` (Float, Optional): Primary video duration in seconds
+- `video_fps` (Float, Optional): Average frame rate
+- `video_dynamic_range` (String, Optional): Detected dynamic range, usually `SDR`, `HDR10`, `HLG`, `Dolby Vision`, or `unknown`
+- `video_bit_depth` (Integer, Optional): Detected video bit depth when exposed by the stream metadata
 - `last_seen_at` (String, Optional): Last successful scan timestamp
 - `missing_since` (String, Optional): Timestamp when the movie was first marked missing
 - `library_status` (String): Library availability status, `available`, `missing`, or `ignored`

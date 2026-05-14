@@ -39,7 +39,16 @@
     "watchNow": "立即观看",
     "microGenre": "微流派",
     "pending": "等待流派分析",
-    "noDescription": "暂无简介"
+    "noDescription": "暂无简介",
+    "technicalDetails": "技术信息",
+    "resolution": "分辨率",
+    "dynamicRange": "动态范围",
+    "videoCodec": "视频编码",
+    "bitrate": "码率",
+    "frameRate": "帧率",
+    "bitDepth": "位深",
+    "duration": "时长",
+    "fileSize": "文件大小"
   },
   "Genealogy": {
     "title": "5X49",

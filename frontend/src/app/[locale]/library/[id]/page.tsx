@@ -16,6 +16,44 @@ interface MovieDetailPageProps {
   }>;
 }
 
+function formatResolution(width?: number | null, height?: number | null) {
+  if (!width || !height) {
+    return null;
+  }
+  return `${width} x ${height}`;
+}
+
+function formatBitrate(bitRate?: number | null) {
+  if (!bitRate) {
+    return null;
+  }
+  if (bitRate >= 1_000_000) {
+    return `${(bitRate / 1_000_000).toFixed(1)} Mbps`;
+  }
+  return `${Math.round(bitRate / 1000)} Kbps`;
+}
+
+function formatDuration(seconds?: number | null) {
+  if (!seconds) {
+    return null;
+  }
+  const totalMinutes = Math.round(seconds / 60);
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  return hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
+}
+
+function formatFileSize(bytes?: number | null) {
+  if (!bytes) {
+    return null;
+  }
+  const gib = bytes / 1024 ** 3;
+  if (gib >= 1) {
+    return `${gib.toFixed(2)} GB`;
+  }
+  return `${(bytes / 1024 ** 2).toFixed(1)} MB`;
+}
+
 export default async function MovieDetailPage({ params }: MovieDetailPageProps) {
   const t = await getTranslations("FilmDetail");
   const { id } = await params;
@@ -35,6 +73,20 @@ export default async function MovieDetailPage({ params }: MovieDetailPageProps) 
   const artworkVersion = movie.metadata_updated_at ? `?v=${encodeURIComponent(movie.metadata_updated_at)}` : "";
   const backdropSrc = movie.backdrop_local ? `${API.mediaUrl(movie.backdrop_local)}${artworkVersion}` : null;
   const posterSrc = movie.poster_local ? `${API.mediaUrl(movie.poster_local)}${artworkVersion}` : null;
+  const durationSeconds = movie.video_duration || (movie.runtime ? movie.runtime * 60 : null);
+  const technicalItems = [
+    { label: t("resolution"), value: formatResolution(movie.video_width, movie.video_height) },
+    {
+      label: t("dynamicRange"),
+      value: movie.video_dynamic_range && movie.video_dynamic_range !== "unknown" ? movie.video_dynamic_range : null,
+    },
+    { label: t("videoCodec"), value: movie.video_codec?.toUpperCase() },
+    { label: t("bitrate"), value: formatBitrate(movie.video_bitrate) },
+    { label: t("frameRate"), value: movie.video_fps ? `${movie.video_fps} fps` : null },
+    { label: t("bitDepth"), value: movie.video_bit_depth ? `${movie.video_bit_depth}-bit` : null },
+    { label: t("duration"), value: formatDuration(durationSeconds) },
+    { label: t("fileSize"), value: formatFileSize(movie.file_size) },
+  ].filter((item) => item.value);
 
   return (
     <div className="min-h-screen bg-black text-white selection:bg-white selection:text-black">
@@ -92,6 +144,22 @@ export default async function MovieDetailPage({ params }: MovieDetailPageProps) 
              )}
          </div>
       </div>
+
+      {technicalItems.length > 0 && (
+        <div className="border-b border-neutral-800 px-8 py-10 md:px-16">
+          <span className="block text-xs font-bold uppercase tracking-widest text-neutral-500">{t("technicalDetails")}</span>
+          <div className="mt-6 grid grid-cols-2 gap-x-8 gap-y-6 md:grid-cols-4">
+            {technicalItems.map((item) => (
+              <div key={item.label} className="min-w-0 space-y-1">
+                <span className="block text-[10px] font-bold uppercase tracking-widest text-neutral-500">
+                  {item.label}
+                </span>
+                <span className="block truncate text-base font-bold text-white md:text-lg">{item.value}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Genealogy Analysis Section */}
       <Providers>

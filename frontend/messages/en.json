@@ -39,7 +39,16 @@
     "watchNow": "Watch Now",
     "microGenre": "Micro-Genre",
     "pending": "Genre Analysis Pending",
-    "noDescription": "No description available"
+    "noDescription": "No description available",
+    "technicalDetails": "Technical Details",
+    "resolution": "Resolution",
+    "dynamicRange": "Dynamic Range",
+    "videoCodec": "Video Codec",
+    "bitrate": "Bitrate",
+    "frameRate": "Frame Rate",
+    "bitDepth": "Bit Depth",
+    "duration": "Duration",
+    "fileSize": "File Size"
   },
   "Genealogy": {
     "title": "5X49",

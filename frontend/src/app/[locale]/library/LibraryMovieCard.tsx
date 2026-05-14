@@ -34,6 +34,23 @@ function formatAudioTrack(track?: AudioTrack | null) {
     .join(" ");
 }
 
+function formatResolutionBadge(movie: LibraryMovie) {
+  const height = movie.video_height;
+  if (!height) {
+    return null;
+  }
+  if (height >= 2160) {
+    return "4K";
+  }
+  if (height >= 1440) {
+    return "QHD";
+  }
+  if (height >= 1080) {
+    return "HD";
+  }
+  return `${height}p`;
+}
+
 function getMetadataBadge(movie: LibraryMovie) {
   if (movie.metadata_source !== "filename" && movie.scrape_status !== "failed") {
     return null;
@@ -58,6 +75,9 @@ export default function LibraryMovieCard({ movie, priority = false }: LibraryMov
   const country = movie.countries?.[0];
   const extraCountryCount = Math.max((movie.countries?.length || 0) - 1, 0);
   const audio = formatAudioTrack(movie.audio_tracks?.[0]);
+  const resolutionBadge = formatResolutionBadge(movie);
+  const dynamicRangeBadge =
+    movie.video_dynamic_range && movie.video_dynamic_range !== "unknown" ? movie.video_dynamic_range : null;
   const metadataBadge = getMetadataBadge(movie);
   const extraAudioCount = Math.max((movie.audio_tracks?.length || 0) - 1, 0);
   const tags = [
@@ -135,9 +155,16 @@ export default function LibraryMovieCard({ movie, priority = false }: LibraryMov
               </p>
 
               <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-neutral-400">
-                <span className="rounded-sm bg-neutral-700 px-1 text-[10px] font-black leading-4 text-neutral-100">
-                  HD
-                </span>
+                {resolutionBadge && (
+                  <span className="rounded-sm bg-neutral-700 px-1 text-[10px] font-black leading-4 text-neutral-100">
+                    {resolutionBadge}
+                  </span>
+                )}
+                {dynamicRangeBadge && (
+                  <span className="rounded-sm bg-neutral-700 px-1 text-[10px] font-black leading-4 text-neutral-100">
+                    {dynamicRangeBadge}
+                  </span>
+                )}
                 <span className="flex items-center gap-1">
                   <span className="h-3 w-3 rounded-full border-2 border-neutral-500 bg-neutral-800" />
                   {movie.year}

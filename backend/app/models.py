@@ -48,6 +48,14 @@ class Movie(SQLModel, table=True):
     folder_path: Optional[str] = None
     file_size: Optional[int] = None
     file_mtime: Optional[float] = None
+    video_width: Optional[int] = None
+    video_height: Optional[int] = None
+    video_codec: Optional[str] = None
+    video_bitrate: Optional[int] = None
+    video_duration: Optional[float] = None
+    video_fps: Optional[float] = None
+    video_dynamic_range: Optional[str] = None
+    video_bit_depth: Optional[int] = None
     last_seen_at: Optional[str] = None
     missing_since: Optional[str] = None
     library_status: str = Field(default="available", index=True)
