@@ -69,6 +69,45 @@ class NFOWriter:
         temp_path.replace(nfo_path)
         return nfo_path
 
+    def update_movie_artwork(
+        self,
+        folder: Path,
+        poster_url: Optional[str] = None,
+        backdrop_url: Optional[str] = None,
+        filename_prefix: Optional[str] = None,
+    ) -> Optional[Path]:
+        nfo_path = self._movie_nfo_path(folder, filename_prefix)
+        if not nfo_path:
+            return None
+
+        tree = ET.parse(nfo_path)
+        root = tree.getroot()
+
+        if poster_url:
+            poster_thumb = None
+            for thumb in root.findall("thumb"):
+                if thumb.get("aspect") == "poster":
+                    poster_thumb = thumb
+                    break
+            if poster_thumb is None:
+                poster_thumb = ET.SubElement(root, "thumb", {"aspect": "poster"})
+            poster_thumb.text = poster_url
+
+        if backdrop_url:
+            fanart = root.find("fanart")
+            if fanart is None:
+                fanart = ET.SubElement(root, "fanart")
+            backdrop_thumb = fanart.find("thumb")
+            if backdrop_thumb is None:
+                backdrop_thumb = ET.SubElement(fanart, "thumb")
+            backdrop_thumb.text = backdrop_url
+
+        ET.indent(tree, space="  ")
+        temp_path = nfo_path.with_suffix(".nfo.tmp")
+        tree.write(temp_path, encoding="utf-8", xml_declaration=True)
+        temp_path.replace(nfo_path)
+        return nfo_path
+
     def _text(self, root: ET.Element, tag: str, value):
         if value is None or value == "":
             return
@@ -78,4 +117,20 @@ class NFOWriter:
     def _year(self, release_date: Optional[str]) -> Optional[str]:
         if release_date and len(release_date) >= 4 and release_date[:4].isdigit():
             return release_date[:4]
+        return None
+
+    def _movie_nfo_path(self, folder: Path, filename_prefix: Optional[str] = None) -> Optional[Path]:
+        candidates = []
+        if filename_prefix:
+            candidates.append(folder / f"{filename_prefix}.nfo")
+        candidates.append(folder / "movie.nfo")
+        candidates.extend(sorted(folder.glob("*.nfo"), key=lambda path: path.name.lower()))
+
+        seen = set()
+        for candidate in candidates:
+            if candidate in seen:
+                continue
+            seen.add(candidate)
+            if candidate.exists():
+                return candidate
         return None

@@ -6,6 +6,7 @@ import { Clapperboard, EyeOff, Loader2, RefreshCw, Search } from "lucide-react";
 import { useConfirmScrapeMovie, useIgnoreMovie, useRefreshMovie, useScrapeMovie } from "@/hooks/useMovie";
 import { API } from "@/lib/api";
 import type { MetadataSearchResult } from "@/types/movie";
+import MovieArtworkPicker from "./MovieArtworkPicker";
 
 const DEFAULT_VISIBLE_CANDIDATES = 5;
 
@@ -228,6 +229,7 @@ export default function MovieRefreshButton({ movieId }: { movieId: string }) {
         )}
       </div>
       <div className="flex shrink-0 items-center gap-2">
+        <MovieArtworkPicker movieId={movieId} />
         <button
           type="button"
           onClick={handleScrape}

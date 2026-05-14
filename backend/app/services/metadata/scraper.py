@@ -7,7 +7,15 @@ from app.services.event_bus import library_event_bus
 from app.services.library import library_manager
 from app.services.metadata.artwork import ArtworkDownloader
 from app.services.metadata.matcher import generate_search_queries, parse_title_year, score_candidates
-from app.services.metadata.models import BatchScrapeOptions, MetadataSearchResult, ScrapeOptions, ScrapeResult
+from app.services.metadata.models import (
+    ArtworkImage,
+    ArtworkSelection,
+    BatchScrapeOptions,
+    MetadataSearchResult,
+    MovieArtworkOptions,
+    ScrapeOptions,
+    ScrapeResult,
+)
 from app.services.metadata.nfo_writer import NFOWriter
 from app.services.metadata.tmdb import TMDBClient
 from app.services.settings import get_artwork_language, get_language, get_scrape_require_confirmation
@@ -64,6 +72,130 @@ class MetadataScraper:
             popularity=float(details.get("popularity") or 0),
             score=100,
         )
+
+    def artwork_options(
+        self,
+        movie_id: str,
+        language: Optional[str] = None,
+        artwork_language: Optional[str] = None,
+    ) -> MovieArtworkOptions:
+        movie = library_manager.get_movie(movie_id)
+        if not movie:
+            raise LookupError("Movie not found")
+        tmdb_id = self._movie_tmdb_id(movie)
+        if not tmdb_id:
+            raise ValueError("Movie does not have a TMDB ID")
+
+        target_language = self._language(language)
+        target_artwork_language = self._artwork_language(artwork_language)
+        details = self.tmdb.movie_details(
+            tmdb_id,
+            language=target_language,
+            artwork_language=target_artwork_language,
+        )
+
+        images = details.get("images", {})
+        return MovieArtworkOptions(
+            movie_id=movie_id,
+            tmdb_id=tmdb_id,
+            posters=self._artwork_images(images.get("posters", []), limit=40),
+            backdrops=self._artwork_images(images.get("backdrops", []), limit=40),
+            current_poster_path=movie.get("poster_path") or details.get("poster_path"),
+            current_backdrop_path=movie.get("backdrop_path") or details.get("backdrop_path"),
+        )
+
+    def apply_artwork(self, movie_id: str, selection: ArtworkSelection) -> dict:
+        movie = library_manager.get_movie(movie_id)
+        if not movie:
+            raise LookupError("Movie not found")
+        tmdb_id = self._movie_tmdb_id(movie)
+        if not tmdb_id:
+            raise ValueError("Movie does not have a TMDB ID")
+        if not selection.poster_path and not selection.backdrop_path:
+            raise ValueError("Choose a poster or backdrop")
+
+        folder = self._movie_folder(movie)
+        if not folder:
+            raise ValueError("Movie does not have an existing folder path")
+
+        details = self.tmdb.movie_details(
+            tmdb_id,
+            language=self._language(None),
+            artwork_language=self._artwork_language(None),
+        )
+        images = details.get("images", {})
+        poster_paths = self._image_paths(images.get("posters", []))
+        backdrop_paths = self._image_paths(images.get("backdrops", []))
+
+        if selection.poster_path and selection.poster_path not in poster_paths:
+            raise ValueError("Selected poster is not available for this movie")
+        if selection.backdrop_path and selection.backdrop_path not in backdrop_paths:
+            raise ValueError("Selected backdrop is not available for this movie")
+
+        filename_prefix = self._filename_prefix(movie, folder)
+        poster_url = self.tmdb.image_url(selection.poster_path, "original") if selection.poster_path else None
+        backdrop_url = self.tmdb.image_url(selection.backdrop_path, "original") if selection.backdrop_path else None
+
+        if poster_url:
+            self.artwork.download(poster_url, folder / f"{filename_prefix}-poster.jpg", overwrite=True)
+        if backdrop_url:
+            self.artwork.download(backdrop_url, folder / f"{filename_prefix}-fanart.jpg", overwrite=True)
+
+        self.nfo_writer.update_movie_artwork(
+            folder,
+            poster_url=poster_url,
+            backdrop_url=backdrop_url,
+            filename_prefix=filename_prefix,
+        )
+
+        from app.services.library_sync import library_sync_service
+
+        updated_movie = library_sync_service.scan_folder(folder, preserve_id=movie_id)
+        if not updated_movie:
+            raise ValueError("Artwork saved but folder rescan failed")
+
+        file_fields = (
+            "folder_name",
+            "video_file",
+            "media_path",
+            "folder_path",
+            "file_size",
+            "file_mtime",
+            "last_seen_at",
+            "missing_since",
+            "library_status",
+        )
+        enriched = {**movie}
+        for field in file_fields:
+            if field in updated_movie:
+                enriched[field] = updated_movie[field]
+
+        enriched.update(
+            {
+                "poster_local": (
+                    f"/media/{folder.name}/{filename_prefix}-poster.jpg"
+                    if selection.poster_path
+                    else updated_movie.get("poster_local") or movie.get("poster_local")
+                ),
+                "backdrop_local": (
+                    f"/media/{folder.name}/{filename_prefix}-fanart.jpg"
+                    if selection.backdrop_path
+                    else updated_movie.get("backdrop_local") or movie.get("backdrop_local")
+                ),
+                "poster_path": selection.poster_path or updated_movie.get("poster_path") or movie.get("poster_path"),
+                "backdrop_path": selection.backdrop_path or updated_movie.get("backdrop_path") or movie.get("backdrop_path"),
+                "metadata_updated_at": datetime.now(timezone.utc).isoformat(),
+            }
+        )
+        stored = library_manager.upsert_movie(enriched, preserve_id=movie_id)
+        library_event_bus.publish_library_changed("artwork_updated", movie_id=movie_id)
+        return {
+            "status": "success",
+            "movie_id": movie_id,
+            "movie": stored,
+            "poster_path": enriched["poster_path"],
+            "backdrop_path": enriched["backdrop_path"],
+        }
 
     def scrape_movie(self, movie_id: str, options: ScrapeOptions) -> ScrapeResult:
         movie = library_manager.get_movie(movie_id)
@@ -315,6 +447,54 @@ class MetadataScraper:
         except OSError:
             return None
         return sorted(videos, key=lambda path: path.name.lower())[0] if videos else None
+
+    def _movie_tmdb_id(self, movie: dict) -> Optional[int]:
+        try:
+            return int(movie["tmdb_id"]) if movie.get("tmdb_id") else None
+        except (TypeError, ValueError):
+            return None
+
+    def _artwork_images(self, images: object, limit: int) -> list[ArtworkImage]:
+        if not isinstance(images, list):
+            return []
+
+        candidates = [
+            image
+            for image in images
+            if isinstance(image, dict) and image.get("file_path")
+        ]
+        candidates.sort(
+            key=lambda image: (
+                float(image.get("vote_average") or 0),
+                int(image.get("vote_count") or 0),
+                int(image.get("width") or 0) * int(image.get("height") or 0),
+            ),
+            reverse=True,
+        )
+
+        return [
+            ArtworkImage(
+                file_path=image["file_path"],
+                url=self.tmdb.image_url(image["file_path"], "original") or "",
+                thumbnail_url=self.tmdb.image_url(image["file_path"], "w500") or "",
+                width=int(image.get("width") or 0),
+                height=int(image.get("height") or 0),
+                aspect_ratio=float(image.get("aspect_ratio") or 0),
+                language=image.get("iso_639_1"),
+                vote_average=float(image.get("vote_average") or 0),
+                vote_count=int(image.get("vote_count") or 0),
+            )
+            for image in candidates[:limit]
+        ]
+
+    def _image_paths(self, images: object) -> set[str]:
+        if not isinstance(images, list):
+            return set()
+        return {
+            image["file_path"]
+            for image in images
+            if isinstance(image, dict) and image.get("file_path")
+        }
 
     def _mark_failed(self, movie_id: str, message: str) -> ScrapeResult:
         self._update_scrape_state(movie_id, scrape_status="failed", scrape_error=message)

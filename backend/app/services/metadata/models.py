@@ -15,6 +15,32 @@ class MetadataSearchResult(BaseModel):
     score: float = 0
 
 
+class ArtworkImage(BaseModel):
+    file_path: str
+    url: str
+    thumbnail_url: str
+    width: int = 0
+    height: int = 0
+    aspect_ratio: float = 0
+    language: Optional[str] = None
+    vote_average: float = 0
+    vote_count: int = 0
+
+
+class MovieArtworkOptions(BaseModel):
+    movie_id: str
+    tmdb_id: int
+    posters: list[ArtworkImage] = []
+    backdrops: list[ArtworkImage] = []
+    current_poster_path: Optional[str] = None
+    current_backdrop_path: Optional[str] = None
+
+
+class ArtworkSelection(BaseModel):
+    poster_path: Optional[str] = None
+    backdrop_path: Optional[str] = None
+
+
 class ScrapeOptions(BaseModel):
     mode: Literal["auto", "manual"] = "auto"
     language: Optional[str] = None

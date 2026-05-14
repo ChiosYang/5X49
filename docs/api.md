@@ -158,6 +158,61 @@ This document describes the REST API endpoints available in the backend applicat
 - **Response**: `{"status": "success", "movie_id": "...", "updated": true, "movie": Movie}`
 - **Errors**: `400 Invalid ID format`, `404 Movie not found`, `409 Movie does not have a folder path`.
 
+### Get Movie Artwork Options
+- **URL**: `/library/{movie_id}/artwork`
+- **Method**: `GET`
+- **Description**: Lists selectable TMDB posters and backdrops for a movie that already has a `tmdb_id`.
+- **Path Parameters**:
+  - `movie_id` (string): The ID of the movie.
+- **Response**:
+  ```json
+  {
+    "movie_id": "603_1999",
+    "tmdb_id": 603,
+    "posters": [
+      {
+        "file_path": "/poster.jpg",
+        "url": "https://image.tmdb.org/t/p/original/poster.jpg",
+        "thumbnail_url": "https://image.tmdb.org/t/p/w500/poster.jpg",
+        "width": 2000,
+        "height": 3000,
+        "aspect_ratio": 0.667,
+        "language": "en",
+        "vote_average": 5.3,
+        "vote_count": 10
+      }
+    ],
+    "backdrops": [],
+    "current_poster_path": "/poster.jpg",
+    "current_backdrop_path": "/backdrop.jpg"
+  }
+  ```
+- **Errors**: `400 Invalid ID format`, `404 Movie not found`, `409 Movie does not have a TMDB ID`, `503 TMDB_API_KEY is not configured`.
+
+### Update Movie Artwork
+- **URL**: `/library/{movie_id}/artwork`
+- **Method**: `PUT`
+- **Description**: Applies a selected TMDB poster and/or backdrop. The backend verifies the selected TMDB paths, downloads them over the existing `<video-stem>-poster.jpg` / `<video-stem>-fanart.jpg` files, updates artwork references in the local NFO when present, rescans the folder, and returns the updated movie.
+- **Body**:
+  ```json
+  {
+    "poster_path": "/poster.jpg",
+    "backdrop_path": "/backdrop.jpg"
+  }
+  ```
+  Each field is optional, but at least one must be provided.
+- **Response**:
+  ```json
+  {
+    "status": "success",
+    "movie_id": "603_1999",
+    "movie": {},
+    "poster_path": "/poster.jpg",
+    "backdrop_path": "/backdrop.jpg"
+  }
+  ```
+- **Errors**: `400 Invalid ID format`, `404 Movie not found`, `409` for missing TMDB ID, invalid selection, or missing folder, `503 TMDB_API_KEY is not configured`.
+
 ### Scrape Movie Metadata
 - **URL**: `/library/{movie_id}/scrape`
 - **Method**: `POST`

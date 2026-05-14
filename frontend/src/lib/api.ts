@@ -31,6 +31,7 @@ export const API = {
     libraryMovie: (id: string) => `${API_BASE_URL}/library/${encodeURIComponent(id)}`,
     libraryAnalyze: (id: string) => `${API_BASE_URL}/library/analyze/${encodeURIComponent(id)}`,
     libraryRefresh: (id: string) => `${API_BASE_URL}/library/${encodeURIComponent(id)}/refresh`,
+    libraryArtwork: (id: string) => `${API_BASE_URL}/library/${encodeURIComponent(id)}/artwork`,
     libraryScrape: (id: string) => `${API_BASE_URL}/library/${encodeURIComponent(id)}/scrape`,
     libraryScrapeConfirm: (id: string) => `${API_BASE_URL}/library/${encodeURIComponent(id)}/scrape/confirm`,
     libraryIgnore: (id: string) => `${API_BASE_URL}/library/${encodeURIComponent(id)}/ignore`,

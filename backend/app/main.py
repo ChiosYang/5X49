@@ -11,7 +11,7 @@ from app.services.scanner import NFOScanner
 from app.services.analysis import analysis_service
 from app.services.library_sync import library_sync_service
 from app.services.watcher import library_watcher
-from app.services.metadata.models import BatchScrapeOptions, RootOrganizeConfirmRequest, RootOrganizeOptions, ScrapeOptions
+from app.services.metadata.models import ArtworkSelection, BatchScrapeOptions, RootOrganizeConfirmRequest, RootOrganizeOptions, ScrapeOptions
 from app.services.metadata.organizer import root_video_organizer
 from app.services.metadata.scraper import metadata_scraper
 from app.database import create_db_and_tables
@@ -207,6 +207,46 @@ def refresh_library_movie(movie_id: str):
         raise HTTPException(status_code=409, detail=str(exc))
     except FileNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc))
+
+@app.get("/library/{movie_id}/artwork")
+def get_library_movie_artwork(movie_id: str):
+    """List selectable TMDB posters and backdrops for one movie."""
+    if not validate_movie_id(movie_id):
+        raise HTTPException(status_code=400, detail="Invalid movie ID format")
+
+    try:
+        return metadata_scraper.artwork_options(movie_id).model_dump()
+    except LookupError:
+        raise HTTPException(status_code=404, detail="Movie not found")
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc))
+    except RuntimeError as exc:
+        raise HTTPException(status_code=503, detail=str(exc))
+    except requests.HTTPError as exc:
+        status_code = exc.response.status_code if exc.response is not None else 502
+        raise HTTPException(status_code=status_code, detail=f"TMDB artwork lookup failed: {str(exc)}")
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"TMDB artwork lookup failed: {str(exc)}")
+
+@app.put("/library/{movie_id}/artwork")
+def update_library_movie_artwork(movie_id: str, selection: ArtworkSelection):
+    """Apply a selected TMDB poster and/or backdrop to one movie."""
+    if not validate_movie_id(movie_id):
+        raise HTTPException(status_code=400, detail="Invalid movie ID format")
+
+    try:
+        return metadata_scraper.apply_artwork(movie_id, selection)
+    except LookupError:
+        raise HTTPException(status_code=404, detail="Movie not found")
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc))
+    except RuntimeError as exc:
+        raise HTTPException(status_code=503, detail=str(exc))
+    except requests.HTTPError as exc:
+        status_code = exc.response.status_code if exc.response is not None else 502
+        raise HTTPException(status_code=status_code, detail=f"TMDB artwork update failed: {str(exc)}")
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"TMDB artwork update failed: {str(exc)}")
 
 @app.post("/library/{movie_id}/scrape")
 def scrape_library_movie(movie_id: str, options: ScrapeOptions | None = None):

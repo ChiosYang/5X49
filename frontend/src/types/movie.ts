@@ -91,6 +91,32 @@ export interface MetadataSearchResult {
   score: number;
 }
 
+export interface ArtworkImage {
+  file_path: string;
+  url: string;
+  thumbnail_url: string;
+  width: number;
+  height: number;
+  aspect_ratio: number;
+  language?: string | null;
+  vote_average: number;
+  vote_count: number;
+}
+
+export interface MovieArtworkOptions {
+  movie_id: string;
+  tmdb_id: number;
+  posters: ArtworkImage[];
+  backdrops: ArtworkImage[];
+  current_poster_path?: string | null;
+  current_backdrop_path?: string | null;
+}
+
+export interface ArtworkSelection {
+  poster_path?: string | null;
+  backdrop_path?: string | null;
+}
+
 export interface ScrapeResult {
   status: "success" | "needs_review" | "failed" | "skipped";
   movie_id: string;
