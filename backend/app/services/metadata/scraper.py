@@ -165,8 +165,12 @@ class MetadataScraper:
             "missing_since",
             "library_status",
         )
+        artwork_fields = (
+            "poster_thumb_local",
+            "backdrop_thumb_local",
+        )
         enriched = {**movie}
-        for field in file_fields:
+        for field in (*file_fields, *artwork_fields):
             if field in updated_movie:
                 enriched[field] = updated_movie[field]
 

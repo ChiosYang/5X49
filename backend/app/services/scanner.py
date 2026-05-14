@@ -5,9 +5,11 @@ Parses .nfo XML files to extract rich metadata.
 import hashlib
 import re
 import xml.etree.ElementTree as ET
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
-from datetime import datetime, timezone
+
+from app.services.artwork_cache import artwork_cache
 
 
 class NFOScanner:
@@ -124,6 +126,8 @@ class NFOScanner:
             folder_name = folder.name
             poster_local = self._find_image(folder, "-poster")
             fanart_local = self._find_image(folder, "-fanart")
+            poster_thumb_local = artwork_cache.generate(folder / poster_local, "poster") if poster_local else None
+            backdrop_thumb_local = artwork_cache.generate(folder / fanart_local, "backdrop") if fanart_local else None
             
             # Also get TMDB URLs as fallback
             poster_url = None
@@ -160,6 +164,8 @@ class NFOScanner:
                 # Local paths (relative to media mount point)
                 "poster_local": f"/media/{folder_name}/{poster_local}" if poster_local else None,
                 "backdrop_local": f"/media/{folder_name}/{fanart_local}" if fanart_local else None,
+                "poster_thumb_local": poster_thumb_local,
+                "backdrop_thumb_local": backdrop_thumb_local,
                 # TMDB CDN fallbacks
                 "poster_path": self._extract_tmdb_path(poster_url),
                 "backdrop_path": self._extract_tmdb_path(fanart_url),

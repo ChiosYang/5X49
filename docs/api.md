@@ -679,7 +679,8 @@ The core database payload associated with movies.
 - `title` (String): Movie canonical title
 - `title_cn` (String, Optional): Chinese localized title
 - `year` (Integer): Release year
-- `poster_local` / `backdrop_local` (String, Optional): Local stored paths
+- `poster_local` / `backdrop_local` (String, Optional): Local stored original artwork paths
+- `poster_thumb_local` / `backdrop_thumb_local` (String, Optional): Backend-generated local thumbnail paths served from `/artwork-cache`
 - `poster_path` / `backdrop_path` (String, Optional): Remote or relative endpoint paths
 - `tmdb_id` / `imdb_id` (String, Optional): Scraped identity IDs
 - `overview` / `plot` (String, Optional): Descriptive summary

@@ -41,6 +41,8 @@ MOVIE_SCHEMA_COLUMNS = {
     "tmdb_confidence": "FLOAT",
     "countries": "JSON",
     "audio_tracks": "JSON",
+    "poster_thumb_local": "VARCHAR",
+    "backdrop_thumb_local": "VARCHAR",
 }
 
 

@@ -28,6 +28,8 @@ export interface LibraryMovie {
   backdrop_path?: string;
   backdrop_local?: string;
   poster_local?: string;
+  backdrop_thumb_local?: string | null;
+  poster_thumb_local?: string | null;
   overview?: string;
   plot?: string;
   runtime?: number | null;
@@ -55,6 +57,8 @@ export interface MovieDetail {
   backdrop_local?: string;
   poster_path?: string;
   poster_local?: string;
+  backdrop_thumb_local?: string | null;
+  poster_thumb_local?: string | null;
   overview?: string;
   plot?: string;
   runtime?: number | null;

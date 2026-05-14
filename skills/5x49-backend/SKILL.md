@@ -126,7 +126,7 @@ curl -s -X PUT http://127.0.0.1:11548/library/96721_2013/artwork \
   -d '{"poster_path":"/poster.jpg","backdrop_path":"/backdrop.jpg"}'
 ```
 
-应用选择时会校验图片路径来自该电影的 TMDB 候选，覆盖本地 `<video-stem>-poster.jpg` / `<video-stem>-fanart.jpg`，在存在 NFO 时更新图片引用，然后重扫电影文件夹并返回更新后的 `Movie`。
+应用选择时会校验图片路径来自该电影的 TMDB 候选，覆盖本地 `<video-stem>-poster.jpg` / `<video-stem>-fanart.jpg`，在存在 NFO 时更新图片引用，生成本地 `poster_thumb_local` / `backdrop_thumb_local` 缩略图，然后重扫电影文件夹并返回更新后的 `Movie`。
 
 ### 搜索 TMDB 元数据
 ```bash

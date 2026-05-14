@@ -49,9 +49,9 @@ function getMetadataBadge(movie: LibraryMovie) {
 }
 
 export default function LibraryMovieCard({ movie, priority = false }: LibraryMovieCardProps) {
-  const showBackdrop = Boolean(movie.backdrop_local);
   const artworkVersion = movie.metadata_updated_at ? `?v=${encodeURIComponent(movie.metadata_updated_at)}` : "";
-  const backdropSrc = movie.backdrop_local ? `${API.mediaUrl(movie.backdrop_local)}${artworkVersion}` : null;
+  const backdropPath = movie.backdrop_thumb_local || movie.backdrop_local;
+  const backdropSrc = backdropPath ? `${API.mediaUrl(backdropPath)}${artworkVersion}` : null;
   const title = movie.title_cn || movie.title;
   const description = movie.overview || movie.plot || movie.micro_genre || "";
   const runtime = formatRuntime(movie.runtime);
@@ -75,14 +75,13 @@ export default function LibraryMovieCard({ movie, priority = false }: LibraryMov
         {/* Landscape Still */}
         <div className="group relative z-0 aspect-video w-full bg-neutral-900 hover:z-30">
           <div className="relative h-full w-full overflow-hidden rounded-md">
-            {showBackdrop ? (
+            {backdropSrc ? (
               <Image
                 src={backdropSrc!}
                 alt={movie.title}
                 fill
                 priority={priority}
                 sizes="(min-width: 1536px) 20vw, (min-width: 1280px) 25vw, (min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
-                unoptimized
                 className="object-cover transition-transform delay-0 duration-200 ease-out group-hover:scale-[1.05] group-hover:delay-500"
               />
             ) : (

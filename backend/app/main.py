@@ -9,6 +9,7 @@ from app.services.event_bus import library_event_bus
 from app.services.library import library_manager
 from app.services.scanner import NFOScanner
 from app.services.analysis import analysis_service
+from app.services.artwork_cache import ARTWORK_CACHE_DIR
 from app.services.library_sync import library_sync_service
 from app.services.watcher import library_watcher
 from app.services.metadata.models import ArtworkSelection, BatchScrapeOptions, RootOrganizeConfirmRequest, RootOrganizeOptions, ScrapeOptions
@@ -68,6 +69,9 @@ if os.path.exists(MEDIA_DIR):
     app.mount("/media", StaticFiles(directory=MEDIA_DIR), name="media")
 else:
     print(f"⚠️ Warning: MEDIA_DIR does not exist: {MEDIA_DIR}")
+
+ARTWORK_CACHE_DIR.mkdir(parents=True, exist_ok=True)
+app.mount("/artwork-cache", StaticFiles(directory=ARTWORK_CACHE_DIR), name="artwork-cache")
 
 historian = FilmHistorian()
 

@@ -10,6 +10,7 @@ dependencies = [
     "langchain-openai",
     "langgraph",
     "openai",
+    "pillow",
     "pydantic",
     "python-dotenv",
     "requests",

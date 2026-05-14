@@ -14,6 +14,9 @@ const nextConfig: NextConfig = {
       {
         pathname: "/api/media/**",
       },
+      {
+        pathname: "/api/artwork-cache/**",
+      },
     ],
     remotePatterns: [
       {

@@ -10,6 +10,8 @@ class Movie(SQLModel, table=True):
     # Image paths
     poster_local: Optional[str] = None
     backdrop_local: Optional[str] = None
+    poster_thumb_local: Optional[str] = None
+    backdrop_thumb_local: Optional[str] = None
     poster_path: Optional[str] = None
     backdrop_path: Optional[str] = None
     
