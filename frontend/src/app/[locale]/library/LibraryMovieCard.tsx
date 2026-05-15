@@ -10,7 +10,7 @@ interface LibraryMovieCardProps {
 }
 
 type MediaSpecBadge = {
-  kind?: "dolby-vision";
+  kind?: "dolby-vision" | "dts";
   label: string;
   variant: "solid" | "outline";
 };
@@ -112,6 +112,20 @@ function formatAudioSpec(track?: AudioTrack | null) {
   return [codec, track.channels ? `${track.channels}CH` : null].filter(Boolean).join(" ");
 }
 
+function getAudioSpecBadge(track?: AudioTrack | null): MediaSpecBadge | null {
+  if (!track?.codec) {
+    return null;
+  }
+
+  const codec = track.codec.toLowerCase();
+  if (codec === "dts" || codec === "dca" || codec.startsWith("dts")) {
+    return { kind: "dts", label: "DTS", variant: "outline" };
+  }
+
+  const label = formatAudioSpec(track);
+  return label ? { label, variant: "outline" } : null;
+}
+
 function formatBitrate(bitRate?: number | null) {
   if (!bitRate) {
     return null;
@@ -190,7 +204,7 @@ function getMediaSpecBadges(movie: LibraryMovie): MediaSpecBadge[] {
   const resolution = formatResolutionBadge(movie);
   const dynamicRange = formatDynamicRange(movie.video_dynamic_range);
   const videoCodec = formatVideoCodec(movie.video_codec);
-  const audioSpec = formatAudioSpec(movie.audio_tracks?.[0]);
+  const audioSpec = getAudioSpecBadge(movie.audio_tracks?.[0]);
   const bitrate = formatBitrate(movie.video_bitrate);
   const bitDepth = movie.video_bit_depth ? `${movie.video_bit_depth}-bit` : null;
 
@@ -204,7 +218,7 @@ function getMediaSpecBadges(movie: LibraryMovie): MediaSpecBadge[] {
         }
       : null,
     videoCodec ? { label: videoCodec, variant: "outline" as const } : null,
-    audioSpec ? { label: audioSpec, variant: "outline" as const } : null,
+    audioSpec,
     bitrate ? { label: bitrate, variant: "outline" as const } : null,
     bitDepth ? { label: bitDepth, variant: "outline" as const } : null,
   ];
@@ -321,8 +335,8 @@ export default function LibraryMovieCard({ movie, priority = false }: LibraryMov
                     <span
                       key={badge.label}
                       className={
-                        badge.kind === "dolby-vision"
-                          ? "inline-flex h-5 items-center gap-1 rounded-[4px] border border-white/35 bg-white/[0.06] px-1.5 text-neutral-200 shadow-[inset_0_1px_0_rgba(255,255,255,0.14)]"
+                        badge.kind
+                          ? "inline-flex h-5 items-center text-neutral-200"
                           : badge.variant === "solid"
                           ? "inline-flex h-5 items-center rounded-[4px] border border-white/60 bg-neutral-200 px-1.5 text-[10px] font-black uppercase leading-none text-neutral-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.8),0_1px_6px_rgba(255,255,255,0.08)]"
                           : "inline-flex h-5 items-center rounded-[4px] border border-white/35 bg-white/[0.06] px-1.5 text-[10px] font-black uppercase leading-none text-neutral-200 shadow-[inset_0_1px_0_rgba(255,255,255,0.14)]"
@@ -334,6 +348,14 @@ export default function LibraryMovieCard({ movie, priority = false }: LibraryMov
                           alt="Dolby Vision"
                           width={56}
                           height={14}
+                          className="h-3.5 w-auto opacity-90"
+                        />
+                      ) : badge.kind === "dts" ? (
+                        <Image
+                          src="/dts.svg"
+                          alt="DTS"
+                          width={34}
+                          height={15}
                           className="h-3.5 w-auto opacity-90"
                         />
                       ) : (
