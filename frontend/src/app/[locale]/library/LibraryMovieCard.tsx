@@ -89,9 +89,7 @@ function formatAudioTrack(track?: AudioTrack | null) {
     return null;
   }
 
-  return [track.language, track.codec, track.channels ? `${track.channels}ch` : null]
-    .filter(Boolean)
-    .join(" ");
+  return [track.language, track.codec].filter(Boolean).join(" ");
 }
 
 function formatAudioSpec(track?: AudioTrack | null) {
@@ -109,7 +107,7 @@ function formatAudioSpec(track?: AudioTrack | null) {
   };
   const codec = codecMap[track.codec.toLowerCase()] || track.codec.toUpperCase();
 
-  return [codec, track.channels ? `${track.channels}CH` : null].filter(Boolean).join(" ");
+  return codec;
 }
 
 function getAudioSpecBadge(track?: AudioTrack | null): MediaSpecBadge | null {
