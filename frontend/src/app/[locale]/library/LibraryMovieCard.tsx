@@ -1,5 +1,5 @@
 import Image from "next/image";
-import { MessageSquare, Plus, Play, Star } from "lucide-react";
+import { Globe2, MessageSquare, Plus, Play, Star } from "lucide-react";
 import { Link } from "@/i18n/routing";
 import { API } from "@/lib/api";
 import type { AudioTrack, LibraryMovie } from "@/types/movie";
@@ -8,6 +8,65 @@ interface LibraryMovieCardProps {
   movie: LibraryMovie;
   priority?: boolean;
 }
+
+type MediaSpecBadge = {
+  label: string;
+  variant: "solid" | "outline";
+};
+
+const COUNTRY_CODE_ALIASES: Record<string, string> = {
+  america: "US",
+  argentina: "AR",
+  australia: "AU",
+  austria: "AT",
+  belgium: "BE",
+  brazil: "BR",
+  canada: "CA",
+  china: "CN",
+  denmark: "DK",
+  finland: "FI",
+  france: "FR",
+  germany: "DE",
+  gbr: "GB",
+  hk: "HK",
+  hongkong: "HK",
+  hongkongchina: "HK",
+  india: "IN",
+  ireland: "IE",
+  italy: "IT",
+  japan: "JP",
+  korea: "KR",
+  mainlandchina: "CN",
+  mexico: "MX",
+  netherlands: "NL",
+  newzealand: "NZ",
+  norway: "NO",
+  prc: "CN",
+  russia: "RU",
+  southkorea: "KR",
+  sovietunion: "RU",
+  spain: "ES",
+  sweden: "SE",
+  switzerland: "CH",
+  taiwan: "TW",
+  uk: "GB",
+  unitedkingdom: "GB",
+  unitedstates: "US",
+  unitedstatesofamerica: "US",
+  us: "US",
+  usa: "US",
+  中国: "CN",
+  中国大陆: "CN",
+  台湾: "TW",
+  台灣: "TW",
+  德国: "DE",
+  日本: "JP",
+  法国: "FR",
+  美国: "US",
+  英国: "GB",
+  韩国: "KR",
+  香港: "HK",
+};
 
 function formatRuntime(minutes?: number | null) {
   if (!minutes) {
@@ -34,6 +93,61 @@ function formatAudioTrack(track?: AudioTrack | null) {
     .join(" ");
 }
 
+function formatAudioSpec(track?: AudioTrack | null) {
+  if (!track?.codec) {
+    return null;
+  }
+
+  const codecMap: Record<string, string> = {
+    aac: "AAC",
+    ac3: "AC-3",
+    dts: "DTS",
+    eac3: "E-AC-3",
+    flac: "FLAC",
+    truehd: "TRUEHD",
+  };
+  const codec = codecMap[track.codec.toLowerCase()] || track.codec.toUpperCase();
+
+  return [codec, track.channels ? `${track.channels}CH` : null].filter(Boolean).join(" ");
+}
+
+function formatBitrate(bitRate?: number | null) {
+  if (!bitRate) {
+    return null;
+  }
+
+  if (bitRate >= 1_000_000) {
+    return `${(bitRate / 1_000_000).toFixed(1)} Mbps`;
+  }
+  return `${Math.round(bitRate / 1000)} Kbps`;
+}
+
+function formatDynamicRange(value?: string | null) {
+  if (!value || value === "unknown") {
+    return null;
+  }
+  if (value.toLowerCase() === "dolby vision") {
+    return "DOLBY VISION";
+  }
+  return value.toUpperCase();
+}
+
+function formatVideoCodec(codec?: string | null) {
+  if (!codec) {
+    return null;
+  }
+
+  const codecMap: Record<string, string> = {
+    av1: "AV1",
+    h264: "H.264",
+    h265: "H.265",
+    hevc: "HEVC",
+    mpeg4: "MPEG-4",
+    vp9: "VP9",
+  };
+  return codecMap[codec.toLowerCase()] || codec.toUpperCase();
+}
+
 function formatResolutionBadge(movie: LibraryMovie) {
   const height = movie.video_height;
   if (!height) {
@@ -49,6 +163,44 @@ function formatResolutionBadge(movie: LibraryMovie) {
     return "HD";
   }
   return `${height}p`;
+}
+
+function countryCodeToFlag(code: string) {
+  return code
+    .toUpperCase()
+    .replace(/./g, (char) => String.fromCodePoint(127397 + char.charCodeAt(0)));
+}
+
+function countryToCode(country?: string | null) {
+  if (!country) {
+    return null;
+  }
+
+  const trimmed = country.trim();
+  if (/^[a-z]{2}$/i.test(trimmed)) {
+    return trimmed.toUpperCase();
+  }
+
+  const normalized = trimmed.toLowerCase().replace(/[^a-z\u4e00-\u9fff]/g, "");
+  return COUNTRY_CODE_ALIASES[normalized] || null;
+}
+
+function getMediaSpecBadges(movie: LibraryMovie): MediaSpecBadge[] {
+  const resolution = formatResolutionBadge(movie);
+  const dynamicRange = formatDynamicRange(movie.video_dynamic_range);
+  const videoCodec = formatVideoCodec(movie.video_codec);
+  const audioSpec = formatAudioSpec(movie.audio_tracks?.[0]);
+  const bitrate = formatBitrate(movie.video_bitrate);
+  const bitDepth = movie.video_bit_depth ? `${movie.video_bit_depth}-bit` : null;
+
+  return [
+    resolution ? { label: resolution, variant: "solid" as const } : null,
+    dynamicRange ? { label: dynamicRange, variant: "outline" as const } : null,
+    videoCodec ? { label: videoCodec, variant: "outline" as const } : null,
+    audioSpec ? { label: audioSpec, variant: "outline" as const } : null,
+    bitrate ? { label: bitrate, variant: "outline" as const } : null,
+    bitDepth ? { label: bitDepth, variant: "outline" as const } : null,
+  ].filter((badge): badge is MediaSpecBadge => Boolean(badge)).slice(0, 5);
 }
 
 function getMetadataBadge(movie: LibraryMovie) {
@@ -73,11 +225,11 @@ export default function LibraryMovieCard({ movie, priority = false }: LibraryMov
   const description = movie.overview || movie.plot || movie.micro_genre || "";
   const runtime = formatRuntime(movie.runtime);
   const country = movie.countries?.[0];
+  const countryCode = countryToCode(country);
+  const countryFlag = countryCode ? countryCodeToFlag(countryCode) : null;
   const extraCountryCount = Math.max((movie.countries?.length || 0) - 1, 0);
   const audio = formatAudioTrack(movie.audio_tracks?.[0]);
-  const resolutionBadge = formatResolutionBadge(movie);
-  const dynamicRangeBadge =
-    movie.video_dynamic_range && movie.video_dynamic_range !== "unknown" ? movie.video_dynamic_range : null;
+  const mediaSpecBadges = getMediaSpecBadges(movie);
   const metadataBadge = getMetadataBadge(movie);
   const extraAudioCount = Math.max((movie.audio_tracks?.length || 0) - 1, 0);
   const tags = [
@@ -154,26 +306,50 @@ export default function LibraryMovieCard({ movie, priority = false }: LibraryMov
                 {description || `${title} (${movie.year})`}
               </p>
 
+              {mediaSpecBadges.length > 0 && (
+                <div className="flex flex-wrap items-center gap-1.5">
+                  {mediaSpecBadges.map((badge) => (
+                    <span
+                      key={badge.label}
+                      className={
+                        badge.variant === "solid"
+                          ? "inline-flex h-5 items-center rounded-[4px] border border-white/60 bg-neutral-200 px-1.5 text-[10px] font-black uppercase leading-none text-neutral-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.8),0_1px_6px_rgba(255,255,255,0.08)]"
+                          : "inline-flex h-5 items-center rounded-[4px] border border-white/35 bg-white/[0.06] px-1.5 text-[10px] font-black uppercase leading-none text-neutral-200 shadow-[inset_0_1px_0_rgba(255,255,255,0.14)]"
+                      }
+                    >
+                      {badge.label}
+                    </span>
+                  ))}
+                </div>
+              )}
+
               <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-neutral-400">
-                {resolutionBadge && (
-                  <span className="rounded-sm bg-neutral-700 px-1 text-[10px] font-black leading-4 text-neutral-100">
-                    {resolutionBadge}
-                  </span>
-                )}
-                {dynamicRangeBadge && (
-                  <span className="rounded-sm bg-neutral-700 px-1 text-[10px] font-black leading-4 text-neutral-100">
-                    {dynamicRangeBadge}
-                  </span>
-                )}
                 <span className="flex items-center gap-1">
                   <span className="h-3 w-3 rounded-full border-2 border-neutral-500 bg-neutral-800" />
                   {movie.year}
                 </span>
                 {runtime && <span>{runtime}</span>}
                 {country && (
-                  <span>
-                    {country}
-                    {extraCountryCount > 0 && ` +${extraCountryCount}`}
+                  <span
+                    className={
+                      countryFlag
+                        ? "inline-flex items-center gap-1 text-neutral-300"
+                        : "inline-flex items-center gap-1 rounded-sm border border-white/10 bg-white/[0.03] px-1.5 py-0.5 text-neutral-300"
+                    }
+                    title={movie.countries?.join(", ")}
+                    aria-label={movie.countries?.join(", ")}
+                  >
+                    {countryFlag ? (
+                      <span className="text-base leading-none">{countryFlag}</span>
+                    ) : (
+                      <>
+                        <Globe2 className="h-3.5 w-3.5 text-neutral-500" />
+                        <span className="max-w-20 truncate">{country}</span>
+                      </>
+                    )}
+                    {extraCountryCount > 0 && (
+                      <span className="text-xs font-bold text-neutral-400">+{extraCountryCount}</span>
+                    )}
                   </span>
                 )}
                 {audio && (
