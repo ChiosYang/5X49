@@ -1,5 +1,5 @@
 import Image from "next/image";
-import { Globe2, MessageSquare, Plus, Play, Star } from "lucide-react";
+import { Globe2, Plus, Play, Star } from "lucide-react";
 import { Link } from "@/i18n/routing";
 import { API } from "@/lib/api";
 import type { AudioTrack, LibraryMovie } from "@/types/movie";
@@ -68,29 +68,6 @@ const COUNTRY_CODE_ALIASES: Record<string, string> = {
   韩国: "KR",
   香港: "HK",
 };
-
-function formatRuntime(minutes?: number | null) {
-  if (!minutes) {
-    return null;
-  }
-
-  const hours = Math.floor(minutes / 60);
-  const remainingMinutes = minutes % 60;
-
-  if (hours === 0) {
-    return `${remainingMinutes}m`;
-  }
-
-  return remainingMinutes > 0 ? `${hours}h ${remainingMinutes}m` : `${hours}h`;
-}
-
-function formatAudioTrack(track?: AudioTrack | null) {
-  if (!track) {
-    return null;
-  }
-
-  return [track.language, track.codec].filter(Boolean).join(" ");
-}
 
 function formatAudioSpec(track?: AudioTrack | null) {
   if (!track?.codec) {
@@ -244,15 +221,12 @@ export default function LibraryMovieCard({ movie, priority = false }: LibraryMov
   const backdropSrc = backdropPath ? `${API.mediaUrl(backdropPath)}${artworkVersion}` : null;
   const title = movie.title_cn || movie.title;
   const description = movie.overview || movie.plot || movie.micro_genre || "";
-  const runtime = formatRuntime(movie.runtime);
   const country = movie.countries?.[0];
   const countryCode = countryToCode(country);
   const countryFlag = countryCode ? countryCodeToFlag(countryCode) : null;
   const extraCountryCount = Math.max((movie.countries?.length || 0) - 1, 0);
-  const audio = formatAudioTrack(movie.audio_tracks?.[0]);
   const mediaSpecBadges = getMediaSpecBadges(movie);
   const metadataBadge = getMetadataBadge(movie);
-  const extraAudioCount = Math.max((movie.audio_tracks?.length || 0) - 1, 0);
   const tags = [
     movie.micro_genre,
     ...(movie.genres || []),
@@ -260,7 +234,6 @@ export default function LibraryMovieCard({ movie, priority = false }: LibraryMov
   ]
     .filter(Boolean)
     .slice(0, 3);
-  const extraGenreCount = Math.max((movie.genres?.length || 0) - 1, 0);
 
   return (
     <Link href={`/library/${movie.id}`} className="block">
@@ -327,7 +300,7 @@ export default function LibraryMovieCard({ movie, priority = false }: LibraryMov
                 {description || `${title} (${movie.year})`}
               </p>
 
-              {mediaSpecBadges.length > 0 && (
+              {(mediaSpecBadges.length > 0 || country) && (
                 <div className="flex flex-wrap items-center gap-1.5">
                   {mediaSpecBadges.map((badge) => (
                     <span
@@ -361,52 +334,31 @@ export default function LibraryMovieCard({ movie, priority = false }: LibraryMov
                       )}
                     </span>
                   ))}
+                  {country && (
+                    <span
+                      className={
+                        countryFlag
+                          ? "inline-flex h-5 items-center gap-1 text-neutral-300"
+                          : "inline-flex h-5 items-center gap-1 rounded-[4px] border border-white/35 bg-white/[0.06] px-1.5 text-[10px] font-black uppercase leading-none text-neutral-200 shadow-[inset_0_1px_0_rgba(255,255,255,0.14)]"
+                      }
+                      title={movie.countries?.join(", ")}
+                      aria-label={movie.countries?.join(", ")}
+                    >
+                      {countryFlag ? (
+                        <span className="text-base leading-none">{countryFlag}</span>
+                      ) : (
+                        <>
+                          <Globe2 className="h-3.5 w-3.5 text-neutral-500" />
+                          <span className="max-w-20 truncate">{country}</span>
+                        </>
+                      )}
+                      {extraCountryCount > 0 && (
+                        <span className="text-xs font-bold text-neutral-400">+{extraCountryCount}</span>
+                      )}
+                    </span>
+                  )}
                 </div>
               )}
-
-              <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-neutral-400">
-                <span className="flex items-center gap-1">
-                  <span className="h-3 w-3 rounded-full border-2 border-neutral-500 bg-neutral-800" />
-                  {movie.year}
-                </span>
-                {runtime && <span>{runtime}</span>}
-                {country && (
-                  <span
-                    className={
-                      countryFlag
-                        ? "inline-flex items-center gap-1 text-neutral-300"
-                        : "inline-flex items-center gap-1 rounded-sm border border-white/10 bg-white/[0.03] px-1.5 py-0.5 text-neutral-300"
-                    }
-                    title={movie.countries?.join(", ")}
-                    aria-label={movie.countries?.join(", ")}
-                  >
-                    {countryFlag ? (
-                      <span className="text-base leading-none">{countryFlag}</span>
-                    ) : (
-                      <>
-                        <Globe2 className="h-3.5 w-3.5 text-neutral-500" />
-                        <span className="max-w-20 truncate">{country}</span>
-                      </>
-                    )}
-                    {extraCountryCount > 0 && (
-                      <span className="text-xs font-bold text-neutral-400">+{extraCountryCount}</span>
-                    )}
-                  </span>
-                )}
-                {audio && (
-                  <span>
-                    {audio}
-                    {extraAudioCount > 0 && ` +${extraAudioCount}`}
-                  </span>
-                )}
-                {movie.genres?.[0] && (
-                  <span className="flex items-center gap-1">
-                    <MessageSquare className="h-3.5 w-3.5 fill-neutral-500 text-neutral-500" />
-                    {movie.genres[0]}
-                    {extraGenreCount > 0 && ` +${extraGenreCount}`}
-                  </span>
-                )}
-              </div>
 
               {tags.length > 0 && (
                 <div className="flex flex-wrap gap-2">
