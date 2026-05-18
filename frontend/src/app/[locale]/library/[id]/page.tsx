@@ -4,6 +4,7 @@ import { Link } from "@/i18n/routing";
 import { API } from "@/lib/api";
 import Providers from "@/components/Providers";
 import { getLibraryMovie } from "@/lib/server-api";
+import ExternalScoreStrip from "../../components/ExternalScoreStrip";
 import MovieAnalysisSection from "./MovieAnalysisSection";
 import MovieBackdrop from "./MovieBackdrop";
 import MovieHeroTitle from "./MovieHeroTitle";
@@ -137,6 +138,15 @@ export default async function MovieDetailPage({ params }: MovieDetailPageProps) 
              <p className="text-xl md:text-2xl lg:text-3xl font-bold leading-tight text-neutral-200 mb-12 md:mb-16">
                  {movie.overview || movie.plot || t("noDescription")}
              </p>
+
+             {movie.external_scores && movie.external_scores.length > 0 && (
+               <div className="mb-12 md:mb-16">
+                 <span className="mb-5 block text-xs font-bold uppercase tracking-widest text-neutral-500">
+                   {t("externalReception")}
+                 </span>
+                 <ExternalScoreStrip scores={movie.external_scores} />
+               </div>
+             )}
 
              {/* Featured Poster - Single Poster Style */}
              {posterSrc && (

@@ -110,6 +110,49 @@ This document describes the REST API endpoints available in the backend applicat
 - **Response**: `Movie` object.
 - **Errors**: `400 Invalid ID format`, `404 Movie not found`.
 
+### Refresh Movie External Scores
+- **URL**: `/library/{movie_id}/external-scores/refresh`
+- **Method**: `POST`
+- **Description**: Refreshes external score and ranking signals for one movie. The current implementation imports TSPDT data from `dataset/TSPDT - 1,000 Greatest Films (Table).csv` and writes high-confidence matches to the movie's `external_scores`.
+- **Path Parameters**:
+  - `movie_id` (string): The ID of the movie.
+- **Query Parameters**:
+  - `force` (boolean, optional): Reserved for sources with TTL caches. Defaults to `false`.
+- **Response**:
+  ```json
+  {
+    "status": "success",
+    "movie_id": "238_1972",
+    "movie": {},
+    "updated_sources": ["tspdt"],
+    "skipped_sources": []
+  }
+  ```
+- **Errors**: `400 Invalid ID format`, `404 Movie not found`.
+
+### Refresh Library External Scores
+- **URL**: `/library/external-scores/refresh`
+- **Method**: `POST`
+- **Description**: Starts a background refresh of external score sources for available movies.
+- **Query Parameters**:
+  - `force` (boolean, optional): Reserved for sources with TTL caches. Defaults to `false`.
+- **Response**: `{"status": "started", "message": "External score refresh started"}`
+
+### Get External Score Refresh Status
+- **URL**: `/library/external-scores/status`
+- **Method**: `GET`
+- **Description**: Returns the latest batch external score refresh status.
+- **Response**:
+  ```json
+  {
+    "state": "idle",
+    "last_started_at": "2026-05-18T00:00:00+00:00",
+    "last_finished_at": "2026-05-18T00:01:00+00:00",
+    "last_error": null,
+    "last_result": {"processed": 100, "updated": 20, "skipped": 80, "failed": 0}
+  }
+  ```
+
 ### Seed Library
 - **URL**: `/library/seed`
 - **Method**: `POST`
@@ -689,6 +732,9 @@ The core database payload associated with movies.
 - `countries` (Array of Strings, Optional): Production countries parsed from NFO metadata
 - `audio_tracks` (Array of Dicts, Optional): Audio stream summaries with `codec`, `language`, and `channels` when available
 - `imdb_rating` (Float, Optional): Score
+- `external_scores` (Array of Dicts, Optional): External score/ranking signals. TSPDT entries use `source=tspdt`, `kind=rank`, `rank`, `previous_rank`, `list_name`, `edition`, `matched_by`, and `confidence`. Future rating sources may use `kind=rating`, `value`, `scale`, `votes`, `url`, `fetched_at`, and `expires_at`.
+- `external_scores_updated_at` (String, Optional): Last external score refresh timestamp for this movie
+- `external_scores_error` (String, Optional): Last external score refresh error, if any
 - `genres` (Array of Strings, Optional)
 - `actors` (Array of Dicts, Optional): Detailed cast
 - `analysis_status` (String): Status code (default `'pending'`)

@@ -2,8 +2,14 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Clapperboard, EyeOff, Loader2, RefreshCw, Search } from "lucide-react";
-import { useConfirmScrapeMovie, useIgnoreMovie, useRefreshMovie, useScrapeMovie } from "@/hooks/useMovie";
+import { Award, Clapperboard, EyeOff, Loader2, RefreshCw, Search } from "lucide-react";
+import {
+  useConfirmScrapeMovie,
+  useIgnoreMovie,
+  useRefreshMovie,
+  useRefreshMovieExternalScores,
+  useScrapeMovie,
+} from "@/hooks/useMovie";
 import { API } from "@/lib/api";
 import type { MetadataSearchResult } from "@/types/movie";
 import MovieArtworkPicker from "./MovieArtworkPicker";
@@ -24,6 +30,11 @@ const prependCandidate = (
 export default function MovieRefreshButton({ movieId }: { movieId: string }) {
   const router = useRouter();
   const { trigger, isMutating, error } = useRefreshMovie(movieId);
+  const {
+    trigger: refreshExternalScores,
+    isMutating: isRefreshingExternalScores,
+    error: externalScoresError,
+  } = useRefreshMovieExternalScores(movieId);
   const {
     trigger: scrape,
     isMutating: isScraping,
@@ -50,6 +61,13 @@ export default function MovieRefreshButton({ movieId }: { movieId: string }) {
 
   const handleRefresh = async () => {
     await trigger();
+    router.refresh();
+  };
+
+  const handleRefreshExternalScores = async () => {
+    const result = await refreshExternalScores();
+    const updated = result?.updated_sources?.length || 0;
+    setMessage(updated ? "External scores refreshed" : "No external score match found");
     router.refresh();
   };
 
@@ -134,8 +152,8 @@ export default function MovieRefreshButton({ movieId }: { movieId: string }) {
     router.refresh();
   };
 
-  const anyError = error || scrapeError || confirmError || ignoreError;
-  const busy = isMutating || isScraping || isConfirming || isIgnoring || isSearching;
+  const anyError = error || scrapeError || confirmError || ignoreError || externalScoresError;
+  const busy = isMutating || isScraping || isConfirming || isIgnoring || isSearching || isRefreshingExternalScores;
   const visibleCandidates = showAllCandidates
     ? candidates
     : candidates.slice(0, DEFAULT_VISIBLE_CANDIDATES);
@@ -230,6 +248,20 @@ export default function MovieRefreshButton({ movieId }: { movieId: string }) {
       </div>
       <div className="flex shrink-0 items-center gap-2">
         <MovieArtworkPicker movieId={movieId} />
+        <button
+          type="button"
+          onClick={handleRefreshExternalScores}
+          disabled={busy}
+          className="flex h-11 w-11 items-center justify-center border border-neutral-800 bg-neutral-950 text-white hover:border-neutral-500 hover:bg-neutral-900 disabled:cursor-not-allowed disabled:opacity-50"
+          aria-label="Refresh external scores"
+          title="Refresh external scores"
+        >
+          {isRefreshingExternalScores ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <Award className="h-4 w-4" />
+          )}
+        </button>
         <button
           type="button"
           onClick={handleScrape}

@@ -33,6 +33,9 @@ description: 电影族谱 API (FastAPI) 的接口调用指南
 | POST | `/library/reconcile?media_dir=/path` | 全量校准资料库 |
 | POST | `/library/scan-folder?folder_path=/path` | 扫描单个电影文件夹 |
 | POST | `/library/{movie_id}/refresh` | 按已知本地文件夹刷新单部电影 |
+| POST | `/library/{movie_id}/external-scores/refresh` | 刷新单部电影的外部评分/榜单信号 |
+| POST | `/library/external-scores/refresh` | 后台批量刷新外部评分/榜单信号 |
+| GET | `/library/external-scores/status` | 获取外部评分刷新状态 |
 | GET | `/library/{movie_id}/artwork` | 获取可选择的 TMDB 海报/背景图 |
 | PUT | `/library/{movie_id}/artwork` | 应用用户选择的 TMDB 海报/背景图 |
 | GET | `/metadata/search?query=xxx&year=1999` | 使用 TMDB 搜索候选元数据 |
@@ -95,13 +98,21 @@ description: 电影族谱 API (FastAPI) 的接口调用指南
 ```bash
 curl -s http://127.0.0.1:11548/library
 ```
-返回 `Movie[]`，电影对象包含标题、年份、图片路径、简介、导演、类型，以及可选的 `runtime`、`countries`、`audio_tracks`、`video_width`、`video_height`、`video_codec`、`video_bitrate`、`video_duration`、`video_fps`、`video_dynamic_range`、`video_bit_depth`、`added_at` 等本地媒体信息。
+返回 `Movie[]`，电影对象包含标题、年份、图片路径、简介、导演、类型，以及可选的 `runtime`、`countries`、`audio_tracks`、`video_width`、`video_height`、`video_codec`、`video_bitrate`、`video_duration`、`video_fps`、`video_dynamic_range`、`video_bit_depth`、`added_at`、`external_scores` 等本地媒体与外部榜单信息。
 
 ### 获取单部电影详情
 ```bash
 curl -s http://127.0.0.1:11548/library/96721_2013
 ```
 返回单个 `Movie` 对象；`audio_tracks` 中的音轨项在可用时包含 `codec`、`language`、`channels`。视频技术字段来自扫描/刷新时调用的 `ffprobe`，`ffprobe` 不可用或文件无法解析时这些字段为 `null`/缺省，不阻断扫描。
+
+### 刷新外部评分/榜单
+```bash
+curl -s -X POST http://127.0.0.1:11548/library/238_1972/external-scores/refresh
+curl -s -X POST http://127.0.0.1:11548/library/external-scores/refresh
+curl -s http://127.0.0.1:11548/library/external-scores/status
+```
+当前实现从 `dataset/TSPDT - 1,000 Greatest Films (Table).csv` 导入 TSPDT 榜单，只会自动写入高置信度的标题/年份/导演匹配。写入后的 `external_scores` 条目包含 `source=tspdt`、`kind=rank`、`rank`、`previous_rank`、`list_name`、`edition`、`matched_by` 和 `confidence`。
 
 ### 触发电影分析
 ```bash
@@ -230,4 +241,5 @@ curl -s -X PUT "http://127.0.0.1:11548/settings/model?model_name=moonshotai/kimi
 9. **图片选择** - `/library/{movie_id}/artwork` 只适用于已有 `tmdb_id` 的电影；`PUT` 会验证用户选择的 `poster_path` / `backdrop_path` 属于该 TMDB 电影，再下载覆盖本地图片并更新数据库
 10. **发现记录** - 无 NFO 视频会作为发现记录入库，通常是 `metadata_source=filename`、`scrape_status=pending`；它不是已确认电影身份，需刮削或人工确认后变为 `matched`。发现记录和 TMDB 匹配都以主视频文件名解析标题/年份，目录名只作为物理容器
 11. **根目录整理** - `auto_organize_root_videos` 开启后，watcher 会整理媒体根目录直属稳定视频；默认保留原视频文件名，只移动到匹配电影目录并刮削。`/library/root-videos` 会列出待整理文件，避免用户看不见根目录散片。`scrape_require_confirmation` 开启时会在移动文件前停在 `needs_review`，需通过 `/library/organize-root/confirm` 传入确认的 `path` 和 `tmdb_id`
-12. **推荐使用 http_request 插件** - 如果有安装的话，比 curl 更安全
+12. **外部评分** - `external_scores` 是可选字段，当前 TSPDT 数据来自仓库 `dataset/` 下的 CSV 离线数据集。由于数据集没有 TMDB/IMDb ID，后端只自动保存高置信度匹配，低置信度或未命中电影会跳过，不改变已有评分
+13. **推荐使用 http_request 插件** - 如果有安装的话，比 curl 更安全

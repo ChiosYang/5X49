@@ -52,6 +52,9 @@ MOVIE_SCHEMA_COLUMNS = {
     "audio_tracks": "JSON",
     "poster_thumb_local": "VARCHAR",
     "backdrop_thumb_local": "VARCHAR",
+    "external_scores": "JSON",
+    "external_scores_updated_at": "VARCHAR",
+    "external_scores_error": "VARCHAR",
 }
 
 

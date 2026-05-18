@@ -1,0 +1,96 @@
+import tempfile
+import unittest
+from pathlib import Path
+
+from sqlmodel import SQLModel, create_engine
+
+import app.database as database
+import app.services.library as library_module
+from app.services.external_scores.service import ExternalScoreService
+from app.services.external_scores.tspdt import TSPDTDataset, normalize_director, normalize_title
+from app.services.library import library_manager
+
+
+class ExternalScoresTests(unittest.TestCase):
+    def setUp(self):
+        self._original_database_engine = database.engine
+        self._original_library_engine = library_module.engine
+        self._tmp = tempfile.TemporaryDirectory()
+        self.tmp_path = Path(self._tmp.name)
+        self.engine = create_engine(f"sqlite:///{self.tmp_path / 'library.db'}")
+        database.engine = self.engine
+        library_module.engine = self.engine
+        SQLModel.metadata.create_all(self.engine)
+
+        self.dataset_path = self.tmp_path / "tspdt.csv"
+        self.dataset_path.write_text(
+            "\n".join(
+                [
+                    '"Pos","2025","Title","Director","Year","Country","Mins"',
+                    '"6","6","Godfather, The","Coppola, Francis Ford","1972","USA","175"',
+                    '"997","1039","Lady Windermere\'s Fan","Lubitsch, Ernst","1925","USA","120"',
+                ]
+            ),
+            encoding="utf-8",
+        )
+        self.service = ExternalScoreService(TSPDTDataset(self.dataset_path))
+
+    def tearDown(self):
+        database.engine = self._original_database_engine
+        library_module.engine = self._original_library_engine
+        self._tmp.cleanup()
+
+    def test_normalizes_tspdt_title_and_director(self):
+        self.assertEqual(normalize_title("Godfather, The"), normalize_title("The Godfather"))
+        self.assertEqual(normalize_director("Coppola, Francis Ford"), "Francis Ford Coppola")
+
+    def test_refresh_movie_adds_tspdt_rank(self):
+        library_manager.add_movies(
+            [
+                {
+                    "id": "238_1972",
+                    "title": "The Godfather",
+                    "title_cn": "The Godfather",
+                    "year": 1972,
+                    "director": "Francis Ford Coppola",
+                    "library_status": "available",
+                }
+            ]
+        )
+
+        result = self.service.refresh_movie("238_1972")
+
+        self.assertEqual(result["status"], "success")
+        self.assertEqual(result["updated_sources"], ["tspdt"])
+        stored = library_manager.get_movie("238_1972")
+        self.assertIsNotNone(stored)
+        self.assertEqual(stored["external_scores"][0]["source"], "tspdt")
+        self.assertEqual(stored["external_scores"][0]["rank"], 6)
+        self.assertEqual(stored["external_scores"][0]["previous_rank"], 6)
+        self.assertEqual(stored["external_scores"][0]["matched_by"], "title_year_director")
+        self.assertGreaterEqual(stored["external_scores"][0]["confidence"], 0.95)
+
+    def test_refresh_movie_skips_unmatched_movie(self):
+        library_manager.add_movies(
+            [
+                {
+                    "id": "local_unknown",
+                    "title": "Unknown Local Movie",
+                    "title_cn": "Unknown Local Movie",
+                    "year": 2024,
+                    "director": "Unknown Director",
+                    "library_status": "available",
+                }
+            ]
+        )
+
+        result = self.service.refresh_movie("local_unknown")
+
+        self.assertEqual(result["status"], "skipped")
+        self.assertEqual(result["skipped_sources"], ["tspdt"])
+        stored = library_manager.get_movie("local_unknown")
+        self.assertIsNone(stored["external_scores"])
+
+
+if __name__ == "__main__":
+    unittest.main()

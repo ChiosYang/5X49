@@ -3,6 +3,7 @@ import { Globe2, Plus, Play, Star } from "lucide-react";
 import { Link } from "@/i18n/routing";
 import { API } from "@/lib/api";
 import type { AudioTrack, LibraryMovie } from "@/types/movie";
+import ExternalScoreStrip from "../components/ExternalScoreStrip";
 
 interface LibraryMovieCardProps {
   movie: LibraryMovie;
@@ -307,6 +308,8 @@ export default function LibraryMovieCard({ movie, priority = false }: LibraryMov
               <p className="overflow-hidden text-[15px] leading-snug text-neutral-300 [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:4]">
                 {description || `${title} (${movie.year})`}
               </p>
+
+              <ExternalScoreStrip scores={movie.external_scores} compact showLinks={false} />
 
               {(mediaSpecBadges.length > 0 || country) && (
                 <div className="flex flex-wrap items-center gap-1.5">

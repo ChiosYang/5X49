@@ -25,6 +25,8 @@ import {
   useReconcileLibrary,
   useScrapeLibrary,
   useLibraryScrapeStatus,
+  useRefreshLibraryExternalScores,
+  useLibraryExternalScoresStatus,
   useCleanupMissingMovies,
   useAutoOrganizeRootSetting,
   useUpdateAutoOrganizeRoot,
@@ -58,6 +60,7 @@ function SettingsContent() {
   const { data: tmdbData } = useTmdbSettings();
   const { data: syncStatus } = useLibrarySyncStatus();
   const { data: scrapeStatus } = useLibraryScrapeStatus();
+  const { data: externalScoresStatus } = useLibraryExternalScoresStatus();
   const { data: organizeStatus } = useLibraryOrganizeStatus();
 
   const { trigger: updateModel, isMutating: modelSaving, data: modelSaveResult, reset: resetModelSave } = useUpdateModel();
@@ -74,6 +77,12 @@ function SettingsContent() {
   const { trigger: scanLibrary, isMutating: isScanning, data: scanResult, error: scanError } = useScanLibrary();
   const { trigger: reconcileLibrary, isMutating: isReconciling, data: reconcileResult, error: reconcileError } = useReconcileLibrary();
   const { trigger: scrapeLibrary, isMutating: isScrapingMetadata, data: scrapeResult, error: scrapeError } = useScrapeLibrary();
+  const {
+    trigger: refreshExternalScores,
+    isMutating: isRefreshingExternalScores,
+    data: externalScoresResult,
+    error: externalScoresError,
+  } = useRefreshLibraryExternalScores();
   const { trigger: organizeRootVideos, isMutating: isOrganizingRoot, data: organizeResult, error: organizeError } = useOrganizeRootVideos();
   const { trigger: cleanupMissing, isMutating: isCleaningMissing, data: cleanupResult, error: cleanupError } = useCleanupMissingMovies();
 
@@ -186,6 +195,10 @@ function SettingsContent() {
     await scrapeLibrary();
   };
 
+  const handleRefreshExternalScores = async () => {
+    await refreshExternalScores();
+  };
+
   const handleOrganizeRootVideos = async () => {
     await organizeRootVideos();
   };
@@ -241,6 +254,16 @@ function SettingsContent() {
       ? "Failed to organize root videos"
       : organizeStatus?.last_result
         ? `Organized ${organizeStatus.last_result.organized ?? 0}, review ${organizeStatus.last_result.needs_review ?? 0}`
+        : "";
+  const externalScoresMessage = externalScoresResult
+    ? t("externalScoresStarted")
+    : externalScoresError
+      ? t("externalScoresFailed")
+      : externalScoresStatus?.last_result
+        ? t("externalScoresSummary", {
+            updated: externalScoresStatus.last_result.updated ?? 0,
+            skipped: externalScoresStatus.last_result.skipped ?? 0,
+          })
         : "";
   const cleanupMessage = cleanupResult
     ? `Deleted ${cleanupResult.deleted ?? 0}`
@@ -863,6 +886,41 @@ function SettingsContent() {
                             </>
                           ) : (
                             t("scrapeNow")
+                          )}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="border-b border-neutral-900 pb-6">
+                    <div className="flex items-center justify-between gap-4">
+                      <div>
+                        <p className="text-sm font-medium uppercase tracking-widest mb-1">{t("externalScores")}</p>
+                        <p className="text-xs text-neutral-600">{t("externalScoresDesc")}</p>
+                        {externalScoresStatus?.last_error && (
+                          <p className="text-xs text-red-500 mt-2">{externalScoresStatus.last_error}</p>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-4">
+                        {externalScoresMessage && (
+                          <span className={`text-xs uppercase tracking-widest ${
+                            externalScoresError ? "text-red-500" : "text-green-500"
+                          }`}>
+                            {externalScoresMessage}
+                          </span>
+                        )}
+                        <button
+                          onClick={handleRefreshExternalScores}
+                          disabled={isRefreshingExternalScores || externalScoresStatus?.state === "running"}
+                          className="flex items-center gap-2 bg-neutral-900 border border-neutral-800 text-white px-4 py-3 text-xs font-medium uppercase tracking-widest hover:bg-neutral-800 hover:border-neutral-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {isRefreshingExternalScores || externalScoresStatus?.state === "running" ? (
+                            <>
+                              <Loader2 className="w-3 h-3 animate-spin" />
+                              {t("externalScoresRefreshing")}
+                            </>
+                          ) : (
+                            t("externalScoresNow")
                           )}
                         </button>
                       </div>

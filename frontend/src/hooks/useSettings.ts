@@ -80,6 +80,19 @@ export interface LibraryOrganizeStatus {
   } | null;
 }
 
+export interface LibraryExternalScoresStatus {
+  state: string;
+  last_started_at: string | null;
+  last_finished_at: string | null;
+  last_error: string | null;
+  last_result: {
+    processed?: number;
+    updated?: number;
+    skipped?: number;
+    failed?: number;
+  } | null;
+}
+
 export interface TmdbSettings {
   configured: boolean;
   source: "environment" | "settings" | null;
@@ -126,6 +139,12 @@ export function useLibraryScrapeStatus() {
 
 export function useLibraryOrganizeStatus() {
   return useSWR<LibraryOrganizeStatus>(API.libraryOrganizeStatus(), {
+    refreshInterval: 5000,
+  });
+}
+
+export function useLibraryExternalScoresStatus() {
+  return useSWR<LibraryExternalScoresStatus>(API.libraryExternalScoresStatus(), {
     refreshInterval: 5000,
   });
 }
@@ -337,6 +356,17 @@ export function useScrapeLibrary() {
         }),
       });
       if (!res.ok) throw new Error("Failed to start metadata scrape");
+      return res.json();
+    }
+  );
+}
+
+export function useRefreshLibraryExternalScores() {
+  return useSWRMutation(
+    API.libraryExternalScoresBatch(),
+    async (url: string) => {
+      const res = await fetch(url, { method: "POST" });
+      if (!res.ok) throw new Error("Failed to start external score refresh");
       return res.json();
     }
   );

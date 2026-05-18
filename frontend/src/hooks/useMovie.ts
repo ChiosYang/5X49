@@ -36,6 +36,17 @@ export function useRefreshMovie(id: string) {
   );
 }
 
+export function useRefreshMovieExternalScores(id: string) {
+  return useSWRMutation(
+    API.libraryMovie(id),
+    async () => {
+      const res = await fetch(API.libraryExternalScores(id), { method: "POST" });
+      if (!res.ok) throw new Error("Failed to refresh external scores");
+      return res.json();
+    }
+  );
+}
+
 export function useScrapeMovie(id: string) {
   return useSWRMutation(
     API.libraryMovie(id),

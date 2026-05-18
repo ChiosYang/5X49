@@ -31,6 +31,9 @@ class Movie(SQLModel, table=True):
     countries: Optional[List[str]] = Field(default=None, sa_column=Column(JSON))
     audio_tracks: Optional[List[dict]] = Field(default=None, sa_column=Column(JSON))
     imdb_rating: Optional[float] = None
+    external_scores: Optional[List[dict]] = Field(default=None, sa_column=Column(JSON))
+    external_scores_updated_at: Optional[str] = None
+    external_scores_error: Optional[str] = None
     
     # Complex fields stored as JSON
     # Note: In SQLite, JSON type is stored as Text but can be parsed.

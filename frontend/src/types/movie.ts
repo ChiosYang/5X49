@@ -20,6 +20,24 @@ export interface AudioTrack {
   channels?: string;
 }
 
+export interface ExternalScore {
+  source: string;
+  label: string;
+  kind: "rating" | "rank";
+  value?: number;
+  scale?: number;
+  rank?: number;
+  previous_rank?: number | null;
+  votes?: number | null;
+  list_name?: string;
+  edition?: string;
+  url?: string;
+  fetched_at?: string;
+  expires_at?: string;
+  matched_by?: string;
+  confidence?: number;
+}
+
 export interface LibraryMovie {
   id: string;
   title: string;
@@ -55,6 +73,9 @@ export interface LibraryMovie {
   scrape_error?: string | null;
   scraped_at?: string | null;
   tmdb_confidence?: number | null;
+  external_scores?: ExternalScore[] | null;
+  external_scores_updated_at?: string | null;
+  external_scores_error?: string | null;
 }
 
 export interface MovieDetail {
@@ -100,6 +121,9 @@ export interface MovieDetail {
   scrape_error?: string | null;
   scraped_at?: string | null;
   tmdb_confidence?: number | null;
+  external_scores?: ExternalScore[] | null;
+  external_scores_updated_at?: string | null;
+  external_scores_error?: string | null;
 }
 
 export interface MetadataSearchResult {

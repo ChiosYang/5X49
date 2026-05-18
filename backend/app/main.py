@@ -6,6 +6,7 @@ from contextlib import asynccontextmanager
 from pydantic import BaseModel
 from app.services.historian import FilmHistorian
 from app.services.event_bus import library_event_bus
+from app.services.external_scores import external_score_service
 from app.services.library import library_manager
 from app.services.scanner import NFOScanner
 from app.services.analysis import analysis_service
@@ -91,6 +92,17 @@ def get_library():
     """Get all movies in the local library."""
     return library_manager.get_movies()
 
+@app.post("/library/external-scores/refresh")
+def refresh_library_external_scores(background_tasks: BackgroundTasks, force: bool = Query(default=False)):
+    """Start a background refresh of external score sources for available movies."""
+    background_tasks.add_task(external_score_service.refresh_library, force)
+    return {"status": "started", "message": "External score refresh started"}
+
+@app.get("/library/external-scores/status")
+def get_library_external_scores_status():
+    """Get latest external score refresh status."""
+    return external_score_service.get_status()
+
 @app.get("/metadata/search")
 def search_metadata(query: str, year: int | None = Query(default=None), language: str | None = Query(default=None)):
     """Search TMDB movie metadata using the configured TMDB_API_KEY."""
@@ -145,6 +157,17 @@ def get_library_movie(movie_id: str):
     if not movie:
         raise HTTPException(status_code=404, detail="Movie not found")
     return movie
+
+@app.post("/library/{movie_id}/external-scores/refresh")
+def refresh_library_movie_external_scores(movie_id: str, force: bool = Query(default=False)):
+    """Refresh external score sources for a specific movie."""
+    if not validate_movie_id(movie_id):
+        raise HTTPException(status_code=400, detail="Invalid movie ID format")
+
+    try:
+        return external_score_service.refresh_movie(movie_id, force=force)
+    except LookupError:
+        raise HTTPException(status_code=404, detail="Movie not found")
 
 @app.post("/library/seed")
 def seed_library():
