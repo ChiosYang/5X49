@@ -95,7 +95,7 @@ description: 电影族谱 API (FastAPI) 的接口调用指南
 ```bash
 curl -s http://127.0.0.1:11548/library
 ```
-返回 `Movie[]`，电影对象包含标题、年份、图片路径、简介、导演、类型，以及可选的 `runtime`、`countries`、`audio_tracks`、`video_width`、`video_height`、`video_codec`、`video_bitrate`、`video_duration`、`video_fps`、`video_dynamic_range`、`video_bit_depth` 等本地媒体信息。
+返回 `Movie[]`，电影对象包含标题、年份、图片路径、简介、导演、类型，以及可选的 `runtime`、`countries`、`audio_tracks`、`video_width`、`video_height`、`video_codec`、`video_bitrate`、`video_duration`、`video_fps`、`video_dynamic_range`、`video_bit_depth`、`added_at` 等本地媒体信息。
 
 ### 获取单部电影详情
 ```bash

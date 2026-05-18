@@ -1,5 +1,11 @@
+from datetime import datetime, timezone
 from typing import Optional, List
 from sqlmodel import Field, SQLModel, JSON, Column
+
+
+def utc_now_iso() -> str:
+    return datetime.now(timezone.utc).isoformat()
+
 
 class Movie(SQLModel, table=True):
     id: str = Field(primary_key=True)
@@ -56,6 +62,7 @@ class Movie(SQLModel, table=True):
     video_fps: Optional[float] = None
     video_dynamic_range: Optional[str] = None
     video_bit_depth: Optional[int] = None
+    added_at: Optional[str] = Field(default_factory=utc_now_iso)
     last_seen_at: Optional[str] = None
     missing_since: Optional[str] = None
     library_status: str = Field(default="available", index=True)

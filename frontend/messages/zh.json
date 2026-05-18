@@ -29,6 +29,11 @@
     "rootTmdbLookupFailed": "TMDB ID 查询失败",
     "rootShowMore": "显示另外 {count} 个",
     "rootShowFewer": "收起",
+    "sort": "排序",
+    "sortBy": "按{field}排序",
+    "sortTitle": "片名",
+    "sortAdded": "添加时间",
+    "sortDuration": "时长",
     "empty": "资料库为空。点击扫描添加电影。"
   },
   "FilmDetail": {

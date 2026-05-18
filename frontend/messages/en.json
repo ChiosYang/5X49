@@ -29,6 +29,11 @@
     "rootTmdbLookupFailed": "TMDB ID lookup failed",
     "rootShowMore": "Show {count} more",
     "rootShowFewer": "Show fewer",
+    "sort": "Sort",
+    "sortBy": "Sort by {field}",
+    "sortTitle": "Title",
+    "sortAdded": "Added",
+    "sortDuration": "Duration",
     "empty": "Your library is empty. Click Scan Now to add movies."
   },
   "FilmDetail": {

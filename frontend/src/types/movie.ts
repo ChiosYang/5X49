@@ -43,6 +43,7 @@ export interface LibraryMovie {
   video_fps?: number | null;
   video_dynamic_range?: string | null;
   video_bit_depth?: number | null;
+  added_at?: string | null;
   micro_genre?: string;
   genres?: string[];
   director?: string;
@@ -89,6 +90,7 @@ export interface MovieDetail {
   folder_path?: string | null;
   file_size?: number | null;
   file_mtime?: number | null;
+  added_at?: string | null;
   last_seen_at?: string | null;
   missing_since?: string | null;
   library_status?: "available" | "missing" | "ignored";

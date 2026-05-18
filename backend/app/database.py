@@ -38,6 +38,7 @@ MOVIE_SCHEMA_COLUMNS = {
     "video_fps": "FLOAT",
     "video_dynamic_range": "VARCHAR",
     "video_bit_depth": "INTEGER",
+    "added_at": "VARCHAR",
     "last_seen_at": "VARCHAR",
     "missing_since": "VARCHAR",
     "library_status": "VARCHAR DEFAULT 'available'",
@@ -88,6 +89,13 @@ def migrate_sqlite_schema():
         if "scrape_status" in dict(missing_columns):
             connection.execute(
                 text("UPDATE movie SET scrape_status = 'pending' WHERE scrape_status IS NULL")
+            )
+        if "added_at" in dict(missing_columns):
+            connection.execute(
+                text(
+                    "UPDATE movie SET added_at = COALESCE(metadata_updated_at, last_seen_at) "
+                    "WHERE added_at IS NULL"
+                )
             )
 
 def create_db_and_tables():

@@ -707,6 +707,7 @@ The core database payload associated with movies.
 - `video_fps` (Float, Optional): Average frame rate
 - `video_dynamic_range` (String, Optional): Detected dynamic range, usually `SDR`, `HDR10`, `HLG`, `Dolby Vision`, or `unknown`
 - `video_bit_depth` (Integer, Optional): Detected video bit depth when exposed by the stream metadata
+- `added_at` (String, Optional): Timestamp when the movie record was first added to the local library
 - `last_seen_at` (String, Optional): Last successful scan timestamp
 - `missing_since` (String, Optional): Timestamp when the movie was first marked missing
 - `library_status` (String): Library availability status, `available`, `missing`, or `ignored`

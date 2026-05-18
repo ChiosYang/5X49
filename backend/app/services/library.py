@@ -1,5 +1,6 @@
 import json
 import os
+from datetime import datetime, timezone
 from typing import List, Dict, Optional
 from pathlib import Path
 from sqlalchemy import or_
@@ -32,13 +33,17 @@ class LibraryManager:
                 if existing_movie:
                     if existing_movie.library_status == "ignored" and movie_dict.get("library_status") == "available":
                         movie_dict = {**movie_dict, "library_status": "ignored", "missing_since": None}
+                    if not existing_movie.added_at:
+                        existing_movie.added_at = self._fallback_added_at(movie_dict)
                     # Update fields
                     for key, value in movie_dict.items():
+                        if key == "added_at" and existing_movie.added_at:
+                            continue
                         setattr(existing_movie, key, value)
                     session.add(existing_movie)
                 else:
                     # Create new
-                    new_movie = Movie(**movie_dict)
+                    new_movie = Movie(**self._with_added_at(movie_dict))
                     session.add(new_movie)
                     added += 1
             session.commit()
@@ -59,14 +64,18 @@ class LibraryManager:
             if existing_movie:
                 if existing_movie.library_status == "ignored" and movie_data.get("library_status") == "available":
                     movie_data = {**movie_data, "library_status": "ignored", "missing_since": None}
+                if not existing_movie.added_at:
+                    existing_movie.added_at = self._fallback_added_at(movie_data)
                 for key, value in movie_data.items():
+                    if key == "added_at" and existing_movie.added_at:
+                        continue
                     setattr(existing_movie, key, value)
                 session.add(existing_movie)
                 session.commit()
                 session.refresh(existing_movie)
                 return existing_movie.model_dump()
 
-            new_movie = Movie(**movie_data)
+            new_movie = Movie(**self._with_added_at(movie_data))
             session.add(new_movie)
             session.commit()
             session.refresh(new_movie)
@@ -164,5 +173,17 @@ class LibraryManager:
     def _get_by_media_path(self, session: Session, media_path: str) -> Optional[Movie]:
         statement = select(Movie).where(Movie.media_path == media_path)
         return session.exec(statement).first()
+
+    def _with_added_at(self, movie_data: dict) -> dict:
+        if movie_data.get("added_at"):
+            return movie_data
+        return {**movie_data, "added_at": self._fallback_added_at(movie_data)}
+
+    def _fallback_added_at(self, movie_data: dict) -> str:
+        return (
+            movie_data.get("metadata_updated_at")
+            or movie_data.get("last_seen_at")
+            or datetime.now(timezone.utc).isoformat()
+        )
 
 library_manager = LibraryManager()
