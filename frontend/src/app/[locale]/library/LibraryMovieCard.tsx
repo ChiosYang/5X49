@@ -139,20 +139,28 @@ function formatVideoCodec(codec?: string | null) {
 }
 
 function formatResolutionBadge(movie: LibraryMovie) {
+  const width = movie.video_width;
   const height = movie.video_height;
-  if (!height) {
+  if (!width || !height) {
     return null;
   }
-  if (height >= 2160) {
+
+  const longEdge = Math.max(width, height);
+  const shortEdge = Math.min(width, height);
+
+  if (longEdge >= 3200 || shortEdge >= 1800) {
     return "4K";
   }
-  if (height >= 1440) {
-    return "QHD";
+  if (longEdge >= 2000 || shortEdge >= 1100) {
+    return "2K";
   }
-  if (height >= 1080) {
-    return "HD";
+  if (longEdge >= 1600 || shortEdge >= 900) {
+    return "1080p";
   }
-  return `${height}p`;
+  if (longEdge >= 1100 || shortEdge >= 600) {
+    return "720p";
+  }
+  return "480p";
 }
 
 function countryCodeToFlag(code: string) {
