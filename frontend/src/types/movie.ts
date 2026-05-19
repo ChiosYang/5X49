@@ -182,3 +182,28 @@ export interface RootVideo {
   parsed_year: number;
   status: "needs_organize" | "waiting_for_stability";
 }
+
+export type JobStatus = "queued" | "running" | "succeeded" | "failed" | "cancelled";
+
+export interface Job {
+  id: string;
+  type: string;
+  status: JobStatus;
+  payload?: Record<string, unknown> | null;
+  progress?: Record<string, unknown> | null;
+  result?: Record<string, unknown> | null;
+  error?: string | null;
+  attempts: number;
+  max_attempts: number;
+  created_at: string;
+  updated_at: string;
+  started_at?: string | null;
+  finished_at?: string | null;
+}
+
+export interface JobAccepted {
+  status: "queued";
+  message: string;
+  job_id: string;
+  job: Job;
+}

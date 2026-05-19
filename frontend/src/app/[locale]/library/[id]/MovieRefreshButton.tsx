@@ -66,8 +66,7 @@ export default function MovieRefreshButton({ movieId }: { movieId: string }) {
 
   const handleRefreshExternalScores = async () => {
     const result = await refreshExternalScores();
-    const updated = result?.updated_sources?.length || 0;
-    setMessage(updated ? "External scores refreshed" : "No external score match found");
+    setMessage(result?.message || "External score refresh queued");
     router.refresh();
   };
 

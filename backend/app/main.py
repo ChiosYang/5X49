@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, Query, BackgroundTasks, Request
+from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from fastapi.staticfiles import StaticFiles
@@ -7,9 +7,8 @@ from pydantic import BaseModel
 from app.services.historian import FilmHistorian
 from app.services.event_bus import library_event_bus
 from app.services.external_scores import external_score_service
+from app.jobs import job_runtime
 from app.services.library import library_manager
-from app.services.scanner import NFOScanner
-from app.services.analysis import analysis_service
 from app.services.artwork_cache import ARTWORK_CACHE_DIR
 from app.services.library_sync import library_sync_service
 from app.services.watcher import library_watcher
@@ -29,9 +28,11 @@ class TmdbApiKeyUpdate(BaseModel):
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     create_db_and_tables()
+    job_runtime.start()
     if get_watch_library():
         library_watcher.start()
     yield
+    job_runtime.stop()
     library_watcher.stop()
 
 app = FastAPI(lifespan=lifespan)
@@ -76,6 +77,15 @@ app.mount("/artwork-cache", StaticFiles(directory=ARTWORK_CACHE_DIR), name="artw
 
 historian = FilmHistorian()
 
+
+def job_response(job: dict, message: str) -> dict:
+    return {
+        "status": "queued",
+        "message": message,
+        "job_id": job["id"],
+        "job": job,
+    }
+
 @app.get("/")
 def read_root():
     return {"message": "Film Genealogy API is running", "media_dir": MEDIA_DIR}
@@ -92,11 +102,24 @@ def get_library():
     """Get all movies in the local library."""
     return library_manager.get_movies()
 
+@app.get("/jobs")
+def list_jobs(status: str | None = Query(default=None), limit: int = Query(default=50, ge=1, le=200)):
+    """List recent background jobs."""
+    return job_runtime.list(status=status, limit=limit)
+
+@app.get("/jobs/{job_id}")
+def get_job(job_id: str):
+    """Get one background job by ID."""
+    job = job_runtime.get(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+    return job
+
 @app.post("/library/external-scores/refresh")
-def refresh_library_external_scores(background_tasks: BackgroundTasks, force: bool = Query(default=False)):
+def refresh_library_external_scores(force: bool = Query(default=False)):
     """Start a background refresh of external score sources for available movies."""
-    background_tasks.add_task(external_score_service.refresh_library, force)
-    return {"status": "started", "message": "External score refresh started"}
+    job = job_runtime.enqueue("external_scores.refresh_library", {"force": force})
+    return job_response(job, "External score refresh queued")
 
 @app.get("/library/external-scores/status")
 def get_library_external_scores_status():
@@ -164,10 +187,10 @@ def refresh_library_movie_external_scores(movie_id: str, force: bool = Query(def
     if not validate_movie_id(movie_id):
         raise HTTPException(status_code=400, detail="Invalid movie ID format")
 
-    try:
-        return external_score_service.refresh_movie(movie_id, force=force)
-    except LookupError:
+    if not library_manager.get_movie(movie_id):
         raise HTTPException(status_code=404, detail="Movie not found")
+    job = job_runtime.enqueue("external_scores.refresh_movie", {"movie_id": movie_id, "force": force})
+    return job_response(job, "Movie external score refresh queued")
 
 @app.post("/library/seed")
 def seed_library():
@@ -177,7 +200,7 @@ def seed_library():
     return movies
 
 @app.post("/library/scan")
-def scan_library(background_tasks: BackgroundTasks, media_dir: str = Query(default=None)):
+def scan_library(media_dir: str = Query(default=None)):
     """
     Scan a directory for TMM-scraped movies and add them to library.
     If no media_dir is provided, uses the configured MEDIA_DIR from settings.
@@ -188,37 +211,26 @@ def scan_library(background_tasks: BackgroundTasks, media_dir: str = Query(defau
     if not os.path.exists(target_dir):
         raise HTTPException(status_code=400, detail=f"Directory not found: {target_dir}")
     
-    print(f"\n🔍 Reconciling media directory: {target_dir}")
-    result = library_sync_service.reconcile(target_dir)
-    
-    # Analysis is now triggered manually or via separate process
-    # for movie in movies:
-    #     background_tasks.add_task(analysis_service.analyze_movie, movie["id"])
-    
-    return {
-        "scanned": result["scanned"],
-        "added": result["added"],
-        "missing": result["missing"],
-        "queued_for_analysis": result["scanned"],
-        "media_dir": target_dir
-    }
+    job = job_runtime.enqueue("library.reconcile", {"media_dir": target_dir})
+    return job_response(job, "Library scan queued")
 
 @app.post("/library/reconcile")
-def reconcile_library(background_tasks: BackgroundTasks, media_dir: str = Query(default=None)):
+def reconcile_library(media_dir: str = Query(default=None)):
     """Scan all configured media folders and mark disappeared movies as missing."""
     target_dir = media_dir or get_media_dir() or DEFAULT_MEDIA_DIR
     if not os.path.exists(target_dir):
         raise HTTPException(status_code=400, detail=f"Directory not found: {target_dir}")
 
-    return library_sync_service.reconcile(target_dir)
+    job = job_runtime.enqueue("library.reconcile", {"media_dir": target_dir})
+    return job_response(job, "Library reconcile queued")
 
 @app.post("/library/scan-folder")
 def scan_library_folder(folder_path: str):
     """Scan one movie folder and upsert its movie record."""
-    movie = library_sync_service.scan_folder(folder_path)
-    if not movie:
+    if not Path(folder_path).exists():
         raise HTTPException(status_code=404, detail="Movie folder or video file not found")
-    return {"status": "success", "movie": movie}
+    job = job_runtime.enqueue("library.scan_folder", {"folder_path": folder_path})
+    return job_response(job, "Folder scan queued")
 
 @app.post("/library/{movie_id}/refresh")
 def refresh_library_movie(movie_id: str):
@@ -226,14 +238,10 @@ def refresh_library_movie(movie_id: str):
     if not validate_movie_id(movie_id):
         raise HTTPException(status_code=400, detail="Invalid movie ID format")
 
-    try:
-        return library_sync_service.refresh_movie(movie_id)
-    except LookupError:
+    if not library_manager.get_movie(movie_id):
         raise HTTPException(status_code=404, detail="Movie not found")
-    except ValueError as exc:
-        raise HTTPException(status_code=409, detail=str(exc))
-    except FileNotFoundError as exc:
-        raise HTTPException(status_code=404, detail=str(exc))
+    job = job_runtime.enqueue("library.refresh_movie", {"movie_id": movie_id})
+    return job_response(job, "Movie refresh queued")
 
 @app.get("/library/{movie_id}/artwork")
 def get_library_movie_artwork(movie_id: str):
@@ -313,10 +321,13 @@ def confirm_library_movie_scrape(movie_id: str, tmdb_id: int, options: ScrapeOpt
     return result.model_dump()
 
 @app.post("/library/scrape")
-def scrape_library(background_tasks: BackgroundTasks, options: BatchScrapeOptions | None = None):
+def scrape_library(options: BatchScrapeOptions | None = None):
     """Start a background metadata scrape for movies matching the requested scope."""
-    background_tasks.add_task(metadata_scraper.scrape_library, options or BatchScrapeOptions())
-    return {"status": "started", "message": "Metadata scrape started"}
+    job = job_runtime.enqueue(
+        "metadata.scrape_library",
+        {"options": (options or BatchScrapeOptions()).model_dump()},
+    )
+    return job_response(job, "Metadata scrape queued")
 
 @app.get("/library/scrape/status")
 def get_library_scrape_status():
@@ -324,32 +335,32 @@ def get_library_scrape_status():
     return metadata_scraper.get_status()
 
 @app.post("/library/organize-root")
-def organize_root_library_videos(background_tasks: BackgroundTasks, options: RootOrganizeOptions | None = None):
+def organize_root_library_videos(options: RootOrganizeOptions | None = None):
     """Start background organization of direct video files in the media root."""
-    background_tasks.add_task(root_video_organizer.organize_root, get_media_dir() or DEFAULT_MEDIA_DIR, options)
-    return {"status": "started", "message": "Root video organization started"}
+    job = job_runtime.enqueue(
+        "organizer.organize_root",
+        {
+            "media_dir": get_media_dir() or DEFAULT_MEDIA_DIR,
+            "options": options.model_dump() if options else None,
+        },
+    )
+    return job_response(job, "Root video organization queued")
 
 @app.post("/library/organize-root/confirm")
 def confirm_root_library_video(payload: RootOrganizeConfirmRequest):
     """Organize one root video using a user-confirmed TMDB ID."""
-    try:
-        result = root_video_organizer.organize_file_confirmed(
-            Path(payload.path),
-            Path(get_media_dir() or DEFAULT_MEDIA_DIR).resolve(),
-            payload.tmdb_id,
-            payload.options or RootOrganizeOptions(),
-        )
-    except FileNotFoundError as exc:
-        raise HTTPException(status_code=404, detail=str(exc))
-    except Exception as exc:
-        raise HTTPException(status_code=409, detail=str(exc))
-
-    if result.get("status") == "failed":
-        raise HTTPException(status_code=409, detail=result)
-    if result.get("status") == "skipped":
-        raise HTTPException(status_code=400, detail=result)
-    library_event_bus.publish_library_changed("root_video_confirmed", result=result)
-    return result
+    if not Path(payload.path).exists():
+        raise HTTPException(status_code=404, detail="Root video file not found")
+    job = job_runtime.enqueue(
+        "organizer.confirm_root_video",
+        {
+            "path": payload.path,
+            "tmdb_id": payload.tmdb_id,
+            "media_dir": get_media_dir() or DEFAULT_MEDIA_DIR,
+            "options": (payload.options or RootOrganizeOptions()).model_dump(),
+        },
+    )
+    return job_response(job, "Root video confirmation queued")
 
 @app.get("/library/organize/status")
 def get_library_organize_status():
@@ -365,13 +376,15 @@ def get_library_sync_status():
     }
 
 @app.post("/library/analyze/{movie_id}")
-def trigger_analysis(movie_id: str, background_tasks: BackgroundTasks):
+def trigger_analysis(movie_id: str):
     """Manually trigger analysis for a specific movie."""
     if not validate_movie_id(movie_id):
         raise HTTPException(status_code=400, detail="Invalid movie ID format")
-    
-    background_tasks.add_task(analysis_service.analyze_movie, movie_id)
-    return {"message": f"Analysis queued for {movie_id}"}
+    if not library_manager.get_movie(movie_id):
+        raise HTTPException(status_code=404, detail="Movie not found")
+
+    job = job_runtime.enqueue("analysis.analyze_movie", {"movie_id": movie_id})
+    return job_response(job, f"Analysis queued for {movie_id}")
 
 @app.delete("/library")
 def clear_library():
@@ -653,13 +666,13 @@ def list_directories(path: str = Query(default="/")):
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/sys/scan-library")
-def trigger_manual_scan(background_tasks: BackgroundTasks):
+def trigger_manual_scan():
     """
     Manually trigger a library scan.
     """
     try:
-        background_tasks.add_task(library_sync_service.reconcile, get_media_dir() or DEFAULT_MEDIA_DIR)
-        return {"status": "success", "message": "Library scan started"}
+        job = job_runtime.enqueue("library.reconcile", {"media_dir": get_media_dir() or DEFAULT_MEDIA_DIR})
+        return job_response(job, "Library scan queued")
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to start scan: {str(e)}")
 

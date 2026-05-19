@@ -1,7 +1,7 @@
 import useSWR from "swr";
 import useSWRMutation from "swr/mutation";
 import { API } from "@/lib/api";
-import type { MovieDetail, ScrapeResult } from "@/types/movie";
+import type { JobAccepted, MovieDetail, ScrapeResult } from "@/types/movie";
 
 export function useMovie(id: string, fallbackData?: MovieDetail) {
   return useSWR<MovieDetail>(id ? API.libraryMovie(id) : null, {
@@ -20,7 +20,7 @@ export function useAnalyzeMovie(id: string) {
     async () => {
       const res = await fetch(API.libraryAnalyze(id), { method: "POST" });
       if (!res.ok) throw new Error("Failed to trigger analysis");
-      return res.json();
+      return res.json() as Promise<JobAccepted>;
     }
   );
 }
@@ -31,7 +31,7 @@ export function useRefreshMovie(id: string) {
     async () => {
       const res = await fetch(API.libraryRefresh(id), { method: "POST" });
       if (!res.ok) throw new Error("Failed to refresh movie");
-      return res.json();
+      return res.json() as Promise<JobAccepted>;
     }
   );
 }
@@ -42,7 +42,7 @@ export function useRefreshMovieExternalScores(id: string) {
     async () => {
       const res = await fetch(API.libraryExternalScores(id), { method: "POST" });
       if (!res.ok) throw new Error("Failed to refresh external scores");
-      return res.json();
+      return res.json() as Promise<JobAccepted>;
     }
   );
 }

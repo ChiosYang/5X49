@@ -19,6 +19,10 @@ const encodeMediaPath = (path: string) => {
 export const API = {
     baseUrl: API_BASE_URL,
 
+    // === Jobs ===
+    jobs: () => `${API_BASE_URL}/jobs`,
+    job: (id: string) => `${API_BASE_URL}/jobs/${encodeURIComponent(id)}`,
+
     // === Media / Static Resources ===
     mediaUrl: (path: string) => `${API_BASE_URL}${encodeMediaPath(path)}`,
 

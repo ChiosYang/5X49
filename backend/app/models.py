@@ -75,3 +75,19 @@ class Movie(SQLModel, table=True):
     scrape_error: Optional[str] = None
     scraped_at: Optional[str] = None
     tmdb_confidence: Optional[float] = None
+
+
+class Job(SQLModel, table=True):
+    id: str = Field(primary_key=True)
+    type: str = Field(index=True)
+    status: str = Field(default="queued", index=True)
+    payload: Optional[dict] = Field(default=None, sa_column=Column(JSON))
+    progress: Optional[dict] = Field(default=None, sa_column=Column(JSON))
+    result: Optional[dict] = Field(default=None, sa_column=Column(JSON))
+    error: Optional[str] = None
+    attempts: int = Field(default=0)
+    max_attempts: int = Field(default=1)
+    created_at: str = Field(default_factory=utc_now_iso, index=True)
+    updated_at: str = Field(default_factory=utc_now_iso)
+    started_at: Optional[str] = None
+    finished_at: Optional[str] = None

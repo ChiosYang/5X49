@@ -94,12 +94,57 @@ This document describes the REST API endpoints available in the backend applicat
 - **Events**:
   - `connected`: Emitted when the stream is established.
   - `library_changed`: Emitted after library records are scanned, reconciled, seeded, cleared, or marked missing.
+  - `job_queued`, `job_started`, `job_succeeded`, `job_failed`: Emitted by the background job runtime for queued actor jobs.
   - `heartbeat`: Emitted periodically to keep long-lived connections open.
 - **Example Event**:
   ```text
   event: library_changed
   data: {"reason":"folder_scanned","movie_id":"603_1999","folder_path":"/media/The Matrix (1999)","timestamp":"2026-05-11T00:00:00+00:00"}
   ```
+
+### Background Jobs
+- **URL**: `/jobs`
+- **Method**: `GET`
+- **Description**: Lists recent background jobs created by long-running library, metadata, analysis, organizer, and external score actions.
+- **Query Parameters**:
+  - `status` (string, optional): Filter by `queued`, `running`, `succeeded`, `failed`, or `cancelled`.
+  - `limit` (integer, optional): Number of jobs to return, 1-200. Defaults to 50.
+- **Response**: Array of `Job` objects.
+
+### Get Background Job
+- **URL**: `/jobs/{job_id}`
+- **Method**: `GET`
+- **Description**: Returns one job record.
+- **Response**:
+  ```json
+  {
+    "id": "job_abc",
+    "type": "library.reconcile",
+    "status": "succeeded",
+    "payload": {"media_dir": "/media"},
+    "progress": null,
+    "result": {"scanned": 10, "added": 2, "missing": 1},
+    "error": null,
+    "attempts": 1,
+    "max_attempts": 1,
+    "created_at": "2026-05-19T00:00:00+00:00",
+    "updated_at": "2026-05-19T00:00:03+00:00",
+    "started_at": "2026-05-19T00:00:01+00:00",
+    "finished_at": "2026-05-19T00:00:03+00:00"
+  }
+  ```
+- **Errors**: `404 Job not found`.
+
+Long-running mutation endpoints return an accepted-job envelope:
+
+```json
+{
+  "status": "queued",
+  "message": "Library reconcile queued",
+  "job_id": "job_abc",
+  "job": {}
+}
+```
 
 ### Get Movie Details
 - **URL**: `/library/{movie_id}`
@@ -113,30 +158,21 @@ This document describes the REST API endpoints available in the backend applicat
 ### Refresh Movie External Scores
 - **URL**: `/library/{movie_id}/external-scores/refresh`
 - **Method**: `POST`
-- **Description**: Refreshes external score and ranking signals for one movie. The current implementation imports TSPDT data from `dataset/TSPDT - 1,000 Greatest Films (Table).csv` and writes high-confidence matches to the movie's `external_scores`.
+- **Description**: Queues a job to refresh external score and ranking signals for one movie. The current implementation imports TSPDT data from `dataset/TSPDT - 1,000 Greatest Films (Table).csv` and writes high-confidence matches to the movie's `external_scores`.
 - **Path Parameters**:
   - `movie_id` (string): The ID of the movie.
 - **Query Parameters**:
   - `force` (boolean, optional): Reserved for sources with TTL caches. Defaults to `false`.
-- **Response**:
-  ```json
-  {
-    "status": "success",
-    "movie_id": "238_1972",
-    "movie": {},
-    "updated_sources": ["tspdt"],
-    "skipped_sources": []
-  }
-  ```
+- **Response**: Accepted-job envelope. Final result is stored in the job's `result`.
 - **Errors**: `400 Invalid ID format`, `404 Movie not found`.
 
 ### Refresh Library External Scores
 - **URL**: `/library/external-scores/refresh`
 - **Method**: `POST`
-- **Description**: Starts a background refresh of external score sources for available movies.
+- **Description**: Queues a background refresh of external score sources for available movies.
 - **Query Parameters**:
   - `force` (boolean, optional): Reserved for sources with TTL caches. Defaults to `false`.
-- **Response**: `{"status": "started", "message": "External score refresh started"}`
+- **Response**: Accepted-job envelope.
 
 ### Get External Score Refresh Status
 - **URL**: `/library/external-scores/status`
@@ -162,44 +198,35 @@ This document describes the REST API endpoints available in the backend applicat
 ### Scan Library (from Directory)
 - **URL**: `/library/scan`
 - **Method**: `POST`
-- **Description**: Reconciles a media directory, scans movie folders, upserts discovered records, and marks disappeared movies as missing.
+- **Description**: Queues a media directory reconciliation job that scans movie folders, upserts discovered records, and marks disappeared movies as missing.
 - **Query Parameters**:
   - `media_dir` (string, optional): Target directory to scan. Defaults to system media dir config.
-- **Response**: 
-  ```json
-  {
-    "scanned": 10,
-    "added": 10,
-    "missing": 1,
-    "queued_for_analysis": 10,
-    "media_dir": "/path/to/media"
-  }
-  ```
+- **Response**: Accepted-job envelope. Final reconcile counts are stored in the job's `result`.
 
 ### Reconcile Library
 - **URL**: `/library/reconcile`
 - **Method**: `POST`
-- **Description**: Performs a full library reconciliation and marks movies not seen in the pass as `missing`.
+- **Description**: Queues a full library reconciliation and marks movies not seen in the pass as `missing`.
 - **Query Parameters**:
   - `media_dir` (string, optional): Target directory to scan. Defaults to system media dir config.
-- **Response**: `{"scanned": 10, "added": 2, "missing": 1, "media_dir": "/path/to/media"}`
+- **Response**: Accepted-job envelope. Final reconcile counts are stored in the job's `result`.
 
 ### Scan Folder
 - **URL**: `/library/scan-folder`
 - **Method**: `POST`
-- **Description**: Scans a single movie folder and upserts the corresponding movie record.
+- **Description**: Queues a scan for a single movie folder and upserts the corresponding movie record.
 - **Query Parameters**:
   - `folder_path` (string, required): Absolute path to a movie folder.
-- **Response**: `{"status": "success", "movie": Movie}`
+- **Response**: Accepted-job envelope. Final movie payload is stored in the job's `result`.
 
 ### Refresh Movie
 - **URL**: `/library/{movie_id}/refresh`
 - **Method**: `POST`
-- **Description**: Refreshes one movie from its known local folder while preserving the existing movie ID.
+- **Description**: Queues a refresh for one movie from its known local folder while preserving the existing movie ID.
 - **Path Parameters**:
   - `movie_id` (string): The ID of the movie.
-- **Response**: `{"status": "success", "movie_id": "...", "updated": true, "movie": Movie}`
-- **Errors**: `400 Invalid ID format`, `404 Movie not found`, `409 Movie does not have a folder path`.
+- **Response**: Accepted-job envelope. Final movie payload is stored in the job's `result`.
+- **Errors**: `400 Invalid ID format`, `404 Movie not found`.
 
 ### Get Movie Artwork Options
 - **URL**: `/library/{movie_id}/artwork`
@@ -317,7 +344,7 @@ This document describes the REST API endpoints available in the backend applicat
   - `all`: Every available movie.
   - `selected`: Only IDs listed in `movie_ids`.
 - **Confirmation Mode**: When `/settings/scrape-confirmation` is enabled, automatic matches are counted as `needs_review` and are not written until confirmed with `/library/{movie_id}/scrape/confirm`.
-- **Response**: `{"status": "started", "message": "Metadata scrape started"}`
+- **Response**: Accepted-job envelope. Final batch scrape counts are stored in the job's `result`.
 
 Root video organization accepts the same `language` and `artwork_language` scrape options when moving and scraping direct media-root videos.
 
@@ -345,7 +372,7 @@ Root video organization accepts the same `language` and `artwork_language` scrap
 ### Organize Root Videos
 - **URL**: `/library/organize-root`
 - **Method**: `POST`
-- **Description**: Starts a background job that looks only at video files placed directly in the configured media root, waits for stable files, matches them with TMDB, moves high-confidence matches into movie folders, then scrapes metadata/artwork/NFO. When `/settings/scrape-confirmation` is enabled, matched files return `needs_review` before any move or scrape writes occur.
+- **Description**: Queues a background job that looks only at video files placed directly in the configured media root, waits for stable files, matches them with TMDB, moves high-confidence matches into movie folders, then scrapes metadata/artwork/NFO. When `/settings/scrape-confirmation` is enabled, matched files return `needs_review` before any move or scrape writes occur.
 - **Body**:
   ```json
   {
@@ -360,12 +387,12 @@ Root video organization accepts the same `language` and `artwork_language` scrap
 - **Rename Styles**:
   - `preserve_stem`: Keep the original video filename and move it into a matched movie folder.
   - `title_year`: Rename the video to the matched title/year.
-- **Response**: `{"status": "started", "message": "Root video organization started"}`
+- **Response**: Accepted-job envelope. Final organization counts are stored in the job's `result`.
 
 ### Confirm Root Video Organization
 - **URL**: `/library/organize-root/confirm`
 - **Method**: `POST`
-- **Description**: Moves one stable direct media-root video into a movie folder and scrapes it using a user-confirmed TMDB ID. This is the confirmation path for root videos when `/settings/scrape-confirmation` is enabled.
+- **Description**: Queues a job that moves one stable direct media-root video into a movie folder and scrapes it using a user-confirmed TMDB ID. This is the confirmation path for root videos when `/settings/scrape-confirmation` is enabled.
 - **Body**:
   ```json
   {
@@ -380,18 +407,8 @@ Root video organization accepts the same `language` and `artwork_language` scrap
     }
   }
   ```
-- **Response**:
-  ```json
-  {
-    "status": "success",
-    "source_path": "/media/The.Matrix.1999.1080p.mkv",
-    "target_path": "/media/The Matrix (1999)/The.Matrix.1999.1080p.mkv",
-    "movie_id": "local_...",
-    "tmdb_id": 603,
-    "scrape_status": "success"
-  }
-  ```
-- **Errors**: `400` when the file is not a stable direct root video, `409` when the target exists or organization fails.
+- **Response**: Accepted-job envelope. Final organization payload is stored in the job's `result`.
+- **Errors**: `404 Root video file not found`.
 
 ### Get Root Organization Status
 - **URL**: `/library/organize/status`
@@ -495,10 +512,10 @@ Root video organization accepts the same `language` and `artwork_language` scrap
 ### Trigger Analysis (Background)
 - **URL**: `/library/analyze/{movie_id}`
 - **Method**: `POST`
-- **Description**: Manually triggers an analysis run for a specific movie in the background.
+- **Description**: Queues an analysis run for a specific movie in the background.
 - **Path Parameters**:
   - `movie_id` (string): The ID of the movie.
-- **Response**: `{"message": "Analysis queued for {movie_id}"}`
+- **Response**: Accepted-job envelope.
 
 ---
 
@@ -704,7 +721,7 @@ Root video organization accepts the same `language` and `artwork_language` scrap
 - **URL**: `/sys/scan-library`
 - **Method**: `POST`
 - **Description**: Starts a background reconciliation for the configured media library without returning immediate scan stats.
-- **Response**: `{"status": "success", "message": "Library scan started"}`
+- **Response**: Accepted-job envelope.
 
 ### Clean Inbox (Agent Stream)
 - **URL**: `/api/agents/clean-inbox`
@@ -714,6 +731,20 @@ Root video organization accepts the same `language` and `artwork_language` scrap
 ---
 
 ## Data Models
+
+### Job schema
+
+Background jobs are persisted in SQLite and executed by the in-process actor runtime.
+
+- `id` (String): Primary key, formatted as `job_<uuid-hex>`.
+- `type` (String): Actor command such as `library.reconcile`, `metadata.scrape_library`, `analysis.analyze_movie`, or `organizer.organize_root`.
+- `status` (String): `queued`, `running`, `succeeded`, `failed`, or `cancelled`.
+- `payload` (Object, Optional): Input captured when the job was queued.
+- `progress` (Object, Optional): Reserved for progress updates.
+- `result` (Object, Optional): Final handler result for succeeded jobs.
+- `error` (String, Optional): Failure message for failed jobs.
+- `attempts` / `max_attempts` (Integer): Execution attempt counters.
+- `created_at`, `updated_at`, `started_at`, `finished_at` (String, Optional): UTC ISO timestamps.
 
 ### Movie schema
 The core database payload associated with movies.

@@ -27,24 +27,26 @@ description: 电影族谱 API (FastAPI) 的接口调用指南
 |------|------|------|
 | GET | `/library` | 获取所有电影 |
 | GET | `/library/events` | 订阅资料库变更 SSE |
+| GET | `/jobs` | 列出后台 Actor/Job Runtime 任务 |
+| GET | `/jobs/{job_id}` | 获取单个后台任务状态、结果和错误 |
 | GET | `/library/{movie_id}` | 获取指定电影详情 |
 | POST | `/library/seed` | 填充测试数据 |
-| POST | `/library/scan?media_dir=/path` | 扫描并校准目录，新增/更新电影并标记缺失 |
-| POST | `/library/reconcile?media_dir=/path` | 全量校准资料库 |
-| POST | `/library/scan-folder?folder_path=/path` | 扫描单个电影文件夹 |
-| POST | `/library/{movie_id}/refresh` | 按已知本地文件夹刷新单部电影 |
-| POST | `/library/{movie_id}/external-scores/refresh` | 刷新单部电影的外部评分/榜单信号 |
-| POST | `/library/external-scores/refresh` | 后台批量刷新外部评分/榜单信号 |
+| POST | `/library/scan?media_dir=/path` | 排队扫描并校准目录，新增/更新电影并标记缺失 |
+| POST | `/library/reconcile?media_dir=/path` | 排队全量校准资料库 |
+| POST | `/library/scan-folder?folder_path=/path` | 排队扫描单个电影文件夹 |
+| POST | `/library/{movie_id}/refresh` | 排队按已知本地文件夹刷新单部电影 |
+| POST | `/library/{movie_id}/external-scores/refresh` | 排队刷新单部电影的外部评分/榜单信号 |
+| POST | `/library/external-scores/refresh` | 排队批量刷新外部评分/榜单信号 |
 | GET | `/library/external-scores/status` | 获取外部评分刷新状态 |
 | GET | `/library/{movie_id}/artwork` | 获取可选择的 TMDB 海报/背景图 |
 | PUT | `/library/{movie_id}/artwork` | 应用用户选择的 TMDB 海报/背景图 |
 | GET | `/metadata/search?query=xxx&year=1999` | 使用 TMDB 搜索候选元数据 |
 | POST | `/library/{movie_id}/scrape` | 使用 TMDB 刮削单部电影，写入图片和 NFO |
 | POST | `/library/{movie_id}/scrape/confirm?tmdb_id=123` | 使用人工确认的 TMDB ID 刮削 |
-| POST | `/library/scrape` | 后台批量刮削未匹配/缺图片/指定电影 |
+| POST | `/library/scrape` | 排队批量刮削未匹配/缺图片/指定电影 |
 | GET | `/library/scrape/status` | 获取批量刮削状态 |
-| POST | `/library/organize-root` | 整理媒体根目录直属视频并刮削 |
-| POST | `/library/organize-root/confirm` | 使用人工确认的 TMDB ID 整理根目录直属视频 |
+| POST | `/library/organize-root` | 排队整理媒体根目录直属视频并刮削 |
+| POST | `/library/organize-root/confirm` | 排队使用人工确认的 TMDB ID 整理根目录直属视频 |
 | GET/PUT | `/settings/scrape-confirmation` | 获取/设置自动刮削前是否必须人工确认 |
 | GET/PUT | `/settings/artwork-language` | 获取/设置 TMDB 图片语言，独立于元数据语言 |
 | GET | `/library/organize/status` | 获取根目录整理状态 |
@@ -60,7 +62,7 @@ description: 电影族谱 API (FastAPI) 的接口调用指南
 | 方法 | 路径 | 说明 |
 |------|------|------|
 | GET | `/analyze/{movie_name}` | 同步分析电影族谱 |
-| POST | `/library/analyze/{movie_id}` | 后台触发分析 |
+| POST | `/library/analyze/{movie_id}` | 排队后台分析 |
 
 ### 设置
 
@@ -89,10 +91,35 @@ description: 电影族谱 API (FastAPI) 的接口调用指南
 | 方法 | 路径 | 说明 |
 |------|------|------|
 | GET | `/sys/list-dirs?path=/` | 列出指定路径的子目录 |
-| POST | `/sys/scan-library` | 异步触发后台库扫描 |
+| POST | `/sys/scan-library` | 排队后台库扫描 |
 | GET | `/api/agents/clean-inbox` | 召唤 Librarian Agent 执行任务 (SSE返回) |
 
 ## 调用示例
+
+### 后台任务运行时
+扫描、校准、批量刮削、根目录整理、分析、刷新外部评分等长任务会立即返回 queued job，而不是同步返回最终结果。典型响应：
+
+```json
+{
+  "status": "queued",
+  "message": "Library reconcile queued",
+  "job_id": "job_abc",
+  "job": {
+    "id": "job_abc",
+    "type": "library.reconcile",
+    "status": "queued"
+  }
+}
+```
+
+查看任务：
+
+```bash
+curl -s http://127.0.0.1:11548/jobs
+curl -s http://127.0.0.1:11548/jobs/job_abc
+```
+
+`GET /library/events` 除 `library_changed` 外，还会推送 `job_queued`、`job_started`、`job_succeeded`、`job_failed`。任务完成后的最终结果位于 job 的 `result` 字段，失败原因位于 `error` 字段。
 
 ### 获取所有电影
 ```bash
@@ -112,17 +139,19 @@ curl -s -X POST http://127.0.0.1:11548/library/238_1972/external-scores/refresh
 curl -s -X POST http://127.0.0.1:11548/library/external-scores/refresh
 curl -s http://127.0.0.1:11548/library/external-scores/status
 ```
-当前实现从 `dataset/TSPDT - 1,000 Greatest Films (Table).csv` 导入 TSPDT 榜单，只会自动写入高置信度的标题/年份/导演匹配。写入后的 `external_scores` 条目包含 `source=tspdt`、`kind=rank`、`rank`、`previous_rank`、`list_name`、`edition`、`matched_by` 和 `confidence`。
+刷新接口返回 queued job。当前实现从 `dataset/TSPDT - 1,000 Greatest Films (Table).csv` 导入 TSPDT 榜单，只会自动写入高置信度的标题/年份/导演匹配。写入后的 `external_scores` 条目包含 `source=tspdt`、`kind=rank`、`rank`、`previous_rank`、`list_name`、`edition`、`matched_by` 和 `confidence`。
 
 ### 触发电影分析
 ```bash
 curl -s -X POST http://127.0.0.1:11548/library/analyze/96721_2013
 ```
+返回 queued job；分析结果写回电影详情的 `analysis_status` 和 `analysis_data`。
 
 ### 刷新单部电影
 ```bash
 curl -s -X POST http://127.0.0.1:11548/library/96721_2013/refresh
 ```
+返回 queued job；最终刷新结果见 job `result`。
 
 ### 选择电影海报/背景图
 ```bash
@@ -177,6 +206,7 @@ curl -s -X POST http://127.0.0.1:11548/library/scrape \
 ```
 `unscraped` 只处理 `metadata_source=filename` 且 `scrape_status=pending/failed` 的可用电影；`ignored` 和 `missing` 会跳过。
 如果已开启 `/settings/scrape-confirmation`，批量刮削会把自动匹配项计入 `needs_review`，不会直接写图片、NFO 或匹配元数据。
+返回 queued job；批量统计见 job `result` 或 `/library/scrape/status`。
 
 ### 整理媒体根目录直属视频
 ```bash
@@ -186,6 +216,7 @@ curl -s -X POST http://127.0.0.1:11548/library/organize-root \
 ```
 
 只处理直接放在媒体根目录下的视频文件。高置信度 TMDB 匹配后会创建电影目录、移动视频、扫描入库并刮削；低置信度会跳过并在状态中返回 `needs_review`。如果已开启 `/settings/scrape-confirmation`，匹配项会在移动文件前返回 `needs_review`。
+返回 queued job；整理统计见 job `result` 或 `/library/organize/status`。
 
 ### 确认根目录视频并整理
 ```bash
@@ -217,6 +248,7 @@ curl -s -X DELETE http://127.0.0.1:11548/library/missing
 ```bash
 curl -s -X POST http://127.0.0.1:11548/library/reconcile
 ```
+返回 queued job；校准统计见 job `result` 或 `/library/sync/status`。
 
 ### 开启自动监听
 ```bash
@@ -242,4 +274,5 @@ curl -s -X PUT "http://127.0.0.1:11548/settings/model?model_name=moonshotai/kimi
 10. **发现记录** - 无 NFO 视频会作为发现记录入库，通常是 `metadata_source=filename`、`scrape_status=pending`；它不是已确认电影身份，需刮削或人工确认后变为 `matched`。发现记录和 TMDB 匹配都以主视频文件名解析标题/年份，目录名只作为物理容器
 11. **根目录整理** - `auto_organize_root_videos` 开启后，watcher 会整理媒体根目录直属稳定视频；默认保留原视频文件名，只移动到匹配电影目录并刮削。`/library/root-videos` 会列出待整理文件，避免用户看不见根目录散片。`scrape_require_confirmation` 开启时会在移动文件前停在 `needs_review`，需通过 `/library/organize-root/confirm` 传入确认的 `path` 和 `tmdb_id`
 12. **外部评分** - `external_scores` 是可选字段，当前 TSPDT 数据来自仓库 `dataset/` 下的 CSV 离线数据集。由于数据集没有 TMDB/IMDb ID，后端只自动保存高置信度匹配，低置信度或未命中电影会跳过，不改变已有评分
-13. **推荐使用 http_request 插件** - 如果有安装的话，比 curl 更安全
+13. **后台任务** - 扫描、校准、批量刮削、根目录整理、分析、刷新外部评分等长任务由内置 Actor/Job Runtime 执行。调用方应保存 `job_id`，通过 `/jobs/{job_id}` 或 SSE job 事件追踪最终结果
+14. **推荐使用 http_request 插件** - 如果有安装的话，比 curl 更安全

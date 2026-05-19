@@ -4,7 +4,6 @@ from pathlib import Path
 from typing import Optional
 
 from app.services.event_bus import library_event_bus
-from app.services.library_sync import library_sync_service
 from app.services.settings import (
     get_auto_organize_root_videos,
     get_media_dir,
@@ -222,9 +221,9 @@ class LibraryWatcher:
         for path in previous_paths - current_paths:
             was_directory = previous[path][2]
             if was_directory:
-                library_sync_service.mark_path_missing(path)
+                self._enqueue_job("library.mark_path_missing", {"path": path})
             elif Path(path).suffix.lower() in self.video_extensions:
-                library_sync_service.mark_path_missing(path)
+                self._enqueue_job("library.mark_path_missing", {"path": path})
             else:
                 self._queue_folder(str(Path(path).parent))
 
@@ -240,9 +239,9 @@ class LibraryWatcher:
                 was_directory = path_obj.suffix == ""
 
             if was_directory:
-                library_sync_service.mark_path_missing(normalized)
+                self._enqueue_job("library.mark_path_missing", {"path": normalized})
             elif path_obj.suffix.lower() in self.video_extensions:
-                library_sync_service.mark_path_missing(normalized)
+                self._enqueue_job("library.mark_path_missing", {"path": normalized})
                 if self._is_direct_media_root_child(path_obj):
                     library_event_bus.publish_library_changed("root_videos_changed")
             else:
@@ -286,16 +285,19 @@ class LibraryWatcher:
                     continue
                 if self._is_media_root(folder_path):
                     if get_auto_organize_root_videos():
-                        try:
-                            from app.services.metadata.organizer import root_video_organizer
-
-                            root_video_organizer.organize_root(str(folder_path))
-                        except Exception as exc:
-                            self._record_error(str(exc))
+                        self._enqueue_job("organizer.organize_root", {"media_dir": str(folder_path)})
                     else:
                         library_event_bus.publish_library_changed("root_videos_changed")
                     continue
-                library_sync_service.scan_folder(folder)
+                self._enqueue_job("library.scan_folder", {"folder_path": folder})
+
+    def _enqueue_job(self, job_type: str, payload: dict):
+        try:
+            from app.jobs import job_runtime
+
+            job_runtime.enqueue(job_type, payload)
+        except Exception as exc:
+            self._record_error(str(exc))
 
     def _watch_filter(self, change, path: str) -> bool:
         path_obj = Path(path)
