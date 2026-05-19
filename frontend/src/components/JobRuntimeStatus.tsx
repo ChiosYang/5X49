@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { AlertTriangle, CheckCircle2, Clock3, Loader2, ListTodo } from "lucide-react";
 import { useJobCache, useJobs } from "@/hooks/useJobs";
@@ -62,7 +62,6 @@ export default function JobRuntimeStatus() {
   const router = useRouter();
   const { data: jobs = [] } = useJobs();
   const { upsertJob, refreshJobs } = useJobCache();
-  const [expanded, setExpanded] = useState(false);
   const refreshTimer = useRef<number | null>(null);
 
   const activeJobs = useMemo(
@@ -121,12 +120,10 @@ export default function JobRuntimeStatus() {
   }, [refreshJobs, router, upsertJob]);
 
   return (
-    <div className="relative text-white">
+    <div className="group/jobs relative text-white">
       <button
         type="button"
-        onClick={() => setExpanded((value) => !value)}
         className="relative flex h-10 w-10 items-center justify-center text-white drop-shadow-lg transition-opacity hover:opacity-70"
-        aria-expanded={expanded}
         aria-label="Background jobs"
         title="Background jobs"
       >
@@ -144,42 +141,40 @@ export default function JobRuntimeStatus() {
         )}
       </button>
 
-      {expanded && (
-        <div className="absolute right-0 top-full z-[80] w-[min(24rem,calc(100vw-2rem))] pt-3">
-          <div className="max-h-80 overflow-y-auto border border-neutral-800 bg-black/95 p-2 shadow-2xl shadow-black/60 backdrop-blur scrollbar-minimal">
-            <div className="border-b border-neutral-900 px-3 py-2">
-              <p className="text-xs font-bold uppercase tracking-widest text-neutral-300">Background Jobs</p>
-              <p className="mt-1 truncate text-xs text-neutral-600">
-                {latestJob ? `${jobLabel(latestJob.type)} - ${latestJob.status}` : "No recent jobs"}
-              </p>
+      <div className="pointer-events-none absolute right-0 top-full z-[80] w-[min(24rem,calc(100vw-2rem))] pt-3 opacity-0 transition-opacity duration-150 group-hover/jobs:pointer-events-auto group-hover/jobs:opacity-100 group-focus-within/jobs:pointer-events-auto group-focus-within/jobs:opacity-100">
+        <div className="max-h-80 overflow-y-auto border border-neutral-800 bg-black/95 p-2 shadow-2xl shadow-black/60 backdrop-blur scrollbar-minimal">
+          <div className="border-b border-neutral-900 px-3 py-2">
+            <p className="text-xs font-bold uppercase tracking-widest text-neutral-300">Background Jobs</p>
+            <p className="mt-1 truncate text-xs text-neutral-600">
+              {latestJob ? `${jobLabel(latestJob.type)} - ${latestJob.status}` : "No recent jobs"}
+            </p>
+          </div>
+          {jobs.length === 0 ? (
+            <div className="px-3 py-6 text-center text-xs font-bold uppercase tracking-widest text-neutral-600">
+              No Jobs
             </div>
-            {jobs.length === 0 ? (
-              <div className="px-3 py-6 text-center text-xs font-bold uppercase tracking-widest text-neutral-600">
-                No Jobs
-              </div>
-            ) : (
-              <ul className="mt-2 space-y-1">
-                {jobs.map((job) => (
-                  <li key={job.id} className="grid grid-cols-[auto_1fr] gap-3 border border-neutral-900 bg-neutral-950/70 p-3">
-                    <span className="mt-0.5">{statusIcon(job)}</span>
-                    <span className="min-w-0">
-                      <span className="flex min-w-0 items-center justify-between gap-3">
-                        <span className="truncate text-xs font-bold uppercase tracking-widest">{jobLabel(job.type)}</span>
-                        <span className="shrink-0 text-[10px] font-bold uppercase tracking-widest text-neutral-500">
-                          {job.status}
-                        </span>
-                      </span>
-                      <span className={`mt-1 block truncate text-xs ${job.status === "failed" ? "text-red-400" : "text-neutral-500"}`}>
-                        {resultSummary(job)}
+          ) : (
+            <ul className="mt-2 space-y-1">
+              {jobs.map((job) => (
+                <li key={job.id} className="grid grid-cols-[auto_1fr] gap-3 border border-neutral-900 bg-neutral-950/70 p-3">
+                  <span className="mt-0.5">{statusIcon(job)}</span>
+                  <span className="min-w-0">
+                    <span className="flex min-w-0 items-center justify-between gap-3">
+                      <span className="truncate text-xs font-bold uppercase tracking-widest">{jobLabel(job.type)}</span>
+                      <span className="shrink-0 text-[10px] font-bold uppercase tracking-widest text-neutral-500">
+                        {job.status}
                       </span>
                     </span>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
+                    <span className={`mt-1 block truncate text-xs ${job.status === "failed" ? "text-red-400" : "text-neutral-500"}`}>
+                      {resultSummary(job)}
+                    </span>
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
-      )}
+      </div>
     </div>
   );
 }
