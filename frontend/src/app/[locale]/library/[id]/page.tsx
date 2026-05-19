@@ -2,7 +2,6 @@ import { getTranslations } from "next-intl/server";
 import { Play } from "lucide-react";
 import { Link } from "@/i18n/routing";
 import { API } from "@/lib/api";
-import Providers from "@/components/Providers";
 import { getLibraryMovie } from "@/lib/server-api";
 import ExternalScoreStrip from "../../components/ExternalScoreStrip";
 import MovieAnalysisSection from "./MovieAnalysisSection";
@@ -111,9 +110,7 @@ export default async function MovieDetailPage({ params }: MovieDetailPageProps) 
              <span className="text-xl md:text-2xl font-bold uppercase">{t("watchNow")}</span>
              <Play className="w-6 h-6 fill-current" />
          </div>
-         <Providers>
-           <MovieRefreshButton movieId={id} />
-         </Providers>
+         <MovieRefreshButton movieId={id} />
       </div>
 
       {/* Synopsis & Meta */}
@@ -172,9 +169,7 @@ export default async function MovieDetailPage({ params }: MovieDetailPageProps) 
       )}
 
       {/* Genealogy Analysis Section */}
-      <Providers>
-        <MovieAnalysisSection movieId={id} initialMovie={movie} />
-      </Providers>
+      <MovieAnalysisSection movieId={id} initialMovie={movie} />
     </div>
   );
 }

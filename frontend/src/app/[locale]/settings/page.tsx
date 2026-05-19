@@ -4,7 +4,6 @@ import { useState, useEffect, useMemo } from "react";
 import { Loader2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useRouter, usePathname } from "@/i18n/routing";
-import Providers from "@/components/Providers";
 
 import FileBrowser from "@/components/FileBrowser";
 import LibrarianTerminal from "@/components/LibrarianTerminal";
@@ -1080,9 +1079,5 @@ function SettingsContent() {
 }
 
 export default function SettingsPage() {
-  return (
-    <Providers>
-      <SettingsContent />
-    </Providers>
-  );
+  return <SettingsContent />;
 }

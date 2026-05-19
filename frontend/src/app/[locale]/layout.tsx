@@ -22,6 +22,7 @@ import {getMessages, setRequestLocale} from 'next-intl/server';
 import {notFound} from 'next/navigation';
 import {routing} from '@/i18n/routing';
 import Navigation from "./components/Navigation";
+import Providers from "@/components/Providers";
 
 export default async function RootLayout({
   children,
@@ -50,10 +51,12 @@ export default async function RootLayout({
         className={`${inter.variable} ${playfair.variable} antialiased`}
       >
         <NextIntlClientProvider messages={messages}>
-          <Navigation />
-          <main>
-            {children}
-          </main>
+          <Providers>
+            <Navigation />
+            <main>
+              {children}
+            </main>
+          </Providers>
         </NextIntlClientProvider>
       </body>
     </html>
