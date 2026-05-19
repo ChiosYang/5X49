@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Award, Clapperboard, EyeOff, Loader2, RefreshCw, Search } from "lucide-react";
 import {
@@ -10,6 +10,7 @@ import {
   useRefreshMovieExternalScores,
   useScrapeMovie,
 } from "@/hooks/useMovie";
+import { useJobs } from "@/hooks/useJobs";
 import { API } from "@/lib/api";
 import type { MetadataSearchResult } from "@/types/movie";
 import MovieArtworkPicker from "./MovieArtworkPicker";
@@ -27,8 +28,17 @@ const prependCandidate = (
   candidate: MetadataSearchResult,
 ) => [candidate, ...candidates.filter((item) => item.tmdb_id !== candidate.tmdb_id)];
 
+const externalScoreResultMessage = (result?: Record<string, unknown> | null) => {
+  const updatedSources = result?.updated_sources;
+  if (Array.isArray(updatedSources) && updatedSources.length > 0) {
+    return "External scores refreshed";
+  }
+  return "No external score match found";
+};
+
 export default function MovieRefreshButton({ movieId }: { movieId: string }) {
   const router = useRouter();
+  const { data: jobs = [] } = useJobs();
   const { trigger, isMutating, error } = useRefreshMovie(movieId);
   const {
     trigger: refreshExternalScores,
@@ -58,6 +68,57 @@ export default function MovieRefreshButton({ movieId }: { movieId: string }) {
   const [searchYear, setSearchYear] = useState("");
   const [tmdbInput, setTmdbInput] = useState("");
   const [isSearching, setIsSearching] = useState(false);
+  const [externalScoreJobId, setExternalScoreJobId] = useState<string | null>(null);
+  const completedExternalScoreJob = useRef<string | null>(null);
+  const queuedMessageTimer = useRef<number | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (queuedMessageTimer.current) {
+        window.clearTimeout(queuedMessageTimer.current);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!externalScoreJobId) return;
+
+    const job = jobs.find((item) => item.id === externalScoreJobId);
+    if (!job) return;
+
+    if (job.status === "queued" || job.status === "running") {
+      return;
+    }
+
+    if (completedExternalScoreJob.current === job.id) return;
+    completedExternalScoreJob.current = job.id;
+    if (queuedMessageTimer.current) {
+      window.clearTimeout(queuedMessageTimer.current);
+      queuedMessageTimer.current = null;
+    }
+
+    setMessage(
+      job.status === "failed"
+        ? job.error || "External score refresh failed"
+        : externalScoreResultMessage(job.result),
+    );
+    router.refresh();
+
+    const timeout = window.setTimeout(() => {
+      setMessage("");
+      setExternalScoreJobId(null);
+      completedExternalScoreJob.current = null;
+    }, 3500);
+
+    return () => window.clearTimeout(timeout);
+  }, [externalScoreJobId, jobs, router]);
+
+  const clearQueuedMessageTimer = () => {
+    if (queuedMessageTimer.current) {
+      window.clearTimeout(queuedMessageTimer.current);
+      queuedMessageTimer.current = null;
+    }
+  };
 
   const handleRefresh = async () => {
     await trigger();
@@ -67,10 +128,19 @@ export default function MovieRefreshButton({ movieId }: { movieId: string }) {
   const handleRefreshExternalScores = async () => {
     const result = await refreshExternalScores();
     setMessage(result?.message || "External score refresh queued");
+    setExternalScoreJobId(result?.job_id || null);
+    completedExternalScoreJob.current = null;
+    clearQueuedMessageTimer();
+    queuedMessageTimer.current = window.setTimeout(() => {
+      setMessage("");
+      queuedMessageTimer.current = null;
+    }, 2500);
     router.refresh();
   };
 
   const handleScrape = async () => {
+    clearQueuedMessageTimer();
+    setExternalScoreJobId(null);
     setMessage("");
     setCandidates([]);
     setReviewOpen(false);
@@ -87,6 +157,8 @@ export default function MovieRefreshButton({ movieId }: { movieId: string }) {
   };
 
   const handleConfirm = async (tmdbId: number) => {
+    clearQueuedMessageTimer();
+    setExternalScoreJobId(null);
     const result = await confirmScrape(tmdbId);
     setCandidates([]);
     setReviewOpen(false);
@@ -98,6 +170,7 @@ export default function MovieRefreshButton({ movieId }: { movieId: string }) {
 
   const handleSearch = async () => {
     if (!searchQuery.trim()) return;
+    clearQueuedMessageTimer();
     setIsSearching(true);
     setShowAllCandidates(false);
     try {
@@ -122,6 +195,7 @@ export default function MovieRefreshButton({ movieId }: { movieId: string }) {
   };
 
   const handleDirectConfirm = async () => {
+    clearQueuedMessageTimer();
     const tmdbId = parseTmdbId(tmdbInput);
     if (!tmdbId) {
       setMessage("Enter a TMDB ID or movie link");
@@ -146,6 +220,7 @@ export default function MovieRefreshButton({ movieId }: { movieId: string }) {
   };
 
   const handleIgnore = async () => {
+    clearQueuedMessageTimer();
     await ignoreMovie();
     setMessage("Movie ignored");
     router.refresh();
