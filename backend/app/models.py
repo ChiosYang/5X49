@@ -84,9 +84,13 @@ class Job(SQLModel, table=True):
     payload: Optional[dict] = Field(default=None, sa_column=Column(JSON))
     progress: Optional[dict] = Field(default=None, sa_column=Column(JSON))
     result: Optional[dict] = Field(default=None, sa_column=Column(JSON))
+    result_summary: Optional[str] = None
     error: Optional[str] = None
     attempts: int = Field(default=0)
     max_attempts: int = Field(default=1)
+    priority: int = Field(default=0, index=True)
+    dedupe_key: Optional[str] = Field(default=None, index=True)
+    cancel_requested: bool = Field(default=False, index=True)
     created_at: str = Field(default_factory=utc_now_iso, index=True)
     updated_at: str = Field(default_factory=utc_now_iso)
     started_at: Optional[str] = None

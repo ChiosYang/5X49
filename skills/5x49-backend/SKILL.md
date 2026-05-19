@@ -29,6 +29,9 @@ description: 电影族谱 API (FastAPI) 的接口调用指南
 | GET | `/library/events` | 订阅资料库变更 SSE |
 | GET | `/jobs` | 列出后台 Actor/Job Runtime 任务 |
 | GET | `/jobs/{job_id}` | 获取单个后台任务状态、结果和错误 |
+| POST | `/jobs/{job_id}/cancel` | 取消排队任务或请求运行中任务取消 |
+| POST | `/jobs/{job_id}/retry` | 重试 failed/cancelled 任务 |
+| DELETE | `/jobs/{job_id}` | 删除已结束任务 |
 | GET | `/library/{movie_id}` | 获取指定电影详情 |
 | POST | `/library/seed` | 填充测试数据 |
 | POST | `/library/scan?media_dir=/path` | 排队扫描并校准目录，新增/更新电影并标记缺失 |
@@ -117,9 +120,11 @@ description: 电影族谱 API (FastAPI) 的接口调用指南
 ```bash
 curl -s http://127.0.0.1:11548/jobs
 curl -s http://127.0.0.1:11548/jobs/job_abc
+curl -s -X POST http://127.0.0.1:11548/jobs/job_abc/cancel
+curl -s -X POST http://127.0.0.1:11548/jobs/job_abc/retry
 ```
 
-`GET /library/events` 除 `library_changed` 外，还会推送 `job_queued`、`job_started`、`job_succeeded`、`job_failed`。任务完成后的最终结果位于 job 的 `result` 字段，失败原因位于 `error` 字段。
+`GET /library/events` 除 `library_changed` 外，还会推送 `job_queued`、`job_started`、`job_progress`、`job_succeeded`、`job_failed`、`job_cancelled`、`job_retried`。任务完成后的最终结果位于 job 的 `result` 字段，UI 文案位于 `result_summary`，失败原因位于 `error` 字段。批量刮削、根目录整理、批量外部评分会写入 `progress.current` / `progress.total`；重复提交同一 active job 会通过 `dedupe_key` 复用已有任务。
 
 ### 获取所有电影
 ```bash

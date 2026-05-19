@@ -103,9 +103,13 @@ def get_library():
     return library_manager.get_movies()
 
 @app.get("/jobs")
-def list_jobs(status: str | None = Query(default=None), limit: int = Query(default=50, ge=1, le=200)):
+def list_jobs(
+    status: str | None = Query(default=None),
+    type: str | None = Query(default=None),
+    limit: int = Query(default=50, ge=1, le=200),
+):
     """List recent background jobs."""
-    return job_runtime.list(status=status, limit=limit)
+    return job_runtime.list(status=status, job_type=type, limit=limit)
 
 @app.get("/jobs/{job_id}")
 def get_job(job_id: str):
@@ -115,10 +119,43 @@ def get_job(job_id: str):
         raise HTTPException(status_code=404, detail="Job not found")
     return job
 
+@app.post("/jobs/{job_id}/cancel")
+def cancel_job(job_id: str):
+    """Request cancellation for one background job."""
+    job = job_runtime.cancel(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+    return job
+
+@app.post("/jobs/{job_id}/retry")
+def retry_job(job_id: str):
+    """Retry a failed or cancelled background job."""
+    existing_job = job_runtime.get(job_id)
+    if not existing_job:
+        raise HTTPException(status_code=404, detail="Job not found")
+    if existing_job.get("status") not in {"failed", "cancelled"}:
+        raise HTTPException(status_code=409, detail="Only failed or cancelled jobs can be retried")
+    job = job_runtime.retry(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+    return job_response(job, "Job retry queued")
+
+@app.delete("/jobs/{job_id}")
+def delete_job(job_id: str):
+    """Delete a completed, failed, or cancelled background job."""
+    deleted = job_runtime.delete(job_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Job not found or still active")
+    return {"status": "success", "deleted": True}
+
 @app.post("/library/external-scores/refresh")
 def refresh_library_external_scores(force: bool = Query(default=False)):
     """Start a background refresh of external score sources for available movies."""
-    job = job_runtime.enqueue("external_scores.refresh_library", {"force": force})
+    job = job_runtime.enqueue(
+        "external_scores.refresh_library",
+        {"force": force},
+        dedupe_key=f"external_scores.refresh_library:{force}",
+    )
     return job_response(job, "External score refresh queued")
 
 @app.get("/library/external-scores/status")
@@ -189,7 +226,11 @@ def refresh_library_movie_external_scores(movie_id: str, force: bool = Query(def
 
     if not library_manager.get_movie(movie_id):
         raise HTTPException(status_code=404, detail="Movie not found")
-    job = job_runtime.enqueue("external_scores.refresh_movie", {"movie_id": movie_id, "force": force})
+    job = job_runtime.enqueue(
+        "external_scores.refresh_movie",
+        {"movie_id": movie_id, "force": force},
+        dedupe_key=f"external_scores.refresh_movie:{movie_id}:{force}",
+    )
     return job_response(job, "Movie external score refresh queued")
 
 @app.post("/library/seed")
@@ -211,7 +252,11 @@ def scan_library(media_dir: str = Query(default=None)):
     if not os.path.exists(target_dir):
         raise HTTPException(status_code=400, detail=f"Directory not found: {target_dir}")
     
-    job = job_runtime.enqueue("library.reconcile", {"media_dir": target_dir})
+    job = job_runtime.enqueue(
+        "library.reconcile",
+        {"media_dir": target_dir},
+        dedupe_key=f"library.reconcile:{target_dir}",
+    )
     return job_response(job, "Library scan queued")
 
 @app.post("/library/reconcile")
@@ -221,7 +266,11 @@ def reconcile_library(media_dir: str = Query(default=None)):
     if not os.path.exists(target_dir):
         raise HTTPException(status_code=400, detail=f"Directory not found: {target_dir}")
 
-    job = job_runtime.enqueue("library.reconcile", {"media_dir": target_dir})
+    job = job_runtime.enqueue(
+        "library.reconcile",
+        {"media_dir": target_dir},
+        dedupe_key=f"library.reconcile:{target_dir}",
+    )
     return job_response(job, "Library reconcile queued")
 
 @app.post("/library/scan-folder")
@@ -229,7 +278,11 @@ def scan_library_folder(folder_path: str):
     """Scan one movie folder and upsert its movie record."""
     if not Path(folder_path).exists():
         raise HTTPException(status_code=404, detail="Movie folder or video file not found")
-    job = job_runtime.enqueue("library.scan_folder", {"folder_path": folder_path})
+    job = job_runtime.enqueue(
+        "library.scan_folder",
+        {"folder_path": folder_path},
+        dedupe_key=f"library.scan_folder:{folder_path}",
+    )
     return job_response(job, "Folder scan queued")
 
 @app.post("/library/{movie_id}/refresh")
@@ -240,7 +293,11 @@ def refresh_library_movie(movie_id: str):
 
     if not library_manager.get_movie(movie_id):
         raise HTTPException(status_code=404, detail="Movie not found")
-    job = job_runtime.enqueue("library.refresh_movie", {"movie_id": movie_id})
+    job = job_runtime.enqueue(
+        "library.refresh_movie",
+        {"movie_id": movie_id},
+        dedupe_key=f"library.refresh_movie:{movie_id}",
+    )
     return job_response(job, "Movie refresh queued")
 
 @app.get("/library/{movie_id}/artwork")
@@ -326,6 +383,7 @@ def scrape_library(options: BatchScrapeOptions | None = None):
     job = job_runtime.enqueue(
         "metadata.scrape_library",
         {"options": (options or BatchScrapeOptions()).model_dump()},
+        dedupe_key=f"metadata.scrape_library:{(options or BatchScrapeOptions()).model_dump_json()}",
     )
     return job_response(job, "Metadata scrape queued")
 
@@ -343,6 +401,7 @@ def organize_root_library_videos(options: RootOrganizeOptions | None = None):
             "media_dir": get_media_dir() or DEFAULT_MEDIA_DIR,
             "options": options.model_dump() if options else None,
         },
+        dedupe_key=f"organizer.organize_root:{get_media_dir() or DEFAULT_MEDIA_DIR}",
     )
     return job_response(job, "Root video organization queued")
 
@@ -359,6 +418,7 @@ def confirm_root_library_video(payload: RootOrganizeConfirmRequest):
             "media_dir": get_media_dir() or DEFAULT_MEDIA_DIR,
             "options": (payload.options or RootOrganizeOptions()).model_dump(),
         },
+        dedupe_key=f"organizer.confirm_root_video:{payload.path}",
     )
     return job_response(job, "Root video confirmation queued")
 
@@ -383,7 +443,11 @@ def trigger_analysis(movie_id: str):
     if not library_manager.get_movie(movie_id):
         raise HTTPException(status_code=404, detail="Movie not found")
 
-    job = job_runtime.enqueue("analysis.analyze_movie", {"movie_id": movie_id})
+    job = job_runtime.enqueue(
+        "analysis.analyze_movie",
+        {"movie_id": movie_id},
+        dedupe_key=f"analysis.analyze_movie:{movie_id}",
+    )
     return job_response(job, f"Analysis queued for {movie_id}")
 
 @app.delete("/library")
@@ -671,7 +735,12 @@ def trigger_manual_scan():
     Manually trigger a library scan.
     """
     try:
-        job = job_runtime.enqueue("library.reconcile", {"media_dir": get_media_dir() or DEFAULT_MEDIA_DIR})
+        target_dir = get_media_dir() or DEFAULT_MEDIA_DIR
+        job = job_runtime.enqueue(
+            "library.reconcile",
+            {"media_dir": target_dir},
+            dedupe_key=f"library.reconcile:{target_dir}",
+        )
         return job_response(job, "Library scan queued")
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to start scan: {str(e)}")

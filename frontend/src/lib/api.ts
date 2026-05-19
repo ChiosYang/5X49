@@ -22,6 +22,8 @@ export const API = {
     // === Jobs ===
     jobs: () => `${API_BASE_URL}/jobs`,
     job: (id: string) => `${API_BASE_URL}/jobs/${encodeURIComponent(id)}`,
+    jobCancel: (id: string) => `${API_BASE_URL}/jobs/${encodeURIComponent(id)}/cancel`,
+    jobRetry: (id: string) => `${API_BASE_URL}/jobs/${encodeURIComponent(id)}/retry`,
 
     // === Media / Static Resources ===
     mediaUrl: (path: string) => `${API_BASE_URL}${encodeMediaPath(path)}`,

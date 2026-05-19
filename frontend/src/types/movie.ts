@@ -183,18 +183,30 @@ export interface RootVideo {
   status: "needs_organize" | "waiting_for_stability";
 }
 
-export type JobStatus = "queued" | "running" | "succeeded" | "failed" | "cancelled";
+export type JobStatus = "queued" | "running" | "succeeded" | "failed" | "cancelled" | "cancelling";
+
+export interface JobProgress {
+  stage?: string;
+  current?: number;
+  total?: number;
+  message?: string;
+  counts?: Record<string, number>;
+}
 
 export interface Job {
   id: string;
   type: string;
   status: JobStatus;
   payload?: Record<string, unknown> | null;
-  progress?: Record<string, unknown> | null;
+  progress?: JobProgress | null;
   result?: Record<string, unknown> | null;
+  result_summary?: string | null;
   error?: string | null;
   attempts: number;
   max_attempts: number;
+  priority?: number;
+  dedupe_key?: string | null;
+  cancel_requested?: boolean;
   created_at: string;
   updated_at: string;
   started_at?: string | null;

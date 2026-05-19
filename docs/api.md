@@ -94,7 +94,7 @@ This document describes the REST API endpoints available in the backend applicat
 - **Events**:
   - `connected`: Emitted when the stream is established.
   - `library_changed`: Emitted after library records are scanned, reconciled, seeded, cleared, or marked missing.
-  - `job_queued`, `job_started`, `job_succeeded`, `job_failed`: Emitted by the background job runtime for queued actor jobs.
+  - `job_queued`, `job_started`, `job_progress`, `job_succeeded`, `job_failed`, `job_cancelled`, `job_retried`: Emitted by the background job runtime for queued actor jobs.
   - `heartbeat`: Emitted periodically to keep long-lived connections open.
 - **Example Event**:
   ```text
@@ -107,7 +107,8 @@ This document describes the REST API endpoints available in the backend applicat
 - **Method**: `GET`
 - **Description**: Lists recent background jobs created by long-running library, metadata, analysis, organizer, and external score actions.
 - **Query Parameters**:
-  - `status` (string, optional): Filter by `queued`, `running`, `succeeded`, `failed`, or `cancelled`.
+  - `status` (string, optional): Filter by `queued`, `running`, `cancelling`, `succeeded`, `failed`, or `cancelled`.
+  - `type` (string, optional): Filter by job type, such as `library.reconcile`.
   - `limit` (integer, optional): Number of jobs to return, 1-200. Defaults to 50.
 - **Response**: Array of `Job` objects.
 
@@ -122,11 +123,14 @@ This document describes the REST API endpoints available in the backend applicat
     "type": "library.reconcile",
     "status": "succeeded",
     "payload": {"media_dir": "/media"},
-    "progress": null,
+    "progress": {"stage": "scanning", "current": 10, "total": 10, "message": "Scanning library"},
     "result": {"scanned": 10, "added": 2, "missing": 1},
+    "result_summary": "Scanned 10, added 2, missing 1",
     "error": null,
     "attempts": 1,
     "max_attempts": 1,
+    "dedupe_key": "library.reconcile:/media",
+    "cancel_requested": false,
     "created_at": "2026-05-19T00:00:00+00:00",
     "updated_at": "2026-05-19T00:00:03+00:00",
     "started_at": "2026-05-19T00:00:01+00:00",
@@ -134,6 +138,24 @@ This document describes the REST API endpoints available in the backend applicat
   }
   ```
 - **Errors**: `404 Job not found`.
+
+### Cancel Background Job
+- **URL**: `/jobs/{job_id}/cancel`
+- **Method**: `POST`
+- **Description**: Cancels a queued job immediately or requests cooperative cancellation for a running job.
+- **Response**: `Job` object.
+
+### Retry Background Job
+- **URL**: `/jobs/{job_id}/retry`
+- **Method**: `POST`
+- **Description**: Creates a new queued job using the failed or cancelled job's payload.
+- **Response**: Accepted-job envelope.
+
+### Delete Background Job
+- **URL**: `/jobs/{job_id}`
+- **Method**: `DELETE`
+- **Description**: Deletes a terminal job. Active jobs cannot be deleted.
+- **Response**: `{"status": "success", "deleted": true}`
 
 Long-running mutation endpoints return an accepted-job envelope:
 
@@ -738,12 +760,16 @@ Background jobs are persisted in SQLite and executed by the in-process actor run
 
 - `id` (String): Primary key, formatted as `job_<uuid-hex>`.
 - `type` (String): Actor command such as `library.reconcile`, `metadata.scrape_library`, `analysis.analyze_movie`, or `organizer.organize_root`.
-- `status` (String): `queued`, `running`, `succeeded`, `failed`, or `cancelled`.
+- `status` (String): `queued`, `running`, `cancelling`, `succeeded`, `failed`, or `cancelled`.
 - `payload` (Object, Optional): Input captured when the job was queued.
-- `progress` (Object, Optional): Reserved for progress updates.
+- `progress` (Object, Optional): Current stage, message, and optional `current` / `total` counters.
 - `result` (Object, Optional): Final handler result for succeeded jobs.
+- `result_summary` (String, Optional): UI-ready result text.
 - `error` (String, Optional): Failure message for failed jobs.
 - `attempts` / `max_attempts` (Integer): Execution attempt counters.
+- `priority` (Integer): Higher-priority jobs are claimed first.
+- `dedupe_key` (String, Optional): Active jobs with the same key are reused instead of duplicated.
+- `cancel_requested` (Boolean): Cooperative cancellation flag checked by long-running handlers.
 - `created_at`, `updated_at`, `started_at`, `finished_at` (String, Optional): UTC ISO timestamps.
 
 ### Movie schema

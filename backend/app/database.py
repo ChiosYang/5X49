@@ -57,6 +57,13 @@ MOVIE_SCHEMA_COLUMNS = {
     "external_scores_error": "VARCHAR",
 }
 
+JOB_SCHEMA_COLUMNS = {
+    "result_summary": "VARCHAR",
+    "priority": "INTEGER DEFAULT 0",
+    "dedupe_key": "VARCHAR",
+    "cancel_requested": "BOOLEAN DEFAULT 0",
+}
+
 
 def migrate_sqlite_schema():
     """Add lightweight columns for existing SQLite databases.
@@ -70,35 +77,55 @@ def migrate_sqlite_schema():
 
     inspector = inspect(engine)
     if "movie" not in inspector.get_table_names():
-        return
+        movie_missing_columns = []
+    else:
+        existing_columns = {column["name"] for column in inspector.get_columns("movie")}
+        movie_missing_columns = [
+            (name, column_type)
+            for name, column_type in MOVIE_SCHEMA_COLUMNS.items()
+            if name not in existing_columns
+        ]
 
-    existing_columns = {column["name"] for column in inspector.get_columns("movie")}
-    missing_columns = [
-        (name, column_type)
-        for name, column_type in MOVIE_SCHEMA_COLUMNS.items()
-        if name not in existing_columns
-    ]
-    if not missing_columns:
+    if "job" not in inspector.get_table_names():
+        job_missing_columns = []
+    else:
+        existing_job_columns = {column["name"] for column in inspector.get_columns("job")}
+        job_missing_columns = [
+            (name, column_type)
+            for name, column_type in JOB_SCHEMA_COLUMNS.items()
+            if name not in existing_job_columns
+        ]
+
+    if not movie_missing_columns and not job_missing_columns:
         return
 
     with engine.begin() as connection:
-        for name, column_type in missing_columns:
+        for name, column_type in movie_missing_columns:
             connection.execute(text(f"ALTER TABLE movie ADD COLUMN {name} {column_type}"))
 
-        if "library_status" in dict(missing_columns):
+        for name, column_type in job_missing_columns:
+            connection.execute(text(f"ALTER TABLE job ADD COLUMN {name} {column_type}"))
+
+        if "library_status" in dict(movie_missing_columns):
             connection.execute(
                 text("UPDATE movie SET library_status = 'available' WHERE library_status IS NULL")
             )
-        if "scrape_status" in dict(missing_columns):
+        if "scrape_status" in dict(movie_missing_columns):
             connection.execute(
                 text("UPDATE movie SET scrape_status = 'pending' WHERE scrape_status IS NULL")
             )
-        if "added_at" in dict(missing_columns):
+        if "added_at" in dict(movie_missing_columns):
             connection.execute(
                 text(
                     "UPDATE movie SET added_at = COALESCE(metadata_updated_at, last_seen_at) "
                     "WHERE added_at IS NULL"
                 )
+            )
+        if "priority" in dict(job_missing_columns):
+            connection.execute(text("UPDATE job SET priority = 0 WHERE priority IS NULL"))
+        if "cancel_requested" in dict(job_missing_columns):
+            connection.execute(
+                text("UPDATE job SET cancel_requested = 0 WHERE cancel_requested IS NULL")
             )
 
 def create_db_and_tables():

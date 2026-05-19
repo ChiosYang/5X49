@@ -295,7 +295,14 @@ class LibraryWatcher:
         try:
             from app.jobs import job_runtime
 
-            job_runtime.enqueue(job_type, payload)
+            dedupe_key = None
+            if job_type == "library.scan_folder":
+                dedupe_key = f"{job_type}:{payload.get('folder_path')}"
+            elif job_type == "library.mark_path_missing":
+                dedupe_key = f"{job_type}:{payload.get('path')}"
+            elif job_type == "organizer.organize_root":
+                dedupe_key = f"{job_type}:{payload.get('media_dir')}"
+            job_runtime.enqueue(job_type, payload, dedupe_key=dedupe_key)
         except Exception as exc:
             self._record_error(str(exc))
 

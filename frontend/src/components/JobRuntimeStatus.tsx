@@ -2,8 +2,8 @@
 
 import { useEffect, useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { AlertTriangle, CheckCircle2, Clock3, Loader2, ListTodo } from "lucide-react";
-import { useJobCache, useJobs } from "@/hooks/useJobs";
+import { AlertTriangle, CheckCircle2, Clock3, Loader2, ListRestart, ListTodo, X } from "lucide-react";
+import { useCancelJob, useJobCache, useJobs, useRetryJob } from "@/hooks/useJobs";
 import type { Job } from "@/types/movie";
 
 const TERMINAL_STATUSES = new Set(["succeeded", "failed", "cancelled"]);
@@ -26,7 +26,7 @@ function jobLabel(type: string) {
 }
 
 function statusIcon(job: Job) {
-  if (job.status === "running") {
+  if (job.status === "running" || job.status === "cancelling") {
     return <Loader2 className="h-3.5 w-3.5 animate-spin text-white" />;
   }
   if (job.status === "queued") {
@@ -39,8 +39,14 @@ function statusIcon(job: Job) {
 }
 
 function resultSummary(job: Job) {
+  if (job.result_summary) {
+    return job.result_summary;
+  }
   if (job.error) {
     return job.error;
+  }
+  if (job.progress?.message) {
+    return job.progress.message;
   }
 
   const result = job.result || {};
@@ -58,14 +64,25 @@ function resultSummary(job: Job) {
   return job.status;
 }
 
+function progressPercent(job: Job) {
+  const current = job.progress?.current;
+  const total = job.progress?.total;
+  if (typeof current !== "number" || typeof total !== "number" || total <= 0) {
+    return null;
+  }
+  return Math.max(0, Math.min(100, Math.round((current / total) * 100)));
+}
+
 export default function JobRuntimeStatus() {
   const router = useRouter();
   const { data: jobs = [] } = useJobs();
   const { upsertJob, refreshJobs } = useJobCache();
+  const { trigger: cancelJob, isMutating: isCancelling } = useCancelJob();
+  const { trigger: retryJob, isMutating: isRetrying } = useRetryJob();
   const refreshTimer = useRef<number | null>(null);
 
   const activeJobs = useMemo(
-    () => jobs.filter((job) => job.status === "queued" || job.status === "running"),
+    () => jobs.filter((job) => job.status === "queued" || job.status === "running" || job.status === "cancelling"),
     [jobs],
   );
   const latestJob = activeJobs[0] || jobs[0];
@@ -105,6 +122,9 @@ export default function JobRuntimeStatus() {
     eventSource.addEventListener("job_started", handleJobEvent);
     eventSource.addEventListener("job_succeeded", handleJobEvent);
     eventSource.addEventListener("job_failed", handleJobEvent);
+    eventSource.addEventListener("job_progress", handleJobEvent);
+    eventSource.addEventListener("job_cancelled", handleJobEvent);
+    eventSource.addEventListener("job_retried", handleJobEvent);
 
     return () => {
       if (refreshTimer.current) {
@@ -115,6 +135,9 @@ export default function JobRuntimeStatus() {
       eventSource.removeEventListener("job_started", handleJobEvent);
       eventSource.removeEventListener("job_succeeded", handleJobEvent);
       eventSource.removeEventListener("job_failed", handleJobEvent);
+      eventSource.removeEventListener("job_progress", handleJobEvent);
+      eventSource.removeEventListener("job_cancelled", handleJobEvent);
+      eventSource.removeEventListener("job_retried", handleJobEvent);
       eventSource.close();
     };
   }, [refreshJobs, router, upsertJob]);
@@ -146,7 +169,7 @@ export default function JobRuntimeStatus() {
           <div className="border-b border-neutral-900 px-3 py-2">
             <p className="text-xs font-bold uppercase tracking-widest text-neutral-300">Background Jobs</p>
             <p className="mt-1 truncate text-xs text-neutral-600">
-              {latestJob ? `${jobLabel(latestJob.type)} - ${latestJob.status}` : "No recent jobs"}
+              {latestJob ? `${jobLabel(latestJob.type)} - ${resultSummary(latestJob)}` : "No recent jobs"}
             </p>
           </div>
           {jobs.length === 0 ? (
@@ -156,7 +179,7 @@ export default function JobRuntimeStatus() {
           ) : (
             <ul className="mt-2 space-y-1">
               {jobs.map((job) => (
-                <li key={job.id} className="grid grid-cols-[auto_1fr] gap-3 border border-neutral-900 bg-neutral-950/70 p-3">
+                <li key={job.id} className="grid grid-cols-[auto_1fr_auto] gap-3 border border-neutral-900 bg-neutral-950/70 p-3">
                   <span className="mt-0.5">{statusIcon(job)}</span>
                   <span className="min-w-0">
                     <span className="flex min-w-0 items-center justify-between gap-3">
@@ -168,6 +191,40 @@ export default function JobRuntimeStatus() {
                     <span className={`mt-1 block truncate text-xs ${job.status === "failed" ? "text-red-400" : "text-neutral-500"}`}>
                       {resultSummary(job)}
                     </span>
+                    {progressPercent(job) !== null && (
+                      <span className="mt-2 block h-1 overflow-hidden bg-neutral-900">
+                        <span
+                          className="block h-full bg-white transition-[width]"
+                          style={{ width: `${progressPercent(job)}%` }}
+                        />
+                      </span>
+                    )}
+                  </span>
+                  <span className="flex items-start gap-1">
+                    {(job.status === "queued" || job.status === "running") && (
+                      <button
+                        type="button"
+                        onClick={() => void cancelJob(job.id)}
+                        disabled={isCancelling}
+                        className="flex h-6 w-6 items-center justify-center text-neutral-500 hover:text-white disabled:opacity-50"
+                        aria-label="Cancel job"
+                        title="Cancel"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    )}
+                    {(job.status === "failed" || job.status === "cancelled") && (
+                      <button
+                        type="button"
+                        onClick={() => void retryJob(job.id)}
+                        disabled={isRetrying}
+                        className="flex h-6 w-6 items-center justify-center text-neutral-500 hover:text-white disabled:opacity-50"
+                        aria-label="Retry job"
+                        title="Retry"
+                      >
+                        <ListRestart className="h-3.5 w-3.5" />
+                      </button>
+                    )}
                   </span>
                 </li>
               ))}

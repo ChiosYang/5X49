@@ -2,6 +2,7 @@
 
 import { useCallback } from "react";
 import useSWR, { useSWRConfig } from "swr";
+import useSWRMutation from "swr/mutation";
 import { API } from "@/lib/api";
 import type { Job } from "@/types/movie";
 
@@ -36,6 +37,34 @@ export function useJobCache() {
   }, [mutate]);
 
   return { upsertJob, refreshJobs };
+}
+
+export function useCancelJob() {
+  const { mutate } = useSWRConfig();
+  return useSWRMutation(
+    "job.cancel",
+    async (_key: string, { arg: jobId }: { arg: string }) => {
+      const res = await fetch(API.jobCancel(jobId), { method: "POST" });
+      if (!res.ok) throw new Error("Failed to cancel job");
+      const job = await res.json() as Job;
+      await mutate(JOBS_KEY);
+      return job;
+    },
+  );
+}
+
+export function useRetryJob() {
+  const { mutate } = useSWRConfig();
+  return useSWRMutation(
+    "job.retry",
+    async (_key: string, { arg: jobId }: { arg: string }) => {
+      const res = await fetch(API.jobRetry(jobId), { method: "POST" });
+      if (!res.ok) throw new Error("Failed to retry job");
+      const data = await res.json();
+      await mutate(JOBS_KEY);
+      return data;
+    },
+  );
 }
 
 export { JOBS_KEY };
