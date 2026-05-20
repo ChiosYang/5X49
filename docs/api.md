@@ -200,6 +200,37 @@ Long-running mutation endpoints return an accepted-job envelope:
 - **Response**: Array of `EventRecord` objects, newest first.
 - **Errors**: `400 Invalid ID format`, `404 Movie not found`.
 
+### Dry-run Movie Projection Rebuild
+- **URL**: `/library/projections/movie/rebuild`
+- **Method**: `POST`
+- **Description**: Runs a read-only Movie projection consistency check. This starts from the current `Movie` snapshot, reapplies supported low-risk movie events in memory, and reports differences. It does not clear, rebuild, or mutate the `movie` table.
+- **Query Parameters**:
+  - `dry_run` (boolean, optional): Must be `true`. Defaults to `true`; `false` returns `400`.
+  - `movie_id` (string, optional): Restrict the check to one movie.
+  - `limit` (integer, optional): Maximum movie events to process, 1-5000. Defaults to 1000.
+  - `since` (string, optional): Only include events whose `occurred_at` is greater than or equal to this timestamp.
+- **Response**:
+  ```json
+  {
+    "dry_run": true,
+    "mode": "current_snapshot_plus_events",
+    "note": "Consistency dry-run only; this is not a canonical replay from an empty state.",
+    "base": "current_movie_snapshot",
+    "movie_id": "local_xxx",
+    "since": null,
+    "limit": 1000,
+    "events_processed": 12,
+    "projectable_events": 4,
+    "unsupported_events": 8,
+    "unsupported_event_types": {"MovieDiscovered": 1, "MetadataMatched": 7},
+    "movies_compared": 1,
+    "movies_with_differences": 0,
+    "differences": []
+  }
+  ```
+- **Projectable Events**: `MovieIgnored`, `MovieMarkedMissing`, `MovieRestored`, `AnalysisStarted`, `AnalysisCompleted`, and `AnalysisFailed`.
+- **Errors**: `400 Only dry_run=true is supported`, `400 Invalid movie ID format`, `404 Movie not found`.
+
 ### Refresh Movie External Scores
 - **URL**: `/library/{movie_id}/external-scores/refresh`
 - **Method**: `POST`

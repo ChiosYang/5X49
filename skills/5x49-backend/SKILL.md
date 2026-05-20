@@ -35,6 +35,7 @@ description: 电影族谱 API (FastAPI) 的接口调用指南
 | DELETE | `/jobs/{job_id}` | 删除已结束任务 |
 | GET | `/library/{movie_id}` | 获取指定电影详情 |
 | GET | `/library/{movie_id}/audit-events` | 查询单部电影的持久化审计事件 |
+| POST | `/library/projections/movie/rebuild?dry_run=true` | 只读检查 Movie 事件投影一致性 |
 | POST | `/library/seed` | 填充测试数据 |
 | POST | `/library/scan?media_dir=/path` | 排队扫描并校准目录，新增/更新电影并标记缺失 |
 | POST | `/library/reconcile?media_dir=/path` | 排队全量校准资料库 |
@@ -144,8 +145,10 @@ curl -s http://127.0.0.1:11548/library/96721_2013
 ```bash
 curl -s "http://127.0.0.1:11548/library/audit-events?aggregate_type=movie&limit=50"
 curl -s http://127.0.0.1:11548/library/96721_2013/audit-events
+curl -s -X POST "http://127.0.0.1:11548/library/projections/movie/rebuild?dry_run=true&movie_id=96721_2013"
 ```
 返回持久化 `EventRecord[]`，按时间倒序排列。`/library/events` 是实时 SSE；`/library/audit-events` 和 `/library/{movie_id}/audit-events` 是历史审计日志。当前为混合模式：多数复杂流程仍旁路记录审计事件；`MovieIgnored`、`MovieMarkedMissing`、`MovieRestored`、`AnalysisStarted`、`AnalysisCompleted`、`AnalysisFailed` 等低风险状态变更会由事件同步投影到 `Movie` 当前状态表。扫描事件会去重：新记录写 `MovieDiscovered`，本地文件关键字段变化才写 `MovieFileObserved`，missing 记录重新出现写 `MovieRestored`，`MovieFolderScanned` 只表示扫描动作。事件类型包括 `MovieDiscovered`、`MovieFileObserved`、`MovieFolderScanned`、`MovieMarkedMissing`、`MovieIgnored`、`MetadataMatchSuggested`、`MetadataMatched`、`MetadataScrapeFailed`、`ArtworkSelected`、`RootVideoOrganized`、`AnalysisStarted`、`AnalysisCompleted`、`AnalysisFailed`、`ExternalScoresRefreshed` 等。
+`/library/projections/movie/rebuild` 目前只支持 `dry_run=true`，不会修改数据库；它从当前 `Movie` 快照出发，在内存中重放可投影事件并返回 differences / unsupported_event_types，用于检查事件和当前状态是否一致，不是正式从空状态 replay。
 
 ### 刷新外部评分/榜单
 ```bash
