@@ -932,7 +932,7 @@ Audit events are persisted in the `events` table. Most events currently act as a
 - `id` (String): Primary key, formatted as `evt_<uuid-hex>`.
 - `aggregate_type` (String): Event aggregate category, such as `movie`, `library`, or `file`.
 - `aggregate_id` (String, Optional): Aggregate identifier. Movie events use the current movie ID.
-- `type` (String): Semantic event type, for example `MovieDiscovered`, `MovieFileObserved`, `MovieFolderScanned`, `MovieMarkedMissing`, `MovieIgnored`, `MetadataMatchSuggested`, `MetadataMatched`, `MetadataScrapeFailed`, `ArtworkSelected`, `RootVideoOrganized`, `AnalysisStarted`, `AnalysisCompleted`, `AnalysisFailed`, `ExternalScoresRefreshed`, or `ExternalScoresRefreshFailed`.
+- `type` (String): Semantic event type, for example `MovieDiscovered`, `MovieFileObserved`, `MovieFolderScanned`, `MovieMetadataParsedFromNfo`, `MovieMarkedMissing`, `MovieIgnored`, `MetadataMatchSuggested`, `MetadataMatched`, `MetadataScrapeFailed`, `ArtworkSelected`, `RootVideoOrganized`, `AnalysisStarted`, `AnalysisCompleted`, `AnalysisFailed`, `ExternalScoresRefreshed`, or `ExternalScoresRefreshFailed`.
 - `actor_type` / `actor_id` (String, Optional): Actor metadata. Stage 1 defaults to `system`.
 - `command_id`, `correlation_id`, `causation_id` (String, Optional): Optional command and trace identifiers reserved for later event-sourced workflows.
 - `payload` (Object): Event-specific details.
@@ -940,7 +940,7 @@ Audit events are persisted in the `events` table. Most events currently act as a
 - `schema_version` (Integer): Event payload schema version.
 - `occurred_at` (String): UTC ISO timestamp.
 
-Scan-related events are de-duplicated: `MovieDiscovered` is recorded for new records, `MovieFileObserved` is recorded only when key local file fields change, and `MovieRestored` is recorded when a previously missing movie is observed as available again. `MovieFolderScanned` records the scan action and is not used as the source of truth for projection.
+Scan-related events are de-duplicated: `MovieDiscovered` is recorded for new records, `MovieFileObserved` is recorded only when key local file fields change, `MovieMetadataParsedFromNfo` is recorded only when NFO signature fields change, and `MovieRestored` is recorded when a previously missing movie is observed as available again. `MovieFolderScanned` records the scan action and is not used as the source of truth for projection.
 
 ### Movie schema
 The core database payload associated with movies.

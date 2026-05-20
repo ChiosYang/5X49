@@ -9,6 +9,7 @@ const EVENT_LABELS: Record<string, string> = {
   MovieDiscovered: "Discovered",
   MovieFileObserved: "File observed",
   MovieFolderScanned: "Folder scanned",
+  MovieMetadataParsedFromNfo: "NFO parsed",
   MovieMarkedMissing: "Marked missing",
   MovieRestored: "Restored",
   MovieIgnored: "Ignored",
@@ -84,6 +85,12 @@ function eventSummary(event: EventRecord) {
       : mediaPath || "Local file details changed";
   }
   if (event.type === "MovieFolderScanned") return folderPath || mediaPath || "Local folder was scanned";
+  if (event.type === "MovieMetadataParsedFromNfo") {
+    const changedFields = event.payload?.changed_fields;
+    return Array.isArray(changedFields) && changedFields.length
+      ? `NFO changed ${changedFields.join(", ")}`
+      : "NFO metadata was parsed";
+  }
   if (event.type === "MovieDiscovered") return mediaPath || title || "New library record created";
   if (event.type === "AnalysisCompleted") return stringPayload(event, "micro_genre") || "Genealogy analysis is ready";
   if (event.type === "ExternalScoresRefreshed") {

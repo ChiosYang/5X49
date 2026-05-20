@@ -57,6 +57,40 @@ FILE_OBSERVED_FIELDS = (
     "video_duration",
 )
 
+NFO_SIGNATURE_FIELDS = (
+    "nfo_file",
+    "nfo_path",
+    "nfo_size",
+    "nfo_mtime",
+    "nfo_fingerprint",
+)
+
+NFO_METADATA_FIELDS = (
+    "id",
+    "title",
+    "title_cn",
+    "year",
+    "tmdb_id",
+    "imdb_id",
+    "plot",
+    "runtime",
+    "countries",
+    "audio_tracks",
+    "genres",
+    "director",
+    "imdb_rating",
+    "actors",
+    "poster_local",
+    "backdrop_local",
+    "poster_thumb_local",
+    "backdrop_thumb_local",
+    "poster_path",
+    "backdrop_path",
+    "nfo_source",
+    "metadata_source",
+    "scrape_status",
+)
+
 
 class LibraryManager:
     def __init__(self):
@@ -310,6 +344,18 @@ class LibraryManager:
                 },
                 "project": False,
             })
+
+        nfo_changes = self._nfo_metadata_changes(previous_movie, movie_data)
+        if nfo_changes:
+            events.append({
+                "type": "MovieMetadataParsedFromNfo",
+                "aggregate_id": movie_id,
+                "payload": {
+                    **self._nfo_metadata_payload({**previous_movie, **movie_data, "id": movie_id}),
+                    **nfo_changes,
+                },
+                "project": False,
+            })
         return events
 
     def _file_observation_changes(self, previous_movie: dict, movie_data: dict) -> Optional[dict]:
@@ -333,6 +379,41 @@ class LibraryManager:
             "previous": previous,
             "current": current,
         }
+
+    def _nfo_metadata_changes(self, previous_movie: dict, movie_data: dict) -> Optional[dict]:
+        if not movie_data.get("nfo_fingerprint"):
+            return None
+
+        previous = {}
+        current = {}
+        changed_fields = []
+        for field in NFO_SIGNATURE_FIELDS:
+            if field not in movie_data:
+                continue
+            previous_value = previous_movie.get(field)
+            current_value = movie_data.get(field)
+            if previous_value != current_value:
+                changed_fields.append(field)
+                previous[field] = previous_value
+                current[field] = current_value
+
+        if not changed_fields:
+            return None
+        return {
+            "changed_fields": changed_fields,
+            "previous": previous,
+            "current": current,
+        }
+
+    def _nfo_metadata_payload(self, movie_data: dict) -> dict:
+        payload = {
+            field: movie_data.get(field)
+            for field in (*NFO_METADATA_FIELDS, *NFO_SIGNATURE_FIELDS)
+            if movie_data.get(field) is not None
+        }
+        if payload.get("id") and not payload.get("movie_id"):
+            payload["movie_id"] = payload["id"]
+        return payload
 
     def _append_scan_events(self, events: list[dict]):
         for event in events:
