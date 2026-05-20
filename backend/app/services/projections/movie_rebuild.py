@@ -59,6 +59,11 @@ EMPTY_BASE_COMPARE_FIELDS = (
     "video_dynamic_range",
     "video_bit_depth",
     "nfo_source",
+    "nfo_file",
+    "nfo_path",
+    "nfo_size",
+    "nfo_mtime",
+    "nfo_fingerprint",
     *CURRENT_BASE_COMPARE_FIELDS,
 )
 
@@ -79,6 +84,11 @@ FILE_OBSERVED_FIELDS = (
     "video_dynamic_range",
     "video_bit_depth",
     "nfo_source",
+    "nfo_file",
+    "nfo_path",
+    "nfo_size",
+    "nfo_mtime",
+    "nfo_fingerprint",
 )
 
 

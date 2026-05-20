@@ -273,6 +273,63 @@ Long-running mutation endpoints return an accepted-job envelope:
 - **Notes**: The timestamp strategy makes historical initialization events sort before existing per-movie events so `base=empty` replay can apply later events in order. Existing movies that already have `MovieDiscovered` are skipped.
 - **Errors**: `400 Invalid movie ID format`, `404 Movie not found`.
 
+### Dry-run NFO Signatures
+- **URL**: `/library/events/dry-run/nfo-signatures`
+- **Method**: `POST`
+- **Description**: Scans a media directory or one movie folder and compares observed NFO file signatures against the current `Movie` table. This is read-only: it does not update `Movie` rows and does not append events.
+- **Query Parameters**:
+  - `media_dir` (string, optional): Media root to scan. Defaults to configured media directory.
+  - `folder_path` (string, optional): Restrict the check to one movie folder.
+  - `limit` (integer, optional): Maximum result rows to return, 1-1000. Defaults to 200.
+  - `include_unchanged` (boolean, optional): Include unchanged matches in `results`. Defaults to `false`.
+- **Response**:
+  ```json
+  {
+    "dry_run": true,
+    "media_dir": "/media",
+    "folder_path": null,
+    "folders_scanned": 42,
+    "nfo_files_found": 40,
+    "matched_movies": 39,
+    "unchanged": 20,
+    "new_signatures": 12,
+    "changed_signatures": 7,
+    "unmatched_movies": 1,
+    "folders_without_nfo": 2,
+    "results_returned": 20,
+    "results_truncated": false,
+    "results": [
+      {
+        "status": "changed",
+        "movie_id": "local_xxx",
+        "title": "Example",
+        "year": 2026,
+        "folder_path": "/media/Example (2026)",
+        "nfo_path": "/media/Example (2026)/movie.nfo",
+        "observed": {
+          "nfo_file": "movie.nfo",
+          "nfo_path": "/media/Example (2026)/movie.nfo",
+          "nfo_size": 1234,
+          "nfo_mtime": 1778583332.9761415,
+          "nfo_fingerprint": "..."
+        },
+        "current": {
+          "nfo_file": "movie.nfo",
+          "nfo_path": "/media/Example (2026)/movie.nfo",
+          "nfo_size": 1200,
+          "nfo_mtime": 1778583000.0,
+          "nfo_fingerprint": "..."
+        },
+        "changed_fields": ["nfo_size", "nfo_mtime", "nfo_fingerprint"],
+        "parse_error": null
+      }
+    ]
+  }
+  ```
+- **Result Statuses**: `new_signature` means the movie exists but has no stored NFO signature yet; `changed` means at least one signature field changed; `unchanged` means the observed signature matches the stored signature; `unmatched_movie` means an NFO file was found but no existing `Movie` row matched it.
+- **Movie Fields**: `Movie` now includes `nfo_file`, `nfo_path`, `nfo_size`, `nfo_mtime`, and `nfo_fingerprint` when available.
+- **Errors**: `404 Movie folder not found`, `404 Media directory not found`.
+
 ### Refresh Movie External Scores
 - **URL**: `/library/{movie_id}/external-scores/refresh`
 - **Method**: `POST`

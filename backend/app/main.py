@@ -17,6 +17,7 @@ from app.services.watcher import library_watcher
 from app.services.metadata.models import ArtworkSelection, BatchScrapeOptions, RootOrganizeConfirmRequest, RootOrganizeOptions, ScrapeOptions
 from app.services.metadata.organizer import root_video_organizer
 from app.services.metadata.scraper import metadata_scraper
+from app.services.nfo_signature_dry_run import nfo_signature_dry_run
 from app.services.projections.movie_rebuild import movie_projection_dry_run
 from app.database import create_db_and_tables
 from app.utils.security import validate_movie_id
@@ -277,6 +278,24 @@ def backfill_movie_discovered_events(
         if not library_manager.get_movie(movie_id):
             raise HTTPException(status_code=404, detail="Movie not found")
     return movie_discovered_backfill.run(dry_run=dry_run, movie_id=movie_id, sample_limit=sample_limit)
+
+@app.post("/library/events/dry-run/nfo-signatures")
+def dry_run_nfo_signatures(
+    media_dir: str | None = Query(default=None),
+    folder_path: str | None = Query(default=None),
+    limit: int = Query(default=200, ge=1, le=1000),
+    include_unchanged: bool = Query(default=False),
+):
+    """Read-only check for NFO signature changes discovered by a scan."""
+    try:
+        return nfo_signature_dry_run.run(
+            media_dir=media_dir,
+            folder_path=folder_path,
+            limit=limit,
+            include_unchanged=include_unchanged,
+        )
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
 
 @app.get("/library/{movie_id}")
 def get_library_movie(movie_id: str):

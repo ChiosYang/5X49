@@ -38,6 +38,11 @@ SCAN_EVENT_FIELDS = (
     "video_dynamic_range",
     "video_bit_depth",
     "nfo_source",
+    "nfo_file",
+    "nfo_path",
+    "nfo_size",
+    "nfo_mtime",
+    "nfo_fingerprint",
 )
 
 FILE_OBSERVED_FIELDS = (

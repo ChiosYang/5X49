@@ -187,6 +187,7 @@ class NFOScanner:
                 "nfo_source": nfo_source,
                 "metadata_source": nfo_source,
                 "scrape_status": "matched",
+                **self.nfo_signature(nfo_path),
             }
             return self._with_file_info(movie_data, folder, video_file)
 
@@ -228,6 +229,23 @@ class NFOScanner:
 
         nfo_files = sorted(folder.glob("*.nfo"), key=lambda path: path.name.lower())
         return nfo_files[0] if nfo_files else None
+
+    def nfo_signature(self, nfo_path: Path) -> dict:
+        stat = nfo_path.stat()
+        return {
+            "nfo_file": nfo_path.name,
+            "nfo_path": str(nfo_path.resolve()),
+            "nfo_size": stat.st_size,
+            "nfo_mtime": stat.st_mtime,
+            "nfo_fingerprint": self._file_sha256(nfo_path),
+        }
+
+    def _file_sha256(self, path: Path) -> str:
+        digest = hashlib.sha256()
+        with path.open("rb") as handle:
+            for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+                digest.update(chunk)
+        return digest.hexdigest()
 
     def _parse_audio_tracks(self, root: ET.Element) -> list[dict]:
         """Extract compact audio stream metadata from TMM/Kodi-style NFO."""
