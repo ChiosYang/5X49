@@ -1,7 +1,7 @@
 import useSWR from "swr";
 import useSWRMutation from "swr/mutation";
 import { API } from "@/lib/api";
-import type { JobAccepted, MovieDetail, ScrapeResult } from "@/types/movie";
+import type { EventRecord, JobAccepted, MovieDetail, ScrapeResult } from "@/types/movie";
 
 export function useMovie(id: string, fallbackData?: MovieDetail) {
   return useSWR<MovieDetail>(id ? API.libraryMovie(id) : null, {
@@ -11,6 +11,12 @@ export function useMovie(id: string, fallbackData?: MovieDetail) {
       if (data?.analysis_status === "processing") return 5000;
       return 0;
     },
+  });
+}
+
+export function useMovieAuditEvents(id: string) {
+  return useSWR<EventRecord[]>(id ? API.libraryMovieAuditEvents(id) : null, {
+    refreshInterval: 5000,
   });
 }
 

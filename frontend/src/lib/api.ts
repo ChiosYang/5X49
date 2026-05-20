@@ -35,6 +35,8 @@ export const API = {
     // === Library ===
     library: () => `${API_BASE_URL}/library`,
     libraryMovie: (id: string) => `${API_BASE_URL}/library/${encodeURIComponent(id)}`,
+    libraryMovieAuditEvents: (id: string) => `${API_BASE_URL}/library/${encodeURIComponent(id)}/audit-events`,
+    libraryAuditEvents: () => `${API_BASE_URL}/library/audit-events`,
     libraryAnalyze: (id: string) => `${API_BASE_URL}/library/analyze/${encodeURIComponent(id)}`,
     libraryRefresh: (id: string) => `${API_BASE_URL}/library/${encodeURIComponent(id)}/refresh`,
     libraryArtwork: (id: string) => `${API_BASE_URL}/library/${encodeURIComponent(id)}/artwork`,

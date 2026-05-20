@@ -172,6 +172,22 @@ export interface ScrapeResult {
   candidates: MetadataSearchResult[];
 }
 
+export interface EventRecord {
+  id: string;
+  aggregate_type: "movie" | "library" | "file" | string;
+  aggregate_id?: string | null;
+  type: string;
+  actor_type: string;
+  actor_id?: string | null;
+  command_id?: string | null;
+  correlation_id?: string | null;
+  causation_id?: string | null;
+  payload?: Record<string, unknown> | null;
+  context?: Record<string, unknown> | null;
+  schema_version: number;
+  occurred_at: string;
+}
+
 export interface RootVideo {
   path: string;
   filename: string;

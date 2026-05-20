@@ -5,6 +5,7 @@ import { API } from "@/lib/api";
 import { getLibraryMovie } from "@/lib/server-api";
 import ExternalScoreStrip from "../../components/ExternalScoreStrip";
 import MovieAnalysisSection from "./MovieAnalysisSection";
+import MovieActivityTimeline from "./MovieActivityTimeline";
 import MovieBackdrop from "./MovieBackdrop";
 import MovieHeroTitle from "./MovieHeroTitle";
 import MoviePoster from "./MoviePoster";
@@ -167,6 +168,8 @@ export default async function MovieDetailPage({ params }: MovieDetailPageProps) 
           </div>
         </div>
       )}
+
+      <MovieActivityTimeline movieId={id} />
 
       {/* Genealogy Analysis Section */}
       <MovieAnalysisSection movieId={id} initialMovie={movie} />
