@@ -1,6 +1,7 @@
 from sqlmodel import Session
 from app.database import engine
 from app.models import Movie
+from app.services.event_store import event_store
 from app.services.historian import FilmHistorian
 import logging
 
@@ -34,6 +35,12 @@ class AnalysisService:
             session.add(movie)
             session.commit()
             session.refresh(movie)
+            event_store.safe_append(
+                "AnalysisStarted",
+                "movie",
+                movie_id,
+                {"movie_id": movie_id, "title": movie.title, "tmdb_id": movie.tmdb_id},
+            )
             
             try:
                 # Call AI Service
@@ -77,5 +84,23 @@ class AnalysisService:
             
             session.add(movie)
             session.commit()
+            if movie.analysis_status == "completed":
+                event_store.safe_append(
+                    "AnalysisCompleted",
+                    "movie",
+                    movie_id,
+                    {
+                        "movie_id": movie_id,
+                        "micro_genre": movie.micro_genre,
+                        "has_analysis_data": bool(movie.analysis_data),
+                    },
+                )
+            elif movie.analysis_status == "failed":
+                event_store.safe_append(
+                    "AnalysisFailed",
+                    "movie",
+                    movie_id,
+                    {"movie_id": movie_id},
+                )
 
 analysis_service = AnalysisService()

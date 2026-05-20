@@ -27,12 +27,14 @@ description: 电影族谱 API (FastAPI) 的接口调用指南
 |------|------|------|
 | GET | `/library` | 获取所有电影 |
 | GET | `/library/events` | 订阅资料库变更 SSE |
+| GET | `/library/audit-events` | 查询持久化资料库审计事件 |
 | GET | `/jobs` | 列出后台 Actor/Job Runtime 任务 |
 | GET | `/jobs/{job_id}` | 获取单个后台任务状态、结果和错误 |
 | POST | `/jobs/{job_id}/cancel` | 取消排队任务或请求运行中任务取消 |
 | POST | `/jobs/{job_id}/retry` | 重试 failed/cancelled 任务 |
 | DELETE | `/jobs/{job_id}` | 删除已结束任务 |
 | GET | `/library/{movie_id}` | 获取指定电影详情 |
+| GET | `/library/{movie_id}/audit-events` | 查询单部电影的持久化审计事件 |
 | POST | `/library/seed` | 填充测试数据 |
 | POST | `/library/scan?media_dir=/path` | 排队扫描并校准目录，新增/更新电影并标记缺失 |
 | POST | `/library/reconcile?media_dir=/path` | 排队全量校准资料库 |
@@ -137,6 +139,13 @@ curl -s http://127.0.0.1:11548/library
 curl -s http://127.0.0.1:11548/library/96721_2013
 ```
 返回单个 `Movie` 对象；`audio_tracks` 中的音轨项在可用时包含 `codec`、`language`、`channels`。视频技术字段来自扫描/刷新时调用的 `ffprobe`，`ffprobe` 不可用或文件无法解析时这些字段为 `null`/缺省，不阻断扫描。
+
+### 查询审计事件
+```bash
+curl -s "http://127.0.0.1:11548/library/audit-events?aggregate_type=movie&limit=50"
+curl -s http://127.0.0.1:11548/library/96721_2013/audit-events
+```
+返回持久化 `EventRecord[]`，按时间倒序排列。`/library/events` 是实时 SSE；`/library/audit-events` 和 `/library/{movie_id}/audit-events` 是历史审计日志。阶段 1 仍以 `Movie` 当前状态表服务现有接口，同时旁路记录 `MovieDiscovered`、`MovieFolderScanned`、`MovieMarkedMissing`、`MovieIgnored`、`MetadataMatchSuggested`、`MetadataMatched`、`MetadataScrapeFailed`、`ArtworkSelected`、`RootVideoOrganized`、`AnalysisStarted`、`AnalysisCompleted`、`AnalysisFailed`、`ExternalScoresRefreshed` 等语义事件。
 
 ### 刷新外部评分/榜单
 ```bash

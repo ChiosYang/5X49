@@ -4,6 +4,7 @@ from threading import Lock
 from typing import Optional
 
 from app.services.event_bus import library_event_bus
+from app.services.event_store import event_store
 from app.services.library import library_manager
 from app.services.scanner import NFOScanner
 from app.services.settings import get_media_dir
@@ -53,6 +54,12 @@ class LibrarySyncService:
                 last_result=result,
             )
             library_event_bus.publish_library_changed("reconcile", result=result)
+            event_store.safe_append(
+                "LibraryReconciled",
+                "library",
+                None,
+                {"media_dir": str(target_dir), **result},
+            )
             return result
         except Exception as exc:
             self._set_status(
@@ -97,6 +104,18 @@ class LibrarySyncService:
 
         movie = library_manager.upsert_movie(movie_data, preserve_id=preserve_id)
         if movie:
+            event_store.safe_append(
+                "MovieFolderScanned",
+                "movie",
+                movie.get("id"),
+                {
+                    "movie_id": movie.get("id"),
+                    "folder_path": str(folder.resolve()),
+                    "preserve_id": preserve_id,
+                    "media_path": movie.get("media_path"),
+                    "metadata_source": movie.get("metadata_source"),
+                },
+            )
             library_event_bus.publish_library_changed(
                 "folder_scanned",
                 folder_path=str(folder.resolve()),

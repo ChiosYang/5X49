@@ -1,10 +1,15 @@
 from datetime import datetime, timezone
 from typing import Optional, List
+from uuid import uuid4
 from sqlmodel import Field, SQLModel, JSON, Column
 
 
 def utc_now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
+
+
+def event_id() -> str:
+    return f"evt_{uuid4().hex}"
 
 
 class Movie(SQLModel, table=True):
@@ -95,3 +100,21 @@ class Job(SQLModel, table=True):
     updated_at: str = Field(default_factory=utc_now_iso)
     started_at: Optional[str] = None
     finished_at: Optional[str] = None
+
+
+class EventRecord(SQLModel, table=True):
+    __tablename__ = "events"
+
+    id: str = Field(default_factory=event_id, primary_key=True)
+    aggregate_type: str = Field(index=True)
+    aggregate_id: Optional[str] = Field(default=None, index=True)
+    type: str = Field(index=True)
+    actor_type: str = Field(default="system", index=True)
+    actor_id: Optional[str] = None
+    command_id: Optional[str] = Field(default=None, index=True)
+    correlation_id: Optional[str] = Field(default=None, index=True)
+    causation_id: Optional[str] = Field(default=None, index=True)
+    payload: Optional[dict] = Field(default=None, sa_column=Column(JSON))
+    context: Optional[dict] = Field(default=None, sa_column=Column(JSON))
+    schema_version: int = Field(default=1)
+    occurred_at: str = Field(default_factory=utc_now_iso, index=True)

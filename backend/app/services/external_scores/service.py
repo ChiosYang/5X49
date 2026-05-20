@@ -3,6 +3,7 @@ from threading import Lock
 from typing import Optional
 
 from app.services.event_bus import library_event_bus
+from app.services.event_store import event_store
 from app.services.external_scores.tspdt import TSPDTDataset
 from app.services.library import library_manager
 
@@ -34,6 +35,17 @@ class ExternalScoreService:
 
         updated_movie, updated_sources, skipped_sources = self._refresh_tspdt(movie)
         if updated_movie and updated_sources:
+            event_store.safe_append(
+                "ExternalScoresRefreshed",
+                "movie",
+                movie_id,
+                {
+                    "movie_id": movie_id,
+                    "updated_sources": updated_sources,
+                    "skipped_sources": skipped_sources,
+                    "force": force,
+                },
+            )
             library_event_bus.publish_library_changed("external_scores_updated", movie_id=movie_id)
             return {
                 "status": "success",
@@ -96,6 +108,12 @@ class ExternalScoreService:
                     "external_scores_updated_at": utc_now_iso(),
                 },
                 preserve_id=movie["id"],
+            )
+            event_store.safe_append(
+                "ExternalScoresRefreshFailed",
+                "movie",
+                movie["id"],
+                {"movie_id": movie["id"], "source": "tspdt", "message": str(exc)},
             )
             return stored, [], ["tspdt"]
 

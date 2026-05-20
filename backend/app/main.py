@@ -6,6 +6,7 @@ from contextlib import asynccontextmanager
 from pydantic import BaseModel
 from app.services.historian import FilmHistorian
 from app.services.event_bus import library_event_bus
+from app.services.event_store import event_store
 from app.services.external_scores import external_score_service
 from app.jobs import job_runtime
 from app.services.library import library_manager
@@ -206,6 +207,39 @@ def get_library_root_videos():
         return root_video_organizer.list_root_videos(get_media_dir() or DEFAULT_MEDIA_DIR)
     except FileNotFoundError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
+
+@app.get("/library/audit-events")
+def get_library_audit_events(
+    aggregate_type: str | None = Query(default=None),
+    aggregate_id: str | None = Query(default=None),
+    type: str | None = Query(default=None),
+    limit: int = Query(default=100, ge=1, le=500),
+):
+    """List persisted library audit events."""
+    return event_store.list(
+        aggregate_type=aggregate_type,
+        aggregate_id=aggregate_id,
+        event_type=type,
+        limit=limit,
+    )
+
+@app.get("/library/{movie_id}/audit-events")
+def get_library_movie_audit_events(
+    movie_id: str,
+    type: str | None = Query(default=None),
+    limit: int = Query(default=100, ge=1, le=500),
+):
+    """List persisted audit events for a specific movie."""
+    if not validate_movie_id(movie_id):
+        raise HTTPException(status_code=400, detail="Invalid movie ID format")
+    if not library_manager.get_movie(movie_id):
+        raise HTTPException(status_code=404, detail="Movie not found")
+    return event_store.list(
+        aggregate_type="movie",
+        aggregate_id=movie_id,
+        event_type=type,
+        limit=limit,
+    )
 
 @app.get("/library/{movie_id}")
 def get_library_movie(movie_id: str):

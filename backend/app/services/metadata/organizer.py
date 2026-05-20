@@ -7,6 +7,7 @@ from threading import Lock
 from typing import Optional
 
 from app.services.event_bus import library_event_bus
+from app.services.event_store import event_store
 from app.services.metadata.matcher import parse_title_year
 from app.services.metadata.models import MetadataSearchResult, RootOrganizeOptions, ScrapeOptions
 from app.services.metadata.scraper import metadata_scraper
@@ -133,6 +134,17 @@ class RootVideoOrganizer:
         if min_confidence is None:
             min_confidence = get_organize_min_confidence()
         if best.score < min_confidence:
+            event_store.safe_append(
+                "RootVideoOrganizationNeedsReview",
+                "file",
+                str(video_path),
+                {
+                    "path": str(video_path),
+                    "reason": "Low confidence TMDB match",
+                    "candidate": best.model_dump(),
+                    "min_confidence": min_confidence,
+                },
+            )
             return {
                 "status": "needs_review",
                 "path": str(video_path),
@@ -140,6 +152,16 @@ class RootVideoOrganizer:
                 "candidate": best.model_dump(),
             }
         if get_scrape_require_confirmation():
+            event_store.safe_append(
+                "RootVideoOrganizationNeedsReview",
+                "file",
+                str(video_path),
+                {
+                    "path": str(video_path),
+                    "reason": "Manual confirmation required",
+                    "candidate": best.model_dump(),
+                },
+            )
             return {
                 "status": "needs_review",
                 "path": str(video_path),
@@ -224,6 +246,22 @@ class RootVideoOrganizer:
             ),
         )
 
+        event_store.safe_append(
+            "RootVideoOrganized",
+            "movie",
+            movie["id"],
+            {
+                "movie_id": movie["id"],
+                "source_path": str(video_path),
+                "target_path": str(target_video),
+                "target_dir": str(target_dir),
+                "tmdb_id": candidate.tmdb_id,
+                "score": candidate.score,
+                "rename_style": options.rename_style,
+                "scrape_status": scrape_result.status,
+                "sidecars": moved_sidecars,
+            },
+        )
         return {
             "status": "success",
             "source_path": str(video_path),

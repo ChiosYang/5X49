@@ -4,6 +4,7 @@ from threading import Lock
 from typing import Optional
 
 from app.services.event_bus import library_event_bus
+from app.services.event_store import event_store
 from app.services.library import library_manager
 from app.services.metadata.artwork import ArtworkDownloader
 from app.services.metadata.matcher import generate_search_queries, parse_title_year, score_candidates
@@ -192,6 +193,19 @@ class MetadataScraper:
             }
         )
         stored = library_manager.upsert_movie(enriched, preserve_id=movie_id)
+        event_store.safe_append(
+            "ArtworkSelected",
+            "movie",
+            movie_id,
+            {
+                "movie_id": movie_id,
+                "tmdb_id": tmdb_id,
+                "poster_path": selection.poster_path,
+                "backdrop_path": selection.backdrop_path,
+                "poster_local": enriched["poster_local"],
+                "backdrop_local": enriched["backdrop_local"],
+            },
+        )
         library_event_bus.publish_library_changed("artwork_updated", movie_id=movie_id)
         return {
             "status": "success",
@@ -226,6 +240,7 @@ class MetadataScraper:
                         tmdb_confidence=candidate.score,
                         scrape_error="Manual confirmation required",
                     )
+                    self._record_match_suggested(movie_id, [candidate], "Manual confirmation required")
                     return ScrapeResult(
                         status="needs_review",
                         movie_id=movie_id,
@@ -248,6 +263,7 @@ class MetadataScraper:
                         tmdb_confidence=best.score,
                         scrape_error="Manual confirmation required",
                     )
+                    self._record_match_suggested(movie_id, candidates, "Manual confirmation required")
                     return ScrapeResult(
                         status="needs_review",
                         movie_id=movie_id,
@@ -262,6 +278,7 @@ class MetadataScraper:
                         tmdb_confidence=best.score,
                         scrape_error="Low confidence TMDB match",
                     )
+                    self._record_match_suggested(movie_id, candidates, "Low confidence TMDB match")
                     return ScrapeResult(
                         status="needs_review",
                         movie_id=movie_id,
@@ -310,6 +327,26 @@ class MetadataScraper:
                 "tmdb_confidence": candidates[0].score if candidates else 100,
             }
             stored = library_manager.upsert_movie(enriched, preserve_id=movie_id)
+            event_store.safe_append(
+                "MetadataMatched",
+                "movie",
+                movie_id,
+                {
+                    "movie_id": movie_id,
+                    "tmdb_id": selected_id,
+                    "imdb_id": details.get("imdb_id") or details.get("external_ids", {}).get("imdb_id"),
+                    "title": details.get("title") or details.get("original_title"),
+                    "year": self._release_year(details.get("release_date")),
+                    "confidence": candidates[0].score if candidates else 100,
+                    "mode": options.mode,
+                    "language": language,
+                    "artwork_language": artwork_language,
+                    "write_nfo": options.write_nfo,
+                    "download_artwork": options.download_artwork,
+                    "poster_path": poster_path,
+                    "backdrop_path": backdrop_path,
+                },
+            )
             library_event_bus.publish_library_changed("metadata_scraped", movie_id=movie_id)
             return ScrapeResult(
                 status="success",
@@ -510,6 +547,12 @@ class MetadataScraper:
 
     def _mark_failed(self, movie_id: str, message: str) -> ScrapeResult:
         self._update_scrape_state(movie_id, scrape_status="failed", scrape_error=message)
+        event_store.safe_append(
+            "MetadataScrapeFailed",
+            "movie",
+            movie_id,
+            {"movie_id": movie_id, "message": message},
+        )
         return ScrapeResult(
             status="failed",
             movie_id=movie_id,
@@ -523,6 +566,18 @@ class MetadataScraper:
             return
         library_manager.upsert_movie({**movie, **updates}, preserve_id=movie_id)
         library_event_bus.publish_library_changed("metadata_scrape_status", movie_id=movie_id)
+
+    def _record_match_suggested(self, movie_id: str, candidates: list[MetadataSearchResult], reason: str):
+        event_store.safe_append(
+            "MetadataMatchSuggested",
+            "movie",
+            movie_id,
+            {
+                "movie_id": movie_id,
+                "reason": reason,
+                "candidates": [candidate.model_dump() for candidate in candidates[:REVIEW_CANDIDATE_LIMIT]],
+            },
+        )
 
     def _language(self, value: Optional[str]) -> str:
         if value:

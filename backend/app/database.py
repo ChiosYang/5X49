@@ -129,6 +129,8 @@ def migrate_sqlite_schema():
             )
 
 def create_db_and_tables():
+    import app.models  # noqa: F401
+
     SQLModel.metadata.create_all(engine)
     migrate_sqlite_schema()
 

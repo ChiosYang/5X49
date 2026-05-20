@@ -102,6 +102,17 @@ This document describes the REST API endpoints available in the backend applicat
   data: {"reason":"folder_scanned","movie_id":"603_1999","folder_path":"/media/The Matrix (1999)","timestamp":"2026-05-11T00:00:00+00:00"}
   ```
 
+### List Library Audit Events
+- **URL**: `/library/audit-events`
+- **Method**: `GET`
+- **Description**: Lists persisted audit events recorded by library, metadata, organizer, analysis, and external score actions. This is a historical event log and is separate from the live `/library/events` SSE stream.
+- **Query Parameters**:
+  - `aggregate_type` (string, optional): Filter by aggregate type, such as `movie`, `library`, or `file`.
+  - `aggregate_id` (string, optional): Filter by aggregate ID, usually a movie ID for `movie` aggregates.
+  - `type` (string, optional): Filter by event type, such as `MovieDiscovered`, `MetadataMatched`, or `AnalysisCompleted`.
+  - `limit` (integer, optional): Number of events to return, 1-500. Defaults to 100.
+- **Response**: Array of `EventRecord` objects, newest first.
+
 ### Background Jobs
 - **URL**: `/jobs`
 - **Method**: `GET`
@@ -175,6 +186,18 @@ Long-running mutation endpoints return an accepted-job envelope:
 - **Path Parameters**:
   - `movie_id` (string): ASCII movie ID, such as `603_1999`, `tt0133093_1999`, or `local_<hash>`.
 - **Response**: `Movie` object.
+- **Errors**: `400 Invalid ID format`, `404 Movie not found`.
+
+### Get Movie Audit Events
+- **URL**: `/library/{movie_id}/audit-events`
+- **Method**: `GET`
+- **Description**: Lists persisted audit events for one movie.
+- **Path Parameters**:
+  - `movie_id` (string): ASCII movie ID.
+- **Query Parameters**:
+  - `type` (string, optional): Filter by event type.
+  - `limit` (integer, optional): Number of events to return, 1-500. Defaults to 100.
+- **Response**: Array of `EventRecord` objects, newest first.
 - **Errors**: `400 Invalid ID format`, `404 Movie not found`.
 
 ### Refresh Movie External Scores
@@ -771,6 +794,21 @@ Background jobs are persisted in SQLite and executed by the in-process actor run
 - `dedupe_key` (String, Optional): Active jobs with the same key are reused instead of duplicated.
 - `cancel_requested` (Boolean): Cooperative cancellation flag checked by long-running handlers.
 - `created_at`, `updated_at`, `started_at`, `finished_at` (String, Optional): UTC ISO timestamps.
+
+### EventRecord schema
+
+Audit events are persisted in the `events` table. Stage 1 records events as an audit sidecar while `Movie` remains the current-state source used by existing endpoints.
+
+- `id` (String): Primary key, formatted as `evt_<uuid-hex>`.
+- `aggregate_type` (String): Event aggregate category, such as `movie`, `library`, or `file`.
+- `aggregate_id` (String, Optional): Aggregate identifier. Movie events use the current movie ID.
+- `type` (String): Semantic event type, for example `MovieDiscovered`, `MovieFolderScanned`, `MovieMarkedMissing`, `MovieIgnored`, `MetadataMatchSuggested`, `MetadataMatched`, `MetadataScrapeFailed`, `ArtworkSelected`, `RootVideoOrganized`, `AnalysisStarted`, `AnalysisCompleted`, `AnalysisFailed`, `ExternalScoresRefreshed`, or `ExternalScoresRefreshFailed`.
+- `actor_type` / `actor_id` (String, Optional): Actor metadata. Stage 1 defaults to `system`.
+- `command_id`, `correlation_id`, `causation_id` (String, Optional): Optional command and trace identifiers reserved for later event-sourced workflows.
+- `payload` (Object): Event-specific details.
+- `context` (Object): Additional metadata reserved for later use.
+- `schema_version` (Integer): Event payload schema version.
+- `occurred_at` (String): UTC ISO timestamp.
 
 ### Movie schema
 The core database payload associated with movies.
