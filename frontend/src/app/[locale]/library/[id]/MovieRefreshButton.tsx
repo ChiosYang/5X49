@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Award, Clapperboard, EyeOff, Loader2, RefreshCw, Search } from "lucide-react";
+import { Award, Clapperboard, EyeOff, History, Loader2, RefreshCw, Search } from "lucide-react";
 import {
   useConfirmScrapeMovie,
   useIgnoreMovie,
@@ -13,6 +13,7 @@ import {
 import { useJobs } from "@/hooks/useJobs";
 import { API } from "@/lib/api";
 import type { MetadataSearchResult } from "@/types/movie";
+import MovieActivityTimeline from "./MovieActivityTimeline";
 import MovieArtworkPicker from "./MovieArtworkPicker";
 
 const DEFAULT_VISIBLE_CANDIDATES = 5;
@@ -75,6 +76,7 @@ export default function MovieRefreshButton({ movieId }: { movieId: string }) {
   const [reviewSearchDraft, setReviewSearchDraft] = useState("");
   const [isSearching, setIsSearching] = useState(false);
   const [externalScoreJobId, setExternalScoreJobId] = useState<string | null>(null);
+  const [activityOpen, setActivityOpen] = useState(false);
   const completedExternalScoreJob = useRef<string | null>(null);
   const queuedMessageTimer = useRef<number | null>(null);
 
@@ -247,6 +249,18 @@ export default function MovieRefreshButton({ movieId }: { movieId: string }) {
         )}
       </div>
       <div className="flex shrink-0 items-center gap-2">
+        <button
+          type="button"
+          onClick={() => {
+            setReviewOpen(false);
+            setActivityOpen(true);
+          }}
+          className="flex h-11 w-11 items-center justify-center border border-neutral-800 bg-neutral-950 text-white hover:border-neutral-500 hover:bg-neutral-900"
+          aria-label="Show library history"
+          title="Show library history"
+        >
+          <History className="h-4 w-4" />
+        </button>
         <MovieArtworkPicker movieId={movieId} />
         <button
           type="button"
@@ -378,6 +392,11 @@ export default function MovieRefreshButton({ movieId }: { movieId: string }) {
           )}
         </button>
       </div>
+      <MovieActivityTimeline
+        movieId={movieId}
+        open={activityOpen}
+        onClose={() => setActivityOpen(false)}
+      />
     </div>
   );
 }

@@ -14,8 +14,8 @@ export function useMovie(id: string, fallbackData?: MovieDetail) {
   });
 }
 
-export function useMovieAuditEvents(id: string) {
-  return useSWR<EventRecord[]>(id ? API.libraryMovieAuditEvents(id) : null, {
+export function useMovieAuditEvents(id: string, enabled = true) {
+  return useSWR<EventRecord[]>(id && enabled ? API.libraryMovieAuditEvents(id) : null, {
     refreshInterval: 5000,
   });
 }
