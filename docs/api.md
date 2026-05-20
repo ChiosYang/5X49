@@ -237,6 +237,42 @@ Long-running mutation endpoints return an accepted-job envelope:
 - **Notes**: `base=empty` is still a dry-run and only replays the currently supported subset. Events that are projectable in principle but cannot be applied, such as a `MovieFileObserved` without a prior projected `MovieDiscovered`, are counted in `skipped_projectable_events` and summarized in `skipped_events`.
 - **Errors**: `400 Only dry_run=true is supported`, `400 base must be 'current' or 'empty'`, `400 Invalid movie ID format`, `404 Movie not found`.
 
+### Backfill MovieDiscovered Events
+- **URL**: `/library/events/backfill/movie-discovered`
+- **Method**: `POST`
+- **Description**: Creates missing `MovieDiscovered` initialization events for existing `Movie` rows. Defaults to dry-run mode. When executed with `dry_run=false`, it only appends events to the `events` table and does not modify the `movie` table.
+- **Query Parameters**:
+  - `dry_run` (boolean, optional): Defaults to `true`. Set to `false` to append missing initialization events.
+  - `movie_id` (string, optional): Restrict the backfill check or execution to one movie.
+  - `sample_limit` (integer, optional): Number of sample event specs to return, 0-50. Defaults to 20.
+- **Response**:
+  ```json
+  {
+    "dry_run": true,
+    "event_type": "MovieDiscovered",
+    "movie_id": null,
+    "movies_checked": 42,
+    "already_initialized": 0,
+    "events_to_create": 42,
+    "created_events": 0,
+    "created_event_ids": [],
+    "sample_events": [
+      {
+        "type": "MovieDiscovered",
+        "aggregate_type": "movie",
+        "aggregate_id": "local_xxx",
+        "actor_type": "migration",
+        "payload": {"id": "local_xxx", "movie_id": "local_xxx", "title": "Example", "year": 2026},
+        "context": {"source": "movie_discovered_backfill", "reason": "initialize_event_replay"},
+        "occurred_at": "2026-05-20T00:00:00+00:00"
+      }
+    ],
+    "timestamp_strategy": "Backfilled initialization events are placed just before each movie's earliest existing movie event when one exists; otherwise they use added_at, last_seen_at, or current time."
+  }
+  ```
+- **Notes**: The timestamp strategy makes historical initialization events sort before existing per-movie events so `base=empty` replay can apply later events in order. Existing movies that already have `MovieDiscovered` are skipped.
+- **Errors**: `400 Invalid movie ID format`, `404 Movie not found`.
+
 ### Refresh Movie External Scores
 - **URL**: `/library/{movie_id}/external-scores/refresh`
 - **Method**: `POST`

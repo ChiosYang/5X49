@@ -35,6 +35,7 @@ description: 电影族谱 API (FastAPI) 的接口调用指南
 | DELETE | `/jobs/{job_id}` | 删除已结束任务 |
 | GET | `/library/{movie_id}` | 获取指定电影详情 |
 | GET | `/library/{movie_id}/audit-events` | 查询单部电影的持久化审计事件 |
+| POST | `/library/events/backfill/movie-discovered?dry_run=true` | 检查或补齐现有电影的 MovieDiscovered 初始化事件 |
 | POST | `/library/projections/movie/rebuild?dry_run=true&base=current\|empty` | 只读检查 Movie 事件投影一致性 |
 | POST | `/library/seed` | 填充测试数据 |
 | POST | `/library/scan?media_dir=/path` | 排队扫描并校准目录，新增/更新电影并标记缺失 |
@@ -147,9 +148,11 @@ curl -s "http://127.0.0.1:11548/library/audit-events?aggregate_type=movie&limit=
 curl -s http://127.0.0.1:11548/library/96721_2013/audit-events
 curl -s -X POST "http://127.0.0.1:11548/library/projections/movie/rebuild?dry_run=true&movie_id=96721_2013"
 curl -s -X POST "http://127.0.0.1:11548/library/projections/movie/rebuild?dry_run=true&base=empty&movie_id=96721_2013"
+curl -s -X POST "http://127.0.0.1:11548/library/events/backfill/movie-discovered?dry_run=true"
 ```
 返回持久化 `EventRecord[]`，按时间倒序排列。`/library/events` 是实时 SSE；`/library/audit-events` 和 `/library/{movie_id}/audit-events` 是历史审计日志。当前为混合模式：多数复杂流程仍旁路记录审计事件；`MovieIgnored`、`MovieMarkedMissing`、`MovieRestored`、`AnalysisStarted`、`AnalysisCompleted`、`AnalysisFailed` 等低风险状态变更会由事件同步投影到 `Movie` 当前状态表。扫描事件会去重：新记录写 `MovieDiscovered`，本地文件关键字段变化才写 `MovieFileObserved`，missing 记录重新出现写 `MovieRestored`，`MovieFolderScanned` 只表示扫描动作。事件类型包括 `MovieDiscovered`、`MovieFileObserved`、`MovieFolderScanned`、`MovieMarkedMissing`、`MovieIgnored`、`MetadataMatchSuggested`、`MetadataMatched`、`MetadataScrapeFailed`、`ArtworkSelected`、`RootVideoOrganized`、`AnalysisStarted`、`AnalysisCompleted`、`AnalysisFailed`、`ExternalScoresRefreshed` 等。
 `/library/projections/movie/rebuild` 目前只支持 `dry_run=true`，不会修改数据库。`base=current` 从当前 `Movie` 快照出发，在内存中重放低风险状态事件；`base=empty` 从空内存状态出发，额外支持重放 `MovieDiscovered` 和 `MovieFileObserved`。两种模式都会返回 `differences`、`unsupported_event_types`、`skipped_projectable_events` 和 `skipped_events`，用于检查事件和当前状态是否一致，以及识别下一步需要补齐的事件 payload。
+`/library/events/backfill/movie-discovered` 默认 `dry_run=true`，用于检查哪些现有电影缺少初始化事件；`dry_run=false` 只向 `events` 表追加缺失的 `MovieDiscovered`，不修改 `Movie` 表。补齐事件会尽量排在该电影已有事件之前，便于后续 `base=empty` 按时间顺序 replay。
 
 ### 刷新外部评分/榜单
 ```bash
