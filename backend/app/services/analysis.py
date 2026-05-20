@@ -30,77 +30,65 @@ class AnalysisService:
                 logger.info(f"Movie already analyzed: {movie_id}")
                 return
 
-            # Update status to processing
-            movie.analysis_status = "processing"
-            session.add(movie)
-            session.commit()
-            session.refresh(movie)
-            event_store.safe_append(
-                "AnalysisStarted",
-                "movie",
-                movie_id,
-                {"movie_id": movie_id, "title": movie.title, "tmdb_id": movie.tmdb_id},
-            )
+            title = movie.title
+            title_cn = movie.title_cn
+            tmdb_id = movie.tmdb_id
+
+        _, projected = event_store.append_and_project(
+            "AnalysisStarted",
+            "movie",
+            movie_id,
+            {"movie_id": movie_id, "title": title, "tmdb_id": tmdb_id},
+        )
+        if not projected:
+            logger.error(f"Movie not found during analysis projection: {movie_id}")
+            return
             
-            try:
-                # Call AI Service
-                # Prefer title_cn for Chinese context analysis if available, 
-                # but historian.get_movie_metadata usually expects English or Original Title for TMDB search.
-                # However, our historian uses `movie_name` to search TMDB. 
-                # If we pass title_cn, TMDB search usually works fine.
-                search_query = movie.title_cn or movie.title
-                
-                result = self.historian.analyze_genealogy(search_query, tmdb_id=movie.tmdb_id)
-                
-                if result:
-                    movie.analysis_data = result
-                    
-                    # Parse micro_genre to extract name and definition
-                    # Format: "名称 (English Name) - 详细定义说明"
-                    raw_micro_genre = result.get("micro_genre", "")
-                    if raw_micro_genre:
-                        # Split by " - " to separate name from definition
-                        if " - " in raw_micro_genre:
-                            parts = raw_micro_genre.split(" - ", 1)
-                            movie.micro_genre = parts[0].strip()
-                            movie.micro_genre_definition = parts[1].strip()
-                        else:
-                            # Fallback: no separator found, store as name only
-                            movie.micro_genre = raw_micro_genre.strip()
-                            movie.micro_genre_definition = None
-                    else:
-                        movie.micro_genre = None
-                        movie.micro_genre_definition = None
-                    
-                    movie.analysis_status = "completed"
-                    logger.info(f"Analysis completed for: {movie.title}")
-                else:
-                    movie.analysis_status = "failed"
-                    logger.error(f"Analysis failed (no result) for: {movie.title}")
-            
-            except Exception as e:
-                movie.analysis_status = "failed"
-                logger.error(f"Analysis error for {movie.title}: {e}")
-            
-            session.add(movie)
-            session.commit()
-            if movie.analysis_status == "completed":
-                event_store.safe_append(
+        try:
+            # Prefer title_cn for Chinese context analysis if available.
+            search_query = title_cn or title
+            result = self.historian.analyze_genealogy(search_query, tmdb_id=tmdb_id)
+
+            if result:
+                micro_genre, micro_genre_definition = self._parse_micro_genre(result)
+                event_store.append_and_project(
                     "AnalysisCompleted",
                     "movie",
                     movie_id,
                     {
                         "movie_id": movie_id,
-                        "micro_genre": movie.micro_genre,
-                        "has_analysis_data": bool(movie.analysis_data),
+                        "analysis_data": result,
+                        "micro_genre": micro_genre,
+                        "micro_genre_definition": micro_genre_definition,
                     },
                 )
-            elif movie.analysis_status == "failed":
-                event_store.safe_append(
-                    "AnalysisFailed",
-                    "movie",
-                    movie_id,
-                    {"movie_id": movie_id},
-                )
+                logger.info(f"Analysis completed for: {title}")
+                return
+
+            event_store.append_and_project(
+                "AnalysisFailed",
+                "movie",
+                movie_id,
+                {"movie_id": movie_id, "message": "No result"},
+            )
+            logger.error(f"Analysis failed (no result) for: {title}")
+
+        except Exception as e:
+            event_store.append_and_project(
+                "AnalysisFailed",
+                "movie",
+                movie_id,
+                {"movie_id": movie_id, "message": str(e)},
+            )
+            logger.error(f"Analysis error for {title}: {e}")
+
+    def _parse_micro_genre(self, result: dict) -> tuple[str | None, str | None]:
+        raw_micro_genre = result.get("micro_genre", "")
+        if not raw_micro_genre:
+            return None, None
+        if " - " in raw_micro_genre:
+            name, definition = raw_micro_genre.split(" - ", 1)
+            return name.strip(), definition.strip()
+        return raw_micro_genre.strip(), None
 
 analysis_service = AnalysisService()

@@ -13,8 +13,8 @@ logger = logging.getLogger("event_store")
 class EventStore:
     """Persistent audit event store.
 
-    Stage 1 keeps this as a sidecar audit log: existing services still update
-    their current-state tables, and append semantic events best-effort.
+    Most events remain an audit sidecar while selected low-risk events are
+    synchronously projected into current-state tables.
     """
 
     def append(
@@ -48,6 +48,44 @@ class EventStore:
             session.commit()
             session.refresh(event)
             return event.model_dump()
+
+    def append_and_project(
+        self,
+        event_type: str,
+        aggregate_type: str,
+        aggregate_id: Optional[str] = None,
+        payload: Optional[dict] = None,
+        *,
+        actor_type: str = "system",
+        actor_id: Optional[str] = None,
+        command_id: Optional[str] = None,
+        correlation_id: Optional[str] = None,
+        causation_id: Optional[str] = None,
+        context: Optional[dict] = None,
+    ) -> tuple[dict, Optional[dict]]:
+        """Append one event and synchronously update supported projections."""
+        with Session(engine) as session:
+            event = EventRecord(
+                aggregate_type=aggregate_type,
+                aggregate_id=aggregate_id,
+                type=event_type,
+                actor_type=actor_type,
+                actor_id=actor_id,
+                command_id=command_id,
+                correlation_id=correlation_id,
+                causation_id=causation_id,
+                payload=payload or {},
+                context=context or {},
+            )
+            session.add(event)
+            session.flush()
+
+            from app.services.projections.movie_projection import movie_projector
+
+            projected = movie_projector.apply(event, session)
+            session.commit()
+            session.refresh(event)
+            return event.model_dump(), projected
 
     def safe_append(self, *args, **kwargs) -> Optional[dict]:
         try:

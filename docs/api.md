@@ -797,7 +797,7 @@ Background jobs are persisted in SQLite and executed by the in-process actor run
 
 ### EventRecord schema
 
-Audit events are persisted in the `events` table. Stage 1 records events as an audit sidecar while `Movie` remains the current-state source used by existing endpoints.
+Audit events are persisted in the `events` table. Most events currently act as an audit sidecar while selected low-risk events such as `MovieIgnored`, `MovieMarkedMissing`, `AnalysisStarted`, `AnalysisCompleted`, and `AnalysisFailed` are synchronously projected into the `Movie` current-state table.
 
 - `id` (String): Primary key, formatted as `evt_<uuid-hex>`.
 - `aggregate_type` (String): Event aggregate category, such as `movie`, `library`, or `file`.

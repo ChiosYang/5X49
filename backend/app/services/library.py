@@ -114,24 +114,22 @@ class LibraryManager:
 
         missing_at = datetime.now(timezone.utc).isoformat()
         updated = 0
-        audit_events: list[tuple[str, str, dict]] = []
         with Session(engine) as session:
             statement = select(Movie).where(Movie.library_status.not_in(["missing", "ignored"]))
-            movies = session.exec(statement).all()
-            for movie in movies:
-                if not movie.last_seen_at or movie.last_seen_at < seen_at:
-                    movie.library_status = "missing"
-                    movie.missing_since = missing_at
-                    session.add(movie)
-                    updated += 1
-                    audit_events.append((
-                        "MovieMarkedMissing",
-                        movie.id,
-                        {"movie_id": movie.id, "missing_since": missing_at, "seen_at": seen_at},
-                    ))
-            session.commit()
-        for event_type, aggregate_id, payload in audit_events:
-            event_store.safe_append(event_type, "movie", aggregate_id, payload)
+            movies = [
+                movie.model_dump()
+                for movie in session.exec(statement).all()
+                if not movie.last_seen_at or movie.last_seen_at < seen_at
+            ]
+        for movie in movies:
+            _, projected = event_store.append_and_project(
+                "MovieMarkedMissing",
+                "movie",
+                movie["id"],
+                {"movie_id": movie["id"], "missing_since": missing_at, "seen_at": seen_at},
+            )
+            if projected:
+                updated += 1
         return updated
 
     def mark_path_missing(self, path: str) -> int:
@@ -139,25 +137,22 @@ class LibraryManager:
 
         missing_at = datetime.now(timezone.utc).isoformat()
         updated = 0
-        audit_events: list[tuple[str, str, dict]] = []
         with Session(engine) as session:
             statement = select(Movie).where(or_(Movie.media_path == path, Movie.folder_path == path))
-            movies = session.exec(statement).all()
-            for movie in movies:
-                if movie.library_status == "ignored":
-                    continue
-                movie.library_status = "missing"
-                movie.missing_since = missing_at
-                session.add(movie)
+            movies = [
+                movie.model_dump()
+                for movie in session.exec(statement).all()
+                if movie.library_status != "ignored"
+            ]
+        for movie in movies:
+            _, projected = event_store.append_and_project(
+                "MovieMarkedMissing",
+                "movie",
+                movie["id"],
+                {"movie_id": movie["id"], "missing_since": missing_at, "path": path},
+            )
+            if projected:
                 updated += 1
-                audit_events.append((
-                    "MovieMarkedMissing",
-                    movie.id,
-                    {"movie_id": movie.id, "missing_since": missing_at, "path": path},
-                ))
-            session.commit()
-        for event_type, aggregate_id, payload in audit_events:
-            event_store.safe_append(event_type, "movie", aggregate_id, payload)
         return updated
 
     def ignore_movie(self, movie_id: str) -> Optional[dict]:
@@ -166,18 +161,10 @@ class LibraryManager:
             movie = session.get(Movie, movie_id)
             if not movie:
                 return None
-            movie.library_status = "ignored"
-            movie.missing_since = None
-            session.add(movie)
-            session.commit()
-            session.refresh(movie)
-            event_store.safe_append(
-                "MovieIgnored",
-                "movie",
-                movie_id,
-                {"movie_id": movie_id, "title": movie.title, "year": movie.year},
-            )
-            return movie.model_dump()
+            payload = {"movie_id": movie_id, "title": movie.title, "year": movie.year}
+
+        _, projected = event_store.append_and_project("MovieIgnored", "movie", movie_id, payload)
+        return projected
 
     def cleanup_missing(self) -> int:
         """Delete records already marked as missing."""

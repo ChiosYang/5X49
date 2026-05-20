@@ -145,7 +145,7 @@ curl -s http://127.0.0.1:11548/library/96721_2013
 curl -s "http://127.0.0.1:11548/library/audit-events?aggregate_type=movie&limit=50"
 curl -s http://127.0.0.1:11548/library/96721_2013/audit-events
 ```
-返回持久化 `EventRecord[]`，按时间倒序排列。`/library/events` 是实时 SSE；`/library/audit-events` 和 `/library/{movie_id}/audit-events` 是历史审计日志。阶段 1 仍以 `Movie` 当前状态表服务现有接口，同时旁路记录 `MovieDiscovered`、`MovieFolderScanned`、`MovieMarkedMissing`、`MovieIgnored`、`MetadataMatchSuggested`、`MetadataMatched`、`MetadataScrapeFailed`、`ArtworkSelected`、`RootVideoOrganized`、`AnalysisStarted`、`AnalysisCompleted`、`AnalysisFailed`、`ExternalScoresRefreshed` 等语义事件。
+返回持久化 `EventRecord[]`，按时间倒序排列。`/library/events` 是实时 SSE；`/library/audit-events` 和 `/library/{movie_id}/audit-events` 是历史审计日志。当前为混合模式：多数复杂流程仍旁路记录审计事件；`MovieIgnored`、`MovieMarkedMissing`、`AnalysisStarted`、`AnalysisCompleted`、`AnalysisFailed` 等低风险状态变更会由事件同步投影到 `Movie` 当前状态表。事件类型包括 `MovieDiscovered`、`MovieFolderScanned`、`MovieMarkedMissing`、`MovieIgnored`、`MetadataMatchSuggested`、`MetadataMatched`、`MetadataScrapeFailed`、`ArtworkSelected`、`RootVideoOrganized`、`AnalysisStarted`、`AnalysisCompleted`、`AnalysisFailed`、`ExternalScoresRefreshed` 等。
 
 ### 刷新外部评分/榜单
 ```bash
