@@ -203,9 +203,10 @@ Long-running mutation endpoints return an accepted-job envelope:
 ### Dry-run Movie Projection Rebuild
 - **URL**: `/library/projections/movie/rebuild`
 - **Method**: `POST`
-- **Description**: Runs a read-only Movie projection consistency check. This starts from the current `Movie` snapshot, reapplies supported low-risk movie events in memory, and reports differences. It does not clear, rebuild, or mutate the `movie` table.
+- **Description**: Runs a read-only Movie projection consistency check. It can either start from the current `Movie` snapshot (`base=current`) or replay the supported subset of movie events from an empty in-memory state (`base=empty`). It does not clear, rebuild, or mutate the `movie` table.
 - **Query Parameters**:
   - `dry_run` (boolean, optional): Must be `true`. Defaults to `true`; `false` returns `400`.
+  - `base` (string, optional): `current` or `empty`. Defaults to `current`.
   - `movie_id` (string, optional): Restrict the check to one movie.
   - `limit` (integer, optional): Maximum movie events to process, 1-5000. Defaults to 1000.
   - `since` (string, optional): Only include events whose `occurred_at` is greater than or equal to this timestamp.
@@ -215,12 +216,14 @@ Long-running mutation endpoints return an accepted-job envelope:
     "dry_run": true,
     "mode": "current_snapshot_plus_events",
     "note": "Consistency dry-run only; this is not a canonical replay from an empty state.",
-    "base": "current_movie_snapshot",
+    "base": "current",
     "movie_id": "local_xxx",
     "since": null,
     "limit": 1000,
     "events_processed": 12,
     "projectable_events": 4,
+    "skipped_projectable_events": 0,
+    "skipped_events": [],
     "unsupported_events": 8,
     "unsupported_event_types": {"MovieDiscovered": 1, "MetadataMatched": 7},
     "movies_compared": 1,
@@ -228,8 +231,11 @@ Long-running mutation endpoints return an accepted-job envelope:
     "differences": []
   }
   ```
-- **Projectable Events**: `MovieIgnored`, `MovieMarkedMissing`, `MovieRestored`, `AnalysisStarted`, `AnalysisCompleted`, and `AnalysisFailed`.
-- **Errors**: `400 Only dry_run=true is supported`, `400 Invalid movie ID format`, `404 Movie not found`.
+- **Projectable Events**:
+  - `base=current`: `MovieIgnored`, `MovieMarkedMissing`, `MovieRestored`, `AnalysisStarted`, `AnalysisCompleted`, and `AnalysisFailed`.
+  - `base=empty`: all `base=current` events plus `MovieDiscovered` and `MovieFileObserved`.
+- **Notes**: `base=empty` is still a dry-run and only replays the currently supported subset. Events that are projectable in principle but cannot be applied, such as a `MovieFileObserved` without a prior projected `MovieDiscovered`, are counted in `skipped_projectable_events` and summarized in `skipped_events`.
+- **Errors**: `400 Only dry_run=true is supported`, `400 base must be 'current' or 'empty'`, `400 Invalid movie ID format`, `404 Movie not found`.
 
 ### Refresh Movie External Scores
 - **URL**: `/library/{movie_id}/external-scores/refresh`

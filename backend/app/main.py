@@ -248,6 +248,7 @@ def rebuild_movie_projection_dry_run(
     movie_id: str | None = Query(default=None),
     limit: int = Query(default=1000, ge=1, le=5000),
     since: str | None = Query(default=None),
+    base: str = Query(default="current"),
 ):
     """Run a read-only Movie projection consistency check."""
     if not dry_run:
@@ -257,7 +258,10 @@ def rebuild_movie_projection_dry_run(
             raise HTTPException(status_code=400, detail="Invalid movie ID format")
         if not library_manager.get_movie(movie_id):
             raise HTTPException(status_code=404, detail="Movie not found")
-    return movie_projection_dry_run.run(movie_id=movie_id, limit=limit, since=since)
+    try:
+        return movie_projection_dry_run.run(movie_id=movie_id, limit=limit, since=since, base=base)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
 
 @app.get("/library/{movie_id}")
 def get_library_movie(movie_id: str):
