@@ -12,6 +12,47 @@ from app.services.event_store import event_store
 # Configuration via environment variables
 SEED_DATA_FILE = Path(__file__).parent.parent / "data" / "seed_movies.json"
 
+SCAN_EVENT_FIELDS = (
+    "id",
+    "title",
+    "title_cn",
+    "year",
+    "media_path",
+    "folder_path",
+    "folder_name",
+    "video_file",
+    "file_size",
+    "file_mtime",
+    "last_seen_at",
+    "library_status",
+    "metadata_source",
+    "scrape_status",
+    "tmdb_id",
+    "imdb_id",
+    "video_width",
+    "video_height",
+    "video_codec",
+    "video_bitrate",
+    "video_duration",
+    "video_fps",
+    "video_dynamic_range",
+    "video_bit_depth",
+    "nfo_source",
+)
+
+FILE_OBSERVED_FIELDS = (
+    "media_path",
+    "folder_path",
+    "video_file",
+    "file_size",
+    "file_mtime",
+    "video_width",
+    "video_height",
+    "video_codec",
+    "video_duration",
+)
+
+
 class LibraryManager:
     def __init__(self):
         # We handle DB creation in main.py, but good to ensure tables exist
@@ -20,7 +61,7 @@ class LibraryManager:
     def add_movies(self, movies_data: list[dict]) -> int:
         """Add multiple movies to the library (upsert)."""
         added = 0
-        audit_events: list[tuple[str, str, dict]] = []
+        scan_events: list[dict] = []
         with Session(engine) as session:
             for movie_dict in movies_data:
                 # Convert dict to Movie model
@@ -33,7 +74,7 @@ class LibraryManager:
                 if not existing_movie and movie_dict.get("media_path"):
                     existing_movie = self._get_by_media_path(session, movie_dict["media_path"])
                 if existing_movie:
-                    previous_status = existing_movie.library_status
+                    previous_movie = existing_movie.model_dump()
                     if existing_movie.library_status == "ignored" and movie_dict.get("library_status") == "available":
                         movie_dict = {**movie_dict, "library_status": "ignored", "missing_since": None}
                     if not existing_movie.added_at:
@@ -44,17 +85,20 @@ class LibraryManager:
                             continue
                         setattr(existing_movie, key, value)
                     session.add(existing_movie)
-                    if previous_status == "missing" and movie_dict.get("library_status") == "available":
-                        audit_events.append(("MovieRestored", existing_movie.id, self._movie_event_payload(movie_dict)))
+                    scan_events.extend(self._scan_events_for_existing(previous_movie, movie_dict, existing_movie.id))
                 else:
                     # Create new
                     new_movie = Movie(**self._with_added_at(movie_dict))
                     session.add(new_movie)
                     added += 1
-                    audit_events.append(("MovieDiscovered", movie_id, self._movie_event_payload(movie_dict)))
+                    scan_events.append({
+                        "type": "MovieDiscovered",
+                        "aggregate_id": movie_id,
+                        "payload": self._movie_event_payload(movie_dict),
+                        "project": False,
+                    })
             session.commit()
-        for event_type, aggregate_id, payload in audit_events:
-            event_store.safe_append(event_type, "movie", aggregate_id, payload)
+        self._append_scan_events(scan_events)
         return added
 
     def upsert_movie(self, movie_data: dict, preserve_id: Optional[str] = None) -> Optional[dict]:
@@ -64,14 +108,14 @@ class LibraryManager:
             return None
 
         movie_data = {**movie_data, "id": movie_id}
-        audit_event: Optional[tuple[str, str, dict]] = None
+        scan_events: list[dict] = []
         with Session(engine) as session:
             existing_movie = session.get(Movie, movie_id)
             if not existing_movie and movie_data.get("media_path"):
                 existing_movie = self._get_by_media_path(session, movie_data["media_path"])
 
             if existing_movie:
-                previous_status = existing_movie.library_status
+                previous_movie = existing_movie.model_dump()
                 if existing_movie.library_status == "ignored" and movie_data.get("library_status") == "available":
                     movie_data = {**movie_data, "library_status": "ignored", "missing_since": None}
                 if not existing_movie.added_at:
@@ -83,17 +127,22 @@ class LibraryManager:
                 session.add(existing_movie)
                 session.commit()
                 session.refresh(existing_movie)
-                if previous_status == "missing" and movie_data.get("library_status") == "available":
-                    audit_event = ("MovieRestored", existing_movie.id, self._movie_event_payload(movie_data))
-                    event_store.safe_append(audit_event[0], "movie", audit_event[1], audit_event[2])
-                return existing_movie.model_dump()
+                stored = existing_movie.model_dump()
+                scan_events.extend(self._scan_events_for_existing(previous_movie, movie_data, existing_movie.id))
+                self._append_scan_events(scan_events)
+                return stored
 
             new_movie = Movie(**self._with_added_at(movie_data))
             session.add(new_movie)
             session.commit()
             session.refresh(new_movie)
-            audit_event = ("MovieDiscovered", movie_id, self._movie_event_payload(movie_data))
-            event_store.safe_append(audit_event[0], "movie", audit_event[1], audit_event[2])
+            scan_events.append({
+                "type": "MovieDiscovered",
+                "aggregate_id": movie_id,
+                "payload": self._movie_event_payload(movie_data),
+                "project": False,
+            })
+            self._append_scan_events(scan_events)
             return new_movie.model_dump()
 
     def get_movies(self) -> List[dict]:
@@ -225,20 +274,76 @@ class LibraryManager:
         )
 
     def _movie_event_payload(self, movie_data: dict) -> dict:
-        fields = (
-            "id",
-            "title",
-            "title_cn",
-            "year",
-            "media_path",
-            "folder_path",
-            "video_file",
-            "metadata_source",
-            "scrape_status",
-            "library_status",
-            "tmdb_id",
-            "imdb_id",
-        )
-        return {field: movie_data.get(field) for field in fields if movie_data.get(field) is not None}
+        payload = {
+            field: movie_data.get(field)
+            for field in SCAN_EVENT_FIELDS
+            if movie_data.get(field) is not None
+        }
+        if payload.get("id") and not payload.get("movie_id"):
+            payload["movie_id"] = payload["id"]
+        return payload
+
+    def _scan_events_for_existing(self, previous_movie: dict, movie_data: dict, movie_id: str) -> list[dict]:
+        events = []
+        current_payload = self._movie_event_payload({**previous_movie, **movie_data, "id": movie_id})
+        if previous_movie.get("library_status") == "missing" and movie_data.get("library_status") == "available":
+            events.append({
+                "type": "MovieRestored",
+                "aggregate_id": movie_id,
+                "payload": current_payload,
+                "project": True,
+            })
+
+        file_changes = self._file_observation_changes(previous_movie, movie_data)
+        if file_changes:
+            events.append({
+                "type": "MovieFileObserved",
+                "aggregate_id": movie_id,
+                "payload": {
+                    **current_payload,
+                    **file_changes,
+                },
+                "project": False,
+            })
+        return events
+
+    def _file_observation_changes(self, previous_movie: dict, movie_data: dict) -> Optional[dict]:
+        previous = {}
+        current = {}
+        changed_fields = []
+        for field in FILE_OBSERVED_FIELDS:
+            if field not in movie_data:
+                continue
+            previous_value = previous_movie.get(field)
+            current_value = movie_data.get(field)
+            if previous_value != current_value:
+                changed_fields.append(field)
+                previous[field] = previous_value
+                current[field] = current_value
+
+        if not changed_fields:
+            return None
+        return {
+            "changed_fields": changed_fields,
+            "previous": previous,
+            "current": current,
+        }
+
+    def _append_scan_events(self, events: list[dict]):
+        for event in events:
+            if event.get("project"):
+                event_store.append_and_project(
+                    event["type"],
+                    "movie",
+                    event["aggregate_id"],
+                    event["payload"],
+                )
+            else:
+                event_store.safe_append(
+                    event["type"],
+                    "movie",
+                    event["aggregate_id"],
+                    event["payload"],
+                )
 
 library_manager = LibraryManager()

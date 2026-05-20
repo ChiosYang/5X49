@@ -110,10 +110,21 @@ class LibrarySyncService:
                 movie.get("id"),
                 {
                     "movie_id": movie.get("id"),
+                    "title": movie.get("title"),
+                    "year": movie.get("year"),
                     "folder_path": str(folder.resolve()),
+                    "folder_name": movie.get("folder_name"),
+                    "video_file": movie.get("video_file"),
                     "preserve_id": preserve_id,
                     "media_path": movie.get("media_path"),
+                    "file_size": movie.get("file_size"),
+                    "file_mtime": movie.get("file_mtime"),
+                    "last_seen_at": movie.get("last_seen_at"),
+                    "library_status": movie.get("library_status"),
                     "metadata_source": movie.get("metadata_source"),
+                    "scrape_status": movie.get("scrape_status"),
+                    "tmdb_id": movie.get("tmdb_id"),
+                    "imdb_id": movie.get("imdb_id"),
                 },
             )
             library_event_bus.publish_library_changed(

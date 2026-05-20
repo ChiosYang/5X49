@@ -7,6 +7,7 @@ import type { EventRecord } from "@/types/movie";
 
 const EVENT_LABELS: Record<string, string> = {
   MovieDiscovered: "Discovered",
+  MovieFileObserved: "File observed",
   MovieFolderScanned: "Folder scanned",
   MovieMarkedMissing: "Marked missing",
   MovieRestored: "Restored",
@@ -29,7 +30,7 @@ function eventIcon(type: string) {
   if (type.includes("Analysis")) return Sparkles;
   if (type.includes("Artwork")) return Image;
   if (type.includes("Metadata") || type.includes("Match")) return Search;
-  if (type.includes("Video") || type.includes("Folder") || type.includes("Discovered")) return Video;
+  if (type.includes("Video") || type.includes("File") || type.includes("Folder") || type.includes("Discovered")) return Video;
   if (type.includes("Completed") || type.includes("Refreshed") || type.includes("Restored")) return CheckCircle2;
   return Activity;
 }
@@ -76,6 +77,12 @@ function eventSummary(event: EventRecord) {
   if (event.type === "MetadataMatchSuggested") return reason || "Review required before writing metadata";
   if (event.type === "ArtworkSelected") return "Poster or backdrop was updated";
   if (event.type === "RootVideoOrganized") return targetPath || sourcePath || "Root video moved into the library";
+  if (event.type === "MovieFileObserved") {
+    const changedFields = event.payload?.changed_fields;
+    return Array.isArray(changedFields) && changedFields.length
+      ? `Changed ${changedFields.join(", ")}`
+      : mediaPath || "Local file details changed";
+  }
   if (event.type === "MovieFolderScanned") return folderPath || mediaPath || "Local folder was scanned";
   if (event.type === "MovieDiscovered") return mediaPath || title || "New library record created";
   if (event.type === "AnalysisCompleted") return stringPayload(event, "micro_genre") || "Genealogy analysis is ready";
