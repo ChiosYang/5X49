@@ -231,9 +231,30 @@ class RootVideoOrganizer:
             }
 
         source_snapshot = self._file_snapshot(video_path)
-        moved_sidecars = self._move_sidecars(video_path, target_dir, options.overwrite)
+        moved_sidecars, sidecar_moves = self._move_sidecars(video_path, target_dir, options.overwrite)
         shutil.move(str(video_path), str(target_video))
         target_snapshot = self._file_snapshot(target_video)
+        event_store.safe_append(
+            "RootVideoMoved",
+            "file",
+            str(target_video),
+            {
+                "source_path": str(video_path),
+                "target_path": str(target_video),
+                "target_dir": str(target_dir),
+                "source": source_snapshot,
+                "target": target_snapshot,
+                "tmdb_id": candidate.tmdb_id,
+                "candidate": candidate.model_dump(),
+                "rename_style": options.rename_style,
+                "overwrite": options.overwrite,
+                "sidecars": sidecar_moves,
+                "parsed_year": parsed_year,
+            },
+            command_id=command_id,
+            correlation_id=command_id,
+            context={"operation": "organize_root_video"},
+        )
 
         from app.services.library_sync import library_sync_service
 
@@ -282,6 +303,7 @@ class RootVideoOrganizer:
                 "rename_style": options.rename_style,
                 "scrape_status": scrape_result.status,
                 "sidecars": moved_sidecars,
+                "sidecar_moves": sidecar_moves,
                 "parsed_year": parsed_year,
             },
             command_id=command_id,
@@ -332,26 +354,35 @@ class RootVideoOrganizer:
             return f"{base or source.stem}{source.suffix}"
         return source.name
 
-    def _move_sidecars(self, source: Path, target_dir: Path, overwrite: bool) -> list[str]:
+    def _move_sidecars(self, source: Path, target_dir: Path, overwrite: bool) -> tuple[list[str], list[dict]]:
         moved = []
+        sidecar_moves = []
         for sidecar in sorted(source.parent.glob(f"{source.stem}.*"), key=lambda path: path.name.lower()):
             if sidecar == source or sidecar.suffix.lower() not in self.sidecar_extensions:
                 continue
             target = target_dir / sidecar.name
             if target.exists() and not overwrite:
                 continue
+            before = self._file_snapshot(sidecar)
             shutil.move(str(sidecar), str(target))
             moved.append(str(target))
-        return moved
+            sidecar_moves.append({
+                "source_path": str(sidecar),
+                "target_path": str(target),
+                "source": before,
+                "target": self._file_snapshot(target),
+            })
+        return moved, sidecar_moves
 
     def _file_snapshot(self, path: Path) -> dict:
         try:
             stat = path.stat()
         except OSError:
-            return {"path": str(path)}
+            return {"path": str(path), "exists": False}
         return {
             "path": str(path),
             "filename": path.name,
+            "exists": True,
             "size": stat.st_size,
             "mtime": stat.st_mtime,
         }

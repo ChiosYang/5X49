@@ -76,7 +76,7 @@ class NFOWriter:
         backdrop_url: Optional[str] = None,
         filename_prefix: Optional[str] = None,
     ) -> Optional[Path]:
-        nfo_path = self._movie_nfo_path(folder, filename_prefix)
+        nfo_path = self.movie_nfo_path(folder, filename_prefix)
         if not nfo_path:
             return None
 
@@ -119,7 +119,7 @@ class NFOWriter:
             return release_date[:4]
         return None
 
-    def _movie_nfo_path(self, folder: Path, filename_prefix: Optional[str] = None) -> Optional[Path]:
+    def movie_nfo_path(self, folder: Path, filename_prefix: Optional[str] = None) -> Optional[Path]:
         candidates = []
         if filename_prefix:
             candidates.append(folder / f"{filename_prefix}.nfo")

@@ -179,15 +179,42 @@ class MetadataScraper:
         backdrop_url = self.tmdb.image_url(selection.backdrop_path, "original") if selection.backdrop_path else None
 
         if poster_url:
-            self.artwork.download(poster_url, folder / f"{filename_prefix}-poster.jpg", overwrite=True)
+            self._download_artwork_with_event(
+                movie_id,
+                tmdb_id,
+                "poster",
+                selection.poster_path,
+                poster_url,
+                folder / f"{filename_prefix}-poster.jpg",
+                overwrite=True,
+                command_id=operation_command_id,
+                correlation_id=operation_command_id,
+                operation="apply_artwork",
+            )
         if backdrop_url:
-            self.artwork.download(backdrop_url, folder / f"{filename_prefix}-fanart.jpg", overwrite=True)
+            self._download_artwork_with_event(
+                movie_id,
+                tmdb_id,
+                "backdrop",
+                selection.backdrop_path,
+                backdrop_url,
+                folder / f"{filename_prefix}-fanart.jpg",
+                overwrite=True,
+                command_id=operation_command_id,
+                correlation_id=operation_command_id,
+                operation="apply_artwork",
+            )
 
-        self.nfo_writer.update_movie_artwork(
+        self._update_nfo_artwork_with_event(
+            movie_id,
+            tmdb_id,
             folder,
             poster_url=poster_url,
             backdrop_url=backdrop_url,
             filename_prefix=filename_prefix,
+            command_id=operation_command_id,
+            correlation_id=operation_command_id,
+            operation="apply_artwork",
         )
 
         from app.services.library_sync import library_sync_service
@@ -390,17 +417,44 @@ class MetadataScraper:
             filename_prefix = self._filename_prefix(movie, folder)
 
             if options.download_artwork:
-                self.artwork.download(poster_url, folder / f"{filename_prefix}-poster.jpg", overwrite=options.overwrite)
-                self.artwork.download(backdrop_url, folder / f"{filename_prefix}-fanart.jpg", overwrite=options.overwrite)
+                self._download_artwork_with_event(
+                    movie_id,
+                    selected_id,
+                    "poster",
+                    poster_path,
+                    poster_url,
+                    folder / f"{filename_prefix}-poster.jpg",
+                    overwrite=options.overwrite,
+                    command_id=operation_command_id,
+                    correlation_id=operation_correlation_id,
+                    operation="scrape_movie",
+                )
+                self._download_artwork_with_event(
+                    movie_id,
+                    selected_id,
+                    "backdrop",
+                    backdrop_path,
+                    backdrop_url,
+                    folder / f"{filename_prefix}-fanart.jpg",
+                    overwrite=options.overwrite,
+                    command_id=operation_command_id,
+                    correlation_id=operation_correlation_id,
+                    operation="scrape_movie",
+                )
 
             if options.write_nfo:
-                self.nfo_writer.write_movie_nfo(
+                self._write_nfo_with_event(
+                    movie_id,
+                    selected_id,
                     folder,
                     details,
                     poster_url=poster_url,
                     backdrop_url=backdrop_url,
                     filename_prefix=filename_prefix,
                     overwrite=options.overwrite,
+                    command_id=operation_command_id,
+                    correlation_id=operation_correlation_id,
+                    operation="scrape_movie",
                 )
 
             from app.services.library_sync import library_sync_service
@@ -625,6 +679,184 @@ class MetadataScraper:
             for actor in details.get("credits", {}).get("cast", [])[:10]
             if actor.get("name")
         ]
+
+    def _download_artwork_with_event(
+        self,
+        movie_id: str,
+        tmdb_id: int,
+        asset_type: str,
+        image_path: Optional[str],
+        url: Optional[str],
+        destination: Path,
+        *,
+        overwrite: bool,
+        command_id: str,
+        correlation_id: str,
+        operation: str,
+    ) -> Optional[Path]:
+        before = self._file_snapshot(destination)
+        downloaded = self.artwork.download(url, destination, overwrite=overwrite)
+        after = self._file_snapshot(destination)
+        if downloaded and self._snapshot_changed(before, after):
+            event_store.safe_append(
+                "ArtworkDownloaded",
+                "movie",
+                movie_id,
+                {
+                    "movie_id": movie_id,
+                    "tmdb_id": tmdb_id,
+                    "asset_type": asset_type,
+                    "image_path": image_path,
+                    "url": url,
+                    "destination": str(destination),
+                    "overwrite": overwrite,
+                    "before": before,
+                    "after": after,
+                },
+                command_id=command_id,
+                correlation_id=correlation_id,
+                context={"operation": operation},
+            )
+        return downloaded
+
+    def _write_nfo_with_event(
+        self,
+        movie_id: str,
+        tmdb_id: int,
+        folder: Path,
+        details: dict,
+        *,
+        poster_url: Optional[str],
+        backdrop_url: Optional[str],
+        filename_prefix: str,
+        overwrite: bool,
+        command_id: str,
+        correlation_id: str,
+        operation: str,
+    ) -> Path:
+        nfo_path = folder / f"{filename_prefix}.nfo"
+        before = self._file_snapshot(nfo_path)
+        written = self.nfo_writer.write_movie_nfo(
+            folder,
+            details,
+            poster_url=poster_url,
+            backdrop_url=backdrop_url,
+            filename_prefix=filename_prefix,
+            overwrite=overwrite,
+        )
+        after = self._file_snapshot(written)
+        self._record_nfo_written(
+            movie_id,
+            tmdb_id,
+            "write_metadata",
+            written,
+            before,
+            after,
+            overwrite=overwrite,
+            poster_url=poster_url,
+            backdrop_url=backdrop_url,
+            command_id=command_id,
+            correlation_id=correlation_id,
+            operation=operation,
+        )
+        return written
+
+    def _update_nfo_artwork_with_event(
+        self,
+        movie_id: str,
+        tmdb_id: int,
+        folder: Path,
+        *,
+        poster_url: Optional[str],
+        backdrop_url: Optional[str],
+        filename_prefix: str,
+        command_id: str,
+        correlation_id: str,
+        operation: str,
+    ) -> Optional[Path]:
+        nfo_path = self.nfo_writer.movie_nfo_path(folder, filename_prefix)
+        before = self._file_snapshot(nfo_path) if nfo_path else None
+        written = self.nfo_writer.update_movie_artwork(
+            folder,
+            poster_url=poster_url,
+            backdrop_url=backdrop_url,
+            filename_prefix=filename_prefix,
+        )
+        if not written:
+            return None
+        after = self._file_snapshot(written)
+        self._record_nfo_written(
+            movie_id,
+            tmdb_id,
+            "update_artwork",
+            written,
+            before or {"path": str(written), "exists": False},
+            after,
+            overwrite=True,
+            poster_url=poster_url,
+            backdrop_url=backdrop_url,
+            command_id=command_id,
+            correlation_id=correlation_id,
+            operation=operation,
+        )
+        return written
+
+    def _record_nfo_written(
+        self,
+        movie_id: str,
+        tmdb_id: int,
+        action: str,
+        path: Path,
+        before: dict,
+        after: dict,
+        *,
+        overwrite: bool,
+        poster_url: Optional[str],
+        backdrop_url: Optional[str],
+        command_id: str,
+        correlation_id: str,
+        operation: str,
+    ):
+        if not self._snapshot_changed(before, after):
+            return
+        event_store.safe_append(
+            "NfoWritten",
+            "movie",
+            movie_id,
+            {
+                "movie_id": movie_id,
+                "tmdb_id": tmdb_id,
+                "action": action,
+                "path": str(path),
+                "overwrite": overwrite,
+                "poster_url": poster_url,
+                "backdrop_url": backdrop_url,
+                "before": before,
+                "after": after,
+            },
+            command_id=command_id,
+            correlation_id=correlation_id,
+            context={"operation": operation},
+        )
+
+    def _file_snapshot(self, path: Path) -> dict:
+        try:
+            stat = path.stat()
+        except OSError:
+            return {"path": str(path), "exists": False}
+        return {
+            "path": str(path),
+            "filename": path.name,
+            "exists": True,
+            "size": stat.st_size,
+            "mtime": stat.st_mtime,
+        }
+
+    def _snapshot_changed(self, before: dict, after: dict) -> bool:
+        return any(
+            before.get(field) != after.get(field)
+            for field in ("exists", "size", "mtime", "path")
+        )
 
     def _movie_folder(self, movie: dict) -> Optional[Path]:
         folder_path = movie.get("folder_path")
