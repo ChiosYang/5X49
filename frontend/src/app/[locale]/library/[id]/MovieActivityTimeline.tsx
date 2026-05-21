@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Activity, AlertCircle, CheckCircle2, Clock, Image, Loader2, Search, Sparkles, Video, X } from "lucide-react";
 import { useMovieAuditEvents } from "@/hooks/useMovie";
 import type { EventRecord } from "@/types/movie";
@@ -9,7 +9,7 @@ const EVENT_LABELS: Record<string, string> = {
   MovieDiscovered: "Discovered",
   MovieFileObserved: "File observed",
   MovieFolderScanned: "Folder scanned",
-  MovieMetadataParsedFromNfo: "NFO parsed",
+  MovieMetadataParsedFromNfo: "Metadata file updated",
   MovieMarkedMissing: "Marked missing",
   MovieRestored: "Restored",
   MovieIgnored: "Ignored",
@@ -25,6 +25,10 @@ const EVENT_LABELS: Record<string, string> = {
   ExternalScoresRefreshed: "Scores refreshed",
   ExternalScoresRefreshFailed: "Scores failed",
 };
+
+const TECHNICAL_EVENT_TYPES = new Set([
+  "MovieFolderScanned",
+]);
 
 function eventIcon(type: string) {
   if (type.includes("Failed") || type.includes("Missing")) return AlertCircle;
@@ -88,8 +92,8 @@ function eventSummary(event: EventRecord) {
   if (event.type === "MovieMetadataParsedFromNfo") {
     const changedFields = event.payload?.changed_fields;
     return Array.isArray(changedFields) && changedFields.length
-      ? `NFO changed ${changedFields.join(", ")}`
-      : "NFO metadata was parsed";
+      ? `NFO signature changed: ${changedFields.join(", ")}`
+      : "NFO metadata file changed";
   }
   if (event.type === "MovieDiscovered") return mediaPath || title || "New library record created";
   if (event.type === "AnalysisCompleted") return stringPayload(event, "micro_genre") || "Genealogy analysis is ready";
@@ -107,8 +111,13 @@ interface MovieActivityTimelineProps {
 }
 
 export default function MovieActivityTimeline({ movieId, open, onClose }: MovieActivityTimelineProps) {
+  const [showTechnicalEvents, setShowTechnicalEvents] = useState(false);
   const { data: events = [], isLoading, error } = useMovieAuditEvents(movieId, open);
-  const visibleEvents = events.slice(0, 8);
+  const filteredEvents = showTechnicalEvents
+    ? events
+    : events.filter((event) => !TECHNICAL_EVENT_TYPES.has(event.type));
+  const visibleEvents = filteredEvents.slice(0, 8);
+  const hiddenTechnicalCount = events.length - filteredEvents.length;
 
   useEffect(() => {
     if (!open) return;
@@ -140,13 +149,25 @@ export default function MovieActivityTimeline({ movieId, open, onClose }: MovieA
         aria-labelledby="movie-activity-title"
       >
         <div className="flex items-start justify-between gap-6 border-b border-neutral-800 px-5 py-5 sm:px-6">
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
             <span className="block text-xs font-bold uppercase tracking-widest text-neutral-500">
               Activity
             </span>
             <h2 id="movie-activity-title" className="mt-2 text-2xl font-bold uppercase text-white">
               Library history
             </h2>
+            <label className="mt-4 flex w-fit cursor-pointer items-center gap-3 text-xs font-bold uppercase tracking-widest text-neutral-500 transition-colors hover:text-neutral-300">
+              <input
+                type="checkbox"
+                checked={showTechnicalEvents}
+                onChange={(event) => setShowTechnicalEvents(event.target.checked)}
+                className="h-4 w-4 accent-white"
+              />
+              Show technical events
+              {!showTechnicalEvents && hiddenTechnicalCount > 0 ? (
+                <span className="text-neutral-700">({hiddenTechnicalCount} hidden)</span>
+              ) : null}
+            </label>
           </div>
           <div className="flex shrink-0 items-center gap-3">
             {isLoading && <Loader2 className="h-5 w-5 animate-spin text-neutral-500" />}
@@ -169,7 +190,9 @@ export default function MovieActivityTimeline({ movieId, open, onClose }: MovieA
             </div>
           ) : visibleEvents.length === 0 ? (
             <div className="border border-neutral-800 bg-neutral-950 px-4 py-4 text-sm text-neutral-500">
-              No activity recorded yet.
+              {events.length > 0 && hiddenTechnicalCount === events.length
+                ? "Only technical events are hidden."
+                : "No activity recorded yet."}
             </div>
           ) : (
             <ol className="relative space-y-5 border-l border-neutral-800 pl-6">
