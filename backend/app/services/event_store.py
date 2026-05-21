@@ -100,6 +100,8 @@ class EventStore:
         aggregate_type: Optional[str] = None,
         aggregate_id: Optional[str] = None,
         event_type: Optional[str] = None,
+        command_id: Optional[str] = None,
+        correlation_id: Optional[str] = None,
         limit: int = 100,
     ) -> list[dict]:
         limit = max(1, min(limit, 500))
@@ -110,6 +112,10 @@ class EventStore:
             statement = statement.where(EventRecord.aggregate_id == aggregate_id)
         if event_type:
             statement = statement.where(EventRecord.type == event_type)
+        if command_id:
+            statement = statement.where(EventRecord.command_id == command_id)
+        if correlation_id:
+            statement = statement.where(EventRecord.correlation_id == correlation_id)
         statement = statement.order_by(EventRecord.occurred_at.desc(), EventRecord.id.desc()).limit(limit)
 
         with Session(engine) as session:

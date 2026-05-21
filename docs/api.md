@@ -110,6 +110,8 @@ This document describes the REST API endpoints available in the backend applicat
   - `aggregate_type` (string, optional): Filter by aggregate type, such as `movie`, `library`, or `file`.
   - `aggregate_id` (string, optional): Filter by aggregate ID, usually a movie ID for `movie` aggregates.
   - `type` (string, optional): Filter by event type, such as `MovieDiscovered`, `MetadataMatched`, or `AnalysisCompleted`.
+  - `command_id` (string, optional): Filter by the command that created related events.
+  - `correlation_id` (string, optional): Filter by the operation trace shared by related events.
   - `limit` (integer, optional): Number of events to return, 1-500. Defaults to 100.
 - **Response**: Array of `EventRecord` objects, newest first.
 

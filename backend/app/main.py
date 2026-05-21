@@ -216,6 +216,8 @@ def get_library_audit_events(
     aggregate_type: str | None = Query(default=None),
     aggregate_id: str | None = Query(default=None),
     type: str | None = Query(default=None),
+    command_id: str | None = Query(default=None),
+    correlation_id: str | None = Query(default=None),
     limit: int = Query(default=100, ge=1, le=500),
 ):
     """List persisted library audit events."""
@@ -223,6 +225,8 @@ def get_library_audit_events(
         aggregate_type=aggregate_type,
         aggregate_id=aggregate_id,
         event_type=type,
+        command_id=command_id,
+        correlation_id=correlation_id,
         limit=limit,
     )
 
