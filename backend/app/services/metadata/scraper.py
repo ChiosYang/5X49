@@ -1,5 +1,6 @@
 from datetime import datetime, timezone
 from pathlib import Path
+import shutil
 from threading import Lock
 from typing import Optional
 from uuid import uuid4
@@ -695,6 +696,7 @@ class MetadataScraper:
         operation: str,
     ) -> Optional[Path]:
         before = self._file_snapshot(destination)
+        backup = self._backup_file(destination, operation, command_id) if before.get("exists") else None
         downloaded = self.artwork.download(url, destination, overwrite=overwrite)
         after = self._file_snapshot(destination)
         if downloaded and self._snapshot_changed(before, after):
@@ -712,6 +714,8 @@ class MetadataScraper:
                     "overwrite": overwrite,
                     "before": before,
                     "after": after,
+                    "backup": backup,
+                    "backup_path": backup.get("path") if backup else None,
                 },
                 command_id=command_id,
                 correlation_id=correlation_id,
@@ -736,6 +740,7 @@ class MetadataScraper:
     ) -> Path:
         nfo_path = folder / f"{filename_prefix}.nfo"
         before = self._file_snapshot(nfo_path)
+        backup = self._backup_file(nfo_path, operation, command_id) if before.get("exists") else None
         written = self.nfo_writer.write_movie_nfo(
             folder,
             details,
@@ -753,6 +758,7 @@ class MetadataScraper:
             before,
             after,
             overwrite=overwrite,
+            backup=backup,
             poster_url=poster_url,
             backdrop_url=backdrop_url,
             command_id=command_id,
@@ -776,6 +782,7 @@ class MetadataScraper:
     ) -> Optional[Path]:
         nfo_path = self.nfo_writer.movie_nfo_path(folder, filename_prefix)
         before = self._file_snapshot(nfo_path) if nfo_path else None
+        backup = self._backup_file(nfo_path, operation, command_id) if nfo_path and before and before.get("exists") else None
         written = self.nfo_writer.update_movie_artwork(
             folder,
             poster_url=poster_url,
@@ -793,6 +800,7 @@ class MetadataScraper:
             before or {"path": str(written), "exists": False},
             after,
             overwrite=True,
+            backup=backup,
             poster_url=poster_url,
             backdrop_url=backdrop_url,
             command_id=command_id,
@@ -811,6 +819,7 @@ class MetadataScraper:
         after: dict,
         *,
         overwrite: bool,
+        backup: Optional[dict],
         poster_url: Optional[str],
         backdrop_url: Optional[str],
         command_id: str,
@@ -833,11 +842,24 @@ class MetadataScraper:
                 "backdrop_url": backdrop_url,
                 "before": before,
                 "after": after,
+                "backup": backup,
+                "backup_path": backup.get("path") if backup else None,
             },
             command_id=command_id,
             correlation_id=correlation_id,
             context={"operation": operation},
         )
+
+    def _backup_file(self, path: Path, operation: str, command_id: str) -> Optional[dict]:
+        if not path.exists() or not path.is_file():
+            return None
+        backup_dir = path.parent / ".5x49-backups" / command_id
+        backup_dir.mkdir(parents=True, exist_ok=True)
+        backup_path = backup_dir / f"{operation}-{path.name}"
+        if backup_path.exists():
+            backup_path = backup_dir / f"{operation}-{uuid4().hex}-{path.name}"
+        shutil.copy2(path, backup_path)
+        return self._file_snapshot(backup_path)
 
     def _file_snapshot(self, path: Path) -> dict:
         try:

@@ -152,7 +152,19 @@ class OperationDryRun:
         previous_path = previous.get("poster_path")
         previous_local = previous.get("poster_local")
         current_local = current.get("poster_local")
+        poster_backup = self._latest_artwork_backup(events, "poster")
+        backup_file = Path(poster_backup) if poster_backup else None
+        backup_file_exists = bool(backup_file and backup_file.exists())
         if not previous_path and not previous_local:
+            if backup_file_exists:
+                return self._check(
+                    "partial",
+                    True,
+                    "Previous poster selection is missing, but overwritten poster file content was backed up",
+                    event_id=event.id,
+                    details={"backup_path": poster_backup},
+                    missing_payload=["previous.poster_path", "previous.poster_local"],
+                )
             return self._check(
                 "unsafe",
                 False,
@@ -172,6 +184,19 @@ class OperationDryRun:
                 event_id=event.id,
                 details={"previous_file": str(previous_file)},
             )
+        if backup_file_exists:
+            return self._check(
+                "safe",
+                True,
+                "Previous poster file content was backed up before overwrite",
+                event_id=event.id,
+                details={
+                    "backup_path": poster_backup,
+                    "previous_poster_path": previous_path,
+                    "previous_poster_local": previous_local,
+                    "current_poster_local": current_local,
+                },
+            )
 
         return self._check(
             "partial",
@@ -184,6 +209,8 @@ class OperationDryRun:
                 "current_poster_local": current_local,
                 "previous_file_exists": previous_file_exists,
                 "same_local_file": same_local_file,
+                "backup_path": poster_backup,
+                "backup_file_exists": backup_file_exists,
             },
             unsafe_actions=["Old poster file content may have been overwritten and no backup path is recorded"],
         )
@@ -285,10 +312,23 @@ class OperationDryRun:
                 "occurred_at": event.occurred_at,
                 "operation": (event.context or {}).get("operation"),
                 "path": payload.get("path") or payload.get("destination") or payload.get("target_path") or payload.get("media_path"),
+                "backup_path": payload.get("backup_path"),
                 "asset_type": payload.get("asset_type"),
                 "action": payload.get("action"),
             })
         return side_effects
+
+    def _latest_artwork_backup(self, events: list[EventRecord], asset_type: str) -> Optional[str]:
+        for event in reversed(events):
+            if event.type != "ArtworkDownloaded":
+                continue
+            payload = event.payload or {}
+            if payload.get("asset_type") != asset_type:
+                continue
+            backup_path = payload.get("backup_path")
+            if isinstance(backup_path, str) and backup_path:
+                return backup_path
+        return None
 
     def _sidecar_reverse_checks(self, sidecars: object) -> list[dict]:
         if not isinstance(sidecars, list):

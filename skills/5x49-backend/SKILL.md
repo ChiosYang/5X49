@@ -159,7 +159,7 @@ curl -s -X POST "http://127.0.0.1:11548/library/events/dry-run/nfo-signatures?me
 `/library/events/backfill/movie-discovered` 默认 `dry_run=true`，用于检查哪些现有电影缺少初始化事件；`dry_run=false` 只向 `events` 表追加缺失的 `MovieDiscovered`，不修改 `Movie` 表。补齐事件会尽量排在该电影已有事件之前，便于后续 `base=empty` 按时间顺序 replay。
 `/library/events/dry-run/nfo-signatures` 不写数据库、不追加事件，只扫描 NFO 文件签名并和当前 `Movie` 表中的 NFO 签名比对，返回 `new_signature`、`changed`、`unchanged`、`unmatched_movie` 等状态，为后续 `MovieMetadataParsedFromNfo` 去重做准备。
 `/library/operations/dry-run` 不写数据库、不移动文件，只按 `correlation_id` 或 `command_id` 分析一次操作的事件链，返回 `can_restore_poster`、`can_trace_nfo_writer`、`can_reverse_root_move`、`side_effects`、`recoverable_fields`、`missing_payload`、`unsafe_actions` 等字段，用于判断撤销/恢复前置条件是否满足。
-阶段 4 相关副作用事件已开始补强 payload：`MetadataMatched`、`ArtworkSelected` 会包含 `changed_fields`、`previous`、`current`；`ArtworkDownloaded` 会记录 poster/backdrop 文件写入；`NfoWritten` 会记录 NFO 创建或图像引用更新；`RootVideoMoved` 会记录 root video 被移动后的源/目标文件快照；`RootVideoOrganized` 会包含 source/target 文件快照和候选 TMDB 信息。刮削、换图、root video 整理链路会写入 `command_id` / `correlation_id`，便于在全局 Activity 中按同一次操作追踪事件。
+阶段 4 相关副作用事件已开始补强 payload：`MetadataMatched`、`ArtworkSelected` 会包含 `changed_fields`、`previous`、`current`；`ArtworkDownloaded` 会记录 poster/backdrop 文件写入，并在覆盖已有文件前写入 `.5x49-backups/{command_id}` 后记录 `backup_path`；`NfoWritten` 会记录 NFO 创建或图像引用更新，并在覆盖已有 NFO 前记录 `backup_path`；`RootVideoMoved` 会记录 root video 被移动后的源/目标文件快照；`RootVideoOrganized` 会包含 source/target 文件快照和候选 TMDB 信息。刮削、换图、root video 整理链路会写入 `command_id` / `correlation_id`，便于在全局 Activity 中按同一次操作追踪事件。
 
 ### 刷新外部评分/榜单
 ```bash
