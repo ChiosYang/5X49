@@ -92,7 +92,14 @@ class LibrarySyncService:
             "movie": updated_movie,
         }
 
-    def scan_folder(self, folder_path: str | Path, preserve_id: Optional[str] = None) -> Optional[dict]:
+    def scan_folder(
+        self,
+        folder_path: str | Path,
+        preserve_id: Optional[str] = None,
+        *,
+        command_id: Optional[str] = None,
+        correlation_id: Optional[str] = None,
+    ) -> Optional[dict]:
         folder = Path(folder_path)
         if not folder.exists() or not folder.is_dir():
             return None
@@ -102,7 +109,12 @@ class LibrarySyncService:
         if not movie_data:
             return None
 
-        upsert_result = library_manager.upsert_movie_with_events(movie_data, preserve_id=preserve_id)
+        upsert_result = library_manager.upsert_movie_with_events(
+            movie_data,
+            preserve_id=preserve_id,
+            command_id=command_id,
+            correlation_id=correlation_id,
+        )
         movie = upsert_result["movie"] if upsert_result else None
         if movie:
             library_event_bus.publish_library_changed(

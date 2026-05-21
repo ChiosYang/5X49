@@ -140,12 +140,31 @@ class LibraryManager:
         self._append_scan_events(scan_events)
         return added
 
-    def upsert_movie(self, movie_data: dict, preserve_id: Optional[str] = None) -> Optional[dict]:
+    def upsert_movie(
+        self,
+        movie_data: dict,
+        preserve_id: Optional[str] = None,
+        *,
+        command_id: Optional[str] = None,
+        correlation_id: Optional[str] = None,
+    ) -> Optional[dict]:
         """Insert or update one movie and return the stored record."""
-        result = self.upsert_movie_with_events(movie_data, preserve_id=preserve_id)
+        result = self.upsert_movie_with_events(
+            movie_data,
+            preserve_id=preserve_id,
+            command_id=command_id,
+            correlation_id=correlation_id,
+        )
         return result["movie"] if result else None
 
-    def upsert_movie_with_events(self, movie_data: dict, preserve_id: Optional[str] = None) -> Optional[dict]:
+    def upsert_movie_with_events(
+        self,
+        movie_data: dict,
+        preserve_id: Optional[str] = None,
+        *,
+        command_id: Optional[str] = None,
+        correlation_id: Optional[str] = None,
+    ) -> Optional[dict]:
         """Insert or update one movie and return the stored record plus emitted scan event types."""
         movie_id = preserve_id or movie_data.get("id")
         if not movie_id:
@@ -173,7 +192,7 @@ class LibraryManager:
                 session.refresh(existing_movie)
                 stored = existing_movie.model_dump()
                 scan_events.extend(self._scan_events_for_existing(previous_movie, movie_data, existing_movie.id))
-                self._append_scan_events(scan_events)
+                self._append_scan_events(scan_events, command_id=command_id, correlation_id=correlation_id)
                 return {
                     "movie": stored,
                     "event_types": self._event_types(scan_events),
@@ -189,7 +208,7 @@ class LibraryManager:
                 "payload": self._movie_event_payload(movie_data),
                 "project": False,
             })
-            self._append_scan_events(scan_events)
+            self._append_scan_events(scan_events, command_id=command_id, correlation_id=correlation_id)
             return {
                 "movie": new_movie.model_dump(),
                 "event_types": self._event_types(scan_events),
@@ -426,7 +445,13 @@ class LibraryManager:
             payload["movie_id"] = payload["id"]
         return payload
 
-    def _append_scan_events(self, events: list[dict]):
+    def _append_scan_events(
+        self,
+        events: list[dict],
+        *,
+        command_id: Optional[str] = None,
+        correlation_id: Optional[str] = None,
+    ):
         for event in events:
             if event.get("project"):
                 event_store.append_and_project(
@@ -434,6 +459,8 @@ class LibraryManager:
                     "movie",
                     event["aggregate_id"],
                     event["payload"],
+                    command_id=command_id,
+                    correlation_id=correlation_id,
                 )
             else:
                 event_store.safe_append(
@@ -441,6 +468,8 @@ class LibraryManager:
                     "movie",
                     event["aggregate_id"],
                     event["payload"],
+                    command_id=command_id,
+                    correlation_id=correlation_id,
                 )
 
     def _event_types(self, events: list[dict]) -> list[str]:

@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from threading import Lock
 from typing import Optional
+from uuid import uuid4
 
 from app.services.event_bus import library_event_bus
 from app.services.event_store import event_store
@@ -120,6 +121,7 @@ class RootVideoOrganizer:
             raise
 
     def organize_file(self, video_path: Path, root: Path, options: RootOrganizeOptions) -> dict:
+        command_id = self._new_command_id("root_organize")
         video_path = video_path.resolve()
         if not self._is_usable_root_video(video_path, root):
             return {"status": "skipped", "path": str(video_path), "message": "Not a stable root video"}
@@ -144,6 +146,9 @@ class RootVideoOrganizer:
                     "candidate": best.model_dump(),
                     "min_confidence": min_confidence,
                 },
+                command_id=command_id,
+                correlation_id=command_id,
+                context={"operation": "organize_root_video"},
             )
             return {
                 "status": "needs_review",
@@ -161,6 +166,9 @@ class RootVideoOrganizer:
                     "reason": "Manual confirmation required",
                     "candidate": best.model_dump(),
                 },
+                command_id=command_id,
+                correlation_id=command_id,
+                context={"operation": "organize_root_video"},
             )
             return {
                 "status": "needs_review",
@@ -169,9 +177,10 @@ class RootVideoOrganizer:
                 "candidate": best.model_dump(),
             }
 
-        return self._organize_matched_file(video_path, root, best, year, options)
+        return self._organize_matched_file(video_path, root, best, year, options, command_id=command_id)
 
     def organize_file_confirmed(self, video_path: Path, root: Path, tmdb_id: int, options: RootOrganizeOptions) -> dict:
+        command_id = self._new_command_id("root_organize")
         video_path = video_path.resolve()
         if not self._is_usable_root_video(video_path, root):
             return {"status": "skipped", "path": str(video_path), "message": "Not a stable root video"}
@@ -194,7 +203,7 @@ class RootVideoOrganizer:
             popularity=float(details.get("popularity") or 0),
             score=100,
         )
-        return self._organize_matched_file(video_path, root, candidate, year, options)
+        return self._organize_matched_file(video_path, root, candidate, year, options, command_id=command_id)
 
     def _organize_matched_file(
         self,
@@ -203,6 +212,8 @@ class RootVideoOrganizer:
         candidate: MetadataSearchResult,
         parsed_year: int,
         options: RootOrganizeOptions,
+        *,
+        command_id: str,
     ) -> dict:
         target_dir = self._target_dir(root, candidate.title, candidate.year or parsed_year)
         target_dir.mkdir(parents=True, exist_ok=True)
@@ -219,12 +230,18 @@ class RootVideoOrganizer:
                 "message": f"Target video already exists: {target_video}",
             }
 
+        source_snapshot = self._file_snapshot(video_path)
         moved_sidecars = self._move_sidecars(video_path, target_dir, options.overwrite)
         shutil.move(str(video_path), str(target_video))
+        target_snapshot = self._file_snapshot(target_video)
 
         from app.services.library_sync import library_sync_service
 
-        movie = library_sync_service.scan_folder(target_dir)
+        movie = library_sync_service.scan_folder(
+            target_dir,
+            command_id=command_id,
+            correlation_id=command_id,
+        )
         if not movie:
             return {
                 "status": "failed",
@@ -244,6 +261,8 @@ class RootVideoOrganizer:
                 write_nfo=options.write_nfo,
                 download_artwork=options.download_artwork,
             ),
+            command_id=command_id,
+            correlation_id=command_id,
         )
 
         event_store.safe_append(
@@ -255,12 +274,19 @@ class RootVideoOrganizer:
                 "source_path": str(video_path),
                 "target_path": str(target_video),
                 "target_dir": str(target_dir),
+                "source": source_snapshot,
+                "target": target_snapshot,
                 "tmdb_id": candidate.tmdb_id,
                 "score": candidate.score,
+                "candidate": candidate.model_dump(),
                 "rename_style": options.rename_style,
                 "scrape_status": scrape_result.status,
                 "sidecars": moved_sidecars,
+                "parsed_year": parsed_year,
             },
+            command_id=command_id,
+            correlation_id=command_id,
+            context={"operation": "organize_root_video"},
         )
         return {
             "status": "success",
@@ -317,6 +343,21 @@ class RootVideoOrganizer:
             shutil.move(str(sidecar), str(target))
             moved.append(str(target))
         return moved
+
+    def _file_snapshot(self, path: Path) -> dict:
+        try:
+            stat = path.stat()
+        except OSError:
+            return {"path": str(path)}
+        return {
+            "path": str(path),
+            "filename": path.name,
+            "size": stat.st_size,
+            "mtime": stat.st_mtime,
+        }
+
+    def _new_command_id(self, operation: str) -> str:
+        return f"{operation}_{uuid4().hex}"
 
     def _safe_name(self, value: str) -> str:
         cleaned = re.sub(r'[<>:"/\\|?*\x00-\x1f]+', " ", value)

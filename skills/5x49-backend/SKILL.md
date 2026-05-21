@@ -157,6 +157,7 @@ curl -s -X POST "http://127.0.0.1:11548/library/events/dry-run/nfo-signatures?me
 `/library/projections/movie/rebuild` 目前只支持 `dry_run=true`，不会修改数据库。`base=current` 从当前 `Movie` 快照出发，在内存中重放低风险状态事件；`base=empty` 从空内存状态出发，额外支持重放 `MovieDiscovered` 和 `MovieFileObserved`。两种模式都会返回 `differences`、`unsupported_event_types`、`skipped_projectable_events` 和 `skipped_events`，用于检查事件和当前状态是否一致，以及识别下一步需要补齐的事件 payload。
 `/library/events/backfill/movie-discovered` 默认 `dry_run=true`，用于检查哪些现有电影缺少初始化事件；`dry_run=false` 只向 `events` 表追加缺失的 `MovieDiscovered`，不修改 `Movie` 表。补齐事件会尽量排在该电影已有事件之前，便于后续 `base=empty` 按时间顺序 replay。
 `/library/events/dry-run/nfo-signatures` 不写数据库、不追加事件，只扫描 NFO 文件签名并和当前 `Movie` 表中的 NFO 签名比对，返回 `new_signature`、`changed`、`unchanged`、`unmatched_movie` 等状态，为后续 `MovieMetadataParsedFromNfo` 去重做准备。
+阶段 4 相关副作用事件已开始补强 payload：`MetadataMatched`、`ArtworkSelected` 会包含 `changed_fields`、`previous`、`current`；`RootVideoOrganized` 会包含 source/target 文件快照和候选 TMDB 信息。刮削、换图、root video 整理链路会写入 `command_id` / `correlation_id`，便于在全局 Activity 中按同一次操作追踪事件。
 
 ### 刷新外部评分/榜单
 ```bash

@@ -2,6 +2,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from threading import Lock
 from typing import Optional
+from uuid import uuid4
 
 from app.services.event_bus import library_event_bus
 from app.services.event_store import event_store
@@ -23,6 +24,45 @@ from app.services.settings import get_artwork_language, get_language, get_media_
 
 
 REVIEW_CANDIDATE_LIMIT = 20
+
+METADATA_MATCH_FIELDS = (
+    "title",
+    "title_cn",
+    "year",
+    "tmdb_id",
+    "imdb_id",
+    "overview",
+    "plot",
+    "runtime",
+    "countries",
+    "audio_tracks",
+    "genres",
+    "director",
+    "imdb_rating",
+    "actors",
+    "poster_local",
+    "backdrop_local",
+    "poster_thumb_local",
+    "backdrop_thumb_local",
+    "poster_path",
+    "backdrop_path",
+    "nfo_source",
+    "metadata_source",
+    "scrape_status",
+    "scrape_error",
+    "scraped_at",
+    "tmdb_confidence",
+)
+
+ARTWORK_SELECTION_FIELDS = (
+    "poster_local",
+    "backdrop_local",
+    "poster_thumb_local",
+    "backdrop_thumb_local",
+    "poster_path",
+    "backdrop_path",
+    "metadata_updated_at",
+)
 
 
 class MetadataScraper:
@@ -106,6 +146,7 @@ class MetadataScraper:
         )
 
     def apply_artwork(self, movie_id: str, selection: ArtworkSelection) -> dict:
+        operation_command_id = self._new_command_id("artwork")
         movie = library_manager.get_movie(movie_id)
         if not movie:
             raise LookupError("Movie not found")
@@ -151,7 +192,12 @@ class MetadataScraper:
 
         from app.services.library_sync import library_sync_service
 
-        updated_movie = library_sync_service.scan_folder(folder, preserve_id=movie_id)
+        updated_movie = library_sync_service.scan_folder(
+            folder,
+            preserve_id=movie_id,
+            command_id=operation_command_id,
+            correlation_id=operation_command_id,
+        )
         if not updated_movie:
             raise ValueError("Artwork saved but folder rescan failed")
 
@@ -192,7 +238,13 @@ class MetadataScraper:
                 "metadata_updated_at": datetime.now(timezone.utc).isoformat(),
             }
         )
-        stored = library_manager.upsert_movie(enriched, preserve_id=movie_id)
+        stored = library_manager.upsert_movie(
+            enriched,
+            preserve_id=movie_id,
+            command_id=operation_command_id,
+            correlation_id=operation_command_id,
+        )
+        artwork_changes = self._field_changes(movie, stored or enriched, ARTWORK_SELECTION_FIELDS)
         event_store.safe_append(
             "ArtworkSelected",
             "movie",
@@ -204,7 +256,11 @@ class MetadataScraper:
                 "backdrop_path": selection.backdrop_path,
                 "poster_local": enriched["poster_local"],
                 "backdrop_local": enriched["backdrop_local"],
+                **artwork_changes,
             },
+            command_id=operation_command_id,
+            correlation_id=operation_command_id,
+            context={"operation": "apply_artwork"},
         )
         library_event_bus.publish_library_changed("artwork_updated", movie_id=movie_id)
         return {
@@ -215,14 +271,28 @@ class MetadataScraper:
             "backdrop_path": enriched["backdrop_path"],
         }
 
-    def scrape_movie(self, movie_id: str, options: ScrapeOptions) -> ScrapeResult:
+    def scrape_movie(
+        self,
+        movie_id: str,
+        options: ScrapeOptions,
+        *,
+        command_id: Optional[str] = None,
+        correlation_id: Optional[str] = None,
+    ) -> ScrapeResult:
+        operation_command_id = command_id or self._new_command_id("metadata_scrape")
+        operation_correlation_id = correlation_id or operation_command_id
         movie = library_manager.get_movie(movie_id)
         if not movie:
             return ScrapeResult(status="failed", movie_id=movie_id, message="Movie not found")
 
         folder = self._movie_folder(movie)
         if not folder:
-            return self._mark_failed(movie_id, "Movie does not have an existing folder path")
+            return self._mark_failed(
+                movie_id,
+                "Movie does not have an existing folder path",
+                command_id=operation_command_id,
+                correlation_id=operation_correlation_id,
+            )
 
         language = self._language(options.language)
         try:
@@ -240,7 +310,13 @@ class MetadataScraper:
                         tmdb_confidence=candidate.score,
                         scrape_error="Manual confirmation required",
                     )
-                    self._record_match_suggested(movie_id, [candidate], "Manual confirmation required")
+                    self._record_match_suggested(
+                        movie_id,
+                        [candidate],
+                        "Manual confirmation required",
+                        command_id=operation_command_id,
+                        correlation_id=operation_correlation_id,
+                    )
                     return ScrapeResult(
                         status="needs_review",
                         movie_id=movie_id,
@@ -253,7 +329,12 @@ class MetadataScraper:
                 query, year = self._query_from_movie(movie)
                 candidates = self.search(query, year=year, language=language)
                 if not candidates:
-                    return self._mark_failed(movie_id, "No TMDB matches found")
+                    return self._mark_failed(
+                        movie_id,
+                        "No TMDB matches found",
+                        command_id=operation_command_id,
+                        correlation_id=operation_correlation_id,
+                    )
 
                 best = candidates[0]
                 if require_confirmation:
@@ -263,7 +344,13 @@ class MetadataScraper:
                         tmdb_confidence=best.score,
                         scrape_error="Manual confirmation required",
                     )
-                    self._record_match_suggested(movie_id, candidates, "Manual confirmation required")
+                    self._record_match_suggested(
+                        movie_id,
+                        candidates,
+                        "Manual confirmation required",
+                        command_id=operation_command_id,
+                        correlation_id=operation_correlation_id,
+                    )
                     return ScrapeResult(
                         status="needs_review",
                         movie_id=movie_id,
@@ -278,7 +365,13 @@ class MetadataScraper:
                         tmdb_confidence=best.score,
                         scrape_error="Low confidence TMDB match",
                     )
-                    self._record_match_suggested(movie_id, candidates, "Low confidence TMDB match")
+                    self._record_match_suggested(
+                        movie_id,
+                        candidates,
+                        "Low confidence TMDB match",
+                        command_id=operation_command_id,
+                        correlation_id=operation_correlation_id,
+                    )
                     return ScrapeResult(
                         status="needs_review",
                         movie_id=movie_id,
@@ -312,13 +405,29 @@ class MetadataScraper:
 
             from app.services.library_sync import library_sync_service
 
-            updated_movie = library_sync_service.scan_folder(folder, preserve_id=movie_id)
+            updated_movie = library_sync_service.scan_folder(
+                folder,
+                preserve_id=movie_id,
+                command_id=operation_command_id,
+                correlation_id=operation_correlation_id,
+            )
             if not updated_movie:
-                return self._mark_failed(movie_id, "Scrape completed but folder rescan failed")
+                return self._mark_failed(
+                    movie_id,
+                    "Scrape completed but folder rescan failed",
+                    command_id=operation_command_id,
+                    correlation_id=operation_correlation_id,
+                )
 
             enriched = {
                 **updated_movie,
-                "overview": details.get("overview") or updated_movie.get("overview"),
+                **self._movie_updates_from_details(
+                    details,
+                    selected_id,
+                    poster_path=poster_path,
+                    backdrop_path=backdrop_path,
+                    language=language,
+                ),
                 "metadata_source": "tmdb",
                 "nfo_source": "tmdb" if options.write_nfo else updated_movie.get("nfo_source"),
                 "scrape_status": "matched",
@@ -326,7 +435,13 @@ class MetadataScraper:
                 "scraped_at": datetime.now(timezone.utc).isoformat(),
                 "tmdb_confidence": candidates[0].score if candidates else 100,
             }
-            stored = library_manager.upsert_movie(enriched, preserve_id=movie_id)
+            stored = library_manager.upsert_movie(
+                enriched,
+                preserve_id=movie_id,
+                command_id=operation_command_id,
+                correlation_id=operation_correlation_id,
+            )
+            metadata_changes = self._field_changes(movie, stored or enriched, METADATA_MATCH_FIELDS)
             event_store.safe_append(
                 "MetadataMatched",
                 "movie",
@@ -345,7 +460,11 @@ class MetadataScraper:
                     "download_artwork": options.download_artwork,
                     "poster_path": poster_path,
                     "backdrop_path": backdrop_path,
+                    **metadata_changes,
                 },
+                command_id=operation_command_id,
+                correlation_id=operation_correlation_id,
+                context={"operation": "scrape_movie"},
             )
             library_event_bus.publish_library_changed("metadata_scraped", movie_id=movie_id)
             return ScrapeResult(
@@ -356,7 +475,12 @@ class MetadataScraper:
                 candidates=candidates[:REVIEW_CANDIDATE_LIMIT] if candidates else [],
             )
         except Exception as exc:
-            return self._mark_failed(movie_id, str(exc))
+            return self._mark_failed(
+                movie_id,
+                str(exc),
+                command_id=operation_command_id,
+                correlation_id=operation_correlation_id,
+            )
 
     def scrape_library(self, options: BatchScrapeOptions) -> dict:
         started_at = datetime.now(timezone.utc).isoformat()
@@ -448,6 +572,59 @@ class MetadataScraper:
             return int(str(release_date).split("-", 1)[0])
         except ValueError:
             return 0
+
+    def _movie_updates_from_details(
+        self,
+        details: dict,
+        tmdb_id: int,
+        *,
+        poster_path: Optional[str],
+        backdrop_path: Optional[str],
+        language: str,
+    ) -> dict:
+        title = details.get("title") or details.get("original_title")
+        original_title = details.get("original_title") or title
+        release_year = self._release_year(details.get("release_date"))
+        updates = {
+            "title": original_title or title,
+            "tmdb_id": str(tmdb_id),
+            "imdb_id": details.get("imdb_id") or details.get("external_ids", {}).get("imdb_id"),
+            "overview": details.get("overview"),
+            "plot": details.get("overview"),
+            "runtime": details.get("runtime"),
+            "countries": [
+                country.get("name")
+                for country in details.get("production_countries", [])
+                if country.get("name")
+            ],
+            "genres": [
+                genre.get("name")
+                for genre in details.get("genres", [])
+                if genre.get("name")
+            ],
+            "director": self._director_from_details(details),
+            "actors": self._actors_from_details(details),
+            "poster_path": poster_path,
+            "backdrop_path": backdrop_path,
+        }
+        if release_year:
+            updates["year"] = release_year
+        if language.startswith("zh") and title:
+            updates["title_cn"] = title
+        return {key: value for key, value in updates.items() if value not in (None, "", [])}
+
+    def _director_from_details(self, details: dict) -> Optional[str]:
+        for person in details.get("credits", {}).get("crew", []):
+            if person.get("job") == "Director" and person.get("name"):
+                return person["name"]
+        return None
+
+    def _actors_from_details(self, details: dict) -> list[dict]:
+        return [
+            {"name": actor.get("name"), "role": actor.get("character")}
+            for actor in details.get("credits", {}).get("cast", [])[:10]
+            if actor.get("name")
+        ]
 
     def _movie_folder(self, movie: dict) -> Optional[Path]:
         folder_path = movie.get("folder_path")
@@ -545,13 +722,23 @@ class MetadataScraper:
             if isinstance(image, dict) and image.get("file_path")
         }
 
-    def _mark_failed(self, movie_id: str, message: str) -> ScrapeResult:
+    def _mark_failed(
+        self,
+        movie_id: str,
+        message: str,
+        *,
+        command_id: Optional[str] = None,
+        correlation_id: Optional[str] = None,
+    ) -> ScrapeResult:
         self._update_scrape_state(movie_id, scrape_status="failed", scrape_error=message)
         event_store.safe_append(
             "MetadataScrapeFailed",
             "movie",
             movie_id,
             {"movie_id": movie_id, "message": message},
+            command_id=command_id,
+            correlation_id=correlation_id,
+            context={"operation": "scrape_movie"},
         )
         return ScrapeResult(
             status="failed",
@@ -567,7 +754,15 @@ class MetadataScraper:
         library_manager.upsert_movie({**movie, **updates}, preserve_id=movie_id)
         library_event_bus.publish_library_changed("metadata_scrape_status", movie_id=movie_id)
 
-    def _record_match_suggested(self, movie_id: str, candidates: list[MetadataSearchResult], reason: str):
+    def _record_match_suggested(
+        self,
+        movie_id: str,
+        candidates: list[MetadataSearchResult],
+        reason: str,
+        *,
+        command_id: Optional[str] = None,
+        correlation_id: Optional[str] = None,
+    ):
         event_store.safe_append(
             "MetadataMatchSuggested",
             "movie",
@@ -577,7 +772,30 @@ class MetadataScraper:
                 "reason": reason,
                 "candidates": [candidate.model_dump() for candidate in candidates[:REVIEW_CANDIDATE_LIMIT]],
             },
+            command_id=command_id,
+            correlation_id=correlation_id,
+            context={"operation": "scrape_movie"},
         )
+
+    def _new_command_id(self, operation: str) -> str:
+        return f"{operation}_{uuid4().hex}"
+
+    def _field_changes(self, previous: dict, current: dict, fields: tuple[str, ...]) -> dict:
+        changed_fields = []
+        previous_values = {}
+        current_values = {}
+        for field in fields:
+            previous_value = previous.get(field)
+            current_value = current.get(field)
+            if previous_value != current_value:
+                changed_fields.append(field)
+                previous_values[field] = previous_value
+                current_values[field] = current_value
+        return {
+            "changed_fields": changed_fields,
+            "previous": previous_values,
+            "current": current_values,
+        }
 
     def _language(self, value: Optional[str]) -> str:
         if value:
