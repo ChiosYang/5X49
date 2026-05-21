@@ -37,6 +37,20 @@ export const API = {
     libraryMovie: (id: string) => `${API_BASE_URL}/library/${encodeURIComponent(id)}`,
     libraryMovieAuditEvents: (id: string) => `${API_BASE_URL}/library/${encodeURIComponent(id)}/audit-events`,
     libraryAuditEvents: () => `${API_BASE_URL}/library/audit-events`,
+    libraryAuditEventsUrl: (params: {
+        aggregate_type?: string;
+        aggregate_id?: string;
+        type?: string;
+        limit?: number;
+    } = {}) => {
+        const searchParams = new URLSearchParams();
+        if (params.aggregate_type) searchParams.set('aggregate_type', params.aggregate_type);
+        if (params.aggregate_id) searchParams.set('aggregate_id', params.aggregate_id);
+        if (params.type) searchParams.set('type', params.type);
+        if (params.limit) searchParams.set('limit', String(params.limit));
+        const query = searchParams.toString();
+        return `${API_BASE_URL}/library/audit-events${query ? `?${query}` : ''}`;
+    },
     libraryAnalyze: (id: string) => `${API_BASE_URL}/library/analyze/${encodeURIComponent(id)}`,
     libraryRefresh: (id: string) => `${API_BASE_URL}/library/${encodeURIComponent(id)}/refresh`,
     libraryArtwork: (id: string) => `${API_BASE_URL}/library/${encodeURIComponent(id)}/artwork`,

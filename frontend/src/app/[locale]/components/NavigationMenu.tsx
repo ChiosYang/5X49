@@ -52,6 +52,13 @@ export default function NavigationMenu() {
             Search
           </Link>
           <Link
+            href="/library/activity"
+            onClick={closeMenu}
+            className="block text-5xl md:text-7xl font-bold tracking-tighter text-white hover:text-neutral-400 transition-colors"
+          >
+            Activity
+          </Link>
+          <Link
             href="/settings"
             onClick={closeMenu}
             className="block text-5xl md:text-7xl font-bold tracking-tighter text-white hover:text-neutral-400 transition-colors"
