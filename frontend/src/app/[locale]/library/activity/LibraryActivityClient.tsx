@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import useSWR from "swr";
 import { ChevronDown, Clock, Filter, Loader2 } from "lucide-react";
+import OperationDryRunPanel from "@/components/OperationDryRunPanel";
 import { Link } from "@/i18n/routing";
 import {
   EVENT_LABELS,
@@ -167,27 +168,33 @@ export default function LibraryActivityClient() {
                       {operation.correlation_id ? <span>{operation.correlation_id}</span> : <span>{operation.primaryEvent.id}</span>}
                     </div>
                     {expanded ? (
-                      <ul className="mt-5 space-y-4 border-l border-neutral-900 pl-4">
-                        {operation.events.map((event) => (
-                          <li key={event.id} className="grid gap-1 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start">
-                            <div className="min-w-0">
-                              <p className="truncate text-xs font-bold uppercase tracking-widest text-neutral-300">
-                                {EVENT_LABELS[event.type] || event.type}
-                              </p>
-                              <p className="mt-1 break-words text-sm leading-relaxed text-neutral-500">
-                                {eventSummary(event)}
-                              </p>
-                              <p className="mt-1 break-all text-xs uppercase tracking-widest text-neutral-700">
-                                {event.id}
-                              </p>
-                            </div>
-                            <time className="flex items-center gap-1.5 text-xs uppercase tracking-widest text-neutral-700">
-                              <Clock className="h-3 w-3" />
-                              {formatEventTime(event.occurred_at)}
-                            </time>
-                          </li>
-                        ))}
-                      </ul>
+                      <>
+                        <OperationDryRunPanel
+                          commandId={operation.command_id}
+                          correlationId={operation.correlation_id}
+                        />
+                        <ul className="mt-5 space-y-4 border-l border-neutral-900 pl-4">
+                          {operation.events.map((event) => (
+                            <li key={event.id} className="grid gap-1 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start">
+                              <div className="min-w-0">
+                                <p className="truncate text-xs font-bold uppercase tracking-widest text-neutral-300">
+                                  {EVENT_LABELS[event.type] || event.type}
+                                </p>
+                                <p className="mt-1 break-words text-sm leading-relaxed text-neutral-500">
+                                  {eventSummary(event)}
+                                </p>
+                                <p className="mt-1 break-all text-xs uppercase tracking-widest text-neutral-700">
+                                  {event.id}
+                                </p>
+                              </div>
+                              <time className="flex items-center gap-1.5 text-xs uppercase tracking-widest text-neutral-700">
+                                <Clock className="h-3 w-3" />
+                                {formatEventTime(event.occurred_at)}
+                              </time>
+                            </li>
+                          ))}
+                        </ul>
+                      </>
                     ) : null}
                   </div>
                   <time className="flex items-center gap-1.5 text-xs uppercase tracking-widest text-neutral-600">

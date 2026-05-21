@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { ChevronDown, Clock, Loader2, X } from "lucide-react";
+import OperationDryRunPanel from "@/components/OperationDryRunPanel";
 import { useMovieAuditEvents } from "@/hooks/useMovie";
 import {
   EVENT_LABELS,
@@ -139,18 +140,24 @@ export default function MovieActivityTimeline({ movieId, open, onClose }: MovieA
                           {operation.eventCount} {operation.eventCount === 1 ? "event" : "events"}
                         </p>
                         {expanded ? (
-                          <ul className="mt-4 space-y-4 border-l border-neutral-900 pl-4">
-                            {operation.events.map((event) => (
-                              <li key={event.id} className="min-w-0">
-                                <p className="truncate text-xs font-bold uppercase tracking-widest text-neutral-300">
-                                  {EVENT_LABELS[event.type] || event.type}
-                                </p>
-                                <p className="mt-1 break-words text-sm leading-relaxed text-neutral-500">
-                                  {eventSummary(event)}
-                                </p>
-                              </li>
-                            ))}
-                          </ul>
+                          <>
+                            <OperationDryRunPanel
+                              commandId={operation.command_id}
+                              correlationId={operation.correlation_id}
+                            />
+                            <ul className="mt-4 space-y-4 border-l border-neutral-900 pl-4">
+                              {operation.events.map((event) => (
+                                <li key={event.id} className="min-w-0">
+                                  <p className="truncate text-xs font-bold uppercase tracking-widest text-neutral-300">
+                                    {EVENT_LABELS[event.type] || event.type}
+                                  </p>
+                                  <p className="mt-1 break-words text-sm leading-relaxed text-neutral-500">
+                                    {eventSummary(event)}
+                                  </p>
+                                </li>
+                              ))}
+                            </ul>
+                          </>
                         ) : null}
                       </div>
                       <time className="flex items-center gap-1.5 text-xs uppercase tracking-widest text-neutral-600">

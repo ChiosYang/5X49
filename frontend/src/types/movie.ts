@@ -188,6 +188,36 @@ export interface EventRecord {
   occurred_at: string;
 }
 
+export interface OperationDryRunCheck {
+  status: "safe" | "partial" | "unsafe" | "unknown" | "not_applicable" | string;
+  can: boolean;
+  message: string;
+  event_id?: string | null;
+  details: Record<string, unknown>;
+  missing_payload: string[];
+  unsafe_actions: string[];
+}
+
+export interface OperationDryRunReport {
+  dry_run: boolean;
+  operation_id?: string | null;
+  correlation_id?: string | null;
+  command_id?: string | null;
+  status: "safe" | "partial" | "unsafe" | "unknown" | string;
+  events_analyzed: number;
+  event_types: Record<string, number>;
+  can_restore_poster: boolean;
+  can_trace_nfo_writer: boolean;
+  can_reverse_root_move: boolean;
+  can_list_scrape_side_effects: boolean;
+  checks: Record<string, OperationDryRunCheck>;
+  side_effects: Array<Record<string, unknown>>;
+  recoverable_fields: Array<Record<string, unknown>>;
+  missing_payload: Array<Record<string, unknown>>;
+  unsafe_actions: Array<Record<string, unknown>>;
+  events: Array<Record<string, unknown>>;
+}
+
 export interface RootVideo {
   path: string;
   filename: string;

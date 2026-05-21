@@ -37,6 +37,18 @@ export const API = {
     libraryMovie: (id: string) => `${API_BASE_URL}/library/${encodeURIComponent(id)}`,
     libraryMovieAuditEvents: (id: string) => `${API_BASE_URL}/library/${encodeURIComponent(id)}/audit-events`,
     libraryAuditEvents: () => `${API_BASE_URL}/library/audit-events`,
+    libraryOperationDryRunUrl: (params: {
+        command_id?: string | null;
+        correlation_id?: string | null;
+        limit?: number;
+    }) => {
+        const searchParams = new URLSearchParams();
+        if (params.command_id) searchParams.set('command_id', params.command_id);
+        if (params.correlation_id) searchParams.set('correlation_id', params.correlation_id);
+        if (params.limit) searchParams.set('limit', String(params.limit));
+        const query = searchParams.toString();
+        return `${API_BASE_URL}/library/operations/dry-run${query ? `?${query}` : ''}`;
+    },
     libraryAuditEventsUrl: (params: {
         aggregate_type?: string;
         aggregate_id?: string;

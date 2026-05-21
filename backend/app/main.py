@@ -18,6 +18,7 @@ from app.services.metadata.models import ArtworkSelection, BatchScrapeOptions, R
 from app.services.metadata.organizer import root_video_organizer
 from app.services.metadata.scraper import metadata_scraper
 from app.services.nfo_signature_dry_run import nfo_signature_dry_run
+from app.services.operation_dry_run import operation_dry_run
 from app.services.projections.movie_rebuild import movie_projection_dry_run
 from app.database import create_db_and_tables
 from app.utils.security import validate_movie_id
@@ -247,6 +248,18 @@ def get_library_movie_audit_events(
         event_type=type,
         limit=limit,
     )
+
+@app.get("/library/operations/dry-run")
+def dry_run_library_operation(
+    correlation_id: str | None = Query(default=None),
+    command_id: str | None = Query(default=None),
+    limit: int = Query(default=500, ge=1, le=500),
+):
+    """Run a read-only consistency check for one correlated library operation."""
+    try:
+        return operation_dry_run.run(correlation_id=correlation_id, command_id=command_id, limit=limit)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
 
 @app.post("/library/projections/movie/rebuild")
 def rebuild_movie_projection_dry_run(

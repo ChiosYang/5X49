@@ -115,6 +115,16 @@ This document describes the REST API endpoints available in the backend applicat
   - `limit` (integer, optional): Number of events to return, 1-500. Defaults to 100.
 - **Response**: Array of `EventRecord` objects, newest first.
 
+### Dry-Run Library Operation
+- **URL**: `/library/operations/dry-run`
+- **Method**: `GET`
+- **Description**: Runs a read-only consistency check for one correlated operation. It does not mutate the database or filesystem.
+- **Query Parameters**:
+  - `correlation_id` (string, optional): Operation trace ID to inspect. Required if `command_id` is not provided.
+  - `command_id` (string, optional): Command ID to inspect. Required if `correlation_id` is not provided.
+  - `limit` (integer, optional): Number of events to inspect, 1-500. Defaults to 500.
+- **Response**: Object containing `status`, `checks`, `side_effects`, `recoverable_fields`, `missing_payload`, `unsafe_actions`, and boolean summaries such as `can_restore_poster`, `can_trace_nfo_writer`, and `can_reverse_root_move`.
+
 ### Background Jobs
 - **URL**: `/jobs`
 - **Method**: `GET`
