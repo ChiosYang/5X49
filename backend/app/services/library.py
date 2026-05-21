@@ -142,6 +142,11 @@ class LibraryManager:
 
     def upsert_movie(self, movie_data: dict, preserve_id: Optional[str] = None) -> Optional[dict]:
         """Insert or update one movie and return the stored record."""
+        result = self.upsert_movie_with_events(movie_data, preserve_id=preserve_id)
+        return result["movie"] if result else None
+
+    def upsert_movie_with_events(self, movie_data: dict, preserve_id: Optional[str] = None) -> Optional[dict]:
+        """Insert or update one movie and return the stored record plus emitted scan event types."""
         movie_id = preserve_id or movie_data.get("id")
         if not movie_id:
             return None
@@ -169,7 +174,10 @@ class LibraryManager:
                 stored = existing_movie.model_dump()
                 scan_events.extend(self._scan_events_for_existing(previous_movie, movie_data, existing_movie.id))
                 self._append_scan_events(scan_events)
-                return stored
+                return {
+                    "movie": stored,
+                    "event_types": self._event_types(scan_events),
+                }
 
             new_movie = Movie(**self._with_added_at(movie_data))
             session.add(new_movie)
@@ -182,7 +190,10 @@ class LibraryManager:
                 "project": False,
             })
             self._append_scan_events(scan_events)
-            return new_movie.model_dump()
+            return {
+                "movie": new_movie.model_dump(),
+                "event_types": self._event_types(scan_events),
+            }
 
     def get_movies(self) -> List[dict]:
         with Session(engine) as session:
@@ -431,5 +442,8 @@ class LibraryManager:
                     event["aggregate_id"],
                     event["payload"],
                 )
+
+    def _event_types(self, events: list[dict]) -> list[str]:
+        return [event["type"] for event in events if event.get("type")]
 
 library_manager = LibraryManager()

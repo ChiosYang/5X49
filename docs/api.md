@@ -940,7 +940,7 @@ Audit events are persisted in the `events` table. Most events currently act as a
 - `schema_version` (Integer): Event payload schema version.
 - `occurred_at` (String): UTC ISO timestamp.
 
-Scan-related events are de-duplicated: `MovieDiscovered` is recorded for new records, `MovieFileObserved` is recorded only when key local file fields change, `MovieMetadataParsedFromNfo` is recorded only when NFO signature fields change, and `MovieRestored` is recorded when a previously missing movie is observed as available again. `MovieFolderScanned` records the scan action and is not used as the source of truth for projection.
+Scan-related events are de-duplicated: `MovieDiscovered` is recorded for new records, `MovieFileObserved` is recorded only when key local file fields change, `MovieMetadataParsedFromNfo` is recorded only when NFO signature fields change, and `MovieRestored` is recorded when a previously missing movie is observed as available again. Successful folder scans no longer append `MovieFolderScanned` by default; UI refresh notifications are still published through `/library/events`.
 
 ### Movie schema
 The core database payload associated with movies.
