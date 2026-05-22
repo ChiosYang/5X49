@@ -18,6 +18,8 @@ const CHECK_LABELS: Record<string, string> = {
 };
 
 const RESTORE_LABELS: Record<OperationRestoreAction, string> = {
+  restore_artwork_selection: "artwork selection",
+  restore_metadata: "metadata fields",
   restore_poster: "poster",
   restore_nfo: "NFO",
   reverse_root_move: "root video",
@@ -25,6 +27,18 @@ const RESTORE_LABELS: Record<OperationRestoreAction, string> = {
 
 function restoreActionsForReport(report: OperationDryRunReport): OperationRestoreAction[] {
   const actions: OperationRestoreAction[] = [];
+  if (report.recoverable_fields.some((field) => (
+    field.type === "MetadataMatched"
+    && field.can_restore_value === true
+  ))) {
+    actions.push("restore_metadata");
+  }
+  if (report.recoverable_fields.some((field) => (
+    field.type === "ArtworkSelected"
+    && field.can_restore_value === true
+  ))) {
+    actions.push("restore_artwork_selection");
+  }
   if (report.can_restore_poster) actions.push("restore_poster");
   if (report.side_effects.some((effect) => (
     effect.type === "NfoWritten"
@@ -82,7 +96,7 @@ export default function OperationDryRunPanel({ commandId, correlationId }: Opera
   const runRestore = async () => {
     if (!report || !canRestore) return;
     const actionSummary = restoreActions.map((action) => RESTORE_LABELS[action]).join(", ");
-    const confirmed = window.confirm(`Restore ${actionSummary} from recorded backups?`);
+    const confirmed = window.confirm(`Restore ${actionSummary} from recorded recovery data?`);
     if (!confirmed) return;
 
     setRestoring(true);

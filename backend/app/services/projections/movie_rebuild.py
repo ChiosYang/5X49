@@ -11,6 +11,8 @@ CURRENT_BASE_PROJECTABLE_EVENTS = {
     "MovieIgnored",
     "MovieMarkedMissing",
     "MovieRestored",
+    "MetadataRestored",
+    "ArtworkSelectionRestored",
     "RootVideoOrganizationReverted",
     "AnalysisStarted",
     "AnalysisCompleted",
@@ -244,6 +246,8 @@ class MovieProjectionDryRun:
         elif event.type == "RootVideoOrganizationReverted":
             state["library_status"] = "reverted"
             state["missing_since"] = None
+        elif event.type in {"MetadataRestored", "ArtworkSelectionRestored"}:
+            self._apply_restored_fields(state, payload)
         elif event.type == "AnalysisStarted":
             state["analysis_status"] = "processing"
         elif event.type == "AnalysisCompleted":
@@ -253,6 +257,17 @@ class MovieProjectionDryRun:
             state["micro_genre_definition"] = payload.get("micro_genre_definition")
         elif event.type == "AnalysisFailed":
             state["analysis_status"] = "failed"
+
+    def _apply_restored_fields(self, state: dict, payload: dict):
+        restored_fields = payload.get("restored_fields")
+        if not isinstance(restored_fields, list):
+            return
+        for item in restored_fields:
+            if not isinstance(item, dict):
+                continue
+            field = item.get("field")
+            if isinstance(field, str):
+                state[field] = item.get("restored")
 
     def _state_from_discovered(self, event: EventRecord) -> Optional[dict]:
         payload = event.payload or {}

@@ -7,13 +7,19 @@ from uuid import uuid4
 from sqlmodel import Session, select
 
 from app.database import engine
-from app.models import EventRecord
+from app.models import EventRecord, Movie
 from app.services.event_store import event_store
 from app.services.operation_dry_run import operation_dry_run
 from app.services.settings import get_media_dir
 
 
-RESTORE_ACTIONS = {"restore_poster", "restore_nfo", "reverse_root_move"}
+RESTORE_ACTIONS = {
+    "restore_artwork_selection",
+    "restore_metadata",
+    "restore_nfo",
+    "restore_poster",
+    "reverse_root_move",
+}
 
 
 class OperationRestore:
@@ -93,6 +99,24 @@ class OperationRestore:
         if action == "restore_nfo":
             return self._restore_nfo(
                 events,
+                restore_command_id=restore_command_id,
+                restore_correlation_id=restore_correlation_id,
+            )
+        if action == "restore_metadata":
+            return self._restore_movie_fields(
+                events,
+                source_event_type="MetadataMatched",
+                restore_event_type="MetadataRestored",
+                action="restore_metadata",
+                restore_command_id=restore_command_id,
+                restore_correlation_id=restore_correlation_id,
+            )
+        if action == "restore_artwork_selection":
+            return self._restore_movie_fields(
+                events,
+                source_event_type="ArtworkSelected",
+                restore_event_type="ArtworkSelectionRestored",
+                action="restore_artwork_selection",
                 restore_command_id=restore_command_id,
                 restore_correlation_id=restore_correlation_id,
             )
@@ -206,6 +230,107 @@ class OperationRestore:
             "restored_event_id": event.id,
             "path": str(destination),
             "backup_path": str(backup),
+        }
+
+    def _restore_movie_fields(
+        self,
+        events: list[EventRecord],
+        *,
+        source_event_type: str,
+        restore_event_type: str,
+        action: str,
+        restore_command_id: str,
+        restore_correlation_id: str,
+    ) -> Optional[dict]:
+        event = self._latest_event(events, source_event_type)
+        if not event:
+            return None
+        if not event.aggregate_id:
+            raise ValueError(f"{source_event_type} is missing movie aggregate ID")
+        if self._already_restored(restore_event_type, event.id):
+            raise ValueError(f"{source_event_type} was already restored")
+
+        payload = event.payload or {}
+        previous = payload.get("previous")
+        current = payload.get("current")
+        changed_fields = payload.get("changed_fields")
+        if not isinstance(previous, dict) or not isinstance(current, dict) or not isinstance(changed_fields, list):
+            raise ValueError(f"{source_event_type} is missing field recovery payload")
+
+        with Session(engine) as session:
+            movie = session.get(Movie, event.aggregate_id)
+            if not movie:
+                raise ValueError("Movie not found for field restore")
+            movie_before = movie.model_dump()
+            restored_fields = []
+            conflicts = []
+            missing_payload = []
+
+            for field in changed_fields:
+                if not isinstance(field, str):
+                    continue
+                if field not in Movie.model_fields:
+                    missing_payload.append({"field": field, "reason": "field is not restorable on Movie"})
+                    continue
+                if field not in previous:
+                    missing_payload.append({"field": field, "reason": "previous value is missing"})
+                    continue
+                if field not in current:
+                    missing_payload.append({"field": field, "reason": "current value is missing"})
+                    continue
+                current_value = getattr(movie, field, None)
+                expected_current = current[field]
+                restored_value = previous[field]
+                if current_value != expected_current:
+                    conflicts.append({
+                        "field": field,
+                        "current": current_value,
+                        "expected_current": expected_current,
+                        "restored": restored_value,
+                    })
+                    continue
+                setattr(movie, field, restored_value)
+                restored_fields.append({
+                    "field": field,
+                    "before": current_value,
+                    "restored": restored_value,
+                })
+
+            if not restored_fields:
+                raise ValueError(f"No {source_event_type} fields can be safely restored")
+
+            session.add(movie)
+            restore_event = EventRecord(
+                aggregate_type="movie",
+                aggregate_id=event.aggregate_id,
+                type=restore_event_type,
+                command_id=restore_command_id,
+                correlation_id=restore_correlation_id,
+                causation_id=event.id,
+                payload={
+                    "action": action,
+                    "movie_id": event.aggregate_id,
+                    "restored_event_id": event.id,
+                    "restored_fields": restored_fields,
+                    "conflicts": conflicts,
+                    "missing_payload": missing_payload,
+                    "before": movie_before,
+                    "after": movie.model_dump(),
+                },
+                context={"operation": "restore_operation"},
+            )
+            session.add(restore_event)
+            session.commit()
+            session.refresh(restore_event)
+
+        return {
+            "action": action,
+            "event_id": restore_event.id,
+            "restored_event_id": event.id,
+            "movie_id": event.aggregate_id,
+            "restored_fields": len(restored_fields),
+            "conflicts": len(conflicts),
+            "missing_payload": len(missing_payload),
         }
 
     def _reverse_root_move(

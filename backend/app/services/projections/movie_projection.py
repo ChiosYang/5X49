@@ -20,6 +20,8 @@ class MovieProjector:
             "MovieIgnored": self._apply_ignored,
             "MovieMarkedMissing": self._apply_marked_missing,
             "MovieRestored": self._apply_restored,
+            "MetadataRestored": self._apply_restored_fields,
+            "ArtworkSelectionRestored": self._apply_restored_fields,
             "RootVideoOrganizationReverted": self._apply_root_video_organization_reverted,
             "AnalysisStarted": self._apply_analysis_started,
             "AnalysisCompleted": self._apply_analysis_completed,
@@ -53,6 +55,17 @@ class MovieProjector:
     def _apply_root_video_organization_reverted(self, movie: Movie, payload: dict):
         movie.library_status = "reverted"
         movie.missing_since = None
+
+    def _apply_restored_fields(self, movie: Movie, payload: dict):
+        restored_fields = payload.get("restored_fields")
+        if not isinstance(restored_fields, list):
+            return
+        for item in restored_fields:
+            if not isinstance(item, dict):
+                continue
+            field = item.get("field")
+            if isinstance(field, str) and field in Movie.model_fields:
+                setattr(movie, field, item.get("restored"))
 
     def _apply_analysis_started(self, movie: Movie, payload: dict):
         movie.analysis_status = "processing"

@@ -21,9 +21,11 @@ export const EVENT_LABELS: Record<string, string> = {
   MovieIgnored: "Ignored",
   MetadataMatchSuggested: "Match suggested",
   MetadataMatched: "Metadata matched",
+  MetadataRestored: "Metadata restored",
   MetadataScrapeFailed: "Scrape failed",
   ArtworkDownloaded: "Artwork downloaded",
   ArtworkSelected: "Artwork selected",
+  ArtworkSelectionRestored: "Artwork selection restored",
   ArtworkRestored: "Artwork restored",
   NfoWritten: "NFO written",
   NfoRestored: "NFO restored",
@@ -50,9 +52,11 @@ export const EVENT_TYPE_OPTIONS = [
   "MovieIgnored",
   "MetadataMatchSuggested",
   "MetadataMatched",
+  "MetadataRestored",
   "MetadataScrapeFailed",
   "ArtworkDownloaded",
   "ArtworkSelected",
+  "ArtworkSelectionRestored",
   "ArtworkRestored",
   "NfoWritten",
   "NfoRestored",
@@ -143,6 +147,11 @@ export function eventSummary(event: EventRecord) {
       confidence !== null ? `${Math.round(confidence)}% confidence` : null,
     ].filter(Boolean).join(" · ");
   }
+  if (event.type === "MetadataRestored") {
+    const restoredFields = event.payload?.restored_fields;
+    const count = Array.isArray(restoredFields) ? restoredFields.length : 0;
+    return count ? `${count} metadata fields restored` : "Metadata fields restored";
+  }
   if (event.type === "MetadataMatchSuggested") return reason || "Review required before writing metadata";
   if (event.type === "ArtworkDownloaded") {
     const label = assetType === "backdrop" ? "Backdrop downloaded" : "Poster downloaded";
@@ -153,6 +162,11 @@ export function eventSummary(event: EventRecord) {
     return destination ? `${label}: ${destination}` : label;
   }
   if (event.type === "ArtworkSelected") return "Poster or backdrop was updated";
+  if (event.type === "ArtworkSelectionRestored") {
+    const restoredFields = event.payload?.restored_fields;
+    const count = Array.isArray(restoredFields) ? restoredFields.length : 0;
+    return count ? `${count} artwork fields restored` : "Artwork selection restored";
+  }
   if (event.type === "NfoWritten") {
     const label = action === "update_artwork" ? "NFO artwork references updated" : "NFO metadata written";
     return path ? `${label}: ${path}` : label;
@@ -232,7 +246,9 @@ function choosePrimaryEvent(events: EventRecord[]) {
 function primaryRank(type: string) {
   const ranks: Record<string, number> = {
     MetadataMatched: 1,
+    MetadataRestored: 1,
     ArtworkSelected: 2,
+    ArtworkSelectionRestored: 2,
     RootVideoOrganizationReverted: 2,
     RootVideoOrganized: 3,
     RootVideoMoveReversed: 3,
@@ -257,8 +273,14 @@ function operationTitle(events: EventRecord[], primaryEvent: EventRecord) {
   if (events.some((event) => event.type === "MetadataMatched" || event.type === "MetadataMatchSuggested" || event.type === "MetadataScrapeFailed")) {
     return "Metadata scrape";
   }
+  if (events.some((event) => event.type === "MetadataRestored")) {
+    return "Metadata restore";
+  }
   if (events.some((event) => event.type === "ArtworkSelected" || event.type === "ArtworkDownloaded")) {
     return "Artwork update";
+  }
+  if (events.some((event) => event.type === "ArtworkSelectionRestored" || event.type === "ArtworkRestored")) {
+    return "Artwork restore";
   }
   if (events.some((event) => event.type.startsWith("Analysis"))) {
     return "Analysis";

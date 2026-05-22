@@ -218,7 +218,12 @@ export interface OperationDryRunReport {
   events: Array<Record<string, unknown>>;
 }
 
-export type OperationRestoreAction = "restore_poster" | "restore_nfo" | "reverse_root_move";
+export type OperationRestoreAction =
+  | "restore_artwork_selection"
+  | "restore_metadata"
+  | "restore_nfo"
+  | "restore_poster"
+  | "reverse_root_move";
 
 export interface OperationRestoreReport {
   status: "restored" | "skipped" | string;
