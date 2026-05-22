@@ -125,6 +125,18 @@ This document describes the REST API endpoints available in the backend applicat
   - `limit` (integer, optional): Number of events to inspect, 1-500. Defaults to 500.
 - **Response**: Object containing `status`, `checks`, `side_effects`, `recoverable_fields`, `missing_payload`, `unsafe_actions`, and boolean summaries such as `can_restore_poster`, `can_trace_nfo_writer`, and `can_reverse_root_move`.
 
+### Restore Library Operation
+- **URL**: `/library/operations/restore`
+- **Method**: `POST`
+- **Description**: Executes supported file-level compensation actions for one correlated operation. It first runs the operation dry-run, then restores only narrowly supported side effects and records compensation events. It does not delete original events or restore current `Movie` fields.
+- **Request Body**:
+  - `correlation_id` (string, optional): Operation trace ID to restore. Required if `command_id` is not provided.
+  - `command_id` (string, optional): Command ID to restore. Required if `correlation_id` is not provided.
+  - `actions` (array of strings, optional): Any of `restore_poster`, `restore_nfo`, or `reverse_root_move`. Defaults to all supported actions.
+  - `limit` (integer, optional): Number of events to inspect, 1-500. Defaults to 500.
+- **Response**: Object containing `status`, `operation_id`, restore command/correlation IDs, `restored`, `skipped`, and the dry-run report used for safety checks.
+- **Compensation Events**: Supported actions append `ArtworkRestored`, `NfoRestored`, or `RootVideoMoveReversed` with `causation_id` pointing at the original side-effect event.
+
 ### Background Jobs
 - **URL**: `/jobs`
 - **Method**: `GET`
@@ -954,7 +966,7 @@ Audit events are persisted in the `events` table. Most events currently act as a
 
 Scan-related events are de-duplicated: `MovieDiscovered` is recorded for new records, `MovieFileObserved` is recorded only when key local file fields change, `MovieMetadataParsedFromNfo` is recorded only when NFO signature fields change, and `MovieRestored` is recorded when a previously missing movie is observed as available again. Successful folder scans no longer append `MovieFolderScanned` by default; UI refresh notifications are still published through `/library/events`.
 
-Stage 4 side-effect events carry richer audit payloads without changing endpoint response shapes. `MetadataMatched` and `ArtworkSelected` include `changed_fields`, `previous`, and `current` summaries for the fields they changed. `ArtworkDownloaded` records poster/backdrop file writes, `NfoWritten` records NFO creation or artwork updates, and both include `backup_path` when an existing file was backed up before overwrite. `RootVideoMoved` records the root video move before later scan/scrape steps run. `RootVideoOrganized` includes source/target file snapshots and the selected TMDB candidate. Scrape, artwork, and root-video organization flows also populate `command_id` and `correlation_id` so related side-effect and scan events can be grouped.
+Stage 4 side-effect events carry richer audit payloads. `MetadataMatched` and `ArtworkSelected` include `changed_fields`, `previous`, and `current` summaries for the fields they changed. `ArtworkDownloaded` records poster/backdrop file writes, `NfoWritten` records NFO creation or artwork updates, and both include `backup_path` when an existing file was backed up before overwrite. `RootVideoMoved` records the root video move before later scan/scrape steps run. `RootVideoOrganized` includes source/target file snapshots and the selected TMDB candidate. Scrape, artwork, and root-video organization flows also populate `command_id` and `correlation_id` so related side-effect and scan events can be grouped. `/library/operations/restore` can use this event chain to execute supported file-level compensation actions and append `ArtworkRestored`, `NfoRestored`, or `RootVideoMoveReversed`.
 
 ### Movie schema
 The core database payload associated with movies.

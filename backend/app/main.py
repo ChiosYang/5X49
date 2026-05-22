@@ -19,6 +19,7 @@ from app.services.metadata.organizer import root_video_organizer
 from app.services.metadata.scraper import metadata_scraper
 from app.services.nfo_signature_dry_run import nfo_signature_dry_run
 from app.services.operation_dry_run import operation_dry_run
+from app.services.operation_restore import operation_restore
 from app.services.projections.movie_rebuild import movie_projection_dry_run
 from app.database import create_db_and_tables
 from app.utils.security import validate_movie_id
@@ -29,6 +30,13 @@ import requests
 
 class TmdbApiKeyUpdate(BaseModel):
     api_key: str = ""
+
+
+class OperationRestoreRequest(BaseModel):
+    correlation_id: str | None = None
+    command_id: str | None = None
+    actions: list[str] | None = None
+    limit: int = 500
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -260,6 +268,24 @@ def dry_run_library_operation(
         return operation_dry_run.run(correlation_id=correlation_id, command_id=command_id, limit=limit)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
+
+@app.post("/library/operations/restore")
+def restore_library_operation(request: OperationRestoreRequest):
+    """Execute supported compensation actions for one correlated library operation."""
+    if not request.correlation_id and not request.command_id:
+        raise HTTPException(status_code=400, detail="correlation_id or command_id is required")
+    try:
+        result = operation_restore.run(
+            correlation_id=request.correlation_id,
+            command_id=request.command_id,
+            actions=request.actions,
+            limit=request.limit,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc))
+    if result["restored"]:
+        library_event_bus.publish_library_changed("operation_restored")
+    return result
 
 @app.post("/library/projections/movie/rebuild")
 def rebuild_movie_projection_dry_run(
