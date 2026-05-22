@@ -15,6 +15,7 @@ from app.services.settings import get_media_dir
 
 RESTORE_ACTIONS = {
     "restore_artwork_selection",
+    "restore_backdrop",
     "restore_metadata",
     "restore_nfo",
     "restore_poster",
@@ -96,6 +97,15 @@ class OperationRestore:
                 restore_command_id=restore_command_id,
                 restore_correlation_id=restore_correlation_id,
             )
+        if action == "restore_backdrop":
+            if not dry_run.get("can_restore_backdrop"):
+                raise ValueError("Backdrop restore is not safe according to dry-run")
+            return self._restore_artwork(
+                events,
+                asset_type="backdrop",
+                restore_command_id=restore_command_id,
+                restore_correlation_id=restore_correlation_id,
+            )
         if action == "restore_nfo":
             return self._restore_nfo(
                 events,
@@ -163,7 +173,7 @@ class OperationRestore:
             event.aggregate_type,
             event.aggregate_id,
             {
-                "action": "restore_poster",
+                "action": f"restore_{asset_type}",
                 "asset_type": asset_type,
                 "restored_event_id": event.id,
                 "backup_path": str(backup),
@@ -177,7 +187,7 @@ class OperationRestore:
             context={"operation": "restore_operation"},
         )
         return {
-            "action": "restore_poster",
+            "action": f"restore_{asset_type}",
             "event_id": restore_event["id"],
             "restored_event_id": event.id,
             "path": str(destination),

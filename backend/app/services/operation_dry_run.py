@@ -45,7 +45,7 @@ class OperationDryRun:
         payload_issues = self._payload_issues(events)
         field_recovery = self._field_recovery(events)
         checks = {
-            "poster_restore": self._poster_restore_check(events),
+            "artwork_file_restore": self._artwork_file_restore_check(events),
             "nfo_writer_trace": self._nfo_writer_trace_check(events),
             "root_move_reverse": self._root_move_reverse_check(events),
             "scrape_side_effects": self._scrape_side_effects_check(events),
@@ -61,7 +61,8 @@ class OperationDryRun:
             "status": self._overall_status(checks, missing_payload, unsafe_actions),
             "events_analyzed": len(events),
             "event_types": dict(Counter(event.type for event in events)),
-            "can_restore_poster": checks["poster_restore"]["can"],
+            "can_restore_poster": self._can_restore_artwork_asset(events, "poster"),
+            "can_restore_backdrop": self._can_restore_artwork_asset(events, "backdrop"),
             "can_trace_nfo_writer": checks["nfo_writer_trace"]["can"],
             "can_reverse_root_move": checks["root_move_reverse"]["can"],
             "can_list_scrape_side_effects": checks["scrape_side_effects"]["can"],
@@ -132,88 +133,32 @@ class OperationDryRun:
                 })
         return fields
 
-    def _poster_restore_check(self, events: list[EventRecord]) -> dict:
-        candidates = []
-        for event in events:
-            if event.type not in FIELD_RECOVERY_EVENT_TYPES:
-                continue
-            payload = event.payload or {}
-            previous = payload.get("previous")
-            current = payload.get("current")
-            if not isinstance(previous, dict) or not isinstance(current, dict):
-                continue
-            if any(field in previous or field in current for field in ("poster_path", "poster_local")):
-                candidates.append((event, previous, current))
-
-        if not candidates:
-            return self._check("not_applicable", False, "No poster-changing event was found")
-
-        event, previous, current = candidates[-1]
-        previous_path = previous.get("poster_path")
-        previous_local = previous.get("poster_local")
-        current_local = current.get("poster_local")
-        poster_backup = self._latest_artwork_backup(events, "poster")
-        backup_file = Path(poster_backup) if poster_backup else None
-        backup_file_exists = bool(backup_file and backup_file.exists())
-        if not previous_path and not previous_local:
-            if backup_file_exists:
-                return self._check(
-                    "partial",
-                    True,
-                    "Previous poster selection is missing, but overwritten poster file content was backed up",
-                    event_id=event.id,
-                    details={"backup_path": poster_backup},
-                    missing_payload=["previous.poster_path", "previous.poster_local"],
-                )
+    def _artwork_file_restore_check(self, events: list[EventRecord]) -> dict:
+        assets = {}
+        for asset_type in ("poster", "backdrop"):
+            backup_path = self._latest_artwork_backup(events, asset_type)
+            backup_file = Path(backup_path) if backup_path else None
+            assets[asset_type] = {
+                "backup_path": backup_path,
+                "backup_file_exists": bool(backup_file and backup_file.exists()),
+            }
+        restorable = [asset_type for asset_type, details in assets.items() if details["backup_file_exists"]]
+        if restorable:
             return self._check(
-                "unsafe",
+                "safe",
+                True,
+                f"Artwork file backups can restore {', '.join(restorable)}",
+                details={"assets": assets, "restorable_assets": restorable},
+            )
+        downloaded = [event for event in events if event.type == "ArtworkDownloaded"]
+        if downloaded:
+            return self._check(
+                "not_applicable",
                 False,
-                "Previous poster selection is not present in the event payload",
-                event_id=event.id,
-                missing_payload=["previous.poster_path", "previous.poster_local"],
+                "Artwork files were downloaded, but no overwritten file backup is available",
+                details={"assets": assets},
             )
-
-        previous_file = self._resolve_media_path(previous_local) if isinstance(previous_local, str) else None
-        previous_file_exists = bool(previous_file and previous_file.exists())
-        same_local_file = bool(previous_local and current_local and previous_local == current_local)
-        if previous_file_exists and not same_local_file:
-            return self._check(
-                "safe",
-                True,
-                "Previous poster file still exists at a distinct local path",
-                event_id=event.id,
-                details={"previous_file": str(previous_file)},
-            )
-        if backup_file_exists:
-            return self._check(
-                "safe",
-                True,
-                "Previous poster file content was backed up before overwrite",
-                event_id=event.id,
-                details={
-                    "backup_path": poster_backup,
-                    "previous_poster_path": previous_path,
-                    "previous_poster_local": previous_local,
-                    "current_poster_local": current_local,
-                },
-            )
-
-        return self._check(
-            "partial",
-            False,
-            "Previous poster selection is known, but the old image file is not safely restorable from local state",
-            event_id=event.id,
-            details={
-                "previous_poster_path": previous_path,
-                "previous_poster_local": previous_local,
-                "current_poster_local": current_local,
-                "previous_file_exists": previous_file_exists,
-                "same_local_file": same_local_file,
-                "backup_path": poster_backup,
-                "backup_file_exists": backup_file_exists,
-            },
-            unsafe_actions=["Old poster file content may have been overwritten and no backup path is recorded"],
-        )
+        return self._check("not_applicable", False, "No artwork download event was found", details={"assets": assets})
 
     def _nfo_writer_trace_check(self, events: list[EventRecord]) -> dict:
         nfo_events = [event for event in events if event.type == "NfoWritten"]
@@ -329,6 +274,10 @@ class OperationDryRun:
             if isinstance(backup_path, str) and backup_path:
                 return backup_path
         return None
+
+    def _can_restore_artwork_asset(self, events: list[EventRecord], asset_type: str) -> bool:
+        backup_path = self._latest_artwork_backup(events, asset_type)
+        return bool(backup_path and Path(backup_path).exists())
 
     def _sidecar_reverse_checks(self, sidecars: object) -> list[dict]:
         if not isinstance(sidecars, list):

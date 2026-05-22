@@ -207,6 +207,7 @@ export interface OperationDryRunReport {
   events_analyzed: number;
   event_types: Record<string, number>;
   can_restore_poster: boolean;
+  can_restore_backdrop?: boolean;
   can_trace_nfo_writer: boolean;
   can_reverse_root_move: boolean;
   can_list_scrape_side_effects: boolean;
@@ -220,6 +221,7 @@ export interface OperationDryRunReport {
 
 export type OperationRestoreAction =
   | "restore_artwork_selection"
+  | "restore_backdrop"
   | "restore_metadata"
   | "restore_nfo"
   | "restore_poster"

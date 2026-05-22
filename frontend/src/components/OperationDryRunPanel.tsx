@@ -11,7 +11,7 @@ interface OperationDryRunPanelProps {
 }
 
 const CHECK_LABELS: Record<string, string> = {
-  poster_restore: "Poster restore",
+  artwork_file_restore: "Artwork file restore",
   nfo_writer_trace: "NFO trace",
   root_move_reverse: "Root move reverse",
   scrape_side_effects: "Side effects",
@@ -19,8 +19,9 @@ const CHECK_LABELS: Record<string, string> = {
 
 const RESTORE_LABELS: Record<OperationRestoreAction, string> = {
   restore_artwork_selection: "artwork selection",
+  restore_backdrop: "backdrop file",
   restore_metadata: "metadata fields",
-  restore_poster: "poster",
+  restore_poster: "poster file",
   restore_nfo: "NFO",
   reverse_root_move: "root video",
 };
@@ -40,6 +41,7 @@ function restoreActionsForReport(report: OperationDryRunReport): OperationRestor
     actions.push("restore_artwork_selection");
   }
   if (report.can_restore_poster) actions.push("restore_poster");
+  if (report.can_restore_backdrop) actions.push("restore_backdrop");
   if (report.side_effects.some((effect) => (
     effect.type === "NfoWritten"
     && typeof effect.backup_path === "string"
