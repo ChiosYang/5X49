@@ -582,7 +582,7 @@ class MetadataScraper:
             raise
 
     def _in_scope(self, movie: dict, options: BatchScrapeOptions) -> bool:
-        if movie.get("library_status") in {"missing", "ignored"}:
+        if movie.get("library_status") in {"missing", "ignored", "reverted"}:
             return False
         if options.scope == "selected":
             return bool(options.movie_ids and movie.get("id") in options.movie_ids)

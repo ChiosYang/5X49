@@ -11,6 +11,7 @@ CURRENT_BASE_PROJECTABLE_EVENTS = {
     "MovieIgnored",
     "MovieMarkedMissing",
     "MovieRestored",
+    "RootVideoOrganizationReverted",
     "AnalysisStarted",
     "AnalysisCompleted",
     "AnalysisFailed",
@@ -233,13 +234,16 @@ class MovieProjectionDryRun:
             state["library_status"] = "ignored"
             state["missing_since"] = None
         elif event.type == "MovieMarkedMissing":
-            if state.get("library_status") != "ignored":
+            if state.get("library_status") not in {"ignored", "reverted"}:
                 state["library_status"] = "missing"
                 state["missing_since"] = payload.get("missing_since")
         elif event.type == "MovieRestored":
             if state.get("library_status") != "ignored":
                 state["library_status"] = "available"
                 state["missing_since"] = None
+        elif event.type == "RootVideoOrganizationReverted":
+            state["library_status"] = "reverted"
+            state["missing_since"] = None
         elif event.type == "AnalysisStarted":
             state["analysis_status"] = "processing"
         elif event.type == "AnalysisCompleted":

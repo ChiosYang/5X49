@@ -24,9 +24,13 @@ export const EVENT_LABELS: Record<string, string> = {
   MetadataScrapeFailed: "Scrape failed",
   ArtworkDownloaded: "Artwork downloaded",
   ArtworkSelected: "Artwork selected",
+  ArtworkRestored: "Artwork restored",
   NfoWritten: "NFO written",
+  NfoRestored: "NFO restored",
   RootVideoMoved: "Root video moved",
+  RootVideoMoveReversed: "Root video move reversed",
   RootVideoOrganized: "Root video organized",
+  RootVideoOrganizationReverted: "Organization reverted",
   RootVideoOrganizationNeedsReview: "Needs review",
   AnalysisStarted: "Analysis started",
   AnalysisCompleted: "Analysis completed",
@@ -49,9 +53,13 @@ export const EVENT_TYPE_OPTIONS = [
   "MetadataScrapeFailed",
   "ArtworkDownloaded",
   "ArtworkSelected",
+  "ArtworkRestored",
   "NfoWritten",
+  "NfoRestored",
   "RootVideoMoved",
+  "RootVideoMoveReversed",
   "RootVideoOrganized",
+  "RootVideoOrganizationReverted",
   "RootVideoOrganizationNeedsReview",
   "AnalysisStarted",
   "AnalysisCompleted",
@@ -140,13 +148,20 @@ export function eventSummary(event: EventRecord) {
     const label = assetType === "backdrop" ? "Backdrop downloaded" : "Poster downloaded";
     return destination ? `${label}: ${destination}` : label;
   }
+  if (event.type === "ArtworkRestored") {
+    const label = assetType === "backdrop" ? "Backdrop restored" : "Poster restored";
+    return destination ? `${label}: ${destination}` : label;
+  }
   if (event.type === "ArtworkSelected") return "Poster or backdrop was updated";
   if (event.type === "NfoWritten") {
     const label = action === "update_artwork" ? "NFO artwork references updated" : "NFO metadata written";
     return path ? `${label}: ${path}` : label;
   }
+  if (event.type === "NfoRestored") return path ? `NFO restored: ${path}` : "NFO restored from backup";
   if (event.type === "RootVideoMoved") return targetPath || sourcePath || "Root video file moved";
+  if (event.type === "RootVideoMoveReversed") return sourcePath || targetPath || "Root video moved back to its source path";
   if (event.type === "RootVideoOrganized") return targetPath || sourcePath || "Root video moved into the library";
+  if (event.type === "RootVideoOrganizationReverted") return sourcePath || targetPath || "Root video organization was reverted";
   if (event.type === "MovieFileObserved") {
     const changedFields = event.payload?.changed_fields;
     return Array.isArray(changedFields) && changedFields.length
@@ -218,7 +233,9 @@ function primaryRank(type: string) {
   const ranks: Record<string, number> = {
     MetadataMatched: 1,
     ArtworkSelected: 2,
+    RootVideoOrganizationReverted: 2,
     RootVideoOrganized: 3,
+    RootVideoMoveReversed: 3,
     RootVideoMoved: 4,
     MetadataMatchSuggested: 5,
     MetadataScrapeFailed: 6,
@@ -233,6 +250,9 @@ function primaryRank(type: string) {
 function operationTitle(events: EventRecord[], primaryEvent: EventRecord) {
   if (events.some((event) => event.type === "RootVideoOrganized" || event.type === "RootVideoMoved")) {
     return "Root video organization";
+  }
+  if (events.some((event) => event.type === "RootVideoOrganizationReverted" || event.type === "RootVideoMoveReversed")) {
+    return "Root video restore";
   }
   if (events.some((event) => event.type === "MetadataMatched" || event.type === "MetadataMatchSuggested" || event.type === "MetadataScrapeFailed")) {
     return "Metadata scrape";

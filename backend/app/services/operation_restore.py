@@ -272,7 +272,7 @@ class OperationRestore:
             causation_id=event.id,
             context={"operation": "restore_operation"},
         )
-        return {
+        result = {
             "action": "reverse_root_move",
             "event_id": restore_event["id"],
             "restored_event_id": event.id,
@@ -280,6 +280,60 @@ class OperationRestore:
             "target_path": str(target),
             "sidecars_reversed": len(sidecars),
         }
+        reverted = self._append_root_organization_reverted(
+            events,
+            restored_event_id=event.id,
+            source=source,
+            target=target,
+            restore_command_id=restore_command_id,
+            restore_correlation_id=restore_correlation_id,
+        )
+        if reverted:
+            result["organization_reverted_event_id"] = reverted["id"]
+            result["movie_id"] = reverted.get("aggregate_id")
+        return result
+
+    def _append_root_organization_reverted(
+        self,
+        events: list[EventRecord],
+        *,
+        restored_event_id: str,
+        source: Path,
+        target: Path,
+        restore_command_id: str,
+        restore_correlation_id: str,
+    ) -> Optional[dict]:
+        organized = self._latest_event(events, "RootVideoOrganized")
+        if not organized or not organized.aggregate_id:
+            return None
+        discovered = self._latest_event(
+            events,
+            "MovieDiscovered",
+            lambda item: item.aggregate_id == organized.aggregate_id,
+        )
+        if not discovered:
+            return None
+        if self._event_with_payload_value_exists("RootVideoOrganizationReverted", "organized_event_id", organized.id):
+            return None
+        event, projected = event_store.append_and_project(
+            "RootVideoOrganizationReverted",
+            "movie",
+            organized.aggregate_id,
+            {
+                "movie_id": organized.aggregate_id,
+                "restored_event_id": restored_event_id,
+                "organized_event_id": organized.id,
+                "discovered_event_id": discovered.id,
+                "source_path": str(source),
+                "target_path": str(target),
+                "library_status": "reverted",
+            },
+            command_id=restore_command_id,
+            correlation_id=restore_correlation_id,
+            causation_id=restored_event_id,
+            context={"operation": "restore_operation"},
+        )
+        return {**event, "projected": projected}
 
     def _events(
         self,
@@ -298,10 +352,13 @@ class OperationRestore:
             return list(session.exec(statement).all())
 
     def _already_restored(self, restore_type: str, restored_event_id: str) -> bool:
-        statement = select(EventRecord).where(EventRecord.type == restore_type)
+        return self._event_with_payload_value_exists(restore_type, "restored_event_id", restored_event_id)
+
+    def _event_with_payload_value_exists(self, event_type: str, payload_key: str, payload_value: str) -> bool:
+        statement = select(EventRecord).where(EventRecord.type == event_type)
         with Session(engine) as session:
             events = session.exec(statement).all()
-        return any((event.payload or {}).get("restored_event_id") == restored_event_id for event in events)
+        return any((event.payload or {}).get(payload_key) == payload_value for event in events)
 
     def _latest_event(self, events: list[EventRecord], event_type: str, predicate=None) -> Optional[EventRecord]:
         for event in reversed(events):

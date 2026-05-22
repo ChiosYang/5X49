@@ -20,6 +20,7 @@ class MovieProjector:
             "MovieIgnored": self._apply_ignored,
             "MovieMarkedMissing": self._apply_marked_missing,
             "MovieRestored": self._apply_restored,
+            "RootVideoOrganizationReverted": self._apply_root_video_organization_reverted,
             "AnalysisStarted": self._apply_analysis_started,
             "AnalysisCompleted": self._apply_analysis_completed,
             "AnalysisFailed": self._apply_analysis_failed,
@@ -38,7 +39,7 @@ class MovieProjector:
         movie.missing_since = None
 
     def _apply_marked_missing(self, movie: Movie, payload: dict):
-        if movie.library_status == "ignored":
+        if movie.library_status in {"ignored", "reverted"}:
             return
         movie.library_status = "missing"
         movie.missing_since = payload.get("missing_since")
@@ -47,6 +48,10 @@ class MovieProjector:
         if movie.library_status == "ignored":
             return
         movie.library_status = "available"
+        movie.missing_since = None
+
+    def _apply_root_video_organization_reverted(self, movie: Movie, payload: dict):
+        movie.library_status = "reverted"
         movie.missing_since = None
 
     def _apply_analysis_started(self, movie: Movie, payload: dict):

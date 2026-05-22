@@ -70,7 +70,7 @@ class ExternalScoreService:
 
         try:
             for movie in library_manager.get_movies():
-                if movie.get("library_status") in {"missing", "ignored"}:
+                if movie.get("library_status") in {"missing", "ignored", "reverted"}:
                     continue
                 result["processed"] += 1
                 try:

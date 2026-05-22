@@ -233,7 +233,7 @@ class LibraryManager:
         missing_at = datetime.now(timezone.utc).isoformat()
         updated = 0
         with Session(engine) as session:
-            statement = select(Movie).where(Movie.library_status.not_in(["missing", "ignored"]))
+            statement = select(Movie).where(Movie.library_status.not_in(["missing", "ignored", "reverted"]))
             movies = [
                 movie.model_dump()
                 for movie in session.exec(statement).all()
@@ -260,7 +260,7 @@ class LibraryManager:
             movies = [
                 movie.model_dump()
                 for movie in session.exec(statement).all()
-                if movie.library_status != "ignored"
+                if movie.library_status not in {"ignored", "reverted"}
             ]
         for movie in movies:
             _, projected = event_store.append_and_project(

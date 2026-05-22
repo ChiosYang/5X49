@@ -105,7 +105,7 @@ export default async function LibraryPage({ params, searchParams }: LibraryPageP
   const direction = normalizeDirection(firstParam(resolvedSearchParams.dir), sort);
   const [movies, rootVideos] = await Promise.all([getLibrary(), getRootVideos()]);
   const visibleMovies = movies.filter(
-    (movie) => !["missing", "ignored"].includes(movie.library_status || "")
+    (movie) => !["missing", "ignored", "reverted"].includes(movie.library_status || "")
   );
   const sortedMovies = sortMovies(visibleMovies, sort, direction, locale);
 

@@ -218,7 +218,7 @@ def refresh_library_external_scores(payload: dict, ctx) -> dict:
     movies = [
         movie
         for movie in library_manager.get_movies()
-        if movie.get("library_status") not in {"missing", "ignored"}
+        if movie.get("library_status") not in {"missing", "ignored", "reverted"}
     ]
     total = len(movies)
     result = {"processed": 0, "updated": 0, "skipped": 0, "failed": 0}
