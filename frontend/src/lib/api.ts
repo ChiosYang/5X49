@@ -49,6 +49,7 @@ export const API = {
         const query = searchParams.toString();
         return `${API_BASE_URL}/library/operations/dry-run${query ? `?${query}` : ''}`;
     },
+    libraryOperationRestore: () => `${API_BASE_URL}/library/operations/restore`,
     libraryAuditEventsUrl: (params: {
         aggregate_type?: string;
         aggregate_id?: string;

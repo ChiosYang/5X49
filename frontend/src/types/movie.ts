@@ -218,6 +218,21 @@ export interface OperationDryRunReport {
   events: Array<Record<string, unknown>>;
 }
 
+export type OperationRestoreAction = "restore_poster" | "restore_nfo" | "reverse_root_move";
+
+export interface OperationRestoreReport {
+  status: "restored" | "skipped" | string;
+  operation_id?: string | null;
+  correlation_id?: string | null;
+  command_id?: string | null;
+  restore_command_id?: string | null;
+  restore_correlation_id?: string | null;
+  actions_requested: OperationRestoreAction[];
+  restored: Array<Record<string, unknown>>;
+  skipped: Array<Record<string, unknown>>;
+  dry_run: OperationDryRunReport;
+}
+
 export interface RootVideo {
   path: string;
   filename: string;
