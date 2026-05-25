@@ -224,6 +224,82 @@ Long-running mutation endpoints return an accepted-job envelope:
 - **Response**: Array of `EventRecord` objects, newest first.
 - **Errors**: `400 Invalid ID format`, `404 Movie not found`.
 
+### Dry-run Movie Timeline State
+- **URL**: `/library/{movie_id}/timeline/state`
+- **Method**: `GET`
+- **Description**: Replays one movie's persisted event timeline from an empty in-memory state and reports what the Movie state would be at a historical cutoff. This is read-only: it does not modify the database, files, or live event stream.
+- **Path Parameters**:
+  - `movie_id` (string): ASCII movie ID.
+- **Query Parameters**:
+  - `before_event_id` (string, optional): Replay events before this movie event, excluding the event itself.
+  - `at` (string, optional): Replay events whose `occurred_at` is less than or equal to this ISO timestamp.
+  - Exactly one of `before_event_id` or `at` is required.
+- **Response**:
+  ```json
+  {
+    "dry_run": true,
+    "movie_id": "603_1999",
+    "target": {
+      "selector_type": "before_event_id",
+      "before_event_id": "evt_abc",
+      "at": null,
+      "cutoff_event": {"id": "evt_abc", "type": "MetadataMatched", "occurred_at": "2026-05-22T00:00:02+00:00"}
+    },
+    "current_state": {},
+    "target_state": {},
+    "field_diff": [
+      {"field": "title", "current": "Updated", "target": "Original", "restorable": true}
+    ],
+    "events_processed": 1,
+    "events_after_cutoff": 3,
+    "projectable_events": 1,
+    "skipped_projectable_events": 0,
+    "unsupported_events": 0,
+    "unsupported_event_types": {},
+    "skipped_events": [],
+    "missing_payload": []
+  }
+  ```
+- **Notes**: `target_state` is built only from supported projectable events. If the timeline cannot construct a state, for example because no usable `MovieDiscovered` exists before the cutoff, `target_state` is `null` and the reason is reported in `skipped_events` or `missing_payload`.
+- **Errors**: `400 Invalid movie ID format`, `400 Exactly one of before_event_id or at is required`, `400 at must be a valid ISO timestamp`, `404 Movie not found`, `404 before_event_id does not belong to this movie`.
+
+### Dry-run Movie Timeline Restore Preview
+- **URL**: `/library/{movie_id}/timeline/restore-preview`
+- **Method**: `GET`
+- **Description**: Extends timeline state dry-run with field and file recoverability analysis for returning the movie to a historical cutoff. This endpoint is preview-only and never writes compensation events or changes files.
+- **Path Parameters**:
+  - `movie_id` (string): ASCII movie ID.
+- **Query Parameters**:
+  - `before_event_id` (string, optional): Preview restoring to before this movie event.
+  - `at` (string, optional): Preview restoring to this ISO timestamp, inclusive.
+  - Exactly one of `before_event_id` or `at` is required.
+- **Response Additions**:
+  ```json
+  {
+    "status": "partial",
+    "field_restore": [
+      {"field": "title", "current": "Updated", "target": "Original", "restorable": true}
+    ],
+    "file_restore": {
+      "restorable_files": [
+        {"event_id": "evt_art", "type": "ArtworkDownloaded", "file_type": "poster", "path": "/media/Movie/poster.jpg", "backup_path": "/media/Movie/.5x49-backups/cmd/poster.jpg", "backup_file_exists": true}
+      ],
+      "missing_file_backups": [
+        {"event_id": "evt_nfo", "type": "NfoWritten", "file_type": "nfo", "path": "/media/Movie/movie.nfo", "backup_path": null, "backup_file_exists": false, "reason": "Side-effect event has no available backup file"}
+      ],
+      "unsafe_files": []
+    },
+    "restorable_files": [
+      {"event_id": "evt_art", "type": "ArtworkDownloaded", "file_type": "poster", "path": "/media/Movie/poster.jpg", "backup_path": "/media/Movie/.5x49-backups/cmd/poster.jpg", "backup_file_exists": true}
+    ],
+    "missing_file_backups": [
+      {"event_id": "evt_nfo", "type": "NfoWritten", "file_type": "nfo", "path": "/media/Movie/movie.nfo", "backup_path": null, "backup_file_exists": false, "reason": "Side-effect event has no available backup file"}
+    ]
+  }
+  ```
+- **Status Values**: `safe` when all reported changes are recoverable, `partial` when fields are recoverable but payload or file backups are incomplete, `unsafe` when root-video reversal would conflict with current filesystem state, and `unknown` when no supported recovery action is identified.
+- **Errors**: Same as `/library/{movie_id}/timeline/state`.
+
 ### Dry-run Movie Projection Rebuild
 - **URL**: `/library/projections/movie/rebuild`
 - **Method**: `POST`

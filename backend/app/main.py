@@ -21,6 +21,7 @@ from app.services.nfo_signature_dry_run import nfo_signature_dry_run
 from app.services.operation_dry_run import operation_dry_run
 from app.services.operation_restore import operation_restore
 from app.services.projections.movie_rebuild import movie_projection_dry_run
+from app.services.projections.movie_timeline import movie_timeline_dry_run
 from app.database import create_db_and_tables
 from app.utils.security import validate_movie_id
 import os
@@ -256,6 +257,42 @@ def get_library_movie_audit_events(
         event_type=type,
         limit=limit,
     )
+
+@app.get("/library/{movie_id}/timeline/state")
+def get_library_movie_timeline_state(
+    movie_id: str,
+    before_event_id: str | None = Query(default=None),
+    at: str | None = Query(default=None),
+):
+    """Dry-run a movie's historical state at one timeline cutoff."""
+    if not validate_movie_id(movie_id):
+        raise HTTPException(status_code=400, detail="Invalid movie ID format")
+    if not library_manager.get_movie(movie_id):
+        raise HTTPException(status_code=404, detail="Movie not found")
+    try:
+        return movie_timeline_dry_run.state(movie_id=movie_id, before_event_id=before_event_id, at=at)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+
+@app.get("/library/{movie_id}/timeline/restore-preview")
+def get_library_movie_timeline_restore_preview(
+    movie_id: str,
+    before_event_id: str | None = Query(default=None),
+    at: str | None = Query(default=None),
+):
+    """Preview field and file recoverability for one movie timeline cutoff."""
+    if not validate_movie_id(movie_id):
+        raise HTTPException(status_code=400, detail="Invalid movie ID format")
+    if not library_manager.get_movie(movie_id):
+        raise HTTPException(status_code=404, detail="Movie not found")
+    try:
+        return movie_timeline_dry_run.restore_preview(movie_id=movie_id, before_event_id=before_event_id, at=at)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
 
 @app.get("/library/operations/dry-run")
 def dry_run_library_operation(

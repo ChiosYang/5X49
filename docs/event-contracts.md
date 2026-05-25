@@ -31,6 +31,7 @@ Every persisted event is an `EventRecord` row in the `events` table.
 - Initialization facts that can be derived from the current `Movie` table should be handled by a later `backfill` with `source=backfill`.
 - Runtime upcasters are not implemented yet. `upcast` is reserved for future schema migrations.
 - File side effects are not blindly replayed. They can only be audited or compensated when the event has enough payload.
+- Timeline state dry-runs replay only projectable events into an in-memory target state. File side-effect events are excluded from state replay and are used only for restore-preview backup and path checks.
 
 ## Projectability
 
