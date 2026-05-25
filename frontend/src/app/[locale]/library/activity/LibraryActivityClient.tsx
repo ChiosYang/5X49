@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import useSWR from "swr";
 import { ChevronDown, Clock, Filter, Loader2 } from "lucide-react";
 import OperationDryRunPanel from "@/components/OperationDryRunPanel";
+import TimelineRestorePreviewPanel from "@/components/TimelineRestorePreviewPanel";
 import { Link } from "@/i18n/routing";
 import {
   EVENT_LABELS,
@@ -186,6 +187,10 @@ export default function LibraryActivityClient() {
                                 <p className="mt-1 break-all text-xs uppercase tracking-widest text-neutral-700">
                                   {event.id}
                                 </p>
+                                <TimelineRestorePreviewPanel
+                                  event={event}
+                                  movieId={event.aggregate_id}
+                                />
                               </div>
                               <time className="flex items-center gap-1.5 text-xs uppercase tracking-widest text-neutral-700">
                                 <Clock className="h-3 w-3" />

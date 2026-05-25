@@ -36,6 +36,26 @@ export const API = {
     library: () => `${API_BASE_URL}/library`,
     libraryMovie: (id: string) => `${API_BASE_URL}/library/${encodeURIComponent(id)}`,
     libraryMovieAuditEvents: (id: string) => `${API_BASE_URL}/library/${encodeURIComponent(id)}/audit-events`,
+    libraryMovieTimelineStateUrl: (id: string, params: {
+        before_event_id?: string | null;
+        at?: string | null;
+    }) => {
+        const searchParams = new URLSearchParams();
+        if (params.before_event_id) searchParams.set('before_event_id', params.before_event_id);
+        if (params.at) searchParams.set('at', params.at);
+        const query = searchParams.toString();
+        return `${API_BASE_URL}/library/${encodeURIComponent(id)}/timeline/state${query ? `?${query}` : ''}`;
+    },
+    libraryMovieTimelineRestorePreviewUrl: (id: string, params: {
+        before_event_id?: string | null;
+        at?: string | null;
+    }) => {
+        const searchParams = new URLSearchParams();
+        if (params.before_event_id) searchParams.set('before_event_id', params.before_event_id);
+        if (params.at) searchParams.set('at', params.at);
+        const query = searchParams.toString();
+        return `${API_BASE_URL}/library/${encodeURIComponent(id)}/timeline/restore-preview${query ? `?${query}` : ''}`;
+    },
     libraryAuditEvents: () => `${API_BASE_URL}/library/audit-events`,
     libraryOperationDryRunUrl: (params: {
         command_id?: string | null;

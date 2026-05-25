@@ -98,7 +98,7 @@ export default function OperationDryRunPanel({ commandId, correlationId }: Opera
   const runRestore = async () => {
     if (!report || !canRestore) return;
     const actionSummary = restoreActions.map((action) => RESTORE_LABELS[action]).join(", ");
-    const confirmed = window.confirm(`Restore ${actionSummary} from recorded recovery data?`);
+    const confirmed = window.confirm(`Undo this operation by restoring ${actionSummary} from recorded recovery data?`);
     if (!confirmed) return;
 
     setRestoring(true);
@@ -181,13 +181,13 @@ export default function OperationDryRunPanel({ commandId, correlationId }: Opera
 
           <div className="flex flex-wrap items-center justify-between gap-3 border-t border-neutral-900 pt-4">
             <div className="min-w-0">
-              <p className="text-xs font-bold uppercase tracking-widest text-neutral-500">Restore</p>
+              <p className="text-xs font-bold uppercase tracking-widest text-neutral-500">Undo this operation</p>
               <p className="mt-1 break-words text-sm text-neutral-400">
                 {hasRestored
                   ? `${restoreResult?.restored.length || 0} restored · ${restoreResult?.skipped.length || 0} skipped`
                   : canRestore
                     ? restoreActions.map((action) => RESTORE_LABELS[action]).join(", ")
-                    : "No restorable file actions"}
+                    : "No undo actions available"}
               </p>
             </div>
             <button
@@ -197,7 +197,7 @@ export default function OperationDryRunPanel({ commandId, correlationId }: Opera
               className="inline-flex h-9 items-center gap-2 border border-neutral-800 px-3 text-xs font-bold uppercase tracking-widest text-neutral-300 transition-colors hover:border-neutral-500 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
             >
               {restoring ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RotateCcw className="h-3.5 w-3.5" />}
-              Restore
+              Undo
             </button>
           </div>
 

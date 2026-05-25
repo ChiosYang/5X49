@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { ChevronDown, Clock, Loader2, X } from "lucide-react";
 import OperationDryRunPanel from "@/components/OperationDryRunPanel";
+import TimelineRestorePreviewPanel from "@/components/TimelineRestorePreviewPanel";
 import { useMovieAuditEvents } from "@/hooks/useMovie";
 import {
   EVENT_LABELS,
@@ -154,6 +155,13 @@ export default function MovieActivityTimeline({ movieId, open, onClose }: MovieA
                                   <p className="mt-1 break-words text-sm leading-relaxed text-neutral-500">
                                     {eventSummary(event)}
                                   </p>
+                                  <p className="mt-1 break-all text-xs uppercase tracking-widest text-neutral-700">
+                                    {event.id}
+                                  </p>
+                                  <TimelineRestorePreviewPanel
+                                    event={event}
+                                    movieId={movieId}
+                                  />
                                 </li>
                               ))}
                             </ul>

@@ -1,7 +1,7 @@
 import useSWR from "swr";
 import useSWRMutation from "swr/mutation";
 import { API } from "@/lib/api";
-import type { EventRecord, JobAccepted, MovieDetail, ScrapeResult } from "@/types/movie";
+import type { EventRecord, JobAccepted, MovieDetail, MovieTimelineRestorePreviewReport, ScrapeResult } from "@/types/movie";
 
 export function useMovie(id: string, fallbackData?: MovieDetail) {
   return useSWR<MovieDetail>(id ? API.libraryMovie(id) : null, {
@@ -18,6 +18,23 @@ export function useMovieAuditEvents(id: string, enabled = true) {
   return useSWR<EventRecord[]>(id && enabled ? API.libraryMovieAuditEvents(id) : null, {
     refreshInterval: 5000,
   });
+}
+
+export function useMovieTimelineRestorePreview(id?: string | null) {
+  return useSWRMutation(
+    id ? `movie-timeline-restore-preview:${id}` : null,
+    async (_key: string, { arg }: { arg: { before_event_id?: string | null; at?: string | null } }): Promise<MovieTimelineRestorePreviewReport> => {
+      const res = await fetch(API.libraryMovieTimelineRestorePreviewUrl(id || "", arg));
+      if (!res.ok) {
+        const errorBody = await res.json().catch(() => null) as { detail?: unknown } | null;
+        const message = typeof errorBody?.detail === "string"
+          ? errorBody.detail
+          : "Timeline restore preview failed";
+        throw new Error(message);
+      }
+      return res.json();
+    }
+  );
 }
 
 export function useAnalyzeMovie(id: string) {

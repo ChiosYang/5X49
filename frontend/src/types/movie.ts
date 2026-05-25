@@ -240,6 +240,66 @@ export interface OperationRestoreReport {
   dry_run: OperationDryRunReport;
 }
 
+export interface MovieTimelineTarget {
+  selector_type: "before_event_id" | "at" | string;
+  before_event_id?: string | null;
+  at?: string | null;
+  cutoff_event?: Partial<EventRecord> | null;
+}
+
+export interface MovieTimelineFieldDiff {
+  field: string;
+  current: unknown;
+  target: unknown;
+  restorable: boolean;
+}
+
+export interface MovieTimelineFileRestoreItem {
+  event_id: string;
+  type: string;
+  file_type?: string | null;
+  path?: string | null;
+  backup_path?: string | null;
+  backup_file_exists?: boolean;
+  source_path?: string | null;
+  target_path?: string | null;
+  target_exists?: boolean;
+  source_available?: boolean;
+  can_reverse?: boolean;
+  reason?: string | null;
+}
+
+export interface MovieTimelineFileRestorePreview {
+  restorable_files: MovieTimelineFileRestoreItem[];
+  missing_file_backups: MovieTimelineFileRestoreItem[];
+  unsafe_files: MovieTimelineFileRestoreItem[];
+}
+
+export interface MovieTimelineStateReport {
+  dry_run: boolean;
+  movie_id: string;
+  target: MovieTimelineTarget;
+  current_state: Record<string, unknown>;
+  target_state: Record<string, unknown> | null;
+  field_diff: MovieTimelineFieldDiff[];
+  events_processed: number;
+  events_after_cutoff: number;
+  projectable_events: number;
+  skipped_projectable_events: number;
+  unsupported_events: number;
+  unsupported_event_types: Record<string, number>;
+  skipped_events: Array<Record<string, unknown>>;
+  missing_payload: Array<Record<string, unknown>>;
+}
+
+export interface MovieTimelineRestorePreviewReport extends MovieTimelineStateReport {
+  status: "safe" | "partial" | "unsafe" | "unknown" | string;
+  field_restore: MovieTimelineFieldDiff[];
+  file_restore: MovieTimelineFileRestorePreview;
+  restorable_files: MovieTimelineFileRestoreItem[];
+  missing_file_backups: MovieTimelineFileRestoreItem[];
+}
+
 export interface RootVideo {
   path: string;
   filename: string;
