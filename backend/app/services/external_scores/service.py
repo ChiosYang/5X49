@@ -40,10 +40,10 @@ class ExternalScoreService:
         if not movie:
             raise LookupError("Movie not found")
 
-        updated_movie, updated_sources, skipped_sources = self._refresh_tspdt(movie)
-        if updated_movie and updated_sources:
-            score_changes = self._field_changes(movie, updated_movie, EXTERNAL_SCORE_EVENT_FIELDS)
-            event_store.safe_append(
+        target_movie, updated_sources, skipped_sources = self._refresh_tspdt(movie)
+        if target_movie and updated_sources:
+            score_changes = self._field_changes(movie, target_movie, EXTERNAL_SCORE_EVENT_FIELDS)
+            _, projected = event_store.append_and_project(
                 "ExternalScoresRefreshed",
                 "movie",
                 movie_id,
@@ -55,11 +55,13 @@ class ExternalScoreService:
                     **score_changes,
                 },
             )
+            if not projected:
+                raise RuntimeError("External scores event could not be projected")
             library_event_bus.publish_library_changed("external_scores_updated", movie_id=movie_id)
             return {
                 "status": "success",
                 "movie_id": movie_id,
-                "movie": updated_movie,
+                "movie": projected,
                 "updated_sources": updated_sources,
                 "skipped_sources": skipped_sources,
             }
@@ -67,7 +69,7 @@ class ExternalScoreService:
         return {
             "status": "skipped",
             "movie_id": movie_id,
-            "movie": updated_movie or movie,
+            "movie": target_movie or movie,
             "updated_sources": [],
             "skipped_sources": skipped_sources,
         }
@@ -145,16 +147,12 @@ class ExternalScoreService:
             "fetched_at": utc_now_iso(),
         }
         scores = self._replace_source(movie.get("external_scores") or [], score)
-        stored = library_manager.upsert_movie(
-            {
-                **movie,
-                "external_scores": scores,
-                "external_scores_updated_at": utc_now_iso(),
-                "external_scores_error": None,
-            },
-            preserve_id=movie["id"],
-        )
-        return stored, ["tspdt"], []
+        return {
+            **movie,
+            "external_scores": scores,
+            "external_scores_updated_at": utc_now_iso(),
+            "external_scores_error": None,
+        }, ["tspdt"], []
 
     def _replace_source(self, scores: list[dict], score: dict) -> list[dict]:
         return [

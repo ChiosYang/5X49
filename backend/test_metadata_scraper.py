@@ -4,13 +4,15 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
 
-from sqlmodel import SQLModel, create_engine
+from sqlmodel import SQLModel, Session, create_engine, select
 
 import app.database as database
+import app.services.event_store as event_store_module
 import app.services.library as library_module
+from app.models import EventRecord
 from app.services.library import library_manager
 from app.services.library_sync import library_sync_service
-from app.services.metadata.models import RootOrganizeOptions, ScrapeOptions
+from app.services.metadata.models import ArtworkSelection, RootOrganizeOptions, ScrapeOptions
 from app.services.metadata.organizer import root_video_organizer
 from app.services.metadata.scraper import metadata_scraper
 
@@ -18,17 +20,21 @@ from app.services.metadata.scraper import metadata_scraper
 class MetadataScraperIntegrationTests(unittest.TestCase):
     def setUp(self):
         self._original_database_engine = database.engine
+        self._original_event_store_engine = event_store_module.engine
         self._original_library_engine = library_module.engine
         self._tmp = tempfile.TemporaryDirectory()
         self.tmp_path = Path(self._tmp.name)
         self.engine = create_engine(f"sqlite:///{self.tmp_path / 'library.db'}")
         database.engine = self.engine
+        event_store_module.engine = self.engine
         library_module.engine = self.engine
         SQLModel.metadata.create_all(self.engine)
 
     def tearDown(self):
         database.engine = self._original_database_engine
+        event_store_module.engine = self._original_event_store_engine
         library_module.engine = self._original_library_engine
+        self.engine.dispose()
         self._tmp.cleanup()
 
     def test_scrape_movie_writes_nfo_artwork_and_updates_library(self):
@@ -82,9 +88,11 @@ class MetadataScraperIntegrationTests(unittest.TestCase):
                 },
             }
 
-            result = metadata_scraper.scrape_movie(movie["id"], ScrapeOptions())
+            with patch("app.services.metadata.scraper.library_manager.upsert_movie") as upsert_movie:
+                result = metadata_scraper.scrape_movie(movie["id"], ScrapeOptions())
 
         self.assertEqual(result.status, "success")
+        upsert_movie.assert_not_called()
         self.assertEqual(download.call_count, 2)
 
         nfo_path = movie_dir / "The.Matrix.1999.1080p.nfo"
@@ -113,6 +121,15 @@ class MetadataScraperIntegrationTests(unittest.TestCase):
         self.assertEqual(stored["backdrop_local"], "/media/The.Matrix.1999/The.Matrix.1999.1080p-fanart.jpg")
         self.assertEqual(stored["tmdb_confidence"], 95)
         self.assertIsNone(stored["scrape_error"])
+        with Session(self.engine) as session:
+            event = session.exec(
+                select(EventRecord).where(EventRecord.type == "MetadataMatched")
+            ).one()
+        self.assertEqual(event.payload["current"]["metadata_source"], "tmdb")
+        self.assertEqual(event.payload["current"]["scrape_status"], "matched")
+        self.assertEqual(event.payload["current"]["tmdb_id"], "603")
+        self.assertEqual(event.payload["current"]["runtime"], 136)
+        self.assertIsNone(event.payload["current"]["scrape_error"])
 
     def test_scrape_movie_requires_confirmation_when_enabled(self):
         movie_dir = self.tmp_path / "The.Matrix.1999"
@@ -156,6 +173,65 @@ class MetadataScraperIntegrationTests(unittest.TestCase):
         self.assertEqual(stored["scrape_status"], "needs_review")
         self.assertEqual(stored["scrape_error"], "Manual confirmation required")
         self.assertEqual(stored["tmdb_confidence"], 95)
+
+    def test_apply_artwork_updates_selection_through_event_projection(self):
+        movie_dir = self.tmp_path / "The.Matrix.1999"
+        movie_dir.mkdir()
+        video = movie_dir / "The.Matrix.1999.1080p.mkv"
+        video.write_bytes(b"fake video")
+
+        movie = library_sync_service.scan_folder(movie_dir)
+        self.assertIsNotNone(movie)
+        library_manager.upsert_movie(
+            {
+                **movie,
+                "title": "The Matrix",
+                "year": 1999,
+                "tmdb_id": "603",
+                "metadata_source": "tmdb",
+                "scrape_status": "matched",
+            },
+            preserve_id=movie["id"],
+        )
+
+        def fake_download(url, destination, overwrite=False):
+            destination.write_bytes(f"downloaded {url}".encode("utf-8"))
+            return destination
+
+        with (
+            patch.object(metadata_scraper.tmdb, "movie_details") as movie_details,
+            patch.object(metadata_scraper.artwork, "download", side_effect=fake_download),
+        ):
+            movie_details.return_value = {
+                "id": 603,
+                "title": "The Matrix",
+                "original_title": "The Matrix",
+                "release_date": "1999-03-31",
+                "images": {
+                    "posters": [{"file_path": "/poster-new.jpg", "iso_639_1": "en", "vote_average": 9, "vote_count": 10, "width": 1000, "height": 1500}],
+                    "backdrops": [{"file_path": "/backdrop-new.jpg", "iso_639_1": None, "vote_average": 9, "vote_count": 10, "width": 1920, "height": 1080}],
+                },
+            }
+            with patch("app.services.metadata.scraper.library_manager.upsert_movie") as upsert_movie:
+                result = metadata_scraper.apply_artwork(
+                    movie["id"],
+                    ArtworkSelection(poster_path="/poster-new.jpg", backdrop_path="/backdrop-new.jpg"),
+                )
+
+        self.assertEqual(result["status"], "success")
+        upsert_movie.assert_not_called()
+        stored = library_manager.get_movie(movie["id"])
+        self.assertEqual(stored["poster_path"], "/poster-new.jpg")
+        self.assertEqual(stored["backdrop_path"], "/backdrop-new.jpg")
+        self.assertEqual(stored["poster_local"], "/media/The.Matrix.1999/The.Matrix.1999.1080p-poster.jpg")
+        self.assertEqual(stored["backdrop_local"], "/media/The.Matrix.1999/The.Matrix.1999.1080p-fanart.jpg")
+        with Session(self.engine) as session:
+            event = session.exec(
+                select(EventRecord).where(EventRecord.type == "ArtworkSelected")
+            ).one()
+        self.assertEqual(event.payload["current"]["poster_path"], "/poster-new.jpg")
+        self.assertEqual(event.payload["current"]["backdrop_path"], "/backdrop-new.jpg")
+        self.assertEqual(event.payload["current"]["poster_local"], stored["poster_local"])
 
     def test_scrape_movie_requires_confirmation_for_existing_tmdb_id(self):
         movie_dir = self.tmp_path / "The.Matrix.1999"

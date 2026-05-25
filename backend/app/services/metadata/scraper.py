@@ -266,14 +266,8 @@ class MetadataScraper:
                 "metadata_updated_at": datetime.now(timezone.utc).isoformat(),
             }
         )
-        stored = library_manager.upsert_movie(
-            enriched,
-            preserve_id=movie_id,
-            command_id=operation_command_id,
-            correlation_id=operation_command_id,
-        )
-        artwork_changes = self._field_changes(movie, stored or enriched, ARTWORK_SELECTION_FIELDS)
-        event_store.safe_append(
+        artwork_changes = self._field_changes(movie, enriched, ARTWORK_SELECTION_FIELDS)
+        _, projected = event_store.append_and_project(
             "ArtworkSelected",
             "movie",
             movie_id,
@@ -290,11 +284,13 @@ class MetadataScraper:
             correlation_id=operation_command_id,
             context={"operation": "apply_artwork"},
         )
+        if not projected:
+            raise ValueError("Artwork selection event could not be projected")
         library_event_bus.publish_library_changed("artwork_updated", movie_id=movie_id)
         return {
             "status": "success",
             "movie_id": movie_id,
-            "movie": stored,
+            "movie": projected,
             "poster_path": enriched["poster_path"],
             "backdrop_path": enriched["backdrop_path"],
         }
@@ -490,14 +486,8 @@ class MetadataScraper:
                 "scraped_at": datetime.now(timezone.utc).isoformat(),
                 "tmdb_confidence": candidates[0].score if candidates else 100,
             }
-            stored = library_manager.upsert_movie(
-                enriched,
-                preserve_id=movie_id,
-                command_id=operation_command_id,
-                correlation_id=operation_correlation_id,
-            )
-            metadata_changes = self._field_changes(movie, stored or enriched, METADATA_MATCH_FIELDS)
-            event_store.safe_append(
+            metadata_changes = self._field_changes(movie, enriched, METADATA_MATCH_FIELDS)
+            _, projected = event_store.append_and_project(
                 "MetadataMatched",
                 "movie",
                 movie_id,
@@ -521,12 +511,14 @@ class MetadataScraper:
                 correlation_id=operation_correlation_id,
                 context={"operation": "scrape_movie"},
             )
+            if not projected:
+                raise RuntimeError("Metadata matched event could not be projected")
             library_event_bus.publish_library_changed("metadata_scraped", movie_id=movie_id)
             return ScrapeResult(
                 status="success",
                 movie_id=movie_id,
                 message="Metadata scraped",
-                movie=stored,
+                movie=projected,
                 candidates=candidates[:REVIEW_CANDIDATE_LIMIT] if candidates else [],
             )
         except Exception as exc:
@@ -1041,10 +1033,10 @@ class MetadataScraper:
         for field in fields:
             previous_value = previous.get(field)
             current_value = current.get(field)
+            previous_values[field] = previous_value
+            current_values[field] = current_value
             if previous_value != current_value:
                 changed_fields.append(field)
-                previous_values[field] = previous_value
-                current_values[field] = current_value
         return {
             "changed_fields": changed_fields,
             "previous": previous_values,

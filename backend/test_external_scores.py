@@ -1,6 +1,7 @@
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from sqlmodel import SQLModel, create_engine
 from sqlmodel import Session, select
@@ -65,9 +66,11 @@ class ExternalScoresTests(unittest.TestCase):
             ]
         )
 
-        result = self.service.refresh_movie("238_1972")
+        with patch("app.services.external_scores.service.library_manager.upsert_movie") as upsert_movie:
+            result = self.service.refresh_movie("238_1972")
 
         self.assertEqual(result["status"], "success")
+        upsert_movie.assert_not_called()
         self.assertEqual(result["updated_sources"], ["tspdt"])
         stored = library_manager.get_movie("238_1972")
         self.assertIsNotNone(stored)
@@ -84,6 +87,27 @@ class ExternalScoresTests(unittest.TestCase):
         self.assertIsNone(event.payload["previous"]["external_scores"])
         self.assertEqual(event.payload["current"]["external_scores"][0]["source"], "tspdt")
         self.assertIsNone(event.payload["current"]["external_scores_error"])
+
+    def test_refresh_movie_does_not_succeed_when_projection_fails(self):
+        library_manager.add_movies(
+            [
+                {
+                    "id": "238_1972",
+                    "title": "The Godfather",
+                    "title_cn": "The Godfather",
+                    "year": 1972,
+                    "director": "Francis Ford Coppola",
+                    "library_status": "available",
+                }
+            ]
+        )
+
+        with patch("app.services.external_scores.service.event_store.append_and_project", return_value=({}, None)):
+            with self.assertRaises(RuntimeError):
+                self.service.refresh_movie("238_1972")
+
+        stored = library_manager.get_movie("238_1972")
+        self.assertIsNone(stored["external_scores"])
 
     def test_refresh_movie_skips_unmatched_movie(self):
         library_manager.add_movies(

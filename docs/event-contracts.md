@@ -74,7 +74,7 @@ side-effect-only, or not yet projectable unless this document says otherwise.
 | Event | Meaning | Category | Projector status | v1 payload | Compatibility |
 | --- | --- | --- | --- | --- | --- |
 | `MetadataMatchSuggested` | Scrape found candidates but requires review before writing metadata. | domain | Not projectable. | `movie_id`, `reason`, `candidates`. | Missing candidates still allows audit display; replay ignores it. |
-| `MetadataMatched` | A movie was matched to external metadata and metadata fields were updated. | domain | Projectable. Updates metadata fields from `current`, with top-level payload as compatibility fallback. | `movie_id`, `title`, `tmdb_id`, `confidence` or `score`, `changed_fields`, `previous`, `current`. | Missing `current` and top-level metadata fields is skipped during dry-run. |
+| `MetadataMatched` | A movie was matched to external metadata and metadata fields were updated. | domain | Projectable. The scrape command appends this event and uses the projector for Movie metadata state. | `movie_id`, `title`, `tmdb_id`, `confidence` or `score`, `changed_fields`, `previous`, `current`. | Missing `current` and top-level metadata fields is skipped during dry-run. |
 | `MetadataRestored` | Metadata fields were restored as compensation for a previous metadata match. | compensation | Synchronously projected: applies `restored_fields` to the `Movie` row. | `restored_fields`, `skipped_fields`, source operation identifiers; `causation_id` should point to the source `MetadataMatched`. | Missing `restored_fields` is `unsupported` for projection. |
 | `MetadataScrapeFailed` | A scrape attempt failed. | system/audit | Not projectable. | `movie_id`, `message` or `reason`, optional candidate/source context. | Replay ignores it. |
 
@@ -83,7 +83,7 @@ side-effect-only, or not yet projectable unless this document says otherwise.
 | Event | Meaning | Category | Projector status | v1 payload | Compatibility |
 | --- | --- | --- | --- | --- | --- |
 | `ArtworkDownloaded` | Poster or backdrop file was written to disk. | side-effect | Not projectable. Operation dry-run can restore file content when `backup_path` exists. | `movie_id`, `asset_type` (`poster` or `backdrop`), `destination`, `source_url` or TMDB path, `before`, `after`, optional `backup_path`. | Missing `backup_path` means file restore is unavailable, not a replay error. |
-| `ArtworkSelected` | Movie artwork selection fields were changed. | domain | Projectable. Updates artwork selection fields from `current`, with top-level payload as compatibility fallback. | `movie_id`, selected poster/backdrop fields, `changed_fields`, `previous`, `current`. | Missing `current` and top-level artwork fields is skipped during dry-run. |
+| `ArtworkSelected` | Movie artwork selection fields were changed. | domain | Projectable. The artwork selection command appends this event and uses the projector for Movie artwork state. | `movie_id`, selected poster/backdrop fields, `changed_fields`, `previous`, `current`. | Missing `current` and top-level artwork fields is skipped during dry-run. |
 | `ArtworkSelectionRestored` | Artwork selection fields were restored as compensation. | compensation | Synchronously projected: applies `restored_fields` to the `Movie` row. | `restored_fields`, `skipped_fields`; `causation_id` should point to the source `ArtworkSelected`. | Missing `restored_fields` is `unsupported` for projection. |
 | `ArtworkRestored` | Poster or backdrop file content was restored from backup. | compensation | Not projectable; file compensation only. | `movie_id`, `asset_type`, `source_path` or `backup_path`, `destination`, optional file snapshots; `causation_id` should point to `ArtworkDownloaded`. | Missing backup/source path means file restore cannot be repeated. |
 
@@ -116,7 +116,7 @@ side-effect-only, or not yet projectable unless this document says otherwise.
 
 | Event | Meaning | Category | Projector status | v1 payload | Compatibility |
 | --- | --- | --- | --- | --- | --- |
-| `ExternalScoresRefreshed` | External score/ranking data changed for a movie. | domain | Projectable when payload contains score fields. Updates `external_scores`, `external_scores_updated_at`, and `external_scores_error`. | `movie_id`, `updated_sources`, `skipped_sources`, `force`, `changed_fields`, `previous`, `current`. `current` should include `external_scores`, `external_scores_updated_at`, and `external_scores_error`. | Old events without `current` or top-level score fields are skipped during dry-run. |
+| `ExternalScoresRefreshed` | External score/ranking data changed for a movie. | domain | Projectable. The successful external score refresh command appends this event and uses the projector for Movie score state. | `movie_id`, `updated_sources`, `skipped_sources`, `force`, `changed_fields`, `previous`, `current`. `current` should include `external_scores`, `external_scores_updated_at`, and `external_scores_error`. | Old events without `current` or top-level score fields are skipped during dry-run. |
 | `ExternalScoresRefreshFailed` | External score/ranking refresh failed for a movie. | system/audit | Not projectable. | `movie_id`, `source`, `message`. | Replay ignores it. |
 
 ## Library/System Events
@@ -135,3 +135,4 @@ side-effect-only, or not yet projectable unless this document says otherwise.
 - Operation-level undo is not the same as historical time travel. Current restore behavior compensates a selected operation back toward its pre-operation state.
 - Field compensation should only write fields when the current value still matches the source event's `current` value; conflicts must be reported and skipped.
 - File compensation requires an existing backup/source path and must report partial or skipped recovery when files are missing.
+- `MetadataMatched`, `ArtworkSelected`, and successful `ExternalScoresRefreshed` commands are append-first for Movie state: the command records the domain event and uses projection for the Movie row, while file side effects still execute before their result events.
