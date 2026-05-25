@@ -5,101 +5,37 @@ from sqlmodel import Session, select
 
 from app.database import engine
 from app.models import EventRecord, Movie
+from app.services.projections.movie_fields import (
+    ARTWORK_SELECTION_FIELDS,
+    CORE_COMPARE_FIELDS,
+    EXTERNAL_SCORE_FIELDS,
+    FILE_OBSERVED_FIELDS,
+    METADATA_MATCH_FIELDS,
+    MOVIE_DISCOVERED_FIELDS,
+    NFO_METADATA_FIELDS,
+    NFO_SIGNATURE_FIELDS,
+    PROJECTABLE_EVENT_TYPES,
+    event_movie_id,
+    values_from_payload,
+)
 
 
-CURRENT_BASE_PROJECTABLE_EVENTS = {
-    "MovieIgnored",
-    "MovieMarkedMissing",
-    "MovieRestored",
-    "MetadataRestored",
-    "ArtworkSelectionRestored",
-    "RootVideoOrganizationReverted",
-    "AnalysisStarted",
-    "AnalysisCompleted",
-    "AnalysisFailed",
-}
+CURRENT_BASE_PROJECTABLE_EVENTS = PROJECTABLE_EVENT_TYPES
 
-EMPTY_BASE_PROJECTABLE_EVENTS = {
-    *CURRENT_BASE_PROJECTABLE_EVENTS,
-    "MovieDiscovered",
-    "MovieFileObserved",
-}
+EMPTY_BASE_PROJECTABLE_EVENTS = PROJECTABLE_EVENT_TYPES
 
 BASES = {"current", "empty"}
 
-CURRENT_BASE_COMPARE_FIELDS = (
-    "library_status",
-    "missing_since",
-    "analysis_status",
-    "analysis_data",
-    "micro_genre",
-    "micro_genre_definition",
-)
+CURRENT_BASE_COMPARE_FIELDS = CORE_COMPARE_FIELDS
 
-EMPTY_BASE_COMPARE_FIELDS = (
-    "id",
-    "title",
-    "title_cn",
-    "year",
-    "media_path",
-    "folder_path",
-    "folder_name",
-    "video_file",
-    "file_size",
-    "file_mtime",
-    "last_seen_at",
-    "library_status",
-    "metadata_source",
-    "scrape_status",
-    "tmdb_id",
-    "imdb_id",
-    "video_width",
-    "video_height",
-    "video_codec",
-    "video_bitrate",
-    "video_duration",
-    "video_fps",
-    "video_dynamic_range",
-    "video_bit_depth",
-    "nfo_source",
-    "nfo_file",
-    "nfo_path",
-    "nfo_size",
-    "nfo_mtime",
-    "nfo_fingerprint",
-    *CURRENT_BASE_COMPARE_FIELDS,
-)
-
-FILE_OBSERVED_FIELDS = (
-    "media_path",
-    "folder_path",
-    "folder_name",
-    "video_file",
-    "file_size",
-    "file_mtime",
-    "last_seen_at",
-    "video_width",
-    "video_height",
-    "video_codec",
-    "video_bitrate",
-    "video_duration",
-    "video_fps",
-    "video_dynamic_range",
-    "video_bit_depth",
-    "nfo_source",
-    "nfo_file",
-    "nfo_path",
-    "nfo_size",
-    "nfo_mtime",
-    "nfo_fingerprint",
-)
+EMPTY_BASE_COMPARE_FIELDS = CORE_COMPARE_FIELDS
 
 
 class MovieProjectionDryRun:
     """Read-only projection consistency checker.
 
     In current mode it starts with the current Movie snapshot and reapplies
-    supported low-risk events. In empty mode it starts from no movies and
+    supported projectable events. In empty mode it starts from no movies and
     replays the currently supported subset of movie events in memory.
     """
 
@@ -140,14 +76,14 @@ class MovieProjectionDryRun:
                 unsupported_event_types[event.type] += 1
                 continue
             projectable_events += 1
-            touched_id = event.aggregate_id or (event.payload or {}).get("movie_id")
+            touched_id = event_movie_id(event.payload or {}, event.aggregate_id)
             if not touched_id:
                 skipped_projectable_events += 1
                 self._record_skipped_event(skipped_events, event, "Missing movie aggregate ID")
                 continue
             state = projected_movies.get(touched_id)
             if state is None:
-                if base == "empty" and event.type == "MovieDiscovered":
+                if event.type == "MovieDiscovered":
                     state = self._state_from_discovered(event)
                     if state is None:
                         skipped_projectable_events += 1
@@ -166,8 +102,12 @@ class MovieProjectionDryRun:
                         "No projected movie state exists for this event",
                     )
                     continue
+            skip_reason = self._apply_event(state, event)
+            if skip_reason:
+                skipped_projectable_events += 1
+                self._record_skipped_event(skipped_events, event, skip_reason)
+                continue
             touched_movie_ids.add(touched_id)
-            self._apply_event(state, event)
 
         compare_fields = CURRENT_BASE_COMPARE_FIELDS if base == "current" else EMPTY_BASE_COMPARE_FIELDS
         differences = self._differences(current_movies, projected_movies, touched_movie_ids, compare_fields)
@@ -224,14 +164,14 @@ class MovieProjectionDryRun:
         if event.type == "MovieDiscovered":
             state.update(self._discovered_payload(payload, event))
         elif event.type == "MovieFileObserved":
-            for field in FILE_OBSERVED_FIELDS:
-                if field in payload:
-                    state[field] = payload[field]
-            current = payload.get("current")
-            if isinstance(current, dict):
-                for field in FILE_OBSERVED_FIELDS:
-                    if field in current:
-                        state[field] = current[field]
+            return self._apply_payload_fields(state, payload, FILE_OBSERVED_FIELDS, "MovieFileObserved payload is missing current payload")
+        elif event.type == "MovieMetadataParsedFromNfo":
+            return self._apply_payload_fields(
+                state,
+                payload,
+                (*NFO_METADATA_FIELDS, *NFO_SIGNATURE_FIELDS),
+                "MovieMetadataParsedFromNfo payload is missing current payload",
+            )
         elif event.type == "MovieIgnored":
             state["library_status"] = "ignored"
             state["missing_since"] = None
@@ -246,8 +186,12 @@ class MovieProjectionDryRun:
         elif event.type == "RootVideoOrganizationReverted":
             state["library_status"] = "reverted"
             state["missing_since"] = None
+        elif event.type == "MetadataMatched":
+            return self._apply_payload_fields(state, payload, METADATA_MATCH_FIELDS, "MetadataMatched payload is missing current payload")
+        elif event.type == "ArtworkSelected":
+            return self._apply_payload_fields(state, payload, ARTWORK_SELECTION_FIELDS, "ArtworkSelected payload is missing current payload")
         elif event.type in {"MetadataRestored", "ArtworkSelectionRestored"}:
-            self._apply_restored_fields(state, payload)
+            return self._apply_restored_fields(state, payload)
         elif event.type == "AnalysisStarted":
             state["analysis_status"] = "processing"
         elif event.type == "AnalysisCompleted":
@@ -257,17 +201,33 @@ class MovieProjectionDryRun:
             state["micro_genre_definition"] = payload.get("micro_genre_definition")
         elif event.type == "AnalysisFailed":
             state["analysis_status"] = "failed"
+        elif event.type == "ExternalScoresRefreshed":
+            return self._apply_payload_fields(
+                state,
+                payload,
+                EXTERNAL_SCORE_FIELDS,
+                "ExternalScoresRefreshed payload is missing current payload",
+            )
+        return None
 
-    def _apply_restored_fields(self, state: dict, payload: dict):
+    def _apply_payload_fields(self, state: dict, payload: dict, fields: tuple[str, ...], missing_reason: str) -> Optional[str]:
+        values = values_from_payload(payload, fields)
+        if not values:
+            return missing_reason
+        state.update(values)
+        return None
+
+    def _apply_restored_fields(self, state: dict, payload: dict) -> Optional[str]:
         restored_fields = payload.get("restored_fields")
         if not isinstance(restored_fields, list):
-            return
+            return "Restored event payload is missing restored_fields"
         for item in restored_fields:
             if not isinstance(item, dict):
                 continue
             field = item.get("field")
             if isinstance(field, str):
                 state[field] = item.get("restored")
+        return None
 
     def _state_from_discovered(self, event: EventRecord) -> Optional[dict]:
         payload = event.payload or {}
@@ -293,7 +253,7 @@ class MovieProjectionDryRun:
                 **payload,
                 "id": movie_id,
             }.items()
-            if key in EMPTY_BASE_COMPARE_FIELDS and value is not None
+            if (key in MOVIE_DISCOVERED_FIELDS or key == "id") and value is not None
         }
 
     def _record_skipped_event(self, skipped_events: list[dict], event: EventRecord, reason: str):

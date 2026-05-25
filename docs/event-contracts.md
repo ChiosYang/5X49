@@ -34,32 +34,36 @@ Every persisted event is an `EventRecord` row in the `events` table.
 
 ## Projectability
 
-Currently synchronously projected by `movie_projection.py`:
+Projection rules currently implemented in `movie_projection.py`:
 
+- `MovieDiscovered`
+- `MovieFileObserved`
+- `MovieMetadataParsedFromNfo`
 - `MovieIgnored`
 - `MovieMarkedMissing`
 - `MovieRestored`
+- `MetadataMatched`
+- `ArtworkSelected`
 - `MetadataRestored`
 - `ArtworkSelectionRestored`
 - `RootVideoOrganizationReverted`
 - `AnalysisStarted`
 - `AnalysisCompleted`
 - `AnalysisFailed`
+- `ExternalScoresRefreshed`
 
-Currently supported by `movie_rebuild.py` dry-run with `base=empty` in addition to the events above:
-
-- `MovieDiscovered`
-- `MovieFileObserved`
-
-All other events are audit-only, side-effect-only, or not yet projectable unless this document says otherwise.
+`movie_rebuild.py` dry-run uses the same projectable event set for `base=current`
+and `base=empty`. `base=empty` still needs a usable `MovieDiscovered` event
+before later per-movie events can be applied. All other events are audit-only,
+side-effect-only, or not yet projectable unless this document says otherwise.
 
 ## Scan Events
 
 | Event | Meaning | Category | Projector status | v1 payload | Compatibility |
 | --- | --- | --- | --- | --- | --- |
-| `MovieDiscovered` | A new movie record was created from scanning, scraping, organizing, or backfill. | domain | Empty-base dry-run creates initial movie state. Not synchronously projected today. | `movie_id` or `id`, `title`, `year`, plus available scan fields such as `media_path`, `folder_path`, `video_file`, `file_size`, `file_mtime`, `last_seen_at`, `library_status`, `metadata_source`, `scrape_status`, `tmdb_id`, `imdb_id`, video fields, and NFO signature fields. | Missing `movie_id`/`id`, `title`, or `year` is `unsupported` for empty replay. Optional scan fields can be ignored. |
-| `MovieFileObserved` | A known local file changed in observable file or video fields. Emitted only when key fields change. | domain | Empty-base dry-run updates file observation fields when movie state already exists. | `movie_id`, `changed_fields`, `previous`, `current`, and current file/video fields such as `media_path`, `folder_path`, `video_file`, `file_size`, `file_mtime`, `video_width`, `video_height`, `video_codec`, `video_duration`. | Missing movie state is `unsupported`. Missing optional fields can be ignored. |
-| `MovieMetadataParsedFromNfo` | A known NFO signature changed during scan or refresh. | domain | Not projectable yet. | `movie_id`, `changed_fields`, `previous`, `current`, NFO metadata fields, and NFO signature fields such as `nfo_file`, `nfo_path`, `nfo_size`, `nfo_mtime`, `nfo_fingerprint`. | Missing signature fields makes replay unsupported; audit display can ignore missing optional metadata. |
+| `MovieDiscovered` | A new movie record was created from scanning, scraping, organizing, or backfill. | domain | Projectable. It can create initial Movie state when enough payload exists. | `movie_id` or `id`, `title`, `year`, plus available scan fields such as `media_path`, `folder_path`, `video_file`, `file_size`, `file_mtime`, `last_seen_at`, `library_status`, `metadata_source`, `scrape_status`, `tmdb_id`, `imdb_id`, video fields, and NFO signature fields. | Missing `movie_id`/`id`, `title`, or `year` is `unsupported` for empty replay. Optional scan fields can be ignored. |
+| `MovieFileObserved` | A known local file changed in observable file or video fields. Emitted only when key fields change. | domain | Projectable. Updates file, video, last-seen, and NFO signature fields. | `movie_id`, `changed_fields`, `previous`, `current`, and current file/video fields such as `media_path`, `folder_path`, `video_file`, `file_size`, `file_mtime`, `video_width`, `video_height`, `video_codec`, `video_duration`. | Missing movie state is `unsupported`. Missing optional fields can be ignored. |
+| `MovieMetadataParsedFromNfo` | A known NFO signature changed during scan or refresh. | domain | Projectable. Updates NFO metadata and signature fields. | `movie_id`, `changed_fields`, `previous`, `current`, NFO metadata fields, and NFO signature fields such as `nfo_file`, `nfo_path`, `nfo_size`, `nfo_mtime`, `nfo_fingerprint`. | Missing current/top-level NFO payload is skipped during dry-run. |
 | `MovieFolderScanned` | A folder scan completed. This is now treated as technical/audit history and is no longer emitted for successful no-change scans by default. | system/audit | Not projectable. | `folder_path` or `media_path`, optional scan result fields. | Old events can be ignored during replay. |
 | `MovieMarkedMissing` | A known movie was not observed and is now marked missing. | domain | Synchronously projected: sets `library_status=missing` unless ignored/reverted, and sets `missing_since`. | `movie_id`, `missing_since`, optional `path` or `seen_at`. | Missing `missing_since` keeps status projectable but weakens audit detail. |
 | `MovieRestored` | A missing movie was observed again and is now available. | domain | Synchronously projected: sets `library_status=available` and clears `missing_since`, unless ignored. | Current scan payload for the restored movie. | Missing optional scan fields can be ignored. |
@@ -70,7 +74,7 @@ All other events are audit-only, side-effect-only, or not yet projectable unless
 | Event | Meaning | Category | Projector status | v1 payload | Compatibility |
 | --- | --- | --- | --- | --- | --- |
 | `MetadataMatchSuggested` | Scrape found candidates but requires review before writing metadata. | domain | Not projectable. | `movie_id`, `reason`, `candidates`. | Missing candidates still allows audit display; replay ignores it. |
-| `MetadataMatched` | A movie was matched to external metadata and metadata fields were updated. | domain | Not projectable yet; operation dry-run can recover changed fields when payload is complete. | `movie_id`, `title`, `tmdb_id`, `confidence` or `score`, `changed_fields`, `previous`, `current`. | Missing `previous`/`current` is `unsupported` for field recovery. |
+| `MetadataMatched` | A movie was matched to external metadata and metadata fields were updated. | domain | Projectable. Updates metadata fields from `current`, with top-level payload as compatibility fallback. | `movie_id`, `title`, `tmdb_id`, `confidence` or `score`, `changed_fields`, `previous`, `current`. | Missing `current` and top-level metadata fields is skipped during dry-run. |
 | `MetadataRestored` | Metadata fields were restored as compensation for a previous metadata match. | compensation | Synchronously projected: applies `restored_fields` to the `Movie` row. | `restored_fields`, `skipped_fields`, source operation identifiers; `causation_id` should point to the source `MetadataMatched`. | Missing `restored_fields` is `unsupported` for projection. |
 | `MetadataScrapeFailed` | A scrape attempt failed. | system/audit | Not projectable. | `movie_id`, `message` or `reason`, optional candidate/source context. | Replay ignores it. |
 
@@ -79,7 +83,7 @@ All other events are audit-only, side-effect-only, or not yet projectable unless
 | Event | Meaning | Category | Projector status | v1 payload | Compatibility |
 | --- | --- | --- | --- | --- | --- |
 | `ArtworkDownloaded` | Poster or backdrop file was written to disk. | side-effect | Not projectable. Operation dry-run can restore file content when `backup_path` exists. | `movie_id`, `asset_type` (`poster` or `backdrop`), `destination`, `source_url` or TMDB path, `before`, `after`, optional `backup_path`. | Missing `backup_path` means file restore is unavailable, not a replay error. |
-| `ArtworkSelected` | Movie artwork selection fields were changed. | domain | Not projectable yet; operation dry-run can recover changed fields when payload is complete. | `movie_id`, selected poster/backdrop fields, `changed_fields`, `previous`, `current`. | Missing `previous`/`current` is `unsupported` for field recovery. |
+| `ArtworkSelected` | Movie artwork selection fields were changed. | domain | Projectable. Updates artwork selection fields from `current`, with top-level payload as compatibility fallback. | `movie_id`, selected poster/backdrop fields, `changed_fields`, `previous`, `current`. | Missing `current` and top-level artwork fields is skipped during dry-run. |
 | `ArtworkSelectionRestored` | Artwork selection fields were restored as compensation. | compensation | Synchronously projected: applies `restored_fields` to the `Movie` row. | `restored_fields`, `skipped_fields`; `causation_id` should point to the source `ArtworkSelected`. | Missing `restored_fields` is `unsupported` for projection. |
 | `ArtworkRestored` | Poster or backdrop file content was restored from backup. | compensation | Not projectable; file compensation only. | `movie_id`, `asset_type`, `source_path` or `backup_path`, `destination`, optional file snapshots; `causation_id` should point to `ArtworkDownloaded`. | Missing backup/source path means file restore cannot be repeated. |
 
@@ -112,7 +116,7 @@ All other events are audit-only, side-effect-only, or not yet projectable unless
 
 | Event | Meaning | Category | Projector status | v1 payload | Compatibility |
 | --- | --- | --- | --- | --- | --- |
-| `ExternalScoresRefreshed` | External score/ranking data changed for a movie. | domain | Not projectable yet. | `movie_id`, `updated_sources`, `skipped_sources`, `force`. | Missing updated source details makes replay unsupported; audit can still display the event. |
+| `ExternalScoresRefreshed` | External score/ranking data changed for a movie. | domain | Projectable when payload contains score fields. Updates `external_scores`, `external_scores_updated_at`, and `external_scores_error`. | `movie_id`, `updated_sources`, `skipped_sources`, `force`, `changed_fields`, `previous`, `current`. `current` should include `external_scores`, `external_scores_updated_at`, and `external_scores_error`. | Old events without `current` or top-level score fields are skipped during dry-run. |
 | `ExternalScoresRefreshFailed` | External score/ranking refresh failed for a movie. | system/audit | Not projectable. | `movie_id`, `source`, `message`. | Replay ignores it. |
 
 ## Library/System Events

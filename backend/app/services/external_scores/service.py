@@ -8,6 +8,13 @@ from app.services.external_scores.tspdt import TSPDTDataset
 from app.services.library import library_manager
 
 
+EXTERNAL_SCORE_EVENT_FIELDS = (
+    "external_scores",
+    "external_scores_updated_at",
+    "external_scores_error",
+)
+
+
 def utc_now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
@@ -35,6 +42,7 @@ class ExternalScoreService:
 
         updated_movie, updated_sources, skipped_sources = self._refresh_tspdt(movie)
         if updated_movie and updated_sources:
+            score_changes = self._field_changes(movie, updated_movie, EXTERNAL_SCORE_EVENT_FIELDS)
             event_store.safe_append(
                 "ExternalScoresRefreshed",
                 "movie",
@@ -44,6 +52,7 @@ class ExternalScoreService:
                     "updated_sources": updated_sources,
                     "skipped_sources": skipped_sources,
                     "force": force,
+                    **score_changes,
                 },
             )
             library_event_bus.publish_library_changed("external_scores_updated", movie_id=movie_id)
@@ -152,6 +161,23 @@ class ExternalScoreService:
             *[item for item in scores if item.get("source") != score["source"]],
             score,
         ]
+
+    def _field_changes(self, previous: dict, current: dict, fields: tuple[str, ...]) -> dict:
+        changed_fields = []
+        previous_values = {}
+        current_values = {}
+        for field in fields:
+            previous_value = previous.get(field)
+            current_value = current.get(field)
+            previous_values[field] = previous_value
+            current_values[field] = current_value
+            if previous_value != current_value:
+                changed_fields.append(field)
+        return {
+            "changed_fields": changed_fields,
+            "previous": previous_values,
+            "current": current_values,
+        }
 
     def _set_status(self, **updates):
         with self._lock:

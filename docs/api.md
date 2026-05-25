@@ -245,20 +245,19 @@ Long-running mutation endpoints return an accepted-job envelope:
     "since": null,
     "limit": 1000,
     "events_processed": 12,
-    "projectable_events": 4,
+    "projectable_events": 10,
     "skipped_projectable_events": 0,
     "skipped_events": [],
-    "unsupported_events": 8,
-    "unsupported_event_types": {"MovieDiscovered": 1, "MetadataMatched": 7},
+    "unsupported_events": 2,
+    "unsupported_event_types": {"ArtworkDownloaded": 1, "NfoWritten": 1},
     "movies_compared": 1,
     "movies_with_differences": 0,
     "differences": []
   }
   ```
 - **Projectable Events**:
-  - `base=current`: `MovieIgnored`, `MovieMarkedMissing`, `MovieRestored`, `MetadataRestored`, `ArtworkSelectionRestored`, `RootVideoOrganizationReverted`, `AnalysisStarted`, `AnalysisCompleted`, and `AnalysisFailed`.
-  - `base=empty`: all `base=current` events plus `MovieDiscovered` and `MovieFileObserved`.
-- **Notes**: `base=empty` is still a dry-run and only replays the currently supported subset. Events that are projectable in principle but cannot be applied, such as a `MovieFileObserved` without a prior projected `MovieDiscovered`, are counted in `skipped_projectable_events` and summarized in `skipped_events`.
+  - `base=current` and `base=empty`: `MovieDiscovered`, `MovieFileObserved`, `MovieMetadataParsedFromNfo`, `MovieIgnored`, `MovieMarkedMissing`, `MovieRestored`, `MetadataMatched`, `ArtworkSelected`, `MetadataRestored`, `ArtworkSelectionRestored`, `RootVideoOrganizationReverted`, `AnalysisStarted`, `AnalysisCompleted`, `AnalysisFailed`, and `ExternalScoresRefreshed`.
+- **Notes**: `base=empty` is still a dry-run and only replays the currently supported subset. It needs a usable `MovieDiscovered` before later per-movie events can be applied. Projectable events that lack required payload, such as old `ExternalScoresRefreshed` events without `current` score fields, are counted in `skipped_projectable_events` and summarized in `skipped_events`.
 - **Errors**: `400 Only dry_run=true is supported`, `400 base must be 'current' or 'empty'`, `400 Invalid movie ID format`, `404 Movie not found`.
 
 ### Backfill MovieDiscovered Events
@@ -974,7 +973,7 @@ empty-base projection dry-runs.
 
 Scan-related events are de-duplicated: `MovieDiscovered` is recorded for new records, `MovieFileObserved` is recorded only when key local file fields change, `MovieMetadataParsedFromNfo` is recorded only when NFO signature fields change, and `MovieRestored` is recorded when a previously missing movie is observed as available again. Successful folder scans no longer append `MovieFolderScanned` by default; UI refresh notifications are still published through `/library/events`.
 
-Projectability is intentionally narrow. Current synchronous Movie projection covers only `MovieIgnored`, `MovieMarkedMissing`, `MovieRestored`, `MetadataRestored`, `ArtworkSelectionRestored`, `RootVideoOrganizationReverted`, `AnalysisStarted`, `AnalysisCompleted`, and `AnalysisFailed`. Empty-base projection dry-run additionally understands `MovieDiscovered` and `MovieFileObserved`. Other events are currently audit-only, side-effect-only, or compensation records until their projector behavior is explicitly added to the event contract.
+Projectability is intentionally narrow. Current Movie projection rules cover `MovieDiscovered`, `MovieFileObserved`, `MovieMetadataParsedFromNfo`, `MovieIgnored`, `MovieMarkedMissing`, `MovieRestored`, `MetadataMatched`, `ArtworkSelected`, `MetadataRestored`, `ArtworkSelectionRestored`, `RootVideoOrganizationReverted`, `AnalysisStarted`, `AnalysisCompleted`, `AnalysisFailed`, and `ExternalScoresRefreshed`. Projection dry-run uses the same event set for `base=current` and `base=empty`, but `base=empty` needs a usable `MovieDiscovered` before later per-movie events can be applied. Complex write flows such as scrape and artwork selection still record audit events after updating `Movie`; append-first command migration is a later stage. Other events are currently audit-only, side-effect-only, or compensation records until their projector behavior is explicitly added to the event contract.
 
 Stage 4 side-effect events carry richer audit payloads. `MetadataMatched` and `ArtworkSelected` include `changed_fields`, `previous`, and `current` summaries for the fields they changed. `ArtworkDownloaded` records poster/backdrop file writes, `NfoWritten` records NFO creation or artwork updates, and both include `backup_path` when an existing file was backed up before overwrite. `RootVideoMoved` records the root video move before later scan/scrape steps run. `RootVideoOrganized` includes source/target file snapshots and the selected TMDB candidate. Scrape, artwork, and root-video organization flows also populate `command_id` and `correlation_id` so related side-effect and scan events can be grouped. `/library/operations/restore` can use this event chain to execute supported compensation actions and append `MetadataRestored`, `ArtworkSelectionRestored`, `ArtworkRestored`, `NfoRestored`, or `RootVideoMoveReversed`; `ArtworkRestored` can restore either poster or backdrop file content when the matching `ArtworkDownloaded.backup_path` still exists. For root-video operations that created a new movie record, the restore also appends `RootVideoOrganizationReverted` so the record is hidden from normal library views instead of later appearing as missing.
 
