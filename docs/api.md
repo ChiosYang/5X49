@@ -105,7 +105,7 @@ This document describes the REST API endpoints available in the backend applicat
 ### List Library Audit Events
 - **URL**: `/library/audit-events`
 - **Method**: `GET`
-- **Description**: Lists persisted audit events recorded by library, metadata, organizer, analysis, and external score actions. This is a historical event log and is separate from the live `/library/events` SSE stream.
+- **Description**: Lists persisted audit events recorded by library, metadata, organizer, analysis, and external score actions. This is a historical event log and is separate from the live `/library/events` SSE stream. Current v1 event meanings, payload fields, projectability, and compatibility rules are documented in [`docs/event-contracts.md`](event-contracts.md).
 - **Query Parameters**:
   - `aggregate_type` (string, optional): Filter by aggregate type, such as `movie`, `library`, or `file`.
   - `aggregate_id` (string, optional): Filter by aggregate ID, usually a movie ID for `movie` aggregates.
@@ -113,7 +113,7 @@ This document describes the REST API endpoints available in the backend applicat
   - `command_id` (string, optional): Filter by the command that created related events.
   - `correlation_id` (string, optional): Filter by the operation trace shared by related events.
   - `limit` (integer, optional): Number of events to return, 1-500. Defaults to 100.
-- **Response**: Array of `EventRecord` objects, newest first.
+- **Response**: Array of `EventRecord` objects, newest first. Current event types include `MovieDiscovered`, `MovieFileObserved`, `MovieMetadataParsedFromNfo`, `MovieFolderScanned`, `MovieMarkedMissing`, `MovieRestored`, `MovieIgnored`, `MetadataMatchSuggested`, `MetadataMatched`, `MetadataRestored`, `MetadataScrapeFailed`, `ArtworkDownloaded`, `ArtworkSelected`, `ArtworkSelectionRestored`, `ArtworkRestored`, `NfoWritten`, `NfoRestored`, `RootVideoOrganizationNeedsReview`, `RootVideoMoved`, `RootVideoMoveReversed`, `RootVideoOrganized`, `RootVideoOrganizationReverted`, `AnalysisStarted`, `AnalysisCompleted`, `AnalysisFailed`, `ExternalScoresRefreshed`, `ExternalScoresRefreshFailed`, `LibraryReconciled`, `LibraryCleared`, `MissingMoviesCleaned`, and `LibrarySeeded`.
 
 ### Dry-Run Library Operation
 - **URL**: `/library/operations/dry-run`
@@ -951,12 +951,20 @@ Background jobs are persisted in SQLite and executed by the in-process actor run
 
 ### EventRecord schema
 
-Audit events are persisted in the `events` table. Most events currently act as an audit sidecar while selected low-risk events such as `MovieIgnored`, `MovieMarkedMissing`, `MovieRestored`, `MetadataRestored`, `ArtworkSelectionRestored`, `RootVideoOrganizationReverted`, `AnalysisStarted`, `AnalysisCompleted`, and `AnalysisFailed` are synchronously projected into the `Movie` current-state table.
+Audit events are persisted in the `events` table. The current v1 event payload
+contracts are documented in [`docs/event-contracts.md`](event-contracts.md).
+Most events currently act as an audit sidecar while selected low-risk events
+such as `MovieIgnored`, `MovieMarkedMissing`, `MovieRestored`,
+`MetadataRestored`, `ArtworkSelectionRestored`,
+`RootVideoOrganizationReverted`, `AnalysisStarted`, `AnalysisCompleted`, and
+`AnalysisFailed` are synchronously projected into the `Movie` current-state
+table. `MovieDiscovered` and `MovieFileObserved` are additionally supported by
+empty-base projection dry-runs.
 
 - `id` (String): Primary key, formatted as `evt_<uuid-hex>`.
 - `aggregate_type` (String): Event aggregate category, such as `movie`, `library`, or `file`.
 - `aggregate_id` (String, Optional): Aggregate identifier. Movie events use the current movie ID.
-- `type` (String): Semantic event type, for example `MovieDiscovered`, `MovieFileObserved`, `MovieFolderScanned`, `MovieMetadataParsedFromNfo`, `MovieMarkedMissing`, `MovieIgnored`, `MetadataMatchSuggested`, `MetadataMatched`, `MetadataRestored`, `MetadataScrapeFailed`, `ArtworkSelected`, `ArtworkSelectionRestored`, `ArtworkRestored`, `NfoRestored`, `RootVideoMoveReversed`, `RootVideoOrganizationReverted`, `RootVideoOrganized`, `AnalysisStarted`, `AnalysisCompleted`, `AnalysisFailed`, `ExternalScoresRefreshed`, or `ExternalScoresRefreshFailed`.
+- `type` (String): Semantic event type, for example `MovieDiscovered`, `MovieFileObserved`, `MovieFolderScanned`, `MovieMetadataParsedFromNfo`, `MovieMarkedMissing`, `MovieRestored`, `MovieIgnored`, `MetadataMatchSuggested`, `MetadataMatched`, `MetadataRestored`, `MetadataScrapeFailed`, `ArtworkDownloaded`, `ArtworkSelected`, `ArtworkSelectionRestored`, `ArtworkRestored`, `NfoWritten`, `NfoRestored`, `RootVideoOrganizationNeedsReview`, `RootVideoMoved`, `RootVideoMoveReversed`, `RootVideoOrganized`, `RootVideoOrganizationReverted`, `AnalysisStarted`, `AnalysisCompleted`, `AnalysisFailed`, `ExternalScoresRefreshed`, `ExternalScoresRefreshFailed`, `LibraryReconciled`, `LibraryCleared`, `MissingMoviesCleaned`, or `LibrarySeeded`.
 - `actor_type` / `actor_id` (String, Optional): Actor metadata. Stage 1 defaults to `system`.
 - `command_id`, `correlation_id`, `causation_id` (String, Optional): Optional command and trace identifiers reserved for later event-sourced workflows.
 - `payload` (Object): Event-specific details.
@@ -965,6 +973,8 @@ Audit events are persisted in the `events` table. Most events currently act as a
 - `occurred_at` (String): UTC ISO timestamp.
 
 Scan-related events are de-duplicated: `MovieDiscovered` is recorded for new records, `MovieFileObserved` is recorded only when key local file fields change, `MovieMetadataParsedFromNfo` is recorded only when NFO signature fields change, and `MovieRestored` is recorded when a previously missing movie is observed as available again. Successful folder scans no longer append `MovieFolderScanned` by default; UI refresh notifications are still published through `/library/events`.
+
+Projectability is intentionally narrow. Current synchronous Movie projection covers only `MovieIgnored`, `MovieMarkedMissing`, `MovieRestored`, `MetadataRestored`, `ArtworkSelectionRestored`, `RootVideoOrganizationReverted`, `AnalysisStarted`, `AnalysisCompleted`, and `AnalysisFailed`. Empty-base projection dry-run additionally understands `MovieDiscovered` and `MovieFileObserved`. Other events are currently audit-only, side-effect-only, or compensation records until their projector behavior is explicitly added to the event contract.
 
 Stage 4 side-effect events carry richer audit payloads. `MetadataMatched` and `ArtworkSelected` include `changed_fields`, `previous`, and `current` summaries for the fields they changed. `ArtworkDownloaded` records poster/backdrop file writes, `NfoWritten` records NFO creation or artwork updates, and both include `backup_path` when an existing file was backed up before overwrite. `RootVideoMoved` records the root video move before later scan/scrape steps run. `RootVideoOrganized` includes source/target file snapshots and the selected TMDB candidate. Scrape, artwork, and root-video organization flows also populate `command_id` and `correlation_id` so related side-effect and scan events can be grouped. `/library/operations/restore` can use this event chain to execute supported compensation actions and append `MetadataRestored`, `ArtworkSelectionRestored`, `ArtworkRestored`, `NfoRestored`, or `RootVideoMoveReversed`; `ArtworkRestored` can restore either poster or backdrop file content when the matching `ArtworkDownloaded.backup_path` still exists. For root-video operations that created a new movie record, the restore also appends `RootVideoOrganizationReverted` so the record is hidden from normal library views instead of later appearing as missing.
 
