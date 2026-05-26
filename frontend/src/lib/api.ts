@@ -70,6 +70,32 @@ export const API = {
         return `${API_BASE_URL}/library/operations/dry-run${query ? `?${query}` : ''}`;
     },
     libraryOperationRestore: () => `${API_BASE_URL}/library/operations/restore`,
+    libraryMovieProjectionRebuildUrl: (params: {
+        dry_run?: boolean;
+        movie_id?: string | null;
+        limit?: number;
+        since?: string | null;
+        base?: "current" | "empty" | string;
+    } = {}) => {
+        const searchParams = new URLSearchParams();
+        searchParams.set('dry_run', String(params.dry_run ?? true));
+        if (params.movie_id) searchParams.set('movie_id', params.movie_id);
+        if (params.limit) searchParams.set('limit', String(params.limit));
+        if (params.since) searchParams.set('since', params.since);
+        if (params.base) searchParams.set('base', params.base);
+        return `${API_BASE_URL}/library/projections/movie/rebuild?${searchParams.toString()}`;
+    },
+    libraryMovieReplayBackfillUrl: (params: {
+        dry_run?: boolean;
+        movie_id?: string | null;
+        sample_limit?: number;
+    } = {}) => {
+        const searchParams = new URLSearchParams();
+        searchParams.set('dry_run', String(params.dry_run ?? true));
+        if (params.movie_id) searchParams.set('movie_id', params.movie_id);
+        if (params.sample_limit !== undefined) searchParams.set('sample_limit', String(params.sample_limit));
+        return `${API_BASE_URL}/library/events/backfill/movie-replay?${searchParams.toString()}`;
+    },
     libraryAuditEventsUrl: (params: {
         aggregate_type?: string;
         aggregate_id?: string;

@@ -300,6 +300,43 @@ export interface MovieTimelineRestorePreviewReport extends MovieTimelineStateRep
   missing_file_backups: MovieTimelineFileRestoreItem[];
 }
 
+export interface MovieProjectionRebuildReport {
+  dry_run: boolean;
+  mode: string;
+  note: string;
+  base: "current" | "empty" | string;
+  movie_id?: string | null;
+  since?: string | null;
+  limit: number;
+  events_processed: number;
+  projectable_events: number;
+  skipped_projectable_events: number;
+  skipped_events: Array<Record<string, unknown>>;
+  unsupported_events: number;
+  unsupported_event_types: Record<string, number>;
+  movies_compared: number;
+  movies_with_differences: number;
+  differences: Array<Record<string, unknown>>;
+}
+
+export interface MovieReplayBackfillReport {
+  dry_run: boolean;
+  movie_id?: string | null;
+  movies_checked: number;
+  events_checked: number;
+  events_to_create: number;
+  created_events: number;
+  created_event_ids: string[];
+  sample_events: Array<Partial<EventRecord> & {
+    payload?: Record<string, unknown>;
+    context?: Record<string, unknown>;
+  }>;
+  unsupported: Array<Record<string, unknown>>;
+  unavailable_file_snapshots: Array<Record<string, unknown>>;
+  coverage_before: Record<string, unknown>;
+  notes: string[];
+}
+
 export interface RootVideo {
   path: string;
   filename: string;

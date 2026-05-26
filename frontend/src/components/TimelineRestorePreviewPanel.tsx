@@ -53,6 +53,10 @@ function canPreviewEvent(event: EventRecord, movieId?: string | null) {
   return event.aggregate_type === "movie" && Boolean(movieId);
 }
 
+function isBackfillEvent(event: EventRecord) {
+  return event.type === "MovieStateBackfilled" || event.type === "MovieFileSnapshotBackfilled";
+}
+
 export default function TimelineRestorePreviewPanel({ event, movieId }: TimelineRestorePreviewPanelProps) {
   const [detailsOpen, setDetailsOpen] = useState(false);
   const { trigger, data: report, isMutating, error } = useMovieTimelineRestorePreview(movieId);
@@ -92,6 +96,15 @@ export default function TimelineRestorePreviewPanel({ event, movieId }: Timeline
 
       {report ? (
         <div className="mt-4 space-y-4 border-t border-neutral-900 pt-4">
+          {isBackfillEvent(event) ? (
+            <div className="flex items-start gap-2 border border-amber-950/80 bg-amber-950/10 p-3 text-sm text-amber-200/90">
+              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+              <p className="break-words">
+                This point is a migration snapshot. It improves replay from the migration point forward, but it is not original historical evidence.
+              </p>
+            </div>
+          ) : null}
+
           <div className="flex flex-wrap items-center gap-2">
             <span className={`inline-flex h-7 items-center border px-2 text-xs font-bold uppercase tracking-widest ${statusClass(report.status)}`}>
               {report.status}

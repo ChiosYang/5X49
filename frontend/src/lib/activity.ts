@@ -19,6 +19,7 @@ export const EVENT_LABELS: Record<string, string> = {
   MovieMarkedMissing: "Marked missing",
   MovieRestored: "Restored",
   MovieIgnored: "Ignored",
+  MovieStateBackfilled: "Migration snapshot",
   MetadataMatchSuggested: "Match suggested",
   MetadataMatched: "Metadata matched",
   MovieStateRestored: "Timeline state restored",
@@ -28,6 +29,7 @@ export const EVENT_LABELS: Record<string, string> = {
   ArtworkSelected: "Artwork selected",
   ArtworkSelectionRestored: "Artwork selection restored",
   ArtworkRestored: "Artwork restored",
+  MovieFileSnapshotBackfilled: "File snapshot",
   NfoWritten: "NFO written",
   NfoRestored: "NFO restored",
   RootVideoMoved: "Root video moved",
@@ -51,6 +53,7 @@ export const EVENT_TYPE_OPTIONS = [
   "MovieMarkedMissing",
   "MovieRestored",
   "MovieIgnored",
+  "MovieStateBackfilled",
   "MetadataMatchSuggested",
   "MetadataMatched",
   "MovieStateRestored",
@@ -60,6 +63,7 @@ export const EVENT_TYPE_OPTIONS = [
   "ArtworkSelected",
   "ArtworkSelectionRestored",
   "ArtworkRestored",
+  "MovieFileSnapshotBackfilled",
   "NfoWritten",
   "NfoRestored",
   "RootVideoMoved",
@@ -166,6 +170,18 @@ export function eventSummary(event: EventRecord) {
       typeof beforeEventId === "string" ? `before ${beforeEventId}` : null,
     ].filter(Boolean).join(" · ");
   }
+  if (event.type === "MovieStateBackfilled") {
+    const current = event.payload?.current;
+    const fieldCount = typeof current === "object" && current
+      ? Object.keys(current).length
+      : 0;
+    const sourceTypes = event.payload?.source_event_types;
+    return [
+      fieldCount ? `${fieldCount} current fields snapshotted` : "Current Movie state snapshotted",
+      Array.isArray(sourceTypes) && sourceTypes.length ? `for ${sourceTypes.join(", ")}` : null,
+      "migration only",
+    ].filter(Boolean).join(" · ");
+  }
   if (event.type === "MetadataMatchSuggested") return reason || "Review required before writing metadata";
   if (event.type === "ArtworkDownloaded") {
     const label = assetType === "backdrop" ? "Backdrop downloaded" : "Poster downloaded";
@@ -174,6 +190,10 @@ export function eventSummary(event: EventRecord) {
   if (event.type === "ArtworkRestored") {
     const label = assetType === "backdrop" ? "Backdrop restored" : "Poster restored";
     return destination ? `${label}: ${destination}` : label;
+  }
+  if (event.type === "MovieFileSnapshotBackfilled") {
+    const fileType = stringPayload(event, "file_type") || "file";
+    return path ? `${fileType} snapshot only: ${path}` : `${fileType} snapshot only`;
   }
   if (event.type === "ArtworkSelected") return "Poster or backdrop was updated";
   if (event.type === "ArtworkSelectionRestored") {
@@ -260,6 +280,7 @@ function choosePrimaryEvent(events: EventRecord[]) {
 function primaryRank(type: string) {
   const ranks: Record<string, number> = {
     MetadataMatched: 1,
+    MovieStateBackfilled: 1,
     MovieStateRestored: 1,
     MetadataRestored: 1,
     ArtworkSelected: 2,
@@ -290,6 +311,9 @@ function operationTitle(events: EventRecord[], primaryEvent: EventRecord) {
   }
   if (events.some((event) => event.type === "MovieStateRestored")) {
     return "Timeline restore";
+  }
+  if (events.some((event) => event.type === "MovieStateBackfilled" || event.type === "MovieFileSnapshotBackfilled")) {
+    return "Replay backfill";
   }
   if (events.some((event) => event.type === "MetadataRestored")) {
     return "Metadata restore";

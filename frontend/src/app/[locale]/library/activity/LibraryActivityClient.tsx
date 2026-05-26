@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import useSWR from "swr";
 import { ChevronDown, Clock, Filter, Loader2 } from "lucide-react";
+import EventSourcingHealthPanel from "@/components/EventSourcingHealthPanel";
 import OperationDryRunPanel from "@/components/OperationDryRunPanel";
 import TimelineRestorePreviewPanel from "@/components/TimelineRestorePreviewPanel";
 import { Link } from "@/i18n/routing";
@@ -54,6 +55,8 @@ export default function LibraryActivityClient() {
 
   return (
     <div className="space-y-8">
+      <EventSourcingHealthPanel />
+
       <section className="grid gap-4 border-y border-neutral-900 py-5 md:grid-cols-[minmax(0,1fr)_auto] md:items-end">
         <div className="grid gap-3 sm:grid-cols-3">
           <label className="grid gap-2">
