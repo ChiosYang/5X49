@@ -113,7 +113,7 @@ This document describes the REST API endpoints available in the backend applicat
   - `command_id` (string, optional): Filter by the command that created related events.
   - `correlation_id` (string, optional): Filter by the operation trace shared by related events.
   - `limit` (integer, optional): Number of events to return, 1-500. Defaults to 100.
-- **Response**: Array of `EventRecord` objects, newest first. Current event types include `MovieDiscovered`, `MovieFileObserved`, `MovieMetadataParsedFromNfo`, `MovieFolderScanned`, `MovieMarkedMissing`, `MovieRestored`, `MovieIgnored`, `MetadataMatchSuggested`, `MetadataMatched`, `MetadataRestored`, `MetadataScrapeFailed`, `ArtworkDownloaded`, `ArtworkSelected`, `ArtworkSelectionRestored`, `ArtworkRestored`, `NfoWritten`, `NfoRestored`, `RootVideoOrganizationNeedsReview`, `RootVideoMoved`, `RootVideoMoveReversed`, `RootVideoOrganized`, `RootVideoOrganizationReverted`, `AnalysisStarted`, `AnalysisCompleted`, `AnalysisFailed`, `ExternalScoresRefreshed`, `ExternalScoresRefreshFailed`, `LibraryReconciled`, `LibraryCleared`, `MissingMoviesCleaned`, and `LibrarySeeded`.
+- **Response**: Array of `EventRecord` objects, newest first. Current event types include `MovieDiscovered`, `MovieFileObserved`, `MovieMetadataParsedFromNfo`, `MovieFolderScanned`, `MovieMarkedMissing`, `MovieRestored`, `MovieIgnored`, `MovieStateBackfilled`, `MetadataMatchSuggested`, `MetadataMatched`, `MovieStateRestored`, `MetadataRestored`, `MetadataScrapeFailed`, `ArtworkDownloaded`, `ArtworkSelected`, `ArtworkSelectionRestored`, `ArtworkRestored`, `MovieFileSnapshotBackfilled`, `NfoWritten`, `NfoRestored`, `RootVideoOrganizationNeedsReview`, `RootVideoMoved`, `RootVideoMoveReversed`, `RootVideoOrganized`, `RootVideoOrganizationReverted`, `AnalysisStarted`, `AnalysisCompleted`, `AnalysisFailed`, `ExternalScoresRefreshed`, `ExternalScoresRefreshFailed`, `LibraryReconciled`, `LibraryCleared`, `MissingMoviesCleaned`, and `LibrarySeeded`.
 
 ### Dry-Run Library Operation
 - **URL**: `/library/operations/dry-run`
@@ -300,6 +300,45 @@ Long-running mutation endpoints return an accepted-job envelope:
 - **Status Values**: `safe` when all reported changes are recoverable, `partial` when fields are recoverable but payload or file backups are incomplete, `unsafe` when root-video reversal would conflict with current filesystem state, and `unknown` when no supported recovery action is identified.
 - **Errors**: Same as `/library/{movie_id}/timeline/state`.
 
+### Restore Movie Timeline
+- **URL**: `/library/{movie_id}/timeline/restore`
+- **Method**: `POST`
+- **Description**: Executes supported historical timeline compensation for one movie. It recomputes restore-preview first, then restores conflict-checked Movie fields and available poster/backdrop/NFO backups. It never deletes original events and does not execute root-video reversal in this timeline endpoint.
+- **Request Body**:
+  ```json
+  {
+    "before_event_id": "evt_xxx",
+    "at": null,
+    "restore_fields": ["title", "tmdb_id"],
+    "restore_files": ["poster", "backdrop", "nfo"],
+    "allow_partial": false
+  }
+  ```
+- **Rules**:
+  - Exactly one of `before_event_id` or `at` is required.
+  - `restore_fields=null` restores all preview-restorable fields; `[]` restores no fields.
+  - `restore_files=null` restores all preview-restorable poster/backdrop/NFO files; `[]` restores no files.
+  - `restore_files` only supports `poster`, `backdrop`, and `nfo`.
+  - `allow_partial=false` blocks the whole restore with `409` if any requested field or file cannot be safely restored.
+  - `allow_partial=true` restores the safe subset and reports skipped/conflicting items.
+- **Response**:
+  ```json
+  {
+    "status": "restored",
+    "movie_id": "603_1999",
+    "restore_command_id": "cmd_timeline_restore_xxx",
+    "restore_correlation_id": "corr_timeline_restore_xxx",
+    "target": {"selector_type": "before_event_id", "before_event_id": "evt_xxx"},
+    "actions_requested": {"restore_fields": ["title"], "restore_files": ["poster"], "allow_partial": false},
+    "restored": [],
+    "skipped": [],
+    "conflicts": [],
+    "dry_run": {}
+  }
+  ```
+- **Compensation Events**: Field restores append projectable `MovieStateRestored`. Poster/backdrop file restores append `ArtworkRestored`; NFO restores append `NfoRestored`. All emitted compensation events share one timeline restore `command_id` and `correlation_id`.
+- **Errors**: `400 Invalid movie ID format`, `400 Exactly one of before_event_id or at is required`, `400 Unsupported restore_files`, `404 Movie not found`, `404 before_event_id does not belong to this movie`, `409` when restore is not fully safe and `allow_partial=false`.
+
 ### Dry-run Movie Projection Rebuild
 - **URL**: `/library/projections/movie/rebuild`
 - **Method**: `POST`
@@ -332,7 +371,7 @@ Long-running mutation endpoints return an accepted-job envelope:
   }
   ```
 - **Projectable Events**:
-  - `base=current` and `base=empty`: `MovieDiscovered`, `MovieFileObserved`, `MovieMetadataParsedFromNfo`, `MovieIgnored`, `MovieMarkedMissing`, `MovieRestored`, `MetadataMatched`, `ArtworkSelected`, `MetadataRestored`, `ArtworkSelectionRestored`, `RootVideoOrganizationReverted`, `AnalysisStarted`, `AnalysisCompleted`, `AnalysisFailed`, and `ExternalScoresRefreshed`.
+  - `base=current` and `base=empty`: `MovieDiscovered`, `MovieFileObserved`, `MovieMetadataParsedFromNfo`, `MovieIgnored`, `MovieMarkedMissing`, `MovieRestored`, `MovieStateBackfilled`, `MetadataMatched`, `ArtworkSelected`, `MovieStateRestored`, `MetadataRestored`, `ArtworkSelectionRestored`, `RootVideoOrganizationReverted`, `AnalysisStarted`, `AnalysisCompleted`, `AnalysisFailed`, and `ExternalScoresRefreshed`.
 - **Notes**: `base=empty` is still a dry-run and only replays the currently supported subset. It needs a usable `MovieDiscovered` before later per-movie events can be applied. Projectable events that lack required payload, such as old `ExternalScoresRefreshed` events without `current` score fields, are counted in `skipped_projectable_events` and summarized in `skipped_events`.
 - **Errors**: `400 Only dry_run=true is supported`, `400 base must be 'current' or 'empty'`, `400 Invalid movie ID format`, `404 Movie not found`.
 
@@ -362,7 +401,7 @@ Long-running mutation endpoints return an accepted-job envelope:
         "aggregate_id": "local_xxx",
         "actor_type": "migration",
         "payload": {"id": "local_xxx", "movie_id": "local_xxx", "title": "Example", "year": 2026},
-        "context": {"source": "movie_discovered_backfill", "reason": "initialize_event_replay"},
+        "context": {"source": "backfill", "backfill_kind": "movie_discovered", "reason": "initialize_event_replay"},
         "occurred_at": "2026-05-20T00:00:00+00:00"
       }
     ],
@@ -370,6 +409,57 @@ Long-running mutation endpoints return an accepted-job envelope:
   }
   ```
 - **Notes**: The timestamp strategy makes historical initialization events sort before existing per-movie events so `base=empty` replay can apply later events in order. Existing movies that already have `MovieDiscovered` are skipped.
+- **Errors**: `400 Invalid movie ID format`, `404 Movie not found`.
+
+### Backfill Movie Replay Events
+- **URL**: `/library/events/backfill/movie-replay`
+- **Method**: `POST`
+- **Description**: Plans or appends replay migration events for existing Movie rows. Defaults to dry-run mode. Executing with `dry_run=false` only appends backfill events to the `events` table; it does not rewrite old events, update the `Movie` table, or modify media files.
+- **Query Parameters**:
+  - `dry_run` (boolean, optional): Defaults to `true`. Set to `false` to append planned backfill events.
+  - `movie_id` (string, optional): Restrict the backfill check or execution to one movie.
+  - `sample_limit` (integer, optional): Number of sample event specs to return, 0-50. Defaults to 20.
+- **Response**:
+  ```json
+  {
+    "dry_run": true,
+    "movie_id": null,
+    "movies_checked": 42,
+    "events_checked": 120,
+    "events_to_create": 12,
+    "created_events": 0,
+    "created_event_ids": [],
+    "sample_events": [
+      {
+        "type": "MovieStateBackfilled",
+        "aggregate_type": "movie",
+        "aggregate_id": "local_xxx",
+        "actor_type": "migration",
+        "payload": {
+          "movie_id": "local_xxx",
+          "current": {"id": "local_xxx", "title": "Example", "year": 2026},
+          "source_event_ids": ["evt_old"],
+          "source_event_types": ["MetadataMatched"],
+          "reason": "old_projectable_event_payload_missing_current",
+          "source": "backfill"
+        },
+        "context": {"source": "backfill", "backfill_kind": "movie_state"},
+        "occurred_at": "2026-05-26T00:00:00+00:00"
+      }
+    ],
+    "unsupported": [],
+    "unavailable_file_snapshots": [],
+    "coverage_before": {
+      "available": true,
+      "events_processed": 120,
+      "skipped_projectable_events": 3,
+      "movies_compared": 39
+    },
+    "notes": []
+  }
+  ```
+- **Backfill events**: Missing initialization creates `MovieDiscovered` with `context.source="backfill"` and sorts it before the movie's earliest existing event. Old `MetadataMatched` or `ArtworkSelected` events that lack usable `current` payload can create projectable `MovieStateBackfilled` migration snapshots. Existing poster/backdrop/NFO files can create audit-only `MovieFileSnapshotBackfilled` records with `restore_available=false`.
+- **Notes**: Backfill events are migration snapshots, not reconstructed historical facts. `MovieStateBackfilled` improves replay coverage from the migration point forward; it does not make earlier timeline states exact. `MovieFileSnapshotBackfilled` records current file metadata only and does not create backups.
 - **Errors**: `400 Invalid movie ID format`, `404 Movie not found`.
 
 ### Dry-run NFO Signatures
@@ -1030,7 +1120,7 @@ Audit events are persisted in the `events` table. The current v1 event payload
 contracts are documented in [`docs/event-contracts.md`](event-contracts.md).
 Most events currently act as an audit sidecar while selected low-risk events
 such as `MovieIgnored`, `MovieMarkedMissing`, `MovieRestored`,
-`MetadataRestored`, `ArtworkSelectionRestored`,
+`MovieStateBackfilled`, `MovieStateRestored`, `MetadataRestored`, `ArtworkSelectionRestored`,
 `RootVideoOrganizationReverted`, `AnalysisStarted`, `AnalysisCompleted`, and
 `AnalysisFailed` are synchronously projected into the `Movie` current-state
 table. `MovieDiscovered` and `MovieFileObserved` are additionally supported by
@@ -1039,7 +1129,7 @@ empty-base projection dry-runs.
 - `id` (String): Primary key, formatted as `evt_<uuid-hex>`.
 - `aggregate_type` (String): Event aggregate category, such as `movie`, `library`, or `file`.
 - `aggregate_id` (String, Optional): Aggregate identifier. Movie events use the current movie ID.
-- `type` (String): Semantic event type, for example `MovieDiscovered`, `MovieFileObserved`, `MovieFolderScanned`, `MovieMetadataParsedFromNfo`, `MovieMarkedMissing`, `MovieRestored`, `MovieIgnored`, `MetadataMatchSuggested`, `MetadataMatched`, `MetadataRestored`, `MetadataScrapeFailed`, `ArtworkDownloaded`, `ArtworkSelected`, `ArtworkSelectionRestored`, `ArtworkRestored`, `NfoWritten`, `NfoRestored`, `RootVideoOrganizationNeedsReview`, `RootVideoMoved`, `RootVideoMoveReversed`, `RootVideoOrganized`, `RootVideoOrganizationReverted`, `AnalysisStarted`, `AnalysisCompleted`, `AnalysisFailed`, `ExternalScoresRefreshed`, `ExternalScoresRefreshFailed`, `LibraryReconciled`, `LibraryCleared`, `MissingMoviesCleaned`, or `LibrarySeeded`.
+- `type` (String): Semantic event type, for example `MovieDiscovered`, `MovieFileObserved`, `MovieFolderScanned`, `MovieMetadataParsedFromNfo`, `MovieMarkedMissing`, `MovieRestored`, `MovieIgnored`, `MovieStateBackfilled`, `MetadataMatchSuggested`, `MetadataMatched`, `MovieStateRestored`, `MetadataRestored`, `MetadataScrapeFailed`, `ArtworkDownloaded`, `ArtworkSelected`, `ArtworkSelectionRestored`, `ArtworkRestored`, `MovieFileSnapshotBackfilled`, `NfoWritten`, `NfoRestored`, `RootVideoOrganizationNeedsReview`, `RootVideoMoved`, `RootVideoMoveReversed`, `RootVideoOrganized`, `RootVideoOrganizationReverted`, `AnalysisStarted`, `AnalysisCompleted`, `AnalysisFailed`, `ExternalScoresRefreshed`, `ExternalScoresRefreshFailed`, `LibraryReconciled`, `LibraryCleared`, `MissingMoviesCleaned`, or `LibrarySeeded`.
 - `actor_type` / `actor_id` (String, Optional): Actor metadata. Stage 1 defaults to `system`.
 - `command_id`, `correlation_id`, `causation_id` (String, Optional): Optional command and trace identifiers reserved for later event-sourced workflows.
 - `payload` (Object): Event-specific details.
@@ -1049,7 +1139,7 @@ empty-base projection dry-runs.
 
 Scan-related events are de-duplicated: `MovieDiscovered` is recorded for new records, `MovieFileObserved` is recorded only when key local file fields change, `MovieMetadataParsedFromNfo` is recorded only when NFO signature fields change, and `MovieRestored` is recorded when a previously missing movie is observed as available again. Successful folder scans no longer append `MovieFolderScanned` by default; UI refresh notifications are still published through `/library/events`.
 
-Projectability is intentionally narrow. Current Movie projection rules cover `MovieDiscovered`, `MovieFileObserved`, `MovieMetadataParsedFromNfo`, `MovieIgnored`, `MovieMarkedMissing`, `MovieRestored`, `MetadataMatched`, `ArtworkSelected`, `MetadataRestored`, `ArtworkSelectionRestored`, `RootVideoOrganizationReverted`, `AnalysisStarted`, `AnalysisCompleted`, `AnalysisFailed`, and `ExternalScoresRefreshed`. Projection dry-run uses the same event set for `base=current` and `base=empty`, but `base=empty` needs a usable `MovieDiscovered` before later per-movie events can be applied. `MetadataMatched`, `ArtworkSelected`, and successful `ExternalScoresRefreshed` commands now use append-first projection for Movie state; endpoint response shapes are unchanged. File side effects such as artwork downloads and NFO writes still execute before their result events and are not blindly replayed. Other events are currently audit-only, side-effect-only, or compensation records until their projector behavior is explicitly added to the event contract.
+Projectability is intentionally narrow. Current Movie projection rules cover `MovieDiscovered`, `MovieFileObserved`, `MovieMetadataParsedFromNfo`, `MovieIgnored`, `MovieMarkedMissing`, `MovieRestored`, `MovieStateBackfilled`, `MetadataMatched`, `ArtworkSelected`, `MovieStateRestored`, `MetadataRestored`, `ArtworkSelectionRestored`, `RootVideoOrganizationReverted`, `AnalysisStarted`, `AnalysisCompleted`, `AnalysisFailed`, and `ExternalScoresRefreshed`. Projection dry-run uses the same event set for `base=current` and `base=empty`, but `base=empty` needs a usable `MovieDiscovered` before later per-movie events can be applied. `MetadataMatched`, `ArtworkSelected`, and successful `ExternalScoresRefreshed` commands now use append-first projection for Movie state; endpoint response shapes are unchanged. `MovieStateBackfilled` is a migration snapshot and should not be treated as original historical truth. File side effects such as artwork downloads and NFO writes still execute before their result events and are not blindly replayed. Other events are currently audit-only, side-effect-only, or compensation records until their projector behavior is explicitly added to the event contract.
 
 Stage 4 side-effect events carry richer audit payloads. `MetadataMatched` and `ArtworkSelected` include `changed_fields`, `previous`, and `current` summaries for the fields they changed. `ArtworkDownloaded` records poster/backdrop file writes, `NfoWritten` records NFO creation or artwork updates, and both include `backup_path` when an existing file was backed up before overwrite. `RootVideoMoved` records the root video move before later scan/scrape steps run. `RootVideoOrganized` includes source/target file snapshots and the selected TMDB candidate. Scrape, artwork, and root-video organization flows also populate `command_id` and `correlation_id` so related side-effect and scan events can be grouped. `/library/operations/restore` can use this event chain to execute supported compensation actions and append `MetadataRestored`, `ArtworkSelectionRestored`, `ArtworkRestored`, `NfoRestored`, or `RootVideoMoveReversed`; `ArtworkRestored` can restore either poster or backdrop file content when the matching `ArtworkDownloaded.backup_path` still exists. For root-video operations that created a new movie record, the restore also appends `RootVideoOrganizationReverted` so the record is hidden from normal library views instead of later appearing as missing.
 

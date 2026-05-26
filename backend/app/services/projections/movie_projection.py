@@ -31,8 +31,10 @@ class MovieProjector:
             "MovieIgnored": self._apply_ignored,
             "MovieMarkedMissing": self._apply_marked_missing,
             "MovieRestored": self._apply_restored,
+            "MovieStateBackfilled": self._apply_state_backfilled,
             "MetadataMatched": self._apply_metadata_matched,
             "ArtworkSelected": self._apply_artwork_selected,
+            "MovieStateRestored": self._apply_restored_fields,
             "MetadataRestored": self._apply_restored_fields,
             "ArtworkSelectionRestored": self._apply_restored_fields,
             "RootVideoOrganizationReverted": self._apply_root_video_organization_reverted,
@@ -79,6 +81,9 @@ class MovieProjector:
     def _apply_nfo_metadata(self, movie: Movie, payload: dict):
         fields = (*NFO_METADATA_FIELDS, *NFO_SIGNATURE_FIELDS)
         apply_values_to_movie(movie, values_from_payload(payload, fields))
+
+    def _apply_state_backfilled(self, movie: Movie, payload: dict):
+        apply_values_to_movie(movie, values_from_payload(payload, tuple(Movie.model_fields)))
 
     def _apply_metadata_matched(self, movie: Movie, payload: dict):
         apply_values_to_movie(movie, values_from_payload(payload, METADATA_MATCH_FIELDS))

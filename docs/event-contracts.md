@@ -43,8 +43,10 @@ Projection rules currently implemented in `movie_projection.py`:
 - `MovieIgnored`
 - `MovieMarkedMissing`
 - `MovieRestored`
+- `MovieStateBackfilled`
 - `MetadataMatched`
 - `ArtworkSelected`
+- `MovieStateRestored`
 - `MetadataRestored`
 - `ArtworkSelectionRestored`
 - `RootVideoOrganizationReverted`
@@ -69,6 +71,7 @@ side-effect-only, or not yet projectable unless this document says otherwise.
 | `MovieMarkedMissing` | A known movie was not observed and is now marked missing. | domain | Synchronously projected: sets `library_status=missing` unless ignored/reverted, and sets `missing_since`. | `movie_id`, `missing_since`, optional `path` or `seen_at`. | Missing `missing_since` keeps status projectable but weakens audit detail. |
 | `MovieRestored` | A missing movie was observed again and is now available. | domain | Synchronously projected: sets `library_status=available` and clears `missing_since`, unless ignored. | Current scan payload for the restored movie. | Missing optional scan fields can be ignored. |
 | `MovieIgnored` | A movie was intentionally hidden from the normal library. | domain | Synchronously projected: sets `library_status=ignored` and clears `missing_since`. | `movie_id`, optional `title`, `year`. | Missing optional title/year can be ignored. |
+| `MovieStateBackfilled` | A migration snapshot of the current Movie row was appended to improve replay coverage for older incomplete events. | migration | Projectable. Applies the payload `current` fields to the Movie projection. | `movie_id`, `current`, `source_event_ids`, `source_event_types`, `reason`, `source="backfill"`; context includes `source="backfill"` and `backfill_kind="movie_state"`. | This is not a real historical scrape/artwork action and must not be used to infer exact state before the migration timestamp. Missing `current` is skipped. |
 
 ## Metadata Match Events
 
@@ -76,6 +79,7 @@ side-effect-only, or not yet projectable unless this document says otherwise.
 | --- | --- | --- | --- | --- | --- |
 | `MetadataMatchSuggested` | Scrape found candidates but requires review before writing metadata. | domain | Not projectable. | `movie_id`, `reason`, `candidates`. | Missing candidates still allows audit display; replay ignores it. |
 | `MetadataMatched` | A movie was matched to external metadata and metadata fields were updated. | domain | Projectable. The scrape command appends this event and uses the projector for Movie metadata state. | `movie_id`, `title`, `tmdb_id`, `confidence` or `score`, `changed_fields`, `previous`, `current`. | Missing `current` and top-level metadata fields is skipped during dry-run. |
+| `MovieStateRestored` | Movie fields were restored to a historical timeline target. | compensation | Synchronously projected: applies `restored_fields` to the `Movie` row. | `movie_id`, `target`, `restored_fields`, `conflicts`, `skipped_fields`, `before`, `after`, `preview_status`; `causation_id` should point to the selected `before_event_id` when available. | Missing `restored_fields` is `unsupported` for projection. |
 | `MetadataRestored` | Metadata fields were restored as compensation for a previous metadata match. | compensation | Synchronously projected: applies `restored_fields` to the `Movie` row. | `restored_fields`, `skipped_fields`, source operation identifiers; `causation_id` should point to the source `MetadataMatched`. | Missing `restored_fields` is `unsupported` for projection. |
 | `MetadataScrapeFailed` | A scrape attempt failed. | system/audit | Not projectable. | `movie_id`, `message` or `reason`, optional candidate/source context. | Replay ignores it. |
 
@@ -87,6 +91,7 @@ side-effect-only, or not yet projectable unless this document says otherwise.
 | `ArtworkSelected` | Movie artwork selection fields were changed. | domain | Projectable. The artwork selection command appends this event and uses the projector for Movie artwork state. | `movie_id`, selected poster/backdrop fields, `changed_fields`, `previous`, `current`. | Missing `current` and top-level artwork fields is skipped during dry-run. |
 | `ArtworkSelectionRestored` | Artwork selection fields were restored as compensation. | compensation | Synchronously projected: applies `restored_fields` to the `Movie` row. | `restored_fields`, `skipped_fields`; `causation_id` should point to the source `ArtworkSelected`. | Missing `restored_fields` is `unsupported` for projection. |
 | `ArtworkRestored` | Poster or backdrop file content was restored from backup. | compensation | Not projectable; file compensation only. | `movie_id`, `asset_type`, `source_path` or `backup_path`, `destination`, optional file snapshots; `causation_id` should point to `ArtworkDownloaded`. | Missing backup/source path means file restore cannot be repeated. |
+| `MovieFileSnapshotBackfilled` | A migration snapshot recorded current poster, backdrop, or NFO file metadata. | migration/audit | Not projectable. | `movie_id`, `file_type`, `path`, `exists`, `size`, `mtime`, `restore_available=false`, `source="backfill"`; context includes `backfill_kind="file_snapshot"`. | This records current file facts only. It does not create a backup and does not make file restore available. |
 
 ## NFO Events
 

@@ -6,7 +6,7 @@ from contextlib import asynccontextmanager
 from pydantic import BaseModel
 from app.services.historian import FilmHistorian
 from app.services.event_bus import library_event_bus
-from app.services.event_backfill import movie_discovered_backfill
+from app.services.event_backfill import movie_discovered_backfill, movie_replay_backfill
 from app.services.event_store import event_store
 from app.services.external_scores import external_score_service
 from app.jobs import job_runtime
@@ -22,6 +22,7 @@ from app.services.operation_dry_run import operation_dry_run
 from app.services.operation_restore import operation_restore
 from app.services.projections.movie_rebuild import movie_projection_dry_run
 from app.services.projections.movie_timeline import movie_timeline_dry_run
+from app.services.timeline_restore import TimelineRestoreBlocked, movie_timeline_restore
 from app.database import create_db_and_tables
 from app.utils.security import validate_movie_id
 import os
@@ -38,6 +39,14 @@ class OperationRestoreRequest(BaseModel):
     command_id: str | None = None
     actions: list[str] | None = None
     limit: int = 500
+
+
+class TimelineRestoreRequest(BaseModel):
+    before_event_id: str | None = None
+    at: str | None = None
+    restore_fields: list[str] | None = None
+    restore_files: list[str] | None = None
+    allow_partial: bool = False
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -294,6 +303,32 @@ def get_library_movie_timeline_restore_preview(
     except LookupError as exc:
         raise HTTPException(status_code=404, detail=str(exc))
 
+@app.post("/library/{movie_id}/timeline/restore")
+def restore_library_movie_timeline(movie_id: str, request: TimelineRestoreRequest):
+    """Execute supported timeline compensation actions for one movie."""
+    if not validate_movie_id(movie_id):
+        raise HTTPException(status_code=400, detail="Invalid movie ID format")
+    if not library_manager.get_movie(movie_id):
+        raise HTTPException(status_code=404, detail="Movie not found")
+    try:
+        result = movie_timeline_restore.run(
+            movie_id=movie_id,
+            before_event_id=request.before_event_id,
+            at=request.at,
+            restore_fields=request.restore_fields,
+            restore_files=request.restore_files,
+            allow_partial=request.allow_partial,
+        )
+    except TimelineRestoreBlocked as exc:
+        raise HTTPException(status_code=409, detail=exc.report)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+    if result["restored"]:
+        library_event_bus.publish_library_changed("timeline_restored", movie_id=movie_id)
+    return result
+
 @app.get("/library/operations/dry-run")
 def dry_run_library_operation(
     correlation_id: str | None = Query(default=None),
@@ -358,6 +393,20 @@ def backfill_movie_discovered_events(
         if not library_manager.get_movie(movie_id):
             raise HTTPException(status_code=404, detail="Movie not found")
     return movie_discovered_backfill.run(dry_run=dry_run, movie_id=movie_id, sample_limit=sample_limit)
+
+@app.post("/library/events/backfill/movie-replay")
+def backfill_movie_replay_events(
+    dry_run: bool = Query(default=True),
+    movie_id: str | None = Query(default=None),
+    sample_limit: int = Query(default=20, ge=0, le=50),
+):
+    """Backfill replay migration events for existing movie rows and files."""
+    if movie_id:
+        if not validate_movie_id(movie_id):
+            raise HTTPException(status_code=400, detail="Invalid movie ID format")
+        if not library_manager.get_movie(movie_id):
+            raise HTTPException(status_code=404, detail="Movie not found")
+    return movie_replay_backfill.run(dry_run=dry_run, movie_id=movie_id, sample_limit=sample_limit)
 
 @app.post("/library/events/dry-run/nfo-signatures")
 def dry_run_nfo_signatures(

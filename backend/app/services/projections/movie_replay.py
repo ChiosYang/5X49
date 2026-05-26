@@ -131,6 +131,13 @@ class MovieEventReplayer:
         elif event.type == "RootVideoOrganizationReverted":
             state["library_status"] = "reverted"
             state["missing_since"] = None
+        elif event.type == "MovieStateBackfilled":
+            return self._apply_payload_fields(
+                state,
+                payload,
+                tuple(Movie.model_fields),
+                "MovieStateBackfilled payload is missing current payload",
+            )
         elif event.type == "MetadataMatched":
             return self._apply_payload_fields(
                 state,
@@ -145,7 +152,7 @@ class MovieEventReplayer:
                 ARTWORK_SELECTION_FIELDS,
                 "ArtworkSelected payload is missing current payload",
             )
-        elif event.type in {"MetadataRestored", "ArtworkSelectionRestored"}:
+        elif event.type in {"MovieStateRestored", "MetadataRestored", "ArtworkSelectionRestored"}:
             return self._apply_restored_fields(state, payload)
         elif event.type == "AnalysisStarted":
             state["analysis_status"] = "processing"

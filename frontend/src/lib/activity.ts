@@ -21,6 +21,7 @@ export const EVENT_LABELS: Record<string, string> = {
   MovieIgnored: "Ignored",
   MetadataMatchSuggested: "Match suggested",
   MetadataMatched: "Metadata matched",
+  MovieStateRestored: "Timeline state restored",
   MetadataRestored: "Metadata restored",
   MetadataScrapeFailed: "Scrape failed",
   ArtworkDownloaded: "Artwork downloaded",
@@ -52,6 +53,7 @@ export const EVENT_TYPE_OPTIONS = [
   "MovieIgnored",
   "MetadataMatchSuggested",
   "MetadataMatched",
+  "MovieStateRestored",
   "MetadataRestored",
   "MetadataScrapeFailed",
   "ArtworkDownloaded",
@@ -152,6 +154,18 @@ export function eventSummary(event: EventRecord) {
     const count = Array.isArray(restoredFields) ? restoredFields.length : 0;
     return count ? `${count} metadata fields restored` : "Metadata fields restored";
   }
+  if (event.type === "MovieStateRestored") {
+    const restoredFields = event.payload?.restored_fields;
+    const count = Array.isArray(restoredFields) ? restoredFields.length : 0;
+    const target = event.payload?.target;
+    const beforeEventId = typeof target === "object" && target
+      ? (target as Record<string, unknown>).before_event_id
+      : null;
+    return [
+      count ? `${count} fields restored` : "Movie fields restored",
+      typeof beforeEventId === "string" ? `before ${beforeEventId}` : null,
+    ].filter(Boolean).join(" · ");
+  }
   if (event.type === "MetadataMatchSuggested") return reason || "Review required before writing metadata";
   if (event.type === "ArtworkDownloaded") {
     const label = assetType === "backdrop" ? "Backdrop downloaded" : "Poster downloaded";
@@ -246,6 +260,7 @@ function choosePrimaryEvent(events: EventRecord[]) {
 function primaryRank(type: string) {
   const ranks: Record<string, number> = {
     MetadataMatched: 1,
+    MovieStateRestored: 1,
     MetadataRestored: 1,
     ArtworkSelected: 2,
     ArtworkSelectionRestored: 2,
@@ -272,6 +287,9 @@ function operationTitle(events: EventRecord[], primaryEvent: EventRecord) {
   }
   if (events.some((event) => event.type === "MetadataMatched" || event.type === "MetadataMatchSuggested" || event.type === "MetadataScrapeFailed")) {
     return "Metadata scrape";
+  }
+  if (events.some((event) => event.type === "MovieStateRestored")) {
+    return "Timeline restore";
   }
   if (events.some((event) => event.type === "MetadataRestored")) {
     return "Metadata restore";
