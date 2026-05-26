@@ -2,10 +2,13 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from sqlmodel import SQLModel, Session, create_engine
+from fastapi.testclient import TestClient
+from sqlmodel import SQLModel, Session, create_engine, select
 
 import app.database as database
+import app.services.library as library_module
 import app.services.projections.movie_rebuild as movie_rebuild_module
+from app.main import app
 from app.models import EventRecord, Movie
 from app.services.projections.movie_rebuild import movie_projection_dry_run
 
@@ -13,17 +16,20 @@ from app.services.projections.movie_rebuild import movie_projection_dry_run
 class MovieProjectionDryRunTests(unittest.TestCase):
     def setUp(self):
         self._original_database_engine = database.engine
+        self._original_library_engine = library_module.engine
         self._original_rebuild_engine = movie_rebuild_module.engine
         self._tmp = tempfile.TemporaryDirectory()
         self.tmp_path = Path(self._tmp.name)
         self.engine = create_engine(f"sqlite:///{self.tmp_path / 'library.db'}")
         self._event_index = 0
         database.engine = self.engine
+        library_module.engine = self.engine
         movie_rebuild_module.engine = self.engine
         SQLModel.metadata.create_all(self.engine)
 
     def tearDown(self):
         database.engine = self._original_database_engine
+        library_module.engine = self._original_library_engine
         movie_rebuild_module.engine = self._original_rebuild_engine
         self.engine.dispose()
         self._tmp.cleanup()
@@ -111,6 +117,10 @@ class MovieProjectionDryRunTests(unittest.TestCase):
         self.assertEqual(report["movies_compared"], 1)
         self.assertEqual(report["skipped_projectable_events"], 0)
         self.assertEqual(report["differences"], [])
+        self.assertTrue(report["confirmation_token"])
+        self.assertFalse(report["event_stream_truncated"])
+        self.assertEqual(report["last_event"]["type"], "MovieMetadataParsedFromNfo")
+        self.assertEqual(report["projected_state"]["title"], "The Matrix")
 
     def test_external_scores_refreshed_projects_new_payload(self):
         score = {"source": "tspdt", "kind": "rank", "rank": 6}
@@ -180,6 +190,142 @@ class MovieProjectionDryRunTests(unittest.TestCase):
         report = movie_projection_dry_run.run(movie_id="local_1", base="empty")
 
         self.assertEqual(report["differences"], [])
+
+    def test_rebuild_requires_single_movie_empty_base_and_token(self):
+        with Session(self.engine) as session:
+            session.add(Movie(id="rebuild_rules", title="Current", year=2026))
+            session.add(self._event("MovieDiscovered", {
+                "id": "rebuild_rules",
+                "movie_id": "rebuild_rules",
+                "title": "Projected",
+                "year": 2026,
+            }))
+            session.commit()
+
+        with self.assertRaises(ValueError):
+            movie_projection_dry_run.run(dry_run=False, base="empty")
+        with self.assertRaises(ValueError):
+            movie_projection_dry_run.run(dry_run=False, movie_id="rebuild_rules", base="current")
+        with self.assertRaises(ValueError):
+            movie_projection_dry_run.run(dry_run=False, movie_id="rebuild_rules", base="empty", since="2026-01-01T00:00:00+00:00")
+        with self.assertRaises(ValueError):
+            movie_projection_dry_run.run(dry_run=False, movie_id="rebuild_rules", base="empty")
+        with self.assertRaises(ValueError):
+            movie_projection_dry_run.run(dry_run=False, movie_id="rebuild_rules", base="empty", confirmation_token="bad")
+
+        with Session(self.engine) as session:
+            movie = session.get(Movie, "rebuild_rules")
+        self.assertEqual(movie.title, "Current")
+
+    def test_rebuild_blocks_when_projectable_events_are_skipped(self):
+        with Session(self.engine) as session:
+            session.add(Movie(id="blocked", title="Current", year=2026))
+            session.add_all([
+                self._event("MovieDiscovered", {
+                    "id": "blocked",
+                    "movie_id": "blocked",
+                    "title": "Current",
+                    "year": 2026,
+                }),
+                self._event("ExternalScoresRefreshed", {
+                    "movie_id": "blocked",
+                    "updated_sources": ["tspdt"],
+                }),
+            ])
+            session.commit()
+
+        report = movie_projection_dry_run.run(movie_id="blocked", base="empty")
+
+        with self.assertRaises(ValueError):
+            movie_projection_dry_run.run(
+                dry_run=False,
+                movie_id="blocked",
+                base="empty",
+                confirmation_token=report["confirmation_token"],
+            )
+
+        with Session(self.engine) as session:
+            movie = session.get(Movie, "blocked")
+        self.assertEqual(movie.title, "Current")
+
+    def test_rebuild_single_movie_replaces_core_fields_and_appends_audit_event(self):
+        with Session(self.engine) as session:
+            session.add(Movie(
+                id="rebuild_success",
+                title="Current",
+                year=2026,
+                tmdb_id="old",
+                poster_path="/old.jpg",
+            ))
+            session.add_all([
+                self._event("MovieDiscovered", {
+                    "id": "rebuild_success",
+                    "movie_id": "rebuild_success",
+                    "title": "Projected",
+                    "year": 2026,
+                }),
+                self._event("MetadataMatched", {
+                    "movie_id": "rebuild_success",
+                    "current": {"tmdb_id": "new"},
+                }),
+            ])
+            session.commit()
+
+        dry_run = movie_projection_dry_run.run(movie_id="rebuild_success", base="empty")
+        result = movie_projection_dry_run.run(
+            dry_run=False,
+            movie_id="rebuild_success",
+            base="empty",
+            confirmation_token=dry_run["confirmation_token"],
+        )
+
+        self.assertEqual(result["status"], "rebuilt")
+        self.assertIn("title", result["fields_replaced"])
+        self.assertIn("tmdb_id", result["fields_replaced"])
+        self.assertIn("poster_path", result["fields_replaced"])
+        with Session(self.engine) as session:
+            movie = session.get(Movie, "rebuild_success")
+            audit_event = session.exec(select(EventRecord).where(EventRecord.type == "MovieProjectionRebuilt")).one()
+        self.assertEqual(movie.title, "Projected")
+        self.assertEqual(movie.tmdb_id, "new")
+        self.assertIsNone(movie.poster_path)
+        self.assertEqual(audit_event.aggregate_type, "projection")
+        self.assertEqual(audit_event.payload["confirmation_token"], dry_run["confirmation_token"])
+        self.assertEqual(audit_event.payload["after"]["title"], "Projected")
+
+        after_report = movie_projection_dry_run.run(movie_id="rebuild_success", base="empty")
+        self.assertEqual(after_report["movies_with_differences"], 0)
+
+    def test_rebuild_endpoint_smoke(self):
+        with Session(self.engine) as session:
+            session.add(Movie(id="route_rebuild", title="Current", year=2026))
+            session.add(self._event("MovieDiscovered", {
+                "id": "route_rebuild",
+                "movie_id": "route_rebuild",
+                "title": "Projected",
+                "year": 2026,
+            }))
+            session.commit()
+        client = TestClient(app)
+
+        dry_run_response = client.post("/library/projections/movie/rebuild?movie_id=route_rebuild&base=empty")
+        self.assertEqual(dry_run_response.status_code, 200, dry_run_response.text)
+        token = dry_run_response.json()["confirmation_token"]
+
+        success = client.post(f"/library/projections/movie/rebuild?dry_run=false&movie_id=route_rebuild&base=empty&confirmation_token={token}")
+        missing_movie_id = client.post("/library/projections/movie/rebuild?dry_run=false&base=empty")
+        wrong_base = client.post(f"/library/projections/movie/rebuild?dry_run=false&movie_id=route_rebuild&base=current&confirmation_token={token}")
+        missing_movie = client.post("/library/projections/movie/rebuild?movie_id=missing_route")
+        missing_token = client.post("/library/projections/movie/rebuild?dry_run=false&movie_id=route_rebuild&base=empty")
+        bad_token = client.post("/library/projections/movie/rebuild?dry_run=false&movie_id=route_rebuild&base=empty&confirmation_token=bad")
+
+        self.assertEqual(success.status_code, 200, success.text)
+        self.assertEqual(success.json()["status"], "rebuilt")
+        self.assertEqual(missing_movie_id.status_code, 400)
+        self.assertEqual(wrong_base.status_code, 400)
+        self.assertEqual(missing_movie.status_code, 404)
+        self.assertEqual(missing_token.status_code, 409)
+        self.assertEqual(bad_token.status_code, 409)
 
     def _event(self, event_type: str, payload: dict) -> EventRecord:
         self._event_index += 1

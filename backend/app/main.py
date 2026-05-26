@@ -20,7 +20,7 @@ from app.services.metadata.scraper import metadata_scraper
 from app.services.nfo_signature_dry_run import nfo_signature_dry_run
 from app.services.operation_dry_run import operation_dry_run
 from app.services.operation_restore import operation_restore
-from app.services.projections.movie_rebuild import movie_projection_dry_run
+from app.services.projections.movie_rebuild import ProjectionRebuildBlocked, movie_projection_dry_run
 from app.services.projections.movie_timeline import movie_timeline_dry_run
 from app.services.timeline_restore import TimelineRestoreBlocked, movie_timeline_restore
 from app.database import create_db_and_tables
@@ -366,19 +366,32 @@ def rebuild_movie_projection_dry_run(
     limit: int = Query(default=1000, ge=1, le=5000),
     since: str | None = Query(default=None),
     base: str = Query(default="current"),
+    confirmation_token: str | None = Query(default=None),
 ):
-    """Run a read-only Movie projection consistency check."""
-    if not dry_run:
-        raise HTTPException(status_code=400, detail="Only dry_run=true is supported")
+    """Run or execute a controlled Movie projection rebuild."""
     if movie_id:
         if not validate_movie_id(movie_id):
             raise HTTPException(status_code=400, detail="Invalid movie ID format")
         if not library_manager.get_movie(movie_id):
             raise HTTPException(status_code=404, detail="Movie not found")
     try:
-        return movie_projection_dry_run.run(movie_id=movie_id, limit=limit, since=since, base=base)
+        result = movie_projection_dry_run.run(
+            dry_run=dry_run,
+            movie_id=movie_id,
+            limit=limit,
+            since=since,
+            base=base,
+            confirmation_token=confirmation_token,
+        )
+    except ProjectionRebuildBlocked as exc:
+        raise HTTPException(status_code=409, detail=exc.report)
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
+    if not dry_run and result.get("status") == "rebuilt":
+        library_event_bus.publish_library_changed("projection_rebuilt", movie_id=movie_id)
+    return result
 
 @app.post("/library/events/backfill/movie-discovered")
 def backfill_movie_discovered_events(

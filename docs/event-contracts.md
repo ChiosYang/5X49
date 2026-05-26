@@ -133,6 +133,7 @@ side-effect-only, or not yet projectable unless this document says otherwise.
 | `LibraryCleared` | The library table was cleared. | system/audit | Not projectable. | `deleted`. | Replay ignores it until a dedicated destructive-event strategy exists. |
 | `MissingMoviesCleaned` | Missing movie rows were deleted. | system/audit | Not projectable. | `deleted`, `movie_ids`, `truncated`. | Replay ignores it until delete/tombstone projection exists. |
 | `LibrarySeeded` | Test seed data was inserted. | system/audit | Not projectable. | `count`. | Replay ignores it. |
+| `MovieProjectionRebuilt` | A controlled projection rebuild replaced one Movie read-model row from an empty-base replay. | projection/audit | Not projectable. | `movie_id`, `confirmation_token`, `fields_replaced`, `before`, `after`, `dry_run_summary`; `aggregate_type="projection"`. | Audit only. It must not be replayed as a movie domain event. |
 
 ## Compensation Rules
 

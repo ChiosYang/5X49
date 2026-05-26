@@ -113,7 +113,7 @@ This document describes the REST API endpoints available in the backend applicat
   - `command_id` (string, optional): Filter by the command that created related events.
   - `correlation_id` (string, optional): Filter by the operation trace shared by related events.
   - `limit` (integer, optional): Number of events to return, 1-500. Defaults to 100.
-- **Response**: Array of `EventRecord` objects, newest first. Current event types include `MovieDiscovered`, `MovieFileObserved`, `MovieMetadataParsedFromNfo`, `MovieFolderScanned`, `MovieMarkedMissing`, `MovieRestored`, `MovieIgnored`, `MovieStateBackfilled`, `MetadataMatchSuggested`, `MetadataMatched`, `MovieStateRestored`, `MetadataRestored`, `MetadataScrapeFailed`, `ArtworkDownloaded`, `ArtworkSelected`, `ArtworkSelectionRestored`, `ArtworkRestored`, `MovieFileSnapshotBackfilled`, `NfoWritten`, `NfoRestored`, `RootVideoOrganizationNeedsReview`, `RootVideoMoved`, `RootVideoMoveReversed`, `RootVideoOrganized`, `RootVideoOrganizationReverted`, `AnalysisStarted`, `AnalysisCompleted`, `AnalysisFailed`, `ExternalScoresRefreshed`, `ExternalScoresRefreshFailed`, `LibraryReconciled`, `LibraryCleared`, `MissingMoviesCleaned`, and `LibrarySeeded`.
+- **Response**: Array of `EventRecord` objects, newest first. Current event types include `MovieDiscovered`, `MovieFileObserved`, `MovieMetadataParsedFromNfo`, `MovieFolderScanned`, `MovieMarkedMissing`, `MovieRestored`, `MovieIgnored`, `MovieStateBackfilled`, `MetadataMatchSuggested`, `MetadataMatched`, `MovieStateRestored`, `MetadataRestored`, `MetadataScrapeFailed`, `ArtworkDownloaded`, `ArtworkSelected`, `ArtworkSelectionRestored`, `ArtworkRestored`, `MovieFileSnapshotBackfilled`, `NfoWritten`, `NfoRestored`, `RootVideoOrganizationNeedsReview`, `RootVideoMoved`, `RootVideoMoveReversed`, `RootVideoOrganized`, `RootVideoOrganizationReverted`, `MovieProjectionRebuilt`, `AnalysisStarted`, `AnalysisCompleted`, `AnalysisFailed`, `ExternalScoresRefreshed`, `ExternalScoresRefreshFailed`, `LibraryReconciled`, `LibraryCleared`, `MissingMoviesCleaned`, and `LibrarySeeded`.
 
 ### Dry-Run Library Operation
 - **URL**: `/library/operations/dry-run`
@@ -339,27 +339,30 @@ Long-running mutation endpoints return an accepted-job envelope:
 - **Compensation Events**: Field restores append projectable `MovieStateRestored`. Poster/backdrop file restores append `ArtworkRestored`; NFO restores append `NfoRestored`. All emitted compensation events share one timeline restore `command_id` and `correlation_id`.
 - **Errors**: `400 Invalid movie ID format`, `400 Exactly one of before_event_id or at is required`, `400 Unsupported restore_files`, `404 Movie not found`, `404 before_event_id does not belong to this movie`, `409` when restore is not fully safe and `allow_partial=false`.
 
-### Dry-run Movie Projection Rebuild
+### Movie Projection Rebuild
 - **URL**: `/library/projections/movie/rebuild`
 - **Method**: `POST`
-- **Description**: Runs a read-only Movie projection consistency check. It can either start from the current `Movie` snapshot (`base=current`) or replay the supported subset of movie events from an empty in-memory state (`base=empty`). It does not clear, rebuild, or mutate the `movie` table.
+- **Description**: Runs a Movie projection consistency check and, for one explicitly confirmed movie, can rebuild the `Movie` read model from supported events. Full-library rebuild remains dry-run only.
 - **Query Parameters**:
-  - `dry_run` (boolean, optional): Must be `true`. Defaults to `true`; `false` returns `400`.
+  - `dry_run` (boolean, optional): Defaults to `true`. Set to `false` only for confirmed single-movie rebuild execution.
   - `base` (string, optional): `current` or `empty`. Defaults to `current`.
-  - `movie_id` (string, optional): Restrict the check to one movie.
+  - `movie_id` (string, optional): Restrict the check to one movie. Required when `dry_run=false`.
   - `limit` (integer, optional): Maximum movie events to process, 1-5000. Defaults to 1000.
-  - `since` (string, optional): Only include events whose `occurred_at` is greater than or equal to this timestamp.
-- **Response**:
+  - `since` (string, optional): Only include events whose `occurred_at` is greater than or equal to this timestamp. Not allowed when `dry_run=false`.
+  - `confirmation_token` (string, optional): Required when `dry_run=false`; copy it from a matching `dry_run=true&base=empty&movie_id=...` report.
+- **Dry-run Response**:
   ```json
   {
     "dry_run": true,
-    "mode": "current_snapshot_plus_events",
-    "note": "Consistency dry-run only; this is not a canonical replay from an empty state.",
-    "base": "current",
+    "mode": "empty_replay",
+    "note": "Empty-base dry-run replays only currently supported movie events; unsupported events are reported but not applied.",
+    "base": "empty",
     "movie_id": "local_xxx",
     "since": null,
     "limit": 1000,
     "events_processed": 12,
+    "event_stream_truncated": false,
+    "last_event": {"id": "evt_xxx", "type": "MetadataMatched", "occurred_at": "2026-05-26T00:00:00+00:00"},
     "projectable_events": 10,
     "skipped_projectable_events": 0,
     "skipped_events": [],
@@ -367,13 +370,33 @@ Long-running mutation endpoints return an accepted-job envelope:
     "unsupported_event_types": {"ArtworkDownloaded": 1, "NfoWritten": 1},
     "movies_compared": 1,
     "movies_with_differences": 0,
-    "differences": []
+    "differences": [],
+    "projected_state": {"id": "local_xxx", "title": "Example", "year": 2026},
+    "confirmation_token": "sha256..."
+  }
+  ```
+- **Execution Rules**:
+  - `dry_run=false` requires `movie_id`, `base=empty`, no `since`, and a matching `confirmation_token`.
+  - The service recomputes the dry-run report before writing. Token mismatch returns `409`.
+  - Rebuild is blocked with `409` if the event stream is truncated by `limit`, the movie cannot be projected from events, or any projectable event is skipped.
+  - Successful execution replaces only core projectable Movie fields, writes missing projected fields as `null`, and appends an audit-only `MovieProjectionRebuilt` event with `aggregate_type="projection"`.
+- **Execution Response**:
+  ```json
+  {
+    "status": "rebuilt",
+    "movie_id": "local_xxx",
+    "confirmation_token": "sha256...",
+    "fields_replaced": ["title", "tmdb_id"],
+    "before": {},
+    "after": {},
+    "dry_run": {},
+    "audit_event_id": "evt_xxx"
   }
   ```
 - **Projectable Events**:
   - `base=current` and `base=empty`: `MovieDiscovered`, `MovieFileObserved`, `MovieMetadataParsedFromNfo`, `MovieIgnored`, `MovieMarkedMissing`, `MovieRestored`, `MovieStateBackfilled`, `MetadataMatched`, `ArtworkSelected`, `MovieStateRestored`, `MetadataRestored`, `ArtworkSelectionRestored`, `RootVideoOrganizationReverted`, `AnalysisStarted`, `AnalysisCompleted`, `AnalysisFailed`, and `ExternalScoresRefreshed`.
-- **Notes**: `base=empty` is still a dry-run and only replays the currently supported subset. It needs a usable `MovieDiscovered` before later per-movie events can be applied. Projectable events that lack required payload, such as old `ExternalScoresRefreshed` events without `current` score fields, are counted in `skipped_projectable_events` and summarized in `skipped_events`.
-- **Errors**: `400 Only dry_run=true is supported`, `400 base must be 'current' or 'empty'`, `400 Invalid movie ID format`, `404 Movie not found`.
+- **Notes**: `base=empty` needs a usable `MovieDiscovered` before later per-movie events can be applied. Projectable events that lack required payload, such as old `ExternalScoresRefreshed` events without `current` score fields, are counted in `skipped_projectable_events` and block execution.
+- **Errors**: `400 base must be 'current' or 'empty'`, `400 movie_id is required when dry_run=false`, `400 base=empty is required when dry_run=false`, `400 since is not supported when dry_run=false`, `400 Invalid movie ID format`, `404 Movie not found`, `409` when confirmation is missing/stale or the rebuild is blocked by projection gaps.
 
 ### Backfill MovieDiscovered Events
 - **URL**: `/library/events/backfill/movie-discovered`
@@ -1129,7 +1152,7 @@ empty-base projection dry-runs.
 - `id` (String): Primary key, formatted as `evt_<uuid-hex>`.
 - `aggregate_type` (String): Event aggregate category, such as `movie`, `library`, or `file`.
 - `aggregate_id` (String, Optional): Aggregate identifier. Movie events use the current movie ID.
-- `type` (String): Semantic event type, for example `MovieDiscovered`, `MovieFileObserved`, `MovieFolderScanned`, `MovieMetadataParsedFromNfo`, `MovieMarkedMissing`, `MovieRestored`, `MovieIgnored`, `MovieStateBackfilled`, `MetadataMatchSuggested`, `MetadataMatched`, `MovieStateRestored`, `MetadataRestored`, `MetadataScrapeFailed`, `ArtworkDownloaded`, `ArtworkSelected`, `ArtworkSelectionRestored`, `ArtworkRestored`, `MovieFileSnapshotBackfilled`, `NfoWritten`, `NfoRestored`, `RootVideoOrganizationNeedsReview`, `RootVideoMoved`, `RootVideoMoveReversed`, `RootVideoOrganized`, `RootVideoOrganizationReverted`, `AnalysisStarted`, `AnalysisCompleted`, `AnalysisFailed`, `ExternalScoresRefreshed`, `ExternalScoresRefreshFailed`, `LibraryReconciled`, `LibraryCleared`, `MissingMoviesCleaned`, or `LibrarySeeded`.
+- `type` (String): Semantic event type, for example `MovieDiscovered`, `MovieFileObserved`, `MovieFolderScanned`, `MovieMetadataParsedFromNfo`, `MovieMarkedMissing`, `MovieRestored`, `MovieIgnored`, `MovieStateBackfilled`, `MetadataMatchSuggested`, `MetadataMatched`, `MovieStateRestored`, `MetadataRestored`, `MetadataScrapeFailed`, `ArtworkDownloaded`, `ArtworkSelected`, `ArtworkSelectionRestored`, `ArtworkRestored`, `MovieFileSnapshotBackfilled`, `NfoWritten`, `NfoRestored`, `RootVideoOrganizationNeedsReview`, `RootVideoMoved`, `RootVideoMoveReversed`, `RootVideoOrganized`, `RootVideoOrganizationReverted`, `MovieProjectionRebuilt`, `AnalysisStarted`, `AnalysisCompleted`, `AnalysisFailed`, `ExternalScoresRefreshed`, `ExternalScoresRefreshFailed`, `LibraryReconciled`, `LibraryCleared`, `MissingMoviesCleaned`, or `LibrarySeeded`.
 - `actor_type` / `actor_id` (String, Optional): Actor metadata. Stage 1 defaults to `system`.
 - `command_id`, `correlation_id`, `causation_id` (String, Optional): Optional command and trace identifiers reserved for later event-sourced workflows.
 - `payload` (Object): Event-specific details.
