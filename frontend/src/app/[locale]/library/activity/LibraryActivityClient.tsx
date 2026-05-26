@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useSyncExternalStore } from "react";
 import useSWR from "swr";
 import { ChevronDown, Clock, Filter, Loader2 } from "lucide-react";
 import EventSourcingHealthPanel from "@/components/EventSourcingHealthPanel";
@@ -20,7 +20,16 @@ import {
 import { API } from "@/lib/api";
 import type { EventRecord } from "@/types/movie";
 
+const subscribeToHydration = () => () => {};
+const getClientHydrationSnapshot = () => true;
+const getServerHydrationSnapshot = () => false;
+
 export default function LibraryActivityClient() {
+  const hasMounted = useSyncExternalStore(
+    subscribeToHydration,
+    getClientHydrationSnapshot,
+    getServerHydrationSnapshot,
+  );
   const [aggregateType, setAggregateType] = useState("");
   const [eventType, setEventType] = useState("");
   const [movieId, setMovieId] = useState("");
@@ -35,7 +44,7 @@ export default function LibraryActivityClient() {
     limit: 100,
   }), [aggregateType, eventType, queryMovieId]);
 
-  const { data: events = [], isLoading, error } = useSWR<EventRecord[]>(url, {
+  const { data: events = [], isLoading, error } = useSWR<EventRecord[]>(hasMounted ? url : null, {
     refreshInterval: 5000,
   });
 
@@ -80,9 +89,9 @@ export default function LibraryActivityClient() {
               className="h-11 border border-neutral-800 bg-black px-3 text-sm text-white outline-none transition-colors focus:border-neutral-500"
             >
               <option value="">All events</option>
-              {EVENT_TYPE_OPTIONS.map((type) => (
+              {hasMounted ? EVENT_TYPE_OPTIONS.map((type) => (
                 <option key={type} value={type}>{EVENT_LABELS[type] || type}</option>
-              ))}
+              )) : null}
             </select>
           </label>
           <label className="grid gap-2">
