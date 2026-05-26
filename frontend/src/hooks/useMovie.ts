@@ -1,7 +1,30 @@
 import useSWR from "swr";
 import useSWRMutation from "swr/mutation";
 import { API } from "@/lib/api";
-import type { EventRecord, JobAccepted, MovieDetail, MovieTimelineRestorePreviewReport, ScrapeResult } from "@/types/movie";
+import type {
+  EventRecord,
+  JobAccepted,
+  MovieDetail,
+  MovieTimelineRestorePreviewReport,
+  MovieTimelineRestoreReport,
+  MovieTimelineRestoreRequest,
+  ScrapeResult,
+} from "@/types/movie";
+
+function mutationErrorMessage(detail: unknown, fallback: string) {
+  if (typeof detail === "string") return detail;
+  if (detail && typeof detail === "object") {
+    const record = detail as Record<string, unknown>;
+    if (typeof record.reason === "string") return record.reason;
+    if (typeof record.message === "string") return record.message;
+    try {
+      return JSON.stringify(record);
+    } catch {
+      return fallback;
+    }
+  }
+  return fallback;
+}
 
 export function useMovie(id: string, fallbackData?: MovieDetail) {
   return useSWR<MovieDetail>(id ? API.libraryMovie(id) : null, {
@@ -20,17 +43,32 @@ export function useMovieAuditEvents(id: string, enabled = true) {
   });
 }
 
-export function useMovieTimelineRestorePreview(id?: string | null) {
+export function useMovieTimelineRestorePreview(id?: string | null, scope?: string | null) {
   return useSWRMutation(
-    id ? `movie-timeline-restore-preview:${id}` : null,
+    id ? `movie-timeline-restore-preview:${id}:${scope || "default"}` : null,
     async (_key: string, { arg }: { arg: { before_event_id?: string | null; at?: string | null } }): Promise<MovieTimelineRestorePreviewReport> => {
       const res = await fetch(API.libraryMovieTimelineRestorePreviewUrl(id || "", arg));
       if (!res.ok) {
         const errorBody = await res.json().catch(() => null) as { detail?: unknown } | null;
-        const message = typeof errorBody?.detail === "string"
-          ? errorBody.detail
-          : "Timeline restore preview failed";
-        throw new Error(message);
+        throw new Error(mutationErrorMessage(errorBody?.detail, "Timeline restore preview failed"));
+      }
+      return res.json();
+    }
+  );
+}
+
+export function useMovieTimelineRestore(id?: string | null, scope?: string | null) {
+  return useSWRMutation(
+    id ? `movie-timeline-restore:${id}:${scope || "default"}` : null,
+    async (_key: string, { arg }: { arg: MovieTimelineRestoreRequest }): Promise<MovieTimelineRestoreReport> => {
+      const res = await fetch(API.libraryMovieTimelineRestore(id || ""), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(arg),
+      });
+      if (!res.ok) {
+        const errorBody = await res.json().catch(() => null) as { detail?: unknown } | null;
+        throw new Error(mutationErrorMessage(errorBody?.detail, "Timeline restore failed"));
       }
       return res.json();
     }

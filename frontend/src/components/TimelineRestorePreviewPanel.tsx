@@ -1,9 +1,17 @@
 "use client";
 
 import { useState } from "react";
+import { useSWRConfig } from "swr";
 import { AlertCircle, CheckCircle2, ChevronDown, Loader2, RotateCcw } from "lucide-react";
-import { useMovieTimelineRestorePreview } from "@/hooks/useMovie";
-import type { EventRecord, MovieTimelineFileRestoreItem, MovieTimelineRestorePreviewReport } from "@/types/movie";
+import { useMovieTimelineRestore, useMovieTimelineRestorePreview } from "@/hooks/useMovie";
+import { API } from "@/lib/api";
+import type {
+  EventRecord,
+  MovieTimelineFileRestoreItem,
+  MovieTimelineRestoreFileType,
+  MovieTimelineRestorePreviewReport,
+  MovieTimelineRestoreReport,
+} from "@/types/movie";
 
 interface TimelineRestorePreviewPanelProps {
   event: EventRecord;
@@ -20,7 +28,7 @@ const STATUS_COPY: Record<string, string> = {
 };
 
 function statusClass(status: string) {
-  if (status === "safe") return "border-emerald-900/80 text-emerald-300";
+  if (status === "safe" || status === "restored") return "border-emerald-900/80 text-emerald-300";
   if (status === "partial") return "border-amber-900/80 text-amber-300";
   if (status === "unsafe") return "border-red-900/80 text-red-300";
   return "border-neutral-800 text-neutral-400";
@@ -57,18 +65,47 @@ function isBackfillEvent(event: EventRecord) {
   return event.type === "MovieStateBackfilled" || event.type === "MovieFileSnapshotBackfilled";
 }
 
+function isExecutableFileType(fileType?: string | null): fileType is MovieTimelineRestoreFileType {
+  return fileType === "poster" || fileType === "backdrop" || fileType === "nfo";
+}
+
+function executableFileTypes(report: MovieTimelineRestorePreviewReport): MovieTimelineRestoreFileType[] {
+  return Array.from(new Set(
+    report.restorable_files
+      .map((file) => file.file_type)
+      .filter(isExecutableFileType)
+  ));
+}
+
 export default function TimelineRestorePreviewPanel({ event, movieId }: TimelineRestorePreviewPanelProps) {
   const [detailsOpen, setDetailsOpen] = useState(false);
-  const { trigger, data: report, isMutating, error } = useMovieTimelineRestorePreview(movieId);
+  const [selectedFields, setSelectedFields] = useState<string[]>([]);
+  const [selectedFiles, setSelectedFiles] = useState<MovieTimelineRestoreFileType[]>([]);
+  const [allowPartial, setAllowPartial] = useState(false);
+  const { mutate } = useSWRConfig();
+  const { trigger, data: report, isMutating, error } = useMovieTimelineRestorePreview(movieId, event.id);
+  const {
+    trigger: triggerRestore,
+    data: restoreReport,
+    isMutating: isRestoring,
+    error: restoreError,
+  } = useMovieTimelineRestore(movieId, event.id);
   const canPreview = canPreviewEvent(event, movieId);
 
   if (!canPreview) return null;
 
   const runPreview = async () => {
-    await trigger({ before_event_id: event.id }).catch(() => undefined);
+    const nextReport = await trigger({ before_event_id: event.id }).catch(() => undefined);
+    if (nextReport) {
+      setSelectedFields(nextReport.field_restore.map((diff) => diff.field));
+      setSelectedFiles(executableFileTypes(nextReport));
+      setAllowPartial(false);
+      setDetailsOpen(true);
+    }
   };
 
   const errorMessage = error instanceof Error ? error.message : null;
+  const restoreErrorMessage = restoreError instanceof Error ? restoreError.message : null;
 
   return (
     <div className="mt-3 border border-neutral-900 bg-black/40 p-3">
@@ -76,7 +113,7 @@ export default function TimelineRestorePreviewPanel({ event, movieId }: Timeline
         <div className="min-w-0">
           <p className="text-xs font-bold uppercase tracking-widest text-neutral-500">Historical preview</p>
           <p className="mt-1 break-words text-sm text-neutral-500">
-            Dry-run only. No fields, files, or events will be changed.
+            Start with a dry-run. Execution requires selected actions and confirmation.
           </p>
         </div>
         <button
@@ -86,7 +123,7 @@ export default function TimelineRestorePreviewPanel({ event, movieId }: Timeline
           className="inline-flex h-9 items-center gap-2 border border-neutral-800 px-3 text-xs font-bold uppercase tracking-widest text-neutral-300 transition-colors hover:border-neutral-500 hover:text-white disabled:cursor-wait disabled:opacity-60"
         >
           {isMutating ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RotateCcw className="h-3.5 w-3.5" />}
-          Restore to this point
+          Preview point
         </button>
       </div>
 
@@ -146,8 +183,217 @@ export default function TimelineRestorePreviewPanel({ event, movieId }: Timeline
           </button>
 
           {detailsOpen ? <PreviewDetails report={report} /> : null}
+
+          <TimelineRestoreExecutionPanel
+            event={event}
+            report={report}
+            selectedFields={selectedFields}
+            selectedFiles={selectedFiles}
+            allowPartial={allowPartial}
+            restoreReport={restoreReport}
+            restoreErrorMessage={restoreErrorMessage}
+            isRestoring={isRestoring}
+            onToggleField={(field) => {
+              setSelectedFields((current) => current.includes(field)
+                ? current.filter((item) => item !== field)
+                : [...current, field]);
+            }}
+            onToggleFile={(fileType) => {
+              setSelectedFiles((current) => current.includes(fileType)
+                ? current.filter((item) => item !== fileType)
+                : [...current, fileType]);
+            }}
+            onAllowPartialChange={setAllowPartial}
+            onRestore={async () => {
+              const confirmed = window.confirm(
+                "Restore this movie to the selected historical point? This appends compensation events and may copy selected backup files."
+              );
+              if (!confirmed) return;
+              const result = await triggerRestore({
+                before_event_id: event.id,
+                restore_fields: selectedFields,
+                restore_files: selectedFiles,
+                allow_partial: allowPartial,
+              }).catch(() => undefined);
+              if (result && movieId) {
+                await mutate(API.libraryMovie(movieId));
+                await mutate(API.libraryMovieAuditEvents(movieId));
+              }
+            }}
+          />
         </div>
       ) : null}
+    </div>
+  );
+}
+
+function TimelineRestoreExecutionPanel({
+  report,
+  selectedFields,
+  selectedFiles,
+  allowPartial,
+  restoreReport,
+  restoreErrorMessage,
+  isRestoring,
+  onToggleField,
+  onToggleFile,
+  onAllowPartialChange,
+  onRestore,
+}: {
+  event: EventRecord;
+  report: MovieTimelineRestorePreviewReport;
+  selectedFields: string[];
+  selectedFiles: MovieTimelineRestoreFileType[];
+  allowPartial: boolean;
+  restoreReport?: MovieTimelineRestoreReport;
+  restoreErrorMessage?: string | null;
+  isRestoring: boolean;
+  onToggleField: (field: string) => void;
+  onToggleFile: (fileType: MovieTimelineRestoreFileType) => void;
+  onAllowPartialChange: (value: boolean) => void;
+  onRestore: () => Promise<void>;
+}) {
+  const executableFiles = executableFileTypes(report);
+  const hasActions = selectedFields.length > 0 || selectedFiles.length > 0;
+  const canExecute = report.target_state !== null && hasActions;
+
+  return (
+    <section className="space-y-4 border-t border-neutral-900 pt-4">
+      <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start">
+        <div className="min-w-0">
+          <p className="text-xs font-bold uppercase tracking-widest text-neutral-500">Execute historical restore</p>
+          <p className="mt-1 break-words text-sm text-neutral-500">
+            Writes compensation events for fields and copies selected poster, backdrop, or NFO backups.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={onRestore}
+          disabled={!canExecute || isRestoring}
+          className="inline-flex h-9 items-center gap-2 border border-amber-800/80 bg-amber-950/20 px-3 text-xs font-bold uppercase tracking-widest text-amber-200 transition-colors hover:border-amber-500 hover:text-amber-100 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {isRestoring ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RotateCcw className="h-3.5 w-3.5" />}
+          Execute restore
+        </button>
+      </div>
+
+      {report.target_state === null ? (
+        <p className="break-words text-sm text-amber-300">Cannot execute because the target state could not be rebuilt.</p>
+      ) : null}
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        <ChecklistGroup
+          title="Fields"
+          emptyLabel="No restorable field changes."
+          items={report.field_restore.map((diff) => ({
+            id: diff.field,
+            label: diff.field,
+            detail: `${formatValue(diff.current)} -> ${formatValue(diff.target)}`,
+          }))}
+          selected={selectedFields}
+          onToggle={onToggleField}
+        />
+
+        <ChecklistGroup
+          title="Files"
+          emptyLabel="No executable file restores. Root video remains preview-only."
+          items={executableFiles.map((fileType) => {
+            const item = report.restorable_files.find((file) => file.file_type === fileType);
+            return {
+              id: fileType,
+              label: fileType,
+              detail: item?.path || item?.backup_path || "Backup is available",
+            };
+          })}
+          selected={selectedFiles}
+          onToggle={onToggleFile}
+        />
+      </div>
+
+      <label className="flex items-start gap-2 text-sm text-neutral-400">
+        <input
+          type="checkbox"
+          checked={allowPartial}
+          onChange={(event) => onAllowPartialChange(event.target.checked)}
+          className="mt-1 h-4 w-4 accent-amber-400"
+        />
+        <span className="min-w-0 break-words">Allow partial restore if selected actions conflict during preflight.</span>
+      </label>
+
+      {restoreErrorMessage ? (
+        <p className="break-words text-sm text-red-300">{restoreErrorMessage}</p>
+      ) : null}
+
+      {restoreReport ? <RestoreResult report={restoreReport} /> : null}
+    </section>
+  );
+}
+
+function ChecklistGroup<T extends string>({
+  title,
+  emptyLabel,
+  items,
+  selected,
+  onToggle,
+}: {
+  title: string;
+  emptyLabel: string;
+  items: Array<{ id: T; label: string; detail?: string }>;
+  selected: T[];
+  onToggle: (id: T) => void;
+}) {
+  return (
+    <div className="space-y-2">
+      <p className="text-xs font-bold uppercase tracking-widest text-neutral-500">{title}</p>
+      {items.length ? (
+        <div className="space-y-2">
+          {items.map((item) => (
+            <label key={item.id} className="flex items-start gap-2 border border-neutral-900 bg-neutral-950/70 p-3 text-sm text-neutral-400">
+              <input
+                type="checkbox"
+                checked={selected.includes(item.id)}
+                onChange={() => onToggle(item.id)}
+                className="mt-1 h-4 w-4 shrink-0 accent-amber-400"
+              />
+              <span className="min-w-0">
+                <span className="block break-all text-xs font-bold uppercase tracking-widest text-neutral-300">{item.label}</span>
+                {item.detail ? <span className="mt-1 block break-words text-neutral-600">{item.detail}</span> : null}
+              </span>
+            </label>
+          ))}
+        </div>
+      ) : (
+        <p className="text-sm text-neutral-600">{emptyLabel}</p>
+      )}
+    </div>
+  );
+}
+
+function RestoreResult({ report }: { report: MovieTimelineRestoreReport }) {
+  return (
+    <div className="space-y-3 border border-neutral-900 bg-neutral-950/70 p-3">
+      <div className="flex flex-wrap items-center gap-2">
+        <span className={`inline-flex h-7 items-center border px-2 text-xs font-bold uppercase tracking-widest ${statusClass(report.status)}`}>
+          {report.status}
+        </span>
+        <span className="text-xs uppercase tracking-widest text-neutral-600">
+          Restored {report.restored.length}
+        </span>
+        <span className="text-xs uppercase tracking-widest text-neutral-600">
+          Skipped {report.skipped.length}
+        </span>
+        <span className="text-xs uppercase tracking-widest text-neutral-600">
+          Conflicts {report.conflicts.length}
+        </span>
+      </div>
+      {report.restore_correlation_id ? (
+        <p className="break-all text-xs uppercase tracking-widest text-neutral-600">
+          Correlation {report.restore_correlation_id}
+        </p>
+      ) : null}
+      <IssueList title="Restored actions" items={report.restored} hidden={0} />
+      <IssueList title="Skipped actions" items={report.skipped} hidden={0} />
+      <IssueList title="Conflicts" items={report.conflicts} hidden={0} />
     </div>
   );
 }

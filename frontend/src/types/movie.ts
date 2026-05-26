@@ -300,6 +300,33 @@ export interface MovieTimelineRestorePreviewReport extends MovieTimelineStateRep
   missing_file_backups: MovieTimelineFileRestoreItem[];
 }
 
+export type MovieTimelineRestoreFileType = "poster" | "backdrop" | "nfo";
+
+export interface MovieTimelineRestoreRequest {
+  before_event_id?: string | null;
+  at?: string | null;
+  restore_fields?: string[] | null;
+  restore_files?: MovieTimelineRestoreFileType[] | null;
+  allow_partial?: boolean;
+}
+
+export interface MovieTimelineRestoreReport {
+  status: "restored" | "partial" | "skipped" | string;
+  movie_id: string;
+  restore_command_id?: string | null;
+  restore_correlation_id?: string | null;
+  target: MovieTimelineTarget;
+  actions_requested: {
+    restore_fields: string[];
+    restore_files: MovieTimelineRestoreFileType[];
+    allow_partial: boolean;
+  };
+  restored: Array<Record<string, unknown>>;
+  skipped: Array<Record<string, unknown>>;
+  conflicts: Array<Record<string, unknown>>;
+  dry_run: MovieTimelineRestorePreviewReport;
+}
+
 export interface MovieProjectionRebuildReport {
   dry_run: boolean;
   mode: string;
@@ -317,6 +344,21 @@ export interface MovieProjectionRebuildReport {
   movies_compared: number;
   movies_with_differences: number;
   differences: Array<Record<string, unknown>>;
+  confirmation_token?: string | null;
+  event_stream_truncated?: boolean;
+  last_event?: Partial<EventRecord> | null;
+  projected_state?: Record<string, unknown> | null;
+}
+
+export interface MovieProjectionRebuildExecutionReport {
+  status: "rebuilt" | "skipped" | "blocked" | string;
+  movie_id: string;
+  confirmation_token: string;
+  fields_replaced: string[];
+  before: Record<string, unknown>;
+  after: Record<string, unknown>;
+  dry_run: MovieProjectionRebuildReport;
+  audit_event_id?: string | null;
 }
 
 export interface MovieReplayBackfillReport {

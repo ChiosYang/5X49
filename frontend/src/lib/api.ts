@@ -56,6 +56,7 @@ export const API = {
         const query = searchParams.toString();
         return `${API_BASE_URL}/library/${encodeURIComponent(id)}/timeline/restore-preview${query ? `?${query}` : ''}`;
     },
+    libraryMovieTimelineRestore: (id: string) => `${API_BASE_URL}/library/${encodeURIComponent(id)}/timeline/restore`,
     libraryAuditEvents: () => `${API_BASE_URL}/library/audit-events`,
     libraryOperationDryRunUrl: (params: {
         command_id?: string | null;
@@ -76,6 +77,7 @@ export const API = {
         limit?: number;
         since?: string | null;
         base?: "current" | "empty" | string;
+        confirmation_token?: string | null;
     } = {}) => {
         const searchParams = new URLSearchParams();
         searchParams.set('dry_run', String(params.dry_run ?? true));
@@ -83,6 +85,7 @@ export const API = {
         if (params.limit) searchParams.set('limit', String(params.limit));
         if (params.since) searchParams.set('since', params.since);
         if (params.base) searchParams.set('base', params.base);
+        if (params.confirmation_token) searchParams.set('confirmation_token', params.confirmation_token);
         return `${API_BASE_URL}/library/projections/movie/rebuild?${searchParams.toString()}`;
     },
     libraryMovieReplayBackfillUrl: (params: {

@@ -3,7 +3,11 @@
 import { useState } from "react";
 import { AlertCircle, CheckCircle2, ChevronDown, Database, Loader2, RefreshCw } from "lucide-react";
 import { API } from "@/lib/api";
-import type { MovieProjectionRebuildReport, MovieReplayBackfillReport } from "@/types/movie";
+import type {
+  MovieProjectionRebuildExecutionReport,
+  MovieProjectionRebuildReport,
+  MovieReplayBackfillReport,
+} from "@/types/movie";
 
 const MAX_ITEMS = 6;
 
@@ -30,20 +34,41 @@ function entriesLabel(entries: Record<string, number>) {
   return items.map(([type, count]) => `${type} ${count}`).join(", ");
 }
 
+function errorMessageFromDetail(detail: unknown, fallback: string) {
+  if (typeof detail === "string") return detail;
+  if (detail && typeof detail === "object") {
+    const record = detail as Record<string, unknown>;
+    if (typeof record.reason === "string") return record.reason;
+    if (typeof record.message === "string") return record.message;
+    try {
+      return JSON.stringify(record);
+    } catch {
+      return fallback;
+    }
+  }
+  return fallback;
+}
+
 async function postJson<T>(url: string): Promise<T> {
   const response = await fetch(url, { method: "POST" });
   if (!response.ok) {
     const errorBody = await response.json().catch(() => null) as { detail?: unknown } | null;
-    throw new Error(typeof errorBody?.detail === "string" ? errorBody.detail : "Event sourcing health check failed");
+    throw new Error(errorMessageFromDetail(errorBody?.detail, "Event sourcing health check failed"));
   }
   return response.json();
 }
 
 export default function EventSourcingHealthPanel() {
   const [report, setReport] = useState<HealthReport | null>(null);
+  const [movieId, setMovieId] = useState("");
+  const [movieProjection, setMovieProjection] = useState<MovieProjectionRebuildReport | null>(null);
+  const [movieRebuildResult, setMovieRebuildResult] = useState<MovieProjectionRebuildExecutionReport | null>(null);
   const [expanded, setExpanded] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isMovieLoading, setIsMovieLoading] = useState(false);
+  const [isMovieRebuilding, setIsMovieRebuilding] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [movieError, setMovieError] = useState<string | null>(null);
 
   const runCheck = async () => {
     setIsLoading(true);
@@ -62,6 +87,55 @@ export default function EventSourcingHealthPanel() {
     }
   };
 
+  const trimmedMovieId = movieId.trim();
+
+  const runMovieProjectionDryRun = async () => {
+    if (!trimmedMovieId) return;
+    setIsMovieLoading(true);
+    setMovieError(null);
+    setMovieRebuildResult(null);
+    try {
+      const projection = await postJson<MovieProjectionRebuildReport>(API.libraryMovieProjectionRebuildUrl({
+        dry_run: true,
+        base: "empty",
+        movie_id: trimmedMovieId,
+        limit: 5000,
+      }));
+      setMovieProjection(projection);
+    } catch (caught) {
+      setMovieProjection(null);
+      setMovieError(caught instanceof Error ? caught.message : "Movie projection dry-run failed");
+    } finally {
+      setIsMovieLoading(false);
+    }
+  };
+
+  const executeMovieProjectionRebuild = async () => {
+    if (!trimmedMovieId || !movieProjection?.confirmation_token) return;
+    const confirmed = window.confirm(
+      `Rebuild the Movie read model for ${trimmedMovieId}? This updates core Movie fields and appends a MovieProjectionRebuilt audit event.`
+    );
+    if (!confirmed) return;
+
+    setIsMovieRebuilding(true);
+    setMovieError(null);
+    try {
+      const result = await postJson<MovieProjectionRebuildExecutionReport>(API.libraryMovieProjectionRebuildUrl({
+        dry_run: false,
+        base: "empty",
+        movie_id: trimmedMovieId,
+        limit: movieProjection.limit,
+        confirmation_token: movieProjection.confirmation_token,
+      }));
+      setMovieRebuildResult(result);
+      setMovieProjection(result.dry_run);
+    } catch (caught) {
+      setMovieError(caught instanceof Error ? caught.message : "Movie projection rebuild failed");
+    } finally {
+      setIsMovieRebuilding(false);
+    }
+  };
+
   const hasIssues = report
     ? report.projection.skipped_projectable_events > 0
       || report.projection.unsupported_events > 0
@@ -70,6 +144,13 @@ export default function EventSourcingHealthPanel() {
       || report.backfill.unsupported.length > 0
       || report.backfill.unavailable_file_snapshots.length > 0
     : false;
+
+  const canExecuteMovieRebuild = Boolean(
+    movieProjection?.confirmation_token
+    && movieProjection.projected_state
+    && !movieProjection.event_stream_truncated
+    && movieProjection.skipped_projectable_events === 0
+  );
 
   return (
     <section className="border-y border-neutral-900 py-5">
@@ -125,6 +206,55 @@ export default function EventSourcingHealthPanel() {
         </div>
       </div>
 
+      <div className="mt-5 border-t border-neutral-900 pt-5">
+        <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
+          <div className="min-w-0">
+            <p className="text-xs font-bold uppercase tracking-widest text-neutral-500">Single movie projection rebuild</p>
+            <p className="mt-1 break-words text-sm leading-relaxed text-neutral-400">
+              Controlled execution requires a movie dry-run token and explicit confirmation.
+            </p>
+            <input
+              value={movieId}
+              onChange={(event) => setMovieId(event.target.value)}
+              placeholder="movie_id"
+              className="mt-3 h-10 w-full border border-neutral-800 bg-black px-3 text-sm text-neutral-200 outline-none transition-colors placeholder:text-neutral-700 focus:border-neutral-500"
+            />
+          </div>
+          <div className="flex flex-wrap items-center gap-3">
+            <button
+              type="button"
+              onClick={runMovieProjectionDryRun}
+              disabled={!trimmedMovieId || isMovieLoading}
+              className="inline-flex h-9 items-center gap-2 border border-neutral-800 px-3 text-xs font-bold uppercase tracking-widest text-neutral-300 transition-colors hover:border-neutral-500 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {isMovieLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
+              Dry-run movie
+            </button>
+            <button
+              type="button"
+              onClick={executeMovieProjectionRebuild}
+              disabled={!canExecuteMovieRebuild || isMovieRebuilding}
+              className="inline-flex h-9 items-center gap-2 border border-amber-800/80 bg-amber-950/20 px-3 text-xs font-bold uppercase tracking-widest text-amber-200 transition-colors hover:border-amber-500 hover:text-amber-100 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {isMovieRebuilding ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Database className="h-3.5 w-3.5" />}
+              Rebuild movie
+            </button>
+          </div>
+        </div>
+
+        {movieError ? (
+          <p className="mt-3 break-words text-sm text-red-300">{movieError}</p>
+        ) : null}
+
+        {movieProjection ? (
+          <MovieProjectionRebuildPreview
+            report={movieProjection}
+            result={movieRebuildResult}
+            canExecute={canExecuteMovieRebuild}
+          />
+        ) : null}
+      </div>
+
       {report && expanded ? (
         <div className="mt-5 space-y-5 border-t border-neutral-900 pt-5">
           <div className="flex items-start gap-2 text-sm text-neutral-400">
@@ -163,6 +293,63 @@ export default function EventSourcingHealthPanel() {
         </div>
       ) : null}
     </section>
+  );
+}
+
+function MovieProjectionRebuildPreview({
+  report,
+  result,
+  canExecute,
+}: {
+  report: MovieProjectionRebuildReport;
+  result: MovieProjectionRebuildExecutionReport | null;
+  canExecute: boolean;
+}) {
+  return (
+    <div className="mt-4 space-y-4 border border-neutral-900 bg-black/30 p-4">
+      <div className="flex flex-wrap gap-2 text-xs font-bold uppercase tracking-widest">
+        <Metric label="Differences" value={report.movies_with_differences} tone={report.movies_with_differences ? "warn" : "ok"} />
+        <Metric label="Skipped" value={report.skipped_projectable_events} tone={report.skipped_projectable_events ? "warn" : "ok"} />
+        <Metric label="Truncated" value={report.event_stream_truncated ? 1 : 0} tone={report.event_stream_truncated ? "warn" : "ok"} />
+        <Metric label="Token" value={report.confirmation_token ? 1 : 0} tone={report.confirmation_token ? "ok" : "warn"} />
+      </div>
+
+      {!canExecute ? (
+        <div className="flex items-start gap-2 text-sm text-amber-300">
+          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+          <p className="break-words">
+            Rebuild is blocked until the dry-run has a token, a projected state, no truncation, and no skipped projectable events.
+          </p>
+        </div>
+      ) : null}
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        <section className="space-y-3">
+          <p className="text-xs font-bold uppercase tracking-widest text-neutral-500">Movie dry-run</p>
+          <DetailRow label="Movie ID" value={report.movie_id || "missing"} />
+          <DetailRow label="Events processed" value={report.events_processed} />
+          <DetailRow label="Last event" value={report.last_event || null} />
+          <DetailRow label="Projected state" value={report.projected_state || null} />
+          <PreviewList title="Differences" items={report.differences} />
+          <PreviewList title="Skipped events" items={report.skipped_events} />
+        </section>
+
+        <section className="space-y-3">
+          <p className="text-xs font-bold uppercase tracking-widest text-neutral-500">Execution result</p>
+          {result ? (
+            <>
+              <DetailRow label="Status" value={result.status} />
+              <DetailRow label="Audit event" value={result.audit_event_id || null} />
+              <DetailRow label="Fields replaced" value={result.fields_replaced} />
+              <DetailRow label="Before" value={result.before} />
+              <DetailRow label="After" value={result.after} />
+            </>
+          ) : (
+            <p className="text-sm text-neutral-600">No rebuild has been executed from this dry-run.</p>
+          )}
+        </section>
+      </div>
+    </div>
   );
 }
 
