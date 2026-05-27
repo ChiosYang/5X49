@@ -1,5 +1,16 @@
 import { getTranslations } from "next-intl/server";
-import { ArrowDown, ArrowUp, ArrowUpDown, CalendarPlus, CheckCircle2, Clock3, Circle, Star, Type } from "lucide-react";
+import {
+  ArrowDown,
+  ArrowUp,
+  ArrowUpDown,
+  CalendarPlus,
+  CheckCircle2,
+  Clock3,
+  Circle,
+  ListFilter,
+  Star,
+  Type,
+} from "lucide-react";
 import { Link } from "@/i18n/routing";
 import { getLibrary, getLibraryUserStates, getRootVideos } from "@/lib/server-api";
 import type { LibraryMovie } from "@/types/movie";
@@ -158,27 +169,45 @@ export default async function LibraryPage({ params, searchParams }: LibraryPageP
             <span className="text-neutral-500 text-xs font-bold uppercase tracking-widest hidden md:inline-block">
               {filteredMovies.length} FILMS
             </span>
-            <div className="flex flex-wrap items-center gap-2">
-              {FILTER_OPTIONS.map((option) => {
-                const Icon = option.icon;
-                const isActive = filter === option.key;
-                return (
-                  <Link
-                    key={option.key}
-                    href={libraryHref(sort, direction, option.key)}
-                    aria-label={t(option.labelKey)}
-                    title={t(option.labelKey)}
-                    className={`inline-flex h-10 items-center gap-2 rounded-md border px-3 text-sm font-bold uppercase transition-colors ${
-                      isActive
-                        ? "border-white bg-white text-black"
-                        : "border-neutral-800 bg-neutral-950/70 text-neutral-400 hover:bg-white hover:text-black"
-                    }`}
-                  >
-                    <Icon className={`h-4 w-4 ${option.key === "favorite" && isActive ? "fill-current" : ""}`} />
-                    <span className="hidden xl:inline">{t(option.labelKey)}</span>
-                  </Link>
-                );
-              })}
+            <div className="group/filter relative">
+              <button
+                type="button"
+                aria-label={t("filter")}
+                title={t("filter")}
+                className={`inline-flex h-10 w-10 items-center justify-center rounded-md border transition-colors focus:bg-white focus:text-black focus:outline-none ${
+                  filter === "all"
+                    ? "border-neutral-800 bg-neutral-950/70 text-neutral-400 hover:bg-white hover:text-black"
+                    : "border-white bg-white text-black"
+                }`}
+              >
+                <ListFilter className="h-4 w-4" />
+              </button>
+              <div className="pointer-events-none absolute right-0 top-full z-40 w-48 pt-3 opacity-0 transition-opacity duration-150 group-hover/filter:pointer-events-auto group-hover/filter:opacity-100 group-focus-within/filter:pointer-events-auto group-focus-within/filter:opacity-100">
+                <div className="rounded-md border border-white/10 bg-neutral-950 p-1 shadow-2xl shadow-black/40">
+                  {FILTER_OPTIONS.map((option) => {
+                    const Icon = option.icon;
+                    const isActive = filter === option.key;
+                    return (
+                      <Link
+                        key={option.key}
+                        href={libraryHref(sort, direction, option.key)}
+                        aria-label={t(option.labelKey)}
+                        className={`flex h-10 items-center justify-between rounded px-3 text-sm transition-colors ${
+                          isActive
+                            ? "bg-white text-black"
+                            : "text-neutral-400 hover:bg-neutral-900 hover:text-white"
+                        }`}
+                      >
+                        <span className="flex min-w-0 items-center gap-2">
+                          <Icon className={`h-4 w-4 shrink-0 ${option.key === "favorite" && isActive ? "fill-current" : ""}`} />
+                          <span className="truncate">{t(option.labelKey)}</span>
+                        </span>
+                        {isActive && <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />}
+                      </Link>
+                    );
+                  })}
+                </div>
+              </div>
             </div>
             <div className="group/sort relative">
               <button
