@@ -2,13 +2,16 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Award, Clapperboard, EyeOff, History, Loader2, RefreshCw, Search } from "lucide-react";
+import { Award, Check, Clapperboard, EyeOff, Heart, History, Loader2, RefreshCw, Search } from "lucide-react";
+import { mutate } from "swr";
 import {
   useConfirmScrapeMovie,
   useIgnoreMovie,
+  useMovieUserState,
   useRefreshMovie,
   useRefreshMovieExternalScores,
   useScrapeMovie,
+  useUpdateMovieUserState,
 } from "@/hooks/useMovie";
 import { useJobs } from "@/hooks/useJobs";
 import { API } from "@/lib/api";
@@ -45,9 +48,19 @@ const externalScoreResultMessage = (result?: Record<string, unknown> | null) => 
   return "No external score match found";
 };
 
+function todayDateValue() {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
 export default function MovieRefreshButton({ movieId }: { movieId: string }) {
   const router = useRouter();
   const { data: jobs = [] } = useJobs();
+  const { data: userState } = useMovieUserState(movieId);
+  const { trigger: updateUserState, isMutating: isUpdatingUserState } = useUpdateMovieUserState(movieId);
   const { trigger, isMutating, error } = useRefreshMovie(movieId);
   const {
     trigger: refreshExternalScores,
@@ -77,6 +90,7 @@ export default function MovieRefreshButton({ movieId }: { movieId: string }) {
   const [isSearching, setIsSearching] = useState(false);
   const [externalScoreJobId, setExternalScoreJobId] = useState<string | null>(null);
   const [activityOpen, setActivityOpen] = useState(false);
+  const [userStateAction, setUserStateAction] = useState<"watched" | "favorite" | null>(null);
   const completedExternalScoreJob = useRef<string | null>(null);
   const queuedMessageTimer = useRef<number | null>(null);
 
@@ -230,6 +244,43 @@ export default function MovieRefreshButton({ movieId }: { movieId: string }) {
   const visibleCandidates = showAllCandidates
     ? candidates
     : candidates.slice(0, DEFAULT_VISIBLE_CANDIDATES);
+  const watched = Boolean(userState?.watched);
+  const favorite = Boolean(userState?.favorite);
+
+  const handleToggleWatched = async () => {
+    setUserStateAction("watched");
+    try {
+      const saved = await updateUserState({
+        watched: !watched,
+        watched_at: !watched ? userState?.watched_at || todayDateValue() : null,
+      });
+      setMessage("Watch state saved");
+      await Promise.all([
+        mutate(API.libraryMovieUserState(movieId), saved, false),
+        mutate(API.libraryUserStates()),
+        mutate(API.watchHistory()),
+      ]);
+      router.refresh();
+    } finally {
+      setUserStateAction(null);
+    }
+  };
+
+  const handleToggleFavorite = async () => {
+    setUserStateAction("favorite");
+    try {
+      const saved = await updateUserState({ favorite: !favorite });
+      setMessage("Watch state saved");
+      await Promise.all([
+        mutate(API.libraryMovieUserState(movieId), saved, false),
+        mutate(API.libraryUserStates()),
+        mutate(API.watchHistory()),
+      ]);
+      router.refresh();
+    } finally {
+      setUserStateAction(null);
+    }
+  };
 
   return (
     <div className="p-8 md:px-16 flex items-center justify-between gap-4">
@@ -249,6 +300,38 @@ export default function MovieRefreshButton({ movieId }: { movieId: string }) {
         )}
       </div>
       <div className="flex shrink-0 items-center gap-2">
+        <button
+          type="button"
+          onClick={handleToggleWatched}
+          disabled={isUpdatingUserState}
+          className={`flex h-11 w-11 items-center justify-center border transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
+            watched
+              ? "border-white bg-white text-black"
+              : "border-neutral-800 bg-neutral-950 text-white hover:border-neutral-500 hover:bg-neutral-900"
+          }`}
+          aria-label={watched ? "Mark unwatched" : "Mark watched"}
+          title={watched ? "Mark unwatched" : "Mark watched"}
+        >
+          {userStateAction === "watched" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+        </button>
+        <button
+          type="button"
+          onClick={handleToggleFavorite}
+          disabled={isUpdatingUserState}
+          className={`flex h-11 w-11 items-center justify-center border transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
+            favorite
+              ? "border-white bg-white text-black"
+              : "border-neutral-800 bg-neutral-950 text-white hover:border-neutral-500 hover:bg-neutral-900"
+          }`}
+          aria-label={favorite ? "Remove favorite" : "Favorite"}
+          title={favorite ? "Remove favorite" : "Favorite"}
+        >
+          {userStateAction === "favorite" ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <Heart className={`h-4 w-4 ${favorite ? "fill-current" : ""}`} />
+          )}
+        </button>
         <button
           type="button"
           onClick={() => {

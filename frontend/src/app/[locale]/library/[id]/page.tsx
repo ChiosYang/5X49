@@ -1,5 +1,4 @@
 import { getTranslations } from "next-intl/server";
-import { Play } from "lucide-react";
 import { Link } from "@/i18n/routing";
 import { API } from "@/lib/api";
 import { getLibraryMovie } from "@/lib/server-api";
@@ -9,7 +8,6 @@ import MovieBackdrop from "./MovieBackdrop";
 import MovieHeroTitle from "./MovieHeroTitle";
 import MoviePoster from "./MoviePoster";
 import MovieRefreshButton from "./MovieRefreshButton";
-import MovieUserStatePanel from "./MovieUserStatePanel";
 
 interface MovieDetailPageProps {
   params: Promise<{
@@ -98,7 +96,7 @@ export default async function MovieDetailPage({ params }: MovieDetailPageProps) 
       </div>
 
       {/* Info Grid */}
-      <div className="border-t border-neutral-800 grid grid-cols-1 md:grid-cols-4 divide-y md:divide-y-0 md:divide-x divide-neutral-800 bg-black text-neutral-300">
+      <div className="border-t border-neutral-800 grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x divide-neutral-800 bg-black text-neutral-300">
          <div className="p-8 md:px-16 space-y-2">
              <span className="block text-xs font-bold uppercase tracking-widest text-neutral-500">{t("directedBy")}</span>
              <span className="block text-xl md:text-2xl font-bold text-white uppercase">{movie.director || "Unknown Director"}</span>
@@ -107,24 +105,13 @@ export default async function MovieDetailPage({ params }: MovieDetailPageProps) 
              <span className="block text-xs font-bold uppercase tracking-widest text-neutral-500">{t("released")}</span>
              <span className="block text-xl md:text-2xl font-bold text-white font-serif italic">{movie.year}</span>
          </div>
-         <div className="p-8 md:px-16 flex items-center justify-between group cursor-pointer hover:bg-white hover:text-black transition-colors">
-             <span className="text-xl md:text-2xl font-bold uppercase">{t("watchNow")}</span>
-             <Play className="w-6 h-6 fill-current" />
-         </div>
          <MovieRefreshButton movieId={id} />
       </div>
 
       {/* Synopsis & Meta */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-12 p-8 md:p-16 border-b border-neutral-800">
          <div className="space-y-6">
-             <div className="flex flex-col gap-4">
-                 {['Facebook', 'Twitter', 'Instagram'].map(social => (
-                     <a key={social} href="#" className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest hover:opacity-50">
-                         {social} <span className="text-[10px]">↗</span>
-                     </a>
-                 ))}
-             </div>
-             <div className="pt-12 space-y-3">
+             <div className="space-y-3">
                  <span className="block text-xs font-bold uppercase tracking-widest text-neutral-500">{t("microGenre")}</span>
                  <span className="block text-lg font-serif italic text-white">{movie.micro_genre || t("pending")}</span>
                  {movie.micro_genre_definition && (
@@ -168,8 +155,6 @@ export default async function MovieDetailPage({ params }: MovieDetailPageProps) 
           </div>
         </div>
       )}
-
-      <MovieUserStatePanel movieId={id} />
 
       {/* Genealogy Analysis Section */}
       <MovieAnalysisSection movieId={id} initialMovie={movie} />
