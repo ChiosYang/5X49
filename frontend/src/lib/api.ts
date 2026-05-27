@@ -34,7 +34,9 @@ export const API = {
 
     // === Library ===
     library: () => `${API_BASE_URL}/library`,
+    libraryUserStates: () => `${API_BASE_URL}/library/user-states`,
     libraryMovie: (id: string) => `${API_BASE_URL}/library/${encodeURIComponent(id)}`,
+    libraryMovieUserState: (id: string) => `${API_BASE_URL}/library/${encodeURIComponent(id)}/user-state`,
     libraryMovieAuditEvents: (id: string) => `${API_BASE_URL}/library/${encodeURIComponent(id)}/audit-events`,
     libraryMovieTimelineStateUrl: (id: string, params: {
         before_event_id?: string | null;
@@ -137,6 +139,7 @@ export const API = {
     librarySyncStatus: () => `${API_BASE_URL}/library/sync/status`,
     librarySeed: () => `${API_BASE_URL}/library/seed`,
     libraryClear: () => `${API_BASE_URL}/library/clear`,
+    watchHistory: () => `${API_BASE_URL}/watch-history`,
 
     // === Settings ===
     settingsModel: () => `${API_BASE_URL}/settings/model`,

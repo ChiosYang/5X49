@@ -1,6 +1,7 @@
 {
   "Navigation": {
     "library": "资料库",
+    "watchHistory": "观影历史",
     "settings": "设置",
     "project": "5X49 项目",
     "basedOn": "基于 A24 设计系统"
@@ -34,6 +35,10 @@
     "sortTitle": "片名",
     "sortAdded": "添加时间",
     "sortDuration": "时长",
+    "filterAll": "全部",
+    "filterWatched": "已看",
+    "filterUnwatched": "未看",
+    "filterFavorite": "收藏",
     "empty": "资料库为空。点击扫描添加电影。"
   },
   "FilmDetail": {
@@ -54,7 +59,29 @@
     "frameRate": "帧率",
     "bitDepth": "位深",
     "duration": "时长",
-    "fileSize": "文件大小"
+    "fileSize": "文件大小",
+    "personalState": "个人观影状态",
+    "watchStateLoading": "读取观影状态",
+    "watchStateError": "观影状态读取失败",
+    "watchStateSaved": "已保存",
+    "watched": "已看",
+    "unwatched": "未看",
+    "favorite": "收藏",
+    "watchedAt": "观看日期",
+    "rating": "评分",
+    "setRating": "设为 {rating} 星",
+    "notes": "笔记",
+    "notesPlaceholder": "记录你的观后感、版本信息或重看理由",
+    "saveState": "保存"
+  },
+  "WatchHistory": {
+    "title": "观影历史",
+    "subtitle": "按观看日期回看你的个人电影记录",
+    "loading": "读取观影历史",
+    "error": "观影历史读取失败",
+    "empty": "还没有标记已看的电影。",
+    "unknownDate": "未知日期",
+    "favorite": "收藏"
   },
   "Genealogy": {
     "title": "5X49",

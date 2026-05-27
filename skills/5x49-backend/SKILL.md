@@ -27,6 +27,8 @@ description: 电影族谱 API (FastAPI) 的接口调用指南
 | 方法 | 路径 | 说明 |
 |------|------|------|
 | GET | `/library` | 获取所有电影 |
+| GET | `/library/user-states` | 获取已保存的个人观影状态 |
+| GET | `/watch-history` | 获取手动标记已看的观影历史 |
 | GET | `/library/events` | 订阅资料库变更 SSE |
 | GET | `/library/audit-events` | 查询持久化资料库审计事件 |
 | GET | `/jobs` | 列出后台 Actor/Job Runtime 任务 |
@@ -35,6 +37,8 @@ description: 电影族谱 API (FastAPI) 的接口调用指南
 | POST | `/jobs/{job_id}/retry` | 重试 failed/cancelled 任务 |
 | DELETE | `/jobs/{job_id}` | 删除已结束任务 |
 | GET | `/library/{movie_id}` | 获取指定电影详情 |
+| GET | `/library/{movie_id}/user-state` | 获取单部电影的个人观影状态 |
+| PUT | `/library/{movie_id}/user-state` | 更新单部电影的已看、评分、收藏和笔记 |
 | GET | `/library/{movie_id}/audit-events` | 查询单部电影的持久化审计事件 |
 | POST | `/library/events/backfill/movie-discovered?dry_run=true` | 检查或补齐现有电影的 MovieDiscovered 初始化事件 |
 | POST | `/library/events/backfill/movie-replay?dry_run=true` | 检查或追加 Movie replay backfill 迁移事件 |
@@ -140,6 +144,17 @@ curl -s -X POST http://127.0.0.1:11548/jobs/job_abc/retry
 curl -s http://127.0.0.1:11548/library
 ```
 返回 `Movie[]`，电影对象包含标题、年份、图片路径、简介、导演、类型，以及可选的 `runtime`、`countries`、`audio_tracks`、`video_width`、`video_height`、`video_codec`、`video_bitrate`、`video_duration`、`video_fps`、`video_dynamic_range`、`video_bit_depth`、`added_at`、`external_scores` 等本地媒体与外部榜单信息。
+
+### 个人观影状态
+```bash
+curl -s http://127.0.0.1:11548/library/96721_2013/user-state
+curl -s -X PUT http://127.0.0.1:11548/library/96721_2013/user-state \
+  -H "Content-Type: application/json" \
+  -d '{"watched":true,"watched_at":"2026-05-27","rating":5,"favorite":true,"notes":"影院重看"}'
+curl -s http://127.0.0.1:11548/library/user-states
+curl -s http://127.0.0.1:11548/watch-history
+```
+`MovieUserState` 是每部电影一条的手动个人状态，字段包括 `movie_id`、`watched`、`watched_at`、`rating`、`favorite`、`notes`、`updated_at`。`rating` 只允许 `1-5` 或 `null`。`GET /library/{movie_id}/user-state` 在尚未保存状态时返回默认未看状态；`GET /watch-history` 只返回 `watched=true` 的电影，按 `watched_at` 和 `updated_at` 倒序排列，元素形如 `{"movie": Movie, "user_state": MovieUserState}`。这些接口不记录播放进度、播放会话或播放器事件。
 
 ### 获取单部电影详情
 ```bash

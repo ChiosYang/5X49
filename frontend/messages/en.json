@@ -1,6 +1,7 @@
 {
   "Navigation": {
     "library": "Genealogy Library",
+    "watchHistory": "Watch History",
     "settings": "Settings",
     "project": "5X49 Project",
     "basedOn": "Based on A24 Design System"
@@ -34,6 +35,10 @@
     "sortTitle": "Title",
     "sortAdded": "Added",
     "sortDuration": "Duration",
+    "filterAll": "All",
+    "filterWatched": "Watched",
+    "filterUnwatched": "Unwatched",
+    "filterFavorite": "Favorites",
     "empty": "Your library is empty. Click Scan Now to add movies."
   },
   "FilmDetail": {
@@ -54,7 +59,29 @@
     "frameRate": "Frame Rate",
     "bitDepth": "Bit Depth",
     "duration": "Duration",
-    "fileSize": "File Size"
+    "fileSize": "File Size",
+    "personalState": "Personal Watch State",
+    "watchStateLoading": "Loading watch state",
+    "watchStateError": "Failed to load watch state",
+    "watchStateSaved": "Saved",
+    "watched": "Watched",
+    "unwatched": "Unwatched",
+    "favorite": "Favorite",
+    "watchedAt": "Watched Date",
+    "rating": "Rating",
+    "setRating": "Set {rating} stars",
+    "notes": "Notes",
+    "notesPlaceholder": "Add reactions, version notes, or why you watched it",
+    "saveState": "Save"
+  },
+  "WatchHistory": {
+    "title": "Watch History",
+    "subtitle": "Review your personal film record by watched date.",
+    "loading": "Loading watch history",
+    "error": "Failed to load watch history",
+    "empty": "No watched movies yet.",
+    "unknownDate": "Unknown date",
+    "favorite": "Favorite"
   },
   "Genealogy": {
     "title": "5X49",

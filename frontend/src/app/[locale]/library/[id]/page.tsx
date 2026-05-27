@@ -9,6 +9,7 @@ import MovieBackdrop from "./MovieBackdrop";
 import MovieHeroTitle from "./MovieHeroTitle";
 import MoviePoster from "./MoviePoster";
 import MovieRefreshButton from "./MovieRefreshButton";
+import MovieUserStatePanel from "./MovieUserStatePanel";
 
 interface MovieDetailPageProps {
   params: Promise<{
@@ -167,6 +168,8 @@ export default async function MovieDetailPage({ params }: MovieDetailPageProps) 
           </div>
         </div>
       )}
+
+      <MovieUserStatePanel movieId={id} />
 
       {/* Genealogy Analysis Section */}
       <MovieAnalysisSection movieId={id} initialMovie={movie} />

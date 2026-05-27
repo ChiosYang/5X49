@@ -87,6 +87,18 @@ class Movie(SQLModel, table=True):
     tmdb_confidence: Optional[float] = None
 
 
+class MovieUserState(SQLModel, table=True):
+    __tablename__ = "movie_user_state"
+
+    movie_id: str = Field(foreign_key="movie.id", primary_key=True)
+    watched: bool = Field(default=False, index=True)
+    watched_at: Optional[str] = Field(default=None, index=True)
+    rating: Optional[int] = Field(default=None, ge=1, le=5)
+    favorite: bool = Field(default=False, index=True)
+    notes: Optional[str] = None
+    updated_at: str = Field(default_factory=utc_now_iso, index=True)
+
+
 class Job(SQLModel, table=True):
     id: str = Field(primary_key=True)
     type: str = Field(index=True)

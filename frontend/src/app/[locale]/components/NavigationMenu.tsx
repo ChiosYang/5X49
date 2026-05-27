@@ -59,6 +59,13 @@ export default function NavigationMenu() {
             Activity
           </Link>
           <Link
+            href="/watch-history"
+            onClick={closeMenu}
+            className="block text-5xl md:text-7xl font-bold tracking-tighter text-white hover:text-neutral-400 transition-colors"
+          >
+            {t("watchHistory")}
+          </Link>
+          <Link
             href="/settings"
             onClick={closeMenu}
             className="block text-5xl md:text-7xl font-bold tracking-tighter text-white hover:text-neutral-400 transition-colors"

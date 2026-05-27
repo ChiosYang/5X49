@@ -8,7 +8,10 @@ import type {
   MovieTimelineRestorePreviewReport,
   MovieTimelineRestoreReport,
   MovieTimelineRestoreRequest,
+  MovieUserState,
+  MovieUserStateUpdate,
   ScrapeResult,
+  WatchHistoryEntry,
 } from "@/types/movie";
 
 function mutationErrorMessage(detail: unknown, fallback: string) {
@@ -41,6 +44,36 @@ export function useMovieAuditEvents(id: string, enabled = true) {
   return useSWR<EventRecord[]>(id && enabled ? API.libraryMovieAuditEvents(id) : null, {
     refreshInterval: 5000,
   });
+}
+
+export function useLibraryUserStates() {
+  return useSWR<MovieUserState[]>(API.libraryUserStates());
+}
+
+export function useMovieUserState(id: string) {
+  return useSWR<MovieUserState>(id ? API.libraryMovieUserState(id) : null);
+}
+
+export function useWatchHistory() {
+  return useSWR<WatchHistoryEntry[]>(API.watchHistory());
+}
+
+export function useUpdateMovieUserState(id: string) {
+  return useSWRMutation(
+    id ? API.libraryMovieUserState(id) : null,
+    async (_url: string, { arg }: { arg: MovieUserStateUpdate }): Promise<MovieUserState> => {
+      const res = await fetch(API.libraryMovieUserState(id), {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(arg),
+      });
+      if (!res.ok) {
+        const errorBody = await res.json().catch(() => null) as { detail?: unknown } | null;
+        throw new Error(mutationErrorMessage(errorBody?.detail, "Failed to update watch state"));
+      }
+      return res.json();
+    }
+  );
 }
 
 export function useMovieTimelineRestorePreview(id?: string | null, scope?: string | null) {

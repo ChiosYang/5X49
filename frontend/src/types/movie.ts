@@ -78,6 +78,29 @@ export interface LibraryMovie {
   external_scores_error?: string | null;
 }
 
+export interface MovieUserState {
+  movie_id: string;
+  watched: boolean;
+  watched_at?: string | null;
+  rating?: number | null;
+  favorite: boolean;
+  notes?: string | null;
+  updated_at?: string | null;
+}
+
+export interface WatchHistoryEntry {
+  movie: LibraryMovie;
+  user_state: MovieUserState;
+}
+
+export interface MovieUserStateUpdate {
+  watched?: boolean | null;
+  watched_at?: string | null;
+  rating?: number | null;
+  favorite?: boolean | null;
+  notes?: string | null;
+}
+
 export interface MovieDetail {
   id: string;
   title: string;

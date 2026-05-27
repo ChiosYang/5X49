@@ -1,7 +1,7 @@
 import { getTranslations } from "next-intl/server";
-import { ArrowDown, ArrowUp, ArrowUpDown, CalendarPlus, Clock3, Type } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpDown, CalendarPlus, CheckCircle2, Clock3, Circle, Star, Type } from "lucide-react";
 import { Link } from "@/i18n/routing";
-import { getLibrary, getRootVideos } from "@/lib/server-api";
+import { getLibrary, getLibraryUserStates, getRootVideos } from "@/lib/server-api";
 import type { LibraryMovie } from "@/types/movie";
 import LibraryMovieCard from "./LibraryMovieCard";
 import LibraryOrganizeRootButton from "./LibraryOrganizeRootButton";
@@ -9,6 +9,7 @@ import LibraryRefreshButton from "./LibraryRefreshButton";
 
 type LibrarySortKey = "title" | "added" | "duration";
 type SortDirection = "asc" | "desc";
+type LibraryFilterKey = "all" | "watched" | "unwatched" | "favorite";
 
 interface LibraryPageProps {
   params: Promise<{
@@ -17,6 +18,7 @@ interface LibraryPageProps {
   searchParams?: Promise<{
     sort?: string | string[];
     dir?: string | string[];
+    filter?: string | string[];
   }>;
 }
 
@@ -29,6 +31,17 @@ const SORT_OPTIONS: Array<{
   { key: "title", defaultDirection: "asc", icon: Type, labelKey: "sortTitle" },
   { key: "added", defaultDirection: "desc", icon: CalendarPlus, labelKey: "sortAdded" },
   { key: "duration", defaultDirection: "desc", icon: Clock3, labelKey: "sortDuration" },
+];
+
+const FILTER_OPTIONS: Array<{
+  key: LibraryFilterKey;
+  icon: typeof Circle;
+  labelKey: "filterAll" | "filterWatched" | "filterUnwatched" | "filterFavorite";
+}> = [
+  { key: "all", icon: Circle, labelKey: "filterAll" },
+  { key: "watched", icon: CheckCircle2, labelKey: "filterWatched" },
+  { key: "unwatched", icon: Circle, labelKey: "filterUnwatched" },
+  { key: "favorite", icon: Star, labelKey: "filterFavorite" },
 ];
 
 function firstParam(value?: string | string[]) {
@@ -45,6 +58,20 @@ function normalizeDirection(value: string | undefined, sort: LibrarySortKey): So
   }
 
   return SORT_OPTIONS.find((option) => option.key === sort)?.defaultDirection || "asc";
+}
+
+function normalizeFilter(value?: string): LibraryFilterKey {
+  return FILTER_OPTIONS.some((option) => option.key === value) ? (value as LibraryFilterKey) : "all";
+}
+
+function libraryHref(sort: LibrarySortKey, direction: SortDirection, filter: LibraryFilterKey) {
+  const params = new URLSearchParams();
+  params.set("sort", sort);
+  params.set("dir", direction);
+  if (filter !== "all") {
+    params.set("filter", filter);
+  }
+  return `/library?${params.toString()}`;
 }
 
 function getDurationSeconds(movie: LibraryMovie) {
@@ -103,11 +130,20 @@ export default async function LibraryPage({ params, searchParams }: LibraryPageP
   const resolvedSearchParams = searchParams ? await searchParams : {};
   const sort = normalizeSort(firstParam(resolvedSearchParams.sort));
   const direction = normalizeDirection(firstParam(resolvedSearchParams.dir), sort);
-  const [movies, rootVideos] = await Promise.all([getLibrary(), getRootVideos()]);
+  const filter = normalizeFilter(firstParam(resolvedSearchParams.filter));
+  const [movies, userStates, rootVideos] = await Promise.all([getLibrary(), getLibraryUserStates(), getRootVideos()]);
+  const userStateByMovieId = new Map(userStates.map((state) => [state.movie_id, state]));
   const visibleMovies = movies.filter(
     (movie) => !["missing", "ignored", "reverted"].includes(movie.library_status || "")
   );
-  const sortedMovies = sortMovies(visibleMovies, sort, direction, locale);
+  const filteredMovies = visibleMovies.filter((movie) => {
+    const state = userStateByMovieId.get(movie.id);
+    if (filter === "watched") return Boolean(state?.watched);
+    if (filter === "unwatched") return !state?.watched;
+    if (filter === "favorite") return Boolean(state?.favorite);
+    return true;
+  });
+  const sortedMovies = sortMovies(filteredMovies, sort, direction, locale);
 
   return (
     <div className="min-h-screen bg-black text-white px-8 py-6 md:px-12 md:py-12 selection:bg-white selection:text-black">
@@ -120,8 +156,30 @@ export default async function LibraryPage({ params, searchParams }: LibraryPageP
           </div>
           <div className="flex flex-wrap items-center gap-4 md:justify-end md:gap-6">
             <span className="text-neutral-500 text-xs font-bold uppercase tracking-widest hidden md:inline-block">
-              {visibleMovies.length} FILMS
+              {filteredMovies.length} FILMS
             </span>
+            <div className="flex flex-wrap items-center gap-2">
+              {FILTER_OPTIONS.map((option) => {
+                const Icon = option.icon;
+                const isActive = filter === option.key;
+                return (
+                  <Link
+                    key={option.key}
+                    href={libraryHref(sort, direction, option.key)}
+                    aria-label={t(option.labelKey)}
+                    title={t(option.labelKey)}
+                    className={`inline-flex h-10 items-center gap-2 rounded-md border px-3 text-sm font-bold uppercase transition-colors ${
+                      isActive
+                        ? "border-white bg-white text-black"
+                        : "border-neutral-800 bg-neutral-950/70 text-neutral-400 hover:bg-white hover:text-black"
+                    }`}
+                  >
+                    <Icon className={`h-4 w-4 ${option.key === "favorite" && isActive ? "fill-current" : ""}`} />
+                    <span className="hidden xl:inline">{t(option.labelKey)}</span>
+                  </Link>
+                );
+              })}
+            </div>
             <div className="group/sort relative">
               <button
                 type="button"
@@ -144,7 +202,7 @@ export default async function LibraryPage({ params, searchParams }: LibraryPageP
                     return (
                       <Link
                         key={option.key}
-                        href={`/library?sort=${option.key}&dir=${nextDirection}`}
+                        href={libraryHref(option.key, nextDirection, filter)}
                         aria-label={t("sortBy", { field: t(option.labelKey) })}
                         className={`flex h-10 items-center justify-between rounded px-3 text-sm transition-colors ${
                           isActive
@@ -170,7 +228,7 @@ export default async function LibraryPage({ params, searchParams }: LibraryPageP
           </div>
         </header>
 
-        {visibleMovies.length === 0 ? (
+        {filteredMovies.length === 0 ? (
           <div className="py-24 text-center space-y-4">
             <p className="text-neutral-500 font-serif italic text-xl">{t("empty")}</p>
           </div>

@@ -1,6 +1,6 @@
 import "server-only";
 
-import type { LibraryMovie, MovieDetail, RootVideo } from "@/types/movie";
+import type { LibraryMovie, MovieDetail, MovieUserState, RootVideo, WatchHistoryEntry } from "@/types/movie";
 
 const getBackendUrl = () => {
   if (process.env.NODE_ENV === "development") {
@@ -33,6 +33,30 @@ export async function getLibrary(): Promise<LibraryMovie[]> {
 
   if (!res.ok) {
     throw new Error(`Failed to fetch library: ${res.status}`);
+  }
+
+  return res.json();
+}
+
+export async function getLibraryUserStates(): Promise<MovieUserState[]> {
+  const res = await fetch(`${getBackendUrl()}/library/user-states`, {
+    cache: "no-store",
+  });
+
+  if (!res.ok) {
+    throw new Error(`Failed to fetch library user states: ${res.status}`);
+  }
+
+  return res.json();
+}
+
+export async function getWatchHistory(): Promise<WatchHistoryEntry[]> {
+  const res = await fetch(`${getBackendUrl()}/watch-history`, {
+    cache: "no-store",
+  });
+
+  if (!res.ok) {
+    throw new Error(`Failed to fetch watch history: ${res.status}`);
   }
 
   return res.json();

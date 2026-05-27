@@ -86,6 +86,20 @@ This document describes the REST API endpoints available in the backend applicat
 - **Description**: Get all movies currently stored in the local library.
 - **Response**: Array of `Movie` objects.
 
+### List Movie User States
+- **URL**: `/library/user-states`
+- **Method**: `GET`
+- **Description**: Lists stored personal watch states for movies. Movies without a saved state are omitted and should be treated as unwatched, unrated, and not favorite by clients.
+- **Response**: Array of `MovieUserState` objects.
+
+### Get Watch History
+- **URL**: `/watch-history`
+- **Method**: `GET`
+- **Description**: Lists movies manually marked as watched, newest first by `watched_at` and then `updated_at`. This endpoint does not use playback progress or playback sessions.
+- **Response**: Array of objects with:
+  - `movie` (`Movie`): The matching library movie.
+  - `user_state` (`MovieUserState`): Personal state containing `movie_id`, `watched`, `watched_at`, `rating`, `favorite`, `notes`, and `updated_at`.
+
 ### Subscribe To Library Events
 - **URL**: `/library/events`
 - **Method**: `GET`
@@ -211,6 +225,30 @@ Long-running mutation endpoints return an accepted-job envelope:
   - `movie_id` (string): ASCII movie ID, such as `603_1999`, `tt0133093_1999`, or `local_<hash>`.
 - **Response**: `Movie` object.
 - **Errors**: `400 Invalid ID format`, `404 Movie not found`.
+
+### Get Movie User State
+- **URL**: `/library/{movie_id}/user-state`
+- **Method**: `GET`
+- **Description**: Gets the personal watch state for one movie. If no state has been saved, returns a default state with `watched=false`, `rating=null`, `favorite=false`, `notes=null`, `watched_at=null`, and `updated_at=null`.
+- **Path Parameters**:
+  - `movie_id` (string): ASCII movie ID.
+- **Response**: `MovieUserState`.
+- **Errors**: `400 Invalid ID format`, `404 Movie not found`.
+
+### Update Movie User State
+- **URL**: `/library/{movie_id}/user-state`
+- **Method**: `PUT`
+- **Description**: Creates or updates the personal watch state for one movie. This is manual state only; it does not record playback progress or sessions.
+- **Path Parameters**:
+  - `movie_id` (string): ASCII movie ID.
+- **Request Body**:
+  - `watched` (boolean, optional): Whether the movie has been watched.
+  - `watched_at` (string or null, optional): User-entered watched date or timestamp.
+  - `rating` (integer or null, optional): Personal rating from 1 to 5.
+  - `favorite` (boolean, optional): Favorite marker.
+  - `notes` (string or null, optional): Free-form personal notes.
+- **Response**: Updated `MovieUserState`.
+- **Errors**: `400 Invalid ID format`, `404 Movie not found`, `422 rating must be between 1 and 5`.
 
 ### Get Movie Audit Events
 - **URL**: `/library/{movie_id}/audit-events`

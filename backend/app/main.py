@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from contextlib import asynccontextmanager
-from pydantic import BaseModel
+from pydantic import BaseModel, Field as PydanticField
 from app.services.historian import FilmHistorian
 from app.services.event_bus import library_event_bus
 from app.services.event_backfill import movie_discovered_backfill, movie_replay_backfill
@@ -23,6 +23,7 @@ from app.services.operation_restore import operation_restore
 from app.services.projections.movie_rebuild import ProjectionRebuildBlocked, movie_projection_dry_run
 from app.services.projections.movie_timeline import movie_timeline_dry_run
 from app.services.timeline_restore import TimelineRestoreBlocked, movie_timeline_restore
+from app.services.user_state import movie_user_state_manager
 from app.database import create_db_and_tables
 from app.utils.security import validate_movie_id
 import os
@@ -47,6 +48,14 @@ class TimelineRestoreRequest(BaseModel):
     restore_fields: list[str] | None = None
     restore_files: list[str] | None = None
     allow_partial: bool = False
+
+
+class MovieUserStateUpdate(BaseModel):
+    watched: bool | None = None
+    watched_at: str | None = None
+    rating: int | None = PydanticField(default=None, ge=1, le=5)
+    favorite: bool | None = None
+    notes: str | None = None
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -124,6 +133,11 @@ def analyze_movie(movie_name: str):
 def get_library():
     """Get all movies in the local library."""
     return library_manager.get_movies()
+
+@app.get("/watch-history")
+def get_watch_history():
+    """List watched movies with personal user state, newest first."""
+    return movie_user_state_manager.watch_history()
 
 @app.get("/jobs")
 def list_jobs(
@@ -265,6 +279,37 @@ def get_library_movie_audit_events(
         aggregate_id=movie_id,
         event_type=type,
         limit=limit,
+    )
+
+@app.get("/library/user-states")
+def get_library_user_states():
+    """List stored personal user states for library movies."""
+    return movie_user_state_manager.list_all()
+
+@app.get("/library/{movie_id}/user-state")
+def get_library_movie_user_state(movie_id: str):
+    """Get personal user state for one movie."""
+    if not validate_movie_id(movie_id):
+        raise HTTPException(status_code=400, detail="Invalid movie ID format")
+    if not library_manager.get_movie(movie_id):
+        raise HTTPException(status_code=404, detail="Movie not found")
+    return movie_user_state_manager.get(movie_id)
+
+@app.put("/library/{movie_id}/user-state")
+def update_library_movie_user_state(movie_id: str, request: MovieUserStateUpdate):
+    """Update personal user state for one movie."""
+    if not validate_movie_id(movie_id):
+        raise HTTPException(status_code=400, detail="Invalid movie ID format")
+    if not library_manager.get_movie(movie_id):
+        raise HTTPException(status_code=404, detail="Movie not found")
+    return movie_user_state_manager.upsert(
+        movie_id,
+        watched=request.watched,
+        watched_at=request.watched_at,
+        rating=request.rating,
+        favorite=request.favorite,
+        notes=request.notes,
+        fields_set=request.model_fields_set,
     )
 
 @app.get("/library/{movie_id}/timeline/state")
