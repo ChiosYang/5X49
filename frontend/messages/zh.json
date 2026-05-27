@@ -39,6 +39,11 @@
     "filterWatched": "已看",
     "filterUnwatched": "未看",
     "filterFavorite": "收藏",
+    "watched": "已看",
+    "markWatched": "标记已看",
+    "markUnwatched": "标记未看",
+    "favorite": "收藏",
+    "unfavorite": "取消收藏",
     "empty": "资料库为空。点击扫描添加电影。"
   },
   "FilmDetail": {

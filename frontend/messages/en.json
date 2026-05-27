@@ -39,6 +39,11 @@
     "filterWatched": "Watched",
     "filterUnwatched": "Unwatched",
     "filterFavorite": "Favorites",
+    "watched": "Watched",
+    "markWatched": "Mark Watched",
+    "markUnwatched": "Mark Unwatched",
+    "favorite": "Favorite",
+    "unfavorite": "Remove Favorite",
     "empty": "Your library is empty. Click Scan Now to add movies."
   },
   "FilmDetail": {

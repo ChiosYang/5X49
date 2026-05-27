@@ -1,12 +1,20 @@
+"use client";
+
 import Image from "next/image";
-import { Globe2, Plus, Play, Star } from "lucide-react";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
+import { Check, Globe2, Loader2, Star } from "lucide-react";
+import { mutate } from "swr";
 import { Link } from "@/i18n/routing";
 import { API } from "@/lib/api";
-import type { AudioTrack, LibraryMovie } from "@/types/movie";
+import { useUpdateMovieUserState } from "@/hooks/useMovie";
+import type { AudioTrack, LibraryMovie, MovieUserState } from "@/types/movie";
 import ExternalScoreStrip from "../components/ExternalScoreStrip";
 
 interface LibraryMovieCardProps {
   movie: LibraryMovie;
+  userState?: MovieUserState;
   priority?: boolean;
 }
 
@@ -224,7 +232,20 @@ function getMetadataBadge(movie: LibraryMovie) {
   return "Unmatched";
 }
 
-export default function LibraryMovieCard({ movie, priority = false }: LibraryMovieCardProps) {
+function todayDateValue() {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+export default function LibraryMovieCard({ movie, userState, priority = false }: LibraryMovieCardProps) {
+  const t = useTranslations("Library");
+  const router = useRouter();
+  const { trigger, isMutating } = useUpdateMovieUserState(movie.id);
+  const [watched, setWatched] = useState(Boolean(userState?.watched));
+  const [favorite, setFavorite] = useState(Boolean(userState?.favorite));
   const artworkVersion = movie.metadata_updated_at ? `?v=${encodeURIComponent(movie.metadata_updated_at)}` : "";
   const backdropPath = movie.backdrop_thumb_local || movie.backdrop_local;
   const backdropSrc = backdropPath ? `${API.mediaUrl(backdropPath)}${artworkVersion}` : null;
@@ -244,65 +265,107 @@ export default function LibraryMovieCard({ movie, priority = false }: LibraryMov
     .filter(Boolean)
     .slice(0, 3);
 
+  const updateUserState = async (next: { watched?: boolean; favorite?: boolean }) => {
+    const previousWatched = watched;
+    const previousFavorite = favorite;
+    const nextWatched = next.watched ?? watched;
+    const nextFavorite = next.favorite ?? favorite;
+    setWatched(nextWatched);
+    setFavorite(nextFavorite);
+    try {
+      await trigger({
+        watched: nextWatched,
+        watched_at: nextWatched ? userState?.watched_at || todayDateValue() : null,
+        favorite: nextFavorite,
+      });
+      await Promise.all([
+        mutate(API.libraryMovieUserState(movie.id)),
+        mutate(API.libraryUserStates()),
+        mutate(API.watchHistory()),
+      ]);
+      router.refresh();
+    } catch {
+      setWatched(previousWatched);
+      setFavorite(previousFavorite);
+    }
+  };
+
   return (
-    <Link href={`/library/${movie.id}`} className="block">
-      <div className="cursor-pointer space-y-4">
+    <div className="block">
+      <div className="space-y-4">
         {/* Landscape Still */}
         <div className="group relative z-0 aspect-video w-full bg-neutral-900 hover:z-30">
-          <div className="relative h-full w-full overflow-hidden rounded-md">
-            {backdropSrc ? (
-              <Image
-                src={backdropSrc!}
-                alt={movie.title}
-                fill
-                priority={priority}
-                sizes="(min-width: 1536px) 20vw, (min-width: 1280px) 25vw, (min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
-                className="object-cover transition-transform delay-0 duration-200 ease-out group-hover:scale-[1.05] group-hover:delay-500"
-              />
-            ) : (
-              <div className="flex h-full w-full items-center justify-center border border-neutral-800 transition-transform delay-0 duration-200 ease-out group-hover:scale-[1.05] group-hover:delay-500">
-                <span className="font-serif text-4xl text-neutral-800">?</span>
+          <Link href={`/library/${movie.id}`} className="block h-full cursor-pointer">
+            <div className="relative h-full w-full overflow-hidden rounded-md">
+              {backdropSrc ? (
+                <Image
+                  src={backdropSrc!}
+                  alt={movie.title}
+                  fill
+                  priority={priority}
+                  sizes="(min-width: 1536px) 20vw, (min-width: 1280px) 25vw, (min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
+                  className="object-cover transition-transform delay-0 duration-200 ease-out group-hover:scale-[1.05] group-hover:delay-500"
+                />
+              ) : (
+                <div className="flex h-full w-full items-center justify-center border border-neutral-800 transition-transform delay-0 duration-200 ease-out group-hover:scale-[1.05] group-hover:delay-500">
+                  <span className="font-serif text-4xl text-neutral-800">?</span>
+                </div>
+              )}
+              {metadataBadge && (
+                <span className="absolute left-3 top-3 z-10 rounded-sm bg-black/80 px-2 py-1 text-[10px] font-black uppercase tracking-widest text-white">
+                  {metadataBadge}
+                </span>
+              )}
+              {watched && (
+                <span className="absolute right-3 top-3 z-10 text-white drop-shadow-[0_1px_4px_rgba(0,0,0,0.9)]">
+                  <Check className="h-5 w-5 stroke-[3]" aria-label={t("watched")} />
+                </span>
+              )}
+              {/* Hover Overlay */}
+              <div className="absolute inset-0 bg-black/0 transition-colors delay-0 duration-200 group-hover:bg-black/35 group-hover:delay-500" />
+              <div className="invisible absolute inset-x-0 bottom-0 flex translate-y-1 flex-col gap-1 bg-gradient-to-t from-black/80 via-black/35 to-transparent px-5 pb-4 pt-12 opacity-0 transition-[opacity,transform] delay-0 duration-200 group-hover:visible group-hover:translate-y-0 group-hover:opacity-100 group-hover:delay-500">
+                <h3 className="line-clamp-1 text-2xl font-black uppercase leading-none text-white">
+                  {title}
+                </h3>
+                <p className="line-clamp-1 text-xs font-bold uppercase tracking-wide text-white">
+                  {movie.director || movie.title} {movie.year}
+                </p>
               </div>
-            )}
-            {metadataBadge && (
-              <span className="absolute left-3 top-3 z-10 rounded-sm bg-black/80 px-2 py-1 text-[10px] font-black uppercase tracking-widest text-white">
-                {metadataBadge}
-              </span>
-            )}
-            {/* Hover Overlay */}
-            <div className="absolute inset-0 bg-black/0 transition-colors delay-0 duration-200 group-hover:bg-black/35 group-hover:delay-500" />
-            <div className="invisible absolute inset-x-0 bottom-0 flex translate-y-1 flex-col gap-1 bg-gradient-to-t from-black/80 via-black/35 to-transparent px-5 pb-4 pt-12 opacity-0 transition-[opacity,transform] delay-0 duration-200 group-hover:visible group-hover:translate-y-0 group-hover:opacity-100 group-hover:delay-500">
-              <h3 className="line-clamp-1 text-2xl font-black uppercase leading-none text-white">
-                {title}
-              </h3>
-              <p className="line-clamp-1 text-xs font-bold uppercase tracking-wide text-white">
-                {movie.director || movie.title} {movie.year}
-              </p>
             </div>
-          </div>
+          </Link>
 
           <div className="invisible absolute left-0 right-0 top-full z-20 origin-top translate-y-1 scale-95 rounded-b-md border border-white/10 border-t-0 bg-neutral-950 p-5 text-white opacity-0 transition-[opacity,transform] delay-0 duration-200 ease-out group-hover:visible group-hover:translate-y-0 group-hover:scale-100 group-hover:opacity-100 group-hover:delay-500">
             <div className="space-y-4">
               <div className="flex items-center gap-3">
-                <span
-                  className="inline-flex h-10 items-center gap-2 rounded-full bg-white px-4 text-sm font-black uppercase tracking-wide text-black transition-colors group-hover:bg-neutral-200"
-                  aria-label="Watch"
+                <button
+                  type="button"
+                  onClick={() => updateUserState({ watched: !watched })}
+                  disabled={isMutating}
+                  className={`inline-flex h-10 items-center gap-2 rounded-full px-4 text-sm font-black uppercase tracking-wide transition-colors ${
+                    watched
+                      ? "bg-white text-black group-hover:bg-neutral-200"
+                      : "border border-white/55 text-white hover:border-white hover:bg-white hover:text-black"
+                  } disabled:cursor-not-allowed disabled:opacity-60`}
+                  aria-label={watched ? t("markUnwatched") : t("markWatched")}
+                  title={watched ? t("markUnwatched") : t("markWatched")}
                 >
-                  <Play className="h-4 w-4 fill-current" />
-                  Watch
-                </span>
-                <span
-                  className="flex h-8 w-8 items-center justify-center rounded-full border border-white/55 text-white transition-colors group-hover:border-white"
-                  aria-label="Add to list"
+                  {isMutating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+                  {watched ? t("watched") : t("markWatched")}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => updateUserState({ favorite: !favorite })}
+                  disabled={isMutating}
+                  className={`flex h-8 w-8 items-center justify-center rounded-full border transition-colors ${
+                    favorite
+                      ? "border-white bg-white text-black"
+                      : "border-white/55 text-white hover:border-white"
+                  } disabled:cursor-not-allowed disabled:opacity-60`}
+                  aria-label={favorite ? t("unfavorite") : t("favorite")}
+                  title={favorite ? t("unfavorite") : t("favorite")}
                 >
-                  <Plus className="h-5 w-5" />
-                </span>
-                <span
-                  className="flex h-8 w-8 items-center justify-center rounded-full border border-white/55 text-white transition-colors group-hover:border-white"
-                  aria-label="Favorite"
-                >
-                  <Star className="h-4 w-4" />
-                </span>
+                  <Star className={`h-4 w-4 ${favorite ? "fill-current" : ""}`} />
+                </button>
               </div>
 
               <p className="overflow-hidden text-[15px] leading-snug text-neutral-300 [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:4]">
@@ -388,7 +451,7 @@ export default function LibraryMovieCard({ movie, priority = false }: LibraryMov
         </div>
 
         {/* Title & Info */}
-        <div className="flex justify-between items-start">
+        <Link href={`/library/${movie.id}`} className="flex cursor-pointer items-start justify-between">
           <div className="space-y-1">
             <h3 className="text-xl md:text-2xl font-bold uppercase leading-none tracking-tight">
               {title}
@@ -402,8 +465,8 @@ export default function LibraryMovieCard({ movie, priority = false }: LibraryMov
           <span className="font-serif text-xl italic text-neutral-400">
             {movie.year}
           </span>
-        </div>
+        </Link>
       </div>
-    </Link>
+    </div>
   );
 }
