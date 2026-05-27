@@ -2,6 +2,7 @@
 
 import { SWRConfig } from "swr";
 import { fetcher } from "@/lib/fetcher";
+import { TechnicalModeProvider } from "./TechnicalModeProvider";
 
 export default function Providers({ children }: { children: React.ReactNode }) {
   return (
@@ -13,7 +14,9 @@ export default function Providers({ children }: { children: React.ReactNode }) {
         errorRetryCount: 1,
       }}
     >
-      {children}
+      <TechnicalModeProvider>
+        {children}
+      </TechnicalModeProvider>
     </SWRConfig>
   );
 }

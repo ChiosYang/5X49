@@ -9,7 +9,7 @@ import {
   Video,
   type LucideIcon,
 } from "lucide-react";
-import type { EventRecord } from "@/types/movie";
+import type { EventRecord, LibraryMovie } from "@/types/movie";
 
 export const EVENT_LABELS: Record<string, string> = {
   MovieDiscovered: "Discovered",
@@ -81,6 +81,9 @@ export const EVENT_TYPE_OPTIONS = [
 
 export const TECHNICAL_EVENT_TYPES = new Set([
   "MovieFolderScanned",
+  "MovieFileSnapshotBackfilled",
+  "MovieProjectionRebuilt",
+  "MovieStateBackfilled",
 ]);
 
 export interface ActivityOperation {
@@ -117,6 +120,33 @@ export function formatEventTime(value: string) {
   }).format(date);
 }
 
+export function formatRelativeEventTime(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+
+  const diffSeconds = Math.round((date.getTime() - Date.now()) / 1000);
+  const absSeconds = Math.abs(diffSeconds);
+  const units: Array<[Intl.RelativeTimeFormatUnit, number]> = [
+    ["year", 60 * 60 * 24 * 365],
+    ["month", 60 * 60 * 24 * 30],
+    ["week", 60 * 60 * 24 * 7],
+    ["day", 60 * 60 * 24],
+    ["hour", 60 * 60],
+    ["minute", 60],
+  ];
+
+  for (const [unit, seconds] of units) {
+    if (absSeconds >= seconds) {
+      return new Intl.RelativeTimeFormat(undefined, { numeric: "auto" }).format(
+        Math.round(diffSeconds / seconds),
+        unit,
+      );
+    }
+  }
+
+  return "just now";
+}
+
 export function stringPayload(event: EventRecord, key: string) {
   const value = event.payload?.[key];
   return typeof value === "string" && value.trim() ? value : null;
@@ -127,11 +157,169 @@ export function numberPayload(event: EventRecord, key: string) {
   return typeof value === "number" && Number.isFinite(value) ? value : null;
 }
 
-export function eventTitle(event: EventRecord) {
-  return stringPayload(event, "title") || event.aggregate_id || "System event";
+export function eventTitle(event: EventRecord, movie?: LibraryMovie | null) {
+  return movieTitle(movie, event);
 }
 
-export function eventSummary(event: EventRecord) {
+export function eventSummary(event: EventRecord, isTechnical = false) {
+  return isTechnical ? technicalEventSummary(event) : semanticEventAction(event);
+}
+
+export function eventActionName(event: EventRecord, isTechnical = false) {
+  return isTechnical ? EVENT_LABELS[event.type] || event.type : semanticEventAction(event);
+}
+
+export function operationDisplayTitle(
+  operation: ActivityOperation,
+  movie?: LibraryMovie | null,
+  isTechnical = false,
+) {
+  if (isTechnical) {
+    return operation.title;
+  }
+
+  const movieName = movieTitle(movie, operation.primaryEvent);
+
+  if (operation.events.some((event) => event.type === "MovieDiscovered" || event.type === "RootVideoOrganized")) {
+    return `Added ${movieName}`;
+  }
+  if (operation.events.some((event) => event.type === "MetadataMatched" || event.type === "ArtworkSelected" || event.type === "ArtworkDownloaded" || event.type === "NfoWritten")) {
+    return `Updated ${movieName}`;
+  }
+  if (operation.events.some((event) => event.type === "MovieStateRestored" || event.type === "MetadataRestored" || event.type === "ArtworkSelectionRestored" || event.type === "ArtworkRestored" || event.type === "NfoRestored")) {
+    return `Restored ${movieName}`;
+  }
+  if (operation.events.some((event) => event.type === "RootVideoOrganizationReverted" || event.type === "RootVideoMoveReversed")) {
+    return `Reverted ${movieName}`;
+  }
+  if (operation.events.some((event) => event.type === "AnalysisCompleted")) {
+    return `Analyzed ${movieName}`;
+  }
+  if (operation.events.some((event) => event.type === "AnalysisFailed")) {
+    return `Could not analyze ${movieName}`;
+  }
+  if (operation.events.some((event) => event.type === "ExternalScoresRefreshed")) {
+    return `Refreshed scores for ${movieName}`;
+  }
+  if (operation.events.some((event) => event.type === "MovieMarkedMissing")) {
+    return `Marked ${movieName} as missing`;
+  }
+  if (operation.events.some((event) => event.type === "MovieRestored")) {
+    return `Restored ${movieName} to the library`;
+  }
+  if (operation.events.some((event) => event.type === "MovieIgnored")) {
+    return `Ignored ${movieName}`;
+  }
+
+  return semanticEventAction(operation.primaryEvent);
+}
+
+export function operationDisplaySummary(operation: ActivityOperation, isTechnical = false) {
+  if (isTechnical) {
+    return operation.summary;
+  }
+
+  if (operation.events.some((event) => event.type === "MetadataMatched") && operation.events.some((event) => event.type === "ArtworkDownloaded" || event.type === "ArtworkSelected")) {
+    return "Metadata and artwork were refreshed.";
+  }
+  if (operation.events.some((event) => event.type === "MetadataMatched")) {
+    return "Movie metadata was matched and saved.";
+  }
+  if (operation.events.some((event) => event.type === "ArtworkDownloaded" || event.type === "ArtworkSelected")) {
+    return "Poster or backdrop artwork was updated.";
+  }
+  if (operation.events.some((event) => event.type === "NfoWritten")) {
+    return "Local metadata files were updated.";
+  }
+  if (operation.events.some((event) => event.type === "RootVideoOrganized")) {
+    return "A video was organized into the movie library.";
+  }
+  if (operation.events.some((event) => event.type === "MovieDiscovered")) {
+    return "A new movie was added to the library.";
+  }
+  if (operation.events.some((event) => event.type === "AnalysisCompleted")) {
+    return "Genealogy analysis is ready.";
+  }
+  if (operation.events.some((event) => event.type === "ExternalScoresRefreshed")) {
+    return "External ratings and rankings were updated.";
+  }
+  if (operation.events.some((event) => event.type.includes("Failed"))) {
+    return "An activity could not be completed.";
+  }
+
+  return semanticEventAction(operation.primaryEvent);
+}
+
+export function movieTitle(movie?: LibraryMovie | null, event?: EventRecord | null) {
+  const title = movie?.title_cn || movie?.title || titleFromEvent(event) || "This movie";
+  const year = movie?.year || (event ? numberPayload(event, "year") : null);
+  return year ? `${title} (${year})` : title;
+}
+
+function titleFromEvent(event?: EventRecord | null) {
+  if (!event) return null;
+  const title = stringPayload(event, "title") || stringPayload(event, "title_cn");
+  if (title) return title;
+
+  const current = event.payload?.current;
+  if (current && typeof current === "object") {
+    const record = current as Record<string, unknown>;
+    const currentTitle = record.title_cn || record.title;
+    return typeof currentTitle === "string" && currentTitle.trim() ? currentTitle : null;
+  }
+
+  const after = event.payload?.after;
+  if (after && typeof after === "object") {
+    const record = after as Record<string, unknown>;
+    const afterTitle = record.title_cn || record.title;
+    return typeof afterTitle === "string" && afterTitle.trim() ? afterTitle : null;
+  }
+
+  return null;
+}
+
+function semanticEventAction(event: EventRecord) {
+  const assetType = stringPayload(event, "asset_type");
+  const action = stringPayload(event, "action");
+
+  if (event.type === "MetadataMatched") return "Updated movie metadata";
+  if (event.type === "MetadataMatchSuggested") return "Found a possible metadata match";
+  if (event.type === "MetadataScrapeFailed") return "Could not update metadata";
+  if (event.type === "MetadataRestored") return "Restored previous metadata";
+  if (event.type === "MovieStateRestored") return "Restored previous movie details";
+  if (event.type === "MovieStateBackfilled") return "Prepared movie history for replay";
+  if (event.type === "ArtworkDownloaded") return assetType === "backdrop" ? "Downloaded backdrop image" : "Downloaded poster image";
+  if (event.type === "ArtworkSelected") return "Selected new artwork";
+  if (event.type === "ArtworkSelectionRestored") return "Restored previous artwork selection";
+  if (event.type === "ArtworkRestored") return assetType === "backdrop" ? "Restored backdrop image" : "Restored poster image";
+  if (event.type === "MovieFileSnapshotBackfilled") return "Recorded current file state";
+  if (event.type === "NfoWritten") return action === "update_artwork" ? "Updated NFO artwork references" : "Generated NFO file";
+  if (event.type === "NfoRestored") return "Restored previous NFO file";
+  if (event.type === "RootVideoMoved") return "Moved video into place";
+  if (event.type === "RootVideoMoveReversed") return "Moved video back";
+  if (event.type === "RootVideoOrganized") return "Organized video into the library";
+  if (event.type === "RootVideoOrganizationReverted") return "Reverted video organization";
+  if (event.type === "RootVideoOrganizationNeedsReview") return "Needs review before organizing";
+  if (event.type === "MovieFileObserved") return "Updated local file details";
+  if (event.type === "MovieFolderScanned") return "Scanned movie folder";
+  if (event.type === "MovieMetadataParsedFromNfo") return "Read metadata from NFO";
+  if (event.type === "MovieDiscovered") return "Added movie to the library";
+  if (event.type === "MovieMarkedMissing") return "Marked movie as missing";
+  if (event.type === "MovieRestored") return "Movie became available again";
+  if (event.type === "MovieIgnored") return "Ignored movie in the library";
+  if (event.type === "AnalysisStarted") return "Started genealogy analysis";
+  if (event.type === "AnalysisCompleted") return "Completed genealogy analysis";
+  if (event.type === "AnalysisFailed") return "Genealogy analysis failed";
+  if (event.type === "ExternalScoresRefreshed") return "Refreshed external scores";
+  if (event.type === "ExternalScoresRefreshFailed") return "External score refresh failed";
+  if (event.type === "LibraryReconciled") return "Reconciled the library";
+  if (event.type === "LibraryCleared") return "Cleared the library";
+  if (event.type === "MissingMoviesCleaned") return "Cleaned missing movie records";
+  if (event.type === "LibrarySeeded") return "Seeded the library";
+  return "Recorded library activity";
+}
+
+function technicalEventSummary(event: EventRecord) {
   const reason = stringPayload(event, "reason");
   const message = stringPayload(event, "message");
   const title = stringPayload(event, "title");
@@ -334,10 +522,10 @@ function operationTitle(events: EventRecord[], primaryEvent: EventRecord) {
 }
 
 function operationSummary(events: EventRecord[], primaryEvent: EventRecord) {
-  if (events.length === 1) return eventSummary(primaryEvent);
+  if (events.length === 1) return technicalEventSummary(primaryEvent);
   const labels = unique(events.map((event) => EVENT_LABELS[event.type] || event.type)).slice(0, 4);
   const suffix = labels.length < events.length ? "more" : null;
-  return [eventSummary(primaryEvent), `${events.length} events`, ...labels, suffix].filter(Boolean).join(" · ");
+  return [technicalEventSummary(primaryEvent), `${events.length} events`, ...labels, suffix].filter(Boolean).join(" · ");
 }
 
 function unique(values: string[]) {

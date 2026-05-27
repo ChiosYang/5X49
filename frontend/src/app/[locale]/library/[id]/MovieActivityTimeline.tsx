@@ -1,17 +1,22 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ChevronDown, Clock, Loader2, X } from "lucide-react";
+import { ChevronDown, Clock, Film, Loader2, X } from "lucide-react";
 import OperationDryRunPanel from "@/components/OperationDryRunPanel";
+import { useTechnicalMode } from "@/components/TechnicalModeProvider";
 import TimelineRestorePreviewPanel from "@/components/TimelineRestorePreviewPanel";
 import { useMovieAuditEvents } from "@/hooks/useMovie";
 import {
   EVENT_LABELS,
   TECHNICAL_EVENT_TYPES,
-  eventIcon,
+  eventActionName,
   eventSummary,
   formatEventTime,
+  formatRelativeEventTime,
   groupActivityEvents,
+  operationDisplaySummary,
+  operationDisplayTitle,
+  type ActivityOperation,
 } from "@/lib/activity";
 
 interface MovieActivityTimelineProps {
@@ -21,13 +26,13 @@ interface MovieActivityTimelineProps {
 }
 
 export default function MovieActivityTimeline({ movieId, open, onClose }: MovieActivityTimelineProps) {
-  const [showTechnicalEvents, setShowTechnicalEvents] = useState(false);
+  const { isTechnical, setIsTechnical } = useTechnicalMode();
   const [expandedOperationIds, setExpandedOperationIds] = useState<string[]>([]);
   const { data: events = [], isLoading, error } = useMovieAuditEvents(movieId, open);
-  const filteredEvents = showTechnicalEvents
+  const filteredEvents = isTechnical
     ? events
     : events.filter((event) => !TECHNICAL_EVENT_TYPES.has(event.type));
-  const operations = groupActivityEvents(events, showTechnicalEvents);
+  const operations = groupActivityEvents(events, isTechnical);
   const visibleOperations = operations.slice(0, 8);
   const hiddenTechnicalCount = events.length - filteredEvents.length;
 
@@ -79,12 +84,12 @@ export default function MovieActivityTimeline({ movieId, open, onClose }: MovieA
             <label className="mt-4 flex w-fit cursor-pointer items-center gap-3 text-xs font-bold uppercase tracking-widest text-neutral-500 transition-colors hover:text-neutral-300">
               <input
                 type="checkbox"
-                checked={showTechnicalEvents}
-                onChange={(event) => setShowTechnicalEvents(event.target.checked)}
+                checked={isTechnical}
+                onChange={(event) => setIsTechnical(event.target.checked)}
                 className="h-4 w-4 accent-white"
               />
-              Show technical events
-              {!showTechnicalEvents && hiddenTechnicalCount > 0 ? (
+              Show technical
+              {!isTechnical && hiddenTechnicalCount > 0 ? (
                 <span className="text-neutral-700">({hiddenTechnicalCount} hidden)</span>
               ) : null}
             </label>
@@ -117,12 +122,11 @@ export default function MovieActivityTimeline({ movieId, open, onClose }: MovieA
           ) : (
             <ol className="relative space-y-5 border-l border-neutral-800 pl-6">
               {visibleOperations.map((operation) => {
-                const Icon = eventIcon(operation.primaryEvent.type);
                 const expanded = expandedOperationIds.includes(operation.id);
                 return (
                   <li key={operation.id} className="relative min-w-0">
                     <span className="absolute -left-[2.05rem] flex h-8 w-8 items-center justify-center border border-neutral-800 bg-black text-neutral-400">
-                      <Icon className="h-4 w-4" />
+                      <Film className="h-4 w-4" />
                     </span>
                     <div className="grid gap-1 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start">
                       <div className="min-w-0">
@@ -132,45 +136,26 @@ export default function MovieActivityTimeline({ movieId, open, onClose }: MovieA
                           className="inline-flex max-w-full items-center gap-2 text-left text-sm font-bold uppercase tracking-widest text-white transition-colors hover:text-neutral-300"
                         >
                           <ChevronDown className={`h-4 w-4 shrink-0 transition-transform ${expanded ? "rotate-0" : "-rotate-90"}`} />
-                          <span className="truncate">{operation.title}</span>
+                          <span className="truncate">{operationDisplayTitle(operation, null, isTechnical)}</span>
                         </button>
                         <p className="mt-1 break-words text-sm leading-relaxed text-neutral-400">
-                          {operation.summary}
+                          {operationDisplaySummary(operation, isTechnical)}
                         </p>
                         <p className="mt-2 text-xs uppercase tracking-widest text-neutral-700">
-                          {operation.eventCount} {operation.eventCount === 1 ? "event" : "events"}
+                          {operation.eventCount} {operation.eventCount === 1 ? "step" : "steps"}
                         </p>
                         {expanded ? (
-                          <>
-                            <OperationDryRunPanel
-                              commandId={operation.command_id}
-                              correlationId={operation.correlation_id}
-                            />
-                            <ul className="mt-4 space-y-4 border-l border-neutral-900 pl-4">
-                              {operation.events.map((event) => (
-                                <li key={event.id} className="min-w-0">
-                                  <p className="truncate text-xs font-bold uppercase tracking-widest text-neutral-300">
-                                    {EVENT_LABELS[event.type] || event.type}
-                                  </p>
-                                  <p className="mt-1 break-words text-sm leading-relaxed text-neutral-500">
-                                    {eventSummary(event)}
-                                  </p>
-                                  <p className="mt-1 break-all text-xs uppercase tracking-widest text-neutral-700">
-                                    {event.id}
-                                  </p>
-                                  <TimelineRestorePreviewPanel
-                                    event={event}
-                                    movieId={movieId}
-                                  />
-                                </li>
-                              ))}
-                            </ul>
-                          </>
+                          isTechnical ? (
+                            <TechnicalOperationDetails operation={operation} movieId={movieId} />
+                          ) : (
+                            <FriendlyOperationDetails operation={operation} />
+                          )
                         ) : null}
                       </div>
-                      <time className="flex items-center gap-1.5 text-xs uppercase tracking-widest text-neutral-600">
+                      <time className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs uppercase tracking-widest text-neutral-600 sm:justify-end">
                         <Clock className="h-3 w-3" />
                         {formatEventTime(operation.occurred_at)}
+                        <span className="text-neutral-700">{formatRelativeEventTime(operation.occurred_at)}</span>
                       </time>
                     </div>
                   </li>
@@ -181,5 +166,77 @@ export default function MovieActivityTimeline({ movieId, open, onClose }: MovieA
         </div>
       </section>
     </div>
+  );
+}
+
+function FriendlyOperationDetails({ operation }: { operation: ActivityOperation }) {
+  return (
+    <ul className="mt-4 space-y-3 border-l border-neutral-900 pl-4">
+      {operation.events.map((event) => (
+        <li key={event.id} className="grid gap-1 sm:grid-cols-[8.5rem_minmax(0,1fr)]">
+          <time className="flex items-center gap-1.5 text-xs uppercase tracking-widest text-neutral-700">
+            <Clock className="h-3 w-3" />
+            {formatEventTime(event.occurred_at)}
+          </time>
+          <p className="break-words text-sm leading-relaxed text-neutral-500">
+            {eventActionName(event)}
+          </p>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function TechnicalOperationDetails({ operation, movieId }: { operation: ActivityOperation; movieId: string }) {
+  return (
+    <>
+      <OperationDryRunPanel
+        commandId={operation.command_id}
+        correlationId={operation.correlation_id}
+      />
+      <ul className="mt-4 space-y-5 border-l border-neutral-900 pl-4">
+        {operation.events.map((event) => (
+          <li key={event.id} className="min-w-0 space-y-3">
+            <div>
+              <p className="truncate text-xs font-bold uppercase tracking-widest text-neutral-300">
+                {EVENT_LABELS[event.type] || event.type}
+              </p>
+              <p className="mt-1 break-words text-sm leading-relaxed text-neutral-500">
+                {eventSummary(event, true)}
+              </p>
+              <div className="mt-2 grid gap-1 text-xs uppercase tracking-widest text-neutral-700">
+                <span className="break-all">Event: {event.id}</span>
+                {event.command_id ? <span className="break-all">Command: {event.command_id}</span> : null}
+                {event.correlation_id ? <span className="break-all">Correlation: {event.correlation_id}</span> : null}
+                {event.aggregate_id ? <span className="break-all">Aggregate: {event.aggregate_type}/{event.aggregate_id}</span> : null}
+              </div>
+            </div>
+            <JsonBlock label="Payload" value={event.payload} />
+            <JsonBlock label="Context" value={event.context} />
+            <TimelineRestorePreviewPanel
+              event={event}
+              movieId={movieId}
+            />
+          </li>
+        ))}
+      </ul>
+    </>
+  );
+}
+
+function JsonBlock({ label, value }: { label: string; value?: Record<string, unknown> | null }) {
+  if (!value || Object.keys(value).length === 0) {
+    return null;
+  }
+
+  return (
+    <details className="border border-neutral-900 bg-black/40 p-3">
+      <summary className="cursor-pointer text-xs font-bold uppercase tracking-widest text-neutral-500">
+        {label}
+      </summary>
+      <pre className="mt-3 max-h-72 overflow-auto whitespace-pre-wrap break-words text-xs leading-relaxed text-neutral-500">
+        {JSON.stringify(value, null, 2)}
+      </pre>
+    </details>
   );
 }
