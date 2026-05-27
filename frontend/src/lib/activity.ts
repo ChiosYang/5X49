@@ -170,6 +170,40 @@ export function eventActionName(event: EventRecord, isTechnical = false) {
   return isTechnical ? EVENT_LABELS[event.type] || event.type : semanticEventAction(event);
 }
 
+export interface ActivityDetailItem {
+  label: string;
+  value: string;
+}
+
+export function videoDetailItems(event: EventRecord): ActivityDetailItem[] {
+  if (!["MovieDiscovered", "MovieFileObserved", "RootVideoOrganized"].includes(event.type)) {
+    return [];
+  }
+
+  const payload = payloadWithCurrent(event);
+  const resolution = formatResolution(payload.video_width, payload.video_height);
+  const dynamicRange = formatDynamicRange(payload.video_dynamic_range);
+  const videoCodec = formatVideoCodec(payload.video_codec);
+  const bitrate = formatBitrate(payload.video_bitrate);
+  const frameRate = numberValue(payload.video_fps);
+  const bitDepth = numberValue(payload.video_bit_depth);
+  const duration = formatDuration(payload.video_duration);
+  const fileSize = formatFileSize(payload.file_size);
+  const audio = formatAudioTracks(payload.audio_tracks);
+
+  return [
+    { label: "Resolution", value: resolution },
+    { label: "Dynamic range", value: dynamicRange },
+    { label: "Video codec", value: videoCodec },
+    { label: "Bitrate", value: bitrate },
+    { label: "Frame rate", value: frameRate !== null ? `${frameRate} fps` : null },
+    { label: "Bit depth", value: bitDepth !== null ? `${bitDepth}-bit` : null },
+    { label: "Duration", value: duration },
+    { label: "File size", value: fileSize },
+    { label: "Audio", value: audio },
+  ].filter((item): item is ActivityDetailItem => Boolean(item.value));
+}
+
 export function operationDisplayTitle(
   operation: ActivityOperation,
   movie?: LibraryMovie | null,
@@ -419,6 +453,114 @@ function technicalEventSummary(event: EventRecord) {
     return Array.isArray(sources) && sources.length ? `Updated ${sources.join(", ")}` : "External scores updated";
   }
   return message || reason || title || event.aggregate_id || "Event recorded";
+}
+
+function payloadWithCurrent(event: EventRecord): Record<string, unknown> {
+  const payload = event.payload || {};
+  const current = payload.current;
+  if (current && typeof current === "object" && !Array.isArray(current)) {
+    return { ...payload, ...(current as Record<string, unknown>) };
+  }
+  return payload;
+}
+
+function formatResolution(widthValue: unknown, heightValue: unknown) {
+  const width = numberValue(widthValue);
+  const height = numberValue(heightValue);
+  return width !== null && height !== null ? `${width} x ${height}` : null;
+}
+
+function formatBitrate(value: unknown) {
+  const bitRate = numberValue(value);
+  if (!bitRate) {
+    return null;
+  }
+  if (bitRate >= 1_000_000) {
+    return `${(bitRate / 1_000_000).toFixed(1)} Mbps`;
+  }
+  return `${Math.round(bitRate / 1000)} Kbps`;
+}
+
+function formatDuration(value: unknown) {
+  const seconds = numberValue(value);
+  if (!seconds) {
+    return null;
+  }
+  const totalMinutes = Math.round(seconds / 60);
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  return hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
+}
+
+function formatFileSize(value: unknown) {
+  const bytes = numberValue(value);
+  if (!bytes) {
+    return null;
+  }
+  const gib = bytes / 1024 ** 3;
+  if (gib >= 1) {
+    return `${gib.toFixed(2)} GB`;
+  }
+  return `${(bytes / 1024 ** 2).toFixed(1)} MB`;
+}
+
+function formatDynamicRange(value: unknown) {
+  if (typeof value !== "string" || !value.trim() || value === "unknown") {
+    return null;
+  }
+  if (value.toLowerCase() === "dolby vision") {
+    return "DOLBY VISION";
+  }
+  return value.toUpperCase();
+}
+
+function formatVideoCodec(value: unknown) {
+  if (typeof value !== "string" || !value.trim()) {
+    return null;
+  }
+  const codecMap: Record<string, string> = {
+    av1: "AV1",
+    h264: "H.264",
+    hevc: "H.265",
+    mpeg2video: "MPEG-2",
+    vc1: "VC-1",
+    vp9: "VP9",
+  };
+  return codecMap[value.toLowerCase()] || value.toUpperCase();
+}
+
+function formatAudioTracks(value: unknown) {
+  if (!Array.isArray(value) || value.length === 0) {
+    return null;
+  }
+  const labels = value
+    .slice(0, 3)
+    .map((track) => {
+      if (!track || typeof track !== "object") {
+        return null;
+      }
+      const record = track as Record<string, unknown>;
+      const codec = typeof record.codec === "string" && record.codec.trim()
+        ? record.codec.toUpperCase()
+        : null;
+      const language = typeof record.language === "string" && record.language.trim()
+        ? record.language.toUpperCase()
+        : null;
+      const channels = typeof record.channels === "string" && record.channels.trim()
+        ? `${record.channels}ch`
+        : null;
+      return [language, codec, channels].filter(Boolean).join(" ");
+    })
+    .filter(Boolean);
+  if (!labels.length) {
+    return null;
+  }
+  const remaining = value.length - labels.length;
+  return remaining > 0 ? `${labels.join(" / ")} +${remaining}` : labels.join(" / ");
+}
+
+function numberValue(value: unknown) {
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
 }
 
 export function groupActivityEvents(events: EventRecord[], showTechnicalEvents: boolean): ActivityOperation[] {

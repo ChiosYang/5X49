@@ -16,6 +16,7 @@ import {
   groupActivityEvents,
   operationDisplaySummary,
   operationDisplayTitle,
+  videoDetailItems,
   type ActivityOperation,
 } from "@/lib/activity";
 
@@ -172,18 +173,37 @@ export default function MovieActivityTimeline({ movieId, open, onClose }: MovieA
 function FriendlyOperationDetails({ operation }: { operation: ActivityOperation }) {
   return (
     <ul className="mt-4 space-y-3 border-l border-neutral-900 pl-4">
-      {operation.events.map((event) => (
-        <li key={event.id} className="grid gap-1 sm:grid-cols-[8.5rem_minmax(0,1fr)]">
-          <time className="flex items-center gap-1.5 text-xs uppercase tracking-widest text-neutral-700">
-            <Clock className="h-3 w-3" />
-            {formatEventTime(event.occurred_at)}
-          </time>
-          <p className="break-words text-sm leading-relaxed text-neutral-500">
-            {eventActionName(event)}
-          </p>
-        </li>
-      ))}
+      {operation.events.map((event) => {
+        const details = videoDetailItems(event);
+        return (
+          <li key={event.id} className="grid gap-1 sm:grid-cols-[8.5rem_minmax(0,1fr)]">
+            <time className="flex items-center gap-1.5 text-xs uppercase tracking-widest text-neutral-700">
+              <Clock className="h-3 w-3" />
+              {formatEventTime(event.occurred_at)}
+            </time>
+            <div className="min-w-0">
+              <p className="break-words text-sm leading-relaxed text-neutral-500">
+                {eventActionName(event)}
+              </p>
+              {details.length ? <VideoDetailList items={details} /> : null}
+            </div>
+          </li>
+        );
+      })}
     </ul>
+  );
+}
+
+function VideoDetailList({ items }: { items: ReturnType<typeof videoDetailItems> }) {
+  return (
+    <dl className="mt-3 grid gap-2 text-xs sm:grid-cols-2">
+      {items.map((item) => (
+        <div key={item.label} className="min-w-0 border border-neutral-900 bg-black/30 px-3 py-2">
+          <dt className="truncate uppercase tracking-widest text-neutral-700">{item.label}</dt>
+          <dd className="mt-1 break-words font-medium text-neutral-300">{item.value}</dd>
+        </div>
+      ))}
+    </dl>
   );
 }
 

@@ -29,6 +29,7 @@ SCAN_EVENT_FIELDS = (
     "scrape_status",
     "tmdb_id",
     "imdb_id",
+    "audio_tracks",
     "video_width",
     "video_height",
     "video_codec",
@@ -48,13 +49,20 @@ SCAN_EVENT_FIELDS = (
 FILE_OBSERVED_FIELDS = (
     "media_path",
     "folder_path",
+    "folder_name",
     "video_file",
     "file_size",
     "file_mtime",
+    "last_seen_at",
+    "audio_tracks",
     "video_width",
     "video_height",
     "video_codec",
+    "video_bitrate",
     "video_duration",
+    "video_fps",
+    "video_dynamic_range",
+    "video_bit_depth",
 )
 
 NFO_SIGNATURE_FIELDS = (
