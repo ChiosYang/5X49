@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Award, Check, Clapperboard, EyeOff, Heart, History, Loader2, RefreshCw, Search } from "lucide-react";
+import { Award, Check, Clapperboard, EyeOff, History, Loader2, RefreshCw, Search, Star } from "lucide-react";
 import { mutate } from "swr";
 import {
   useConfirmScrapeMovie,
@@ -329,7 +329,7 @@ export default function MovieRefreshButton({ movieId }: { movieId: string }) {
           {userStateAction === "favorite" ? (
             <Loader2 className="h-4 w-4 animate-spin" />
           ) : (
-            <Heart className={`h-4 w-4 ${favorite ? "fill-current" : ""}`} />
+            <Star className={`h-4 w-4 ${favorite ? "fill-current" : ""}`} />
           )}
         </button>
         <button
