@@ -107,7 +107,7 @@ export default function MovieArtworkPicker({ movieId }: MovieArtworkPickerProps)
       </button>
 
       {open && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[70] flex items-center justify-center p-4">
           <div className="liquid-glass-modal relative flex max-h-[90vh] w-full max-w-6xl flex-col overflow-hidden border border-neutral-900/80 text-white">
             <div className="flex items-center justify-between border-b border-neutral-800 px-4 py-3 md:px-6">
               <div>
@@ -117,7 +117,7 @@ export default function MovieArtworkPicker({ movieId }: MovieArtworkPickerProps)
               <button
                 type="button"
                 onClick={() => setOpen(false)}
-                className="flex h-10 w-10 items-center justify-center border border-neutral-800 bg-neutral-950 text-white hover:border-neutral-500"
+                className="flex h-10 w-10 items-center justify-center text-white transition-colors hover:text-neutral-300"
                 aria-label="Close artwork picker"
                 title="Close"
               >
@@ -125,12 +125,14 @@ export default function MovieArtworkPicker({ movieId }: MovieArtworkPickerProps)
               </button>
             </div>
 
-            <div className="flex border-b border-neutral-800">
+            <div className="flex border-b border-neutral-800 bg-black/20 p-1">
               <button
                 type="button"
                 onClick={() => setActiveTab("poster")}
-                className={`h-12 flex-1 border-r border-neutral-800 text-xs font-bold uppercase tracking-widest ${
-                  activeTab === "poster" ? "bg-white text-black" : "bg-black text-neutral-400 hover:text-white"
+                className={`h-11 flex-1 rounded-sm border text-xs font-bold uppercase tracking-widest transition-colors ${
+                  activeTab === "poster"
+                    ? "border-white/25 bg-white/15 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]"
+                    : "border-transparent text-neutral-500 hover:bg-white/5 hover:text-neutral-200"
                 }`}
               >
                 Posters
@@ -138,8 +140,10 @@ export default function MovieArtworkPicker({ movieId }: MovieArtworkPickerProps)
               <button
                 type="button"
                 onClick={() => setActiveTab("backdrop")}
-                className={`h-12 flex-1 text-xs font-bold uppercase tracking-widest ${
-                  activeTab === "backdrop" ? "bg-white text-black" : "bg-black text-neutral-400 hover:text-white"
+                className={`h-11 flex-1 rounded-sm border text-xs font-bold uppercase tracking-widest transition-colors ${
+                  activeTab === "backdrop"
+                    ? "border-white/25 bg-white/15 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]"
+                    : "border-transparent text-neutral-500 hover:bg-white/5 hover:text-neutral-200"
                 }`}
               >
                 Backdrops
