@@ -294,7 +294,7 @@ export default function LibraryMovieCard({ movie, userState, priority = false }:
     <div className="block">
       <div className="space-y-4">
         {/* Landscape Still */}
-        <div className="group relative z-0 aspect-video w-full bg-neutral-900 hover:z-30">
+        <div className="peer/card group relative z-0 aspect-video w-full bg-neutral-900 hover:z-30">
           <Link href={`/library/${movie.id}`} className="block h-full cursor-pointer">
             <div className="relative h-full w-full overflow-hidden rounded-md">
               {backdropSrc ? (
@@ -334,7 +334,7 @@ export default function LibraryMovieCard({ movie, userState, priority = false }:
             </div>
           </Link>
 
-          <div className="invisible absolute left-0 right-0 top-full z-20 origin-top translate-y-1 scale-95 rounded-b-md border border-white/10 border-t-0 bg-neutral-950 p-5 text-white opacity-0 transition-[opacity,transform] delay-0 duration-200 ease-out group-hover:visible group-hover:translate-y-0 group-hover:scale-100 group-hover:opacity-100 group-hover:delay-500">
+          <div className="liquid-glass-popover invisible absolute left-0 right-0 top-full z-20 origin-top translate-y-1 scale-95 rounded-b-md border border-neutral-900/80 p-5 text-white opacity-0 transition-[opacity,transform] delay-0 duration-200 ease-out group-hover:visible group-hover:translate-y-0 group-hover:scale-100 group-hover:opacity-100 group-hover:delay-500">
             <div className="space-y-4">
               <div className="flex items-center gap-3">
                 <button
@@ -451,7 +451,7 @@ export default function LibraryMovieCard({ movie, userState, priority = false }:
         </div>
 
         {/* Title & Info */}
-        <Link href={`/library/${movie.id}`} className="flex cursor-pointer items-start justify-between">
+        <Link href={`/library/${movie.id}`} className="flex cursor-pointer items-start justify-between transition-opacity delay-0 duration-200 peer-hover/card:pointer-events-none peer-hover/card:opacity-0 peer-hover/card:delay-500">
           <div className="space-y-1">
             <h3 className="text-xl md:text-2xl font-bold uppercase leading-none tracking-tight">
               {title}
