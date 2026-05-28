@@ -90,25 +90,35 @@ body {
   pointer-events: none;
 }
 
+*,
 .scrollbar-minimal {
   scrollbar-width: thin;
   scrollbar-color: rgba(38, 38, 38, 0.9) transparent;
 }
 
+*::-webkit-scrollbar,
 .scrollbar-minimal::-webkit-scrollbar {
   width: 3px;
   height: 3px;
 }
 
+*::-webkit-scrollbar-track,
 .scrollbar-minimal::-webkit-scrollbar-track {
   background: transparent;
 }
 
+*::-webkit-scrollbar-thumb,
 .scrollbar-minimal::-webkit-scrollbar-thumb {
   background-color: rgba(38, 38, 38, 0.9);
   border-radius: 999px;
 }
 
+*::-webkit-scrollbar-thumb:hover,
 .scrollbar-minimal::-webkit-scrollbar-thumb:hover {
   background-color: rgba(82, 82, 82, 0.95);
+}
+
+*::-webkit-scrollbar-corner,
+.scrollbar-minimal::-webkit-scrollbar-corner {
+  background: transparent;
 }

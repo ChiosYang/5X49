@@ -120,7 +120,7 @@ export default function LibrarianTerminal({ isOpen, onClose }: LibrarianTerminal
         return (
           <div className="text-neutral-400 my-4 bg-neutral-950 p-4 border border-neutral-800">
             <div>[{log.timestamp}] [SYSTEM_CALL: {log.tool_name}]</div>
-            <div className="text-neutral-300 mt-2 pl-4 border-l-2 border-white whitespace-pre-wrap font-mono text-xs max-h-32 overflow-y-auto hidden-scrollbar">
+            <div className="text-neutral-300 mt-2 pl-4 border-l-2 border-white whitespace-pre-wrap font-mono text-xs max-h-32 overflow-y-auto scrollbar-minimal">
               {log.content}
             </div>
           </div>
