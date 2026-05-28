@@ -1,5 +1,8 @@
 __pycache__
 *.pyc
+.pytest_cache/
+.uv-cache/
+.venv/
 .env
 .env.local
 data/
@@ -11,4 +14,3 @@ data/
 *.db
 *.sqlite
 *.sqlite3
-
