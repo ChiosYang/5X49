@@ -107,7 +107,7 @@ export default function MovieArtworkPicker({ movieId }: MovieArtworkPickerProps)
       </button>
 
       {open && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-4 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="liquid-glass-modal relative flex max-h-[90vh] w-full max-w-6xl flex-col overflow-hidden border border-neutral-900/80 text-white">
             <div className="flex items-center justify-between border-b border-neutral-800 px-4 py-3 md:px-6">
               <div>

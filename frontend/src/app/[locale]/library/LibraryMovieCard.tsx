@@ -334,8 +334,8 @@ export default function LibraryMovieCard({ movie, userState, priority = false }:
             </div>
           </Link>
 
-          <div className="liquid-glass-popover invisible absolute left-0 right-0 top-full z-20 origin-top translate-y-1 scale-95 rounded-b-md border border-neutral-900/80 p-5 text-white opacity-0 transition-[opacity,transform] delay-0 duration-200 ease-out group-hover:visible group-hover:translate-y-0 group-hover:scale-100 group-hover:opacity-100 group-hover:delay-500">
-            <div className="space-y-4">
+          <div className="liquid-glass-popover invisible absolute left-0 right-0 top-full z-20 origin-top translate-y-1 scale-95 overflow-hidden rounded-b-md border border-neutral-900/80 p-5 text-white opacity-0 transition-[opacity,transform] delay-0 duration-200 ease-out group-hover:visible group-hover:translate-y-0 group-hover:scale-100 group-hover:opacity-100 group-hover:delay-500">
+            <div className="relative z-10 space-y-4">
               <div className="flex items-center gap-3">
                 <button
                   type="button"
