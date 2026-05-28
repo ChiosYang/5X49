@@ -148,7 +148,7 @@ export default function LibraryOrganizeRootButton({
 
       {pendingCount > 0 && (
         <div className="pointer-events-none absolute right-0 top-full z-50 w-[min(24rem,calc(100vw-4rem))] pt-3 opacity-0 transition-opacity duration-150 group-hover/root-organize:pointer-events-auto group-hover/root-organize:opacity-100 group-focus-within/root-organize:pointer-events-auto group-focus-within/root-organize:opacity-100">
-          <div className="border border-neutral-800 bg-black/95 p-4 shadow-2xl shadow-black/60 backdrop-blur">
+          <div className="liquid-glass-popover relative border border-neutral-900/80 p-4">
             <div className="mb-3 flex items-center justify-between gap-4 border-b border-neutral-900 pb-3">
               <p className="text-xs font-bold uppercase tracking-widest text-neutral-400">
                 {t("rootPending", { count: pendingCount })}

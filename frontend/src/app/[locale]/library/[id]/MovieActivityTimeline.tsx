@@ -69,7 +69,7 @@ export default function MovieActivityTimeline({ movieId, open, onClose }: MovieA
         aria-label="Close library history"
       />
       <section
-        className="relative z-10 max-h-[min(42rem,calc(100vh-3rem))] w-full max-w-2xl overflow-hidden border border-neutral-800 bg-black text-white shadow-2xl shadow-black/70"
+        className="liquid-glass-modal relative z-10 max-h-[min(42rem,calc(100vh-3rem))] w-full max-w-2xl overflow-hidden border border-neutral-900/80 text-white"
         role="dialog"
         aria-modal="true"
         aria-labelledby="movie-activity-title"

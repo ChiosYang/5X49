@@ -463,7 +463,7 @@ function SettingsContent() {
                                 className="fixed inset-0 z-10"
                                 onClick={() => setDropdownOpen(false)}
                               />
-                              <div className="absolute z-20 mt-2 w-full bg-neutral-900 border border-neutral-800 shadow-xl max-h-60 flex flex-col">
+                              <div className="liquid-glass-popover absolute z-20 mt-2 flex max-h-60 w-full flex-col border border-neutral-900/80">
                                 <div className="p-2 border-b border-neutral-800">
                                   <input
                                     type="text"

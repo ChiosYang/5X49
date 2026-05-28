@@ -23,15 +23,15 @@ export default function FileBrowser({ initialPath, onSelect, onCancel, isOpen }:
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-      <div className="bg-neutral-900 border border-neutral-800 w-full max-w-2xl flex flex-col max-h-[80vh] shadow-2xl">
+      <div className="liquid-glass-modal relative w-full max-w-2xl flex flex-col max-h-[80vh] overflow-hidden border border-neutral-900/80">
         {/* Header */}
-        <div className="p-4 border-b border-neutral-800 flex justify-between items-center bg-neutral-950">
+        <div className="p-4 border-b border-neutral-800 flex justify-between items-center bg-black/35">
           <h3 className="text-lg font-bold uppercase tracking-widest text-white">Select Directory</h3>
           <button onClick={onCancel} className="text-neutral-500 hover:text-white transition-colors">✕</button>
         </div>
 
         {/* Current Path & Navigation */}
-        <div className="p-4 bg-neutral-900 border-b border-neutral-800 flex items-center gap-2">
+        <div className="p-4 bg-black/20 border-b border-neutral-800 flex items-center gap-2">
           <button
             onClick={() => data?.parent_path && handleNavigate(data.parent_path)}
             disabled={!data?.parent_path}
@@ -40,13 +40,13 @@ export default function FileBrowser({ initialPath, onSelect, onCancel, isOpen }:
           >
             ⬆ Up
           </button>
-          <div className="flex-1 bg-black border border-neutral-800 px-3 py-2 text-sm text-neutral-300 font-mono truncate">
+          <div className="flex-1 bg-black/35 border border-neutral-800 px-3 py-2 text-sm text-neutral-300 font-mono truncate">
             {data?.current_path || currentPath}
           </div>
         </div>
 
         {/* Directory List */}
-        <div className="flex-1 overflow-y-auto p-2 min-h-[300px] bg-neutral-950">
+        <div className="flex-1 overflow-y-auto p-2 min-h-[300px] bg-black/25">
             {isLoading ? (
                 <div className="flex items-center justify-center h-full text-neutral-500 text-sm animate-pulse">
                     Loading...
@@ -65,7 +65,7 @@ export default function FileBrowser({ initialPath, onSelect, onCancel, isOpen }:
                         <button
                             key={dir.path}
                             onClick={() => handleNavigate(dir.path)}
-                            className="flex items-center gap-3 px-4 py-3 text-left hover:bg-neutral-900 transition-colors group"
+                            className="flex items-center gap-3 px-4 py-3 text-left hover:bg-white/5 transition-colors group"
                         >
                             <span className="text-yellow-600 group-hover:text-yellow-500 text-xl">📁</span>
                             <span className="text-neutral-300 group-hover:text-white text-sm font-medium truncate">{dir.name}</span>
@@ -76,7 +76,7 @@ export default function FileBrowser({ initialPath, onSelect, onCancel, isOpen }:
         </div>
 
         {/* Footer */}
-        <div className="p-4 border-t border-neutral-800 bg-neutral-900 flex justify-end gap-3">
+        <div className="p-4 border-t border-neutral-800 bg-black/25 flex justify-end gap-3">
             <button
                 onClick={onCancel}
                 className="px-4 py-2 text-xs font-medium uppercase tracking-widest text-neutral-400 hover:text-white transition-colors"

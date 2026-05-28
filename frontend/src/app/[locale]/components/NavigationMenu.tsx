@@ -32,7 +32,7 @@ export default function NavigationMenu() {
       {/* Sidebar */}
       <div
         aria-hidden={!isOpen}
-        className={`fixed top-0 left-0 bottom-0 w-full md:w-[40vw] bg-black z-50 p-8 md:p-16 flex flex-col justify-center shadow-2xl border-r border-neutral-900 transition-transform duration-150 ease-out ${
+        className={`liquid-glass-sidebar fixed top-0 left-0 bottom-0 w-full md:w-[40vw] z-50 p-8 md:p-16 flex flex-col justify-center border-r border-neutral-900/80 transition-transform duration-150 ease-out ${
           isOpen ? "translate-x-0" : "-translate-x-full pointer-events-none"
         }`}
       >

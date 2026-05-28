@@ -165,7 +165,7 @@ export default function JobRuntimeStatus() {
       </button>
 
       <div className="pointer-events-none absolute right-0 top-full z-[80] w-[min(24rem,calc(100vw-2rem))] pt-3 opacity-0 transition-opacity duration-150 group-hover/jobs:pointer-events-auto group-hover/jobs:opacity-100 group-focus-within/jobs:pointer-events-auto group-focus-within/jobs:opacity-100">
-        <div className="max-h-80 overflow-y-auto border border-neutral-800 bg-black/95 p-2 shadow-2xl shadow-black/60 backdrop-blur scrollbar-minimal">
+        <div className="liquid-glass-popover relative max-h-80 overflow-y-auto border border-neutral-900/80 p-2 scrollbar-minimal">
           <div className="border-b border-neutral-900 px-3 py-2">
             <p className="text-xs font-bold uppercase tracking-widest text-neutral-300">Background Jobs</p>
             <p className="mt-1 truncate text-xs text-neutral-600">

@@ -143,9 +143,9 @@ export default function LibrarianTerminal({ isOpen, onClose }: LibrarianTerminal
           exit={{ opacity: 0, scale: 0.95, y: 20 }}
           className="fixed inset-0 z-50 flex items-center justify-center p-4 lg:p-12 bg-black/90 backdrop-blur-md"
         >
-          <div className="w-full max-w-5xl bg-black border border-neutral-800 shadow-2xl rounded-none overflow-hidden flex flex-col h-[80vh] font-mono text-neutral-400">
+          <div className="liquid-glass-modal relative w-full max-w-5xl border border-neutral-900/80 rounded-none overflow-hidden flex flex-col h-[80vh] font-mono text-neutral-400">
             {/* Header */}
-            <div className="px-6 py-5 border-b border-neutral-900 bg-black flex items-center justify-between">
+            <div className="px-6 py-5 border-b border-neutral-900 bg-black/40 flex items-center justify-between">
               <div className="flex items-center gap-4 text-white">
                 <Terminal className="w-4 h-4" />
                 <span className="text-sm tracking-widest uppercase">Librarian Console</span>
@@ -163,7 +163,7 @@ export default function LibrarianTerminal({ isOpen, onClose }: LibrarianTerminal
             {/* Terminal Body */}
             <div 
               ref={scrollRef}
-              className="flex-1 overflow-y-auto p-6 md:p-8 text-xs sm:text-sm bg-[#0a0a0a] space-y-3"
+              className="flex-1 overflow-y-auto p-6 md:p-8 text-xs sm:text-sm bg-black/65 space-y-3"
             >
               {logs.length === 0 && !isRunning ? (
                 <div className="text-neutral-600 h-full flex flex-col items-center justify-center text-center">
@@ -185,7 +185,7 @@ export default function LibrarianTerminal({ isOpen, onClose }: LibrarianTerminal
             </div>
 
             {/* Footer Controls */}
-            <div className="px-6 py-5 border-t border-neutral-900 bg-black flex flex-col sm:flex-row gap-4 justify-between items-center">
+            <div className="px-6 py-5 border-t border-neutral-900 bg-black/40 flex flex-col sm:flex-row gap-4 justify-between items-center">
               <div className="text-xs text-neutral-600 uppercase tracking-widest flex items-center gap-3">
                 <span className="hidden sm:inline">System:</span>
                 <span className="bg-neutral-900 px-2 py-1 text-neutral-400">LangGraph / ReAct</span>

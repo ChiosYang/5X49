@@ -183,7 +183,7 @@ export default async function LibraryPage({ params, searchParams }: LibraryPageP
                 <ListFilter className="h-4 w-4" />
               </button>
               <div className="pointer-events-none absolute right-0 top-full z-40 w-48 pt-3 opacity-0 transition-opacity duration-150 group-hover/filter:pointer-events-auto group-hover/filter:opacity-100 group-focus-within/filter:pointer-events-auto group-focus-within/filter:opacity-100">
-                <div className="rounded-md border border-white/10 bg-neutral-950 p-1 shadow-2xl shadow-black/40">
+                <div className="liquid-glass-popover relative rounded-md border border-neutral-900/80 p-1">
                   {FILTER_OPTIONS.map((option) => {
                     const Icon = option.icon;
                     const isActive = filter === option.key;
@@ -219,7 +219,7 @@ export default async function LibraryPage({ params, searchParams }: LibraryPageP
                 <ArrowUpDown className="h-4 w-4" />
               </button>
               <div className="pointer-events-none absolute right-0 top-full z-40 w-48 pt-3 opacity-0 transition-opacity duration-150 group-hover/sort:pointer-events-auto group-hover/sort:opacity-100 group-focus-within/sort:pointer-events-auto group-focus-within/sort:opacity-100">
-                <div className="rounded-md border border-white/10 bg-neutral-950 p-1 shadow-2xl shadow-black/40">
+                <div className="liquid-glass-popover relative rounded-md border border-neutral-900/80 p-1">
                   {SORT_OPTIONS.map((option) => {
                     const Icon = option.icon;
                     const isActive = sort === option.key;

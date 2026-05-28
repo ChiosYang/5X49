@@ -108,7 +108,7 @@ export default function MovieArtworkPicker({ movieId }: MovieArtworkPickerProps)
 
       {open && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-4 backdrop-blur-sm">
-          <div className="flex max-h-[90vh] w-full max-w-6xl flex-col border border-neutral-800 bg-black text-white shadow-2xl shadow-black/70">
+          <div className="liquid-glass-modal relative flex max-h-[90vh] w-full max-w-6xl flex-col overflow-hidden border border-neutral-900/80 text-white">
             <div className="flex items-center justify-between border-b border-neutral-800 px-4 py-3 md:px-6">
               <div>
                 <p className="text-xs font-bold uppercase tracking-widest text-neutral-500">Artwork</p>
