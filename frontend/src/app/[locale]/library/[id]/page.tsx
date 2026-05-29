@@ -10,6 +10,7 @@ import {
 } from "./MovieArtworkProvider";
 import MovieHeroTitle from "./MovieHeroTitle";
 import MovieRefreshButton from "./MovieRefreshButton";
+import LibraryScrollRestorationMode from "../LibraryScrollRestorationMode";
 
 interface MovieDetailPageProps {
   params: Promise<{
@@ -88,6 +89,7 @@ export default async function MovieDetailPage({ params }: MovieDetailPageProps) 
 
   return (
     <MovieArtworkProvider initialMovie={movie}>
+      <LibraryScrollRestorationMode />
       <div className="min-h-screen bg-black text-white selection:bg-white selection:text-black">
         {/* Hero Section */}
         <div className="relative h-screen w-full overflow-hidden">
