@@ -5,6 +5,7 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { Check, ImageIcon, Loader2, X } from "lucide-react";
 import { API } from "@/lib/api";
+import { restoreWindowScroll } from "@/lib/library-scroll";
 import type { ArtworkImage, MovieArtworkOptions } from "@/types/movie";
 
 type ArtworkTab = "poster" | "backdrop";
@@ -60,6 +61,7 @@ export default function MovieArtworkPicker({ movieId }: MovieArtworkPickerProps)
   const handleSave = async () => {
     setSaving(true);
     setMessage("");
+    const scrollY = window.scrollY;
     try {
       const posterChanged = selectedPoster !== (options?.current_poster_path ?? null);
       const backdropChanged = selectedBackdrop !== (options?.current_backdrop_path ?? null);
@@ -84,6 +86,7 @@ export default function MovieArtworkPicker({ movieId }: MovieArtworkPickerProps)
       setOptions(null);
       setOpen(false);
       router.refresh();
+      restoreWindowScroll(scrollY);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Failed to save artwork");
     } finally {
