@@ -2,11 +2,11 @@
 
 import { useState } from "react";
 import Image from "next/image";
-import { useRouter } from "next/navigation";
 import { Check, ImageIcon, Loader2, X } from "lucide-react";
+import { useSWRConfig } from "swr";
 import { API } from "@/lib/api";
-import { restoreWindowScroll } from "@/lib/library-scroll";
-import type { ArtworkImage, MovieArtworkOptions } from "@/types/movie";
+import type { ArtworkImage, MovieArtworkOptions, MovieArtworkUpdateResponse } from "@/types/movie";
+import { useMovieArtwork } from "./MovieArtworkProvider";
 
 type ArtworkTab = "poster" | "backdrop";
 
@@ -21,7 +21,8 @@ const imageLabel = (image: ArtworkImage) => {
 };
 
 export default function MovieArtworkPicker({ movieId }: MovieArtworkPickerProps) {
-  const router = useRouter();
+  const { mutate } = useSWRConfig();
+  const { updateFromMovie } = useMovieArtwork();
   const [open, setOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<ArtworkTab>("poster");
   const [options, setOptions] = useState<MovieArtworkOptions | null>(null);
@@ -61,7 +62,6 @@ export default function MovieArtworkPicker({ movieId }: MovieArtworkPickerProps)
   const handleSave = async () => {
     setSaving(true);
     setMessage("");
-    const scrollY = window.scrollY;
     try {
       const posterChanged = selectedPoster !== (options?.current_poster_path ?? null);
       const backdropChanged = selectedBackdrop !== (options?.current_backdrop_path ?? null);
@@ -83,10 +83,11 @@ export default function MovieArtworkPicker({ movieId }: MovieArtworkPickerProps)
         throw new Error(errorBody?.detail || "Failed to save artwork");
       }
 
+      const data = (await res.json()) as MovieArtworkUpdateResponse;
+      updateFromMovie(data.movie);
+      await mutate(API.libraryMovie(movieId), data.movie, false);
       setOptions(null);
       setOpen(false);
-      router.refresh();
-      restoreWindowScroll(scrollY);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Failed to save artwork");
     } finally {

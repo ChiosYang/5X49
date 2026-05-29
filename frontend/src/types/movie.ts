@@ -187,6 +187,14 @@ export interface ArtworkSelection {
   backdrop_path?: string | null;
 }
 
+export interface MovieArtworkUpdateResponse {
+  status: "success";
+  movie_id: string;
+  movie: MovieDetail;
+  poster_path?: string | null;
+  backdrop_path?: string | null;
+}
+
 export interface ScrapeResult {
   status: "success" | "needs_review" | "failed" | "skipped";
   movie_id: string;
