@@ -324,9 +324,18 @@ class RootVideoOrganizer:
 
     def _root_videos(self, root: Path) -> list[Path]:
         videos = []
-        for path in root.iterdir():
-            if path.is_file() and path.suffix.lower() in self.video_extensions:
-                videos.append(path)
+        try:
+            entries = root.iterdir()
+            for path in entries:
+                try:
+                    is_video_file = path.is_file() and path.suffix.lower() in self.video_extensions
+                except OSError:
+                    continue
+                if is_video_file:
+                    videos.append(path)
+        except OSError as exc:
+            reason = exc.strerror or str(exc)
+            raise PermissionError(f"Cannot read media directory: {root}: {reason}") from exc
         return sorted(videos, key=lambda path: path.name.lower())
 
     def _is_usable_root_video(self, path: Path, root: Path) -> bool:

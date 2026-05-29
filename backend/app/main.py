@@ -241,7 +241,7 @@ def get_library_root_videos():
     """List direct video files in the media root that are waiting for organization."""
     try:
         return root_video_organizer.list_root_videos(get_media_dir() or DEFAULT_MEDIA_DIR)
-    except FileNotFoundError as exc:
+    except (FileNotFoundError, PermissionError) as exc:
         raise HTTPException(status_code=400, detail=str(exc))
 
 @app.get("/library/audit-events")

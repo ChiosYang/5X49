@@ -66,7 +66,7 @@ description: 电影族谱 API (FastAPI) 的接口调用指南
 | GET/PUT | `/settings/scrape-confirmation` | 获取/设置自动刮削前是否必须人工确认 |
 | GET/PUT | `/settings/artwork-language` | 获取/设置 TMDB 图片语言，独立于元数据语言 |
 | GET | `/library/organize/status` | 获取根目录整理状态 |
-| GET | `/library/root-videos` | 列出待整理的媒体根目录直属视频 |
+| GET | `/library/root-videos` | 列出待整理的媒体根目录直属视频；媒体根目录不存在或后端进程无读取权限时返回 400 |
 | GET | `/library/sync/status` | 获取校准与自动监听状态 |
 | POST | `/library/{movie_id}/ignore` | 忽略一条误扫描记录 |
 | DELETE | `/library/missing` | 删除已标记为 missing 的记录 |

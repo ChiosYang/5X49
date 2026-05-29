@@ -859,6 +859,7 @@ Root video organization accepts the same `language` and `artwork_language` scrap
 - **URL**: `/library/root-videos`
 - **Method**: `GET`
 - **Description**: Lists direct video files under the configured media root that are waiting for organization. This endpoint is read-only and does not create library records.
+- **Errors**: Returns `400` when the configured media root does not exist or cannot be read by the backend process.
 - **Response**:
   ```json
   [
