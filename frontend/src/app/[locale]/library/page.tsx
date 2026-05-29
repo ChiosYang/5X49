@@ -17,8 +17,6 @@ import type { LibraryMovie } from "@/types/movie";
 import LibraryMovieCard from "./LibraryMovieCard";
 import LibraryOrganizeRootButton from "./LibraryOrganizeRootButton";
 import LibraryRefreshButton from "./LibraryRefreshButton";
-import LibraryReturnAnchorRestorer from "./LibraryReturnAnchorRestorer";
-import LibraryScrollRestorationMode from "./LibraryScrollRestorationMode";
 
 type LibrarySortKey = "title" | "added" | "duration";
 type SortDirection = "asc" | "desc";
@@ -160,8 +158,6 @@ export default async function LibraryPage({ params, searchParams }: LibraryPageP
 
   return (
     <div className="min-h-screen bg-black text-white px-8 py-6 md:px-12 md:py-12 selection:bg-white selection:text-black">
-      <LibraryScrollRestorationMode />
-      <LibraryReturnAnchorRestorer />
       <div className="w-full space-y-20 pt-32">
         <header className="flex flex-col gap-6 border-b border-neutral-900 pb-8 md:flex-row md:items-end md:justify-between">
           <div>

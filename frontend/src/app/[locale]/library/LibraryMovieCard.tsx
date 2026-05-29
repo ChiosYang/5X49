@@ -8,7 +8,6 @@ import { Check, Globe2, Loader2, Star } from "lucide-react";
 import { mutate } from "swr";
 import { Link } from "@/i18n/routing";
 import { API } from "@/lib/api";
-import { saveLibraryReturnAnchor } from "@/lib/library-return-anchor";
 import { useUpdateMovieUserState } from "@/hooks/useMovie";
 import type { AudioTrack, LibraryMovie, MovieUserState } from "@/types/movie";
 import ExternalScoreStrip from "../components/ExternalScoreStrip";
@@ -303,18 +302,19 @@ export default function LibraryMovieCard({ movie, userState, priority = false }:
       return;
     }
 
-    const card = event.currentTarget.closest("[data-library-movie-id]");
-    if (card instanceof HTMLElement) {
-      saveLibraryReturnAnchor(movie.id, card);
-    }
+    const href = event.currentTarget.getAttribute("href");
+    if (!href) return;
+
+    event.preventDefault();
+    router.push(href, { scroll: false });
   };
 
   return (
-    <div className="block" data-library-movie-id={movie.id}>
+    <div className="block">
       <div className="space-y-4">
         {/* Landscape Still */}
         <div className="peer/card group relative z-0 aspect-video w-full bg-neutral-900 hover:z-30">
-          <Link href={`/library/${movie.id}`} onClick={handleMovieLinkClick} className="block h-full cursor-pointer">
+          <Link href={`/library/${movie.id}`} scroll={false} onClick={handleMovieLinkClick} className="block h-full cursor-pointer">
             <div className="relative h-full w-full overflow-hidden rounded-md">
               {backdropSrc ? (
                 <Image
@@ -470,7 +470,7 @@ export default function LibraryMovieCard({ movie, userState, priority = false }:
         </div>
 
         {/* Title & Info */}
-        <Link href={`/library/${movie.id}`} onClick={handleMovieLinkClick} className="flex cursor-pointer items-start justify-between transition-opacity delay-0 duration-200 peer-hover/card:pointer-events-none peer-hover/card:opacity-0 peer-hover/card:delay-500">
+        <Link href={`/library/${movie.id}`} scroll={false} onClick={handleMovieLinkClick} className="flex cursor-pointer items-start justify-between transition-opacity delay-0 duration-200 peer-hover/card:pointer-events-none peer-hover/card:opacity-0 peer-hover/card:delay-500">
           <div className="space-y-1">
             <h3 className="text-xl md:text-2xl font-bold uppercase leading-none tracking-tight">
               {title}
