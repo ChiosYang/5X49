@@ -734,6 +734,17 @@ def clear_library():
     library_event_bus.publish_library_changed("clear")
     return {"message": "Library cleared"}
 
+@app.delete("/library/data")
+def clear_library_data():
+    """Clear all database-backed library data while preserving settings and media files."""
+    deleted = library_manager.clear_all_data()
+    library_event_bus.publish_library_changed("data_clear", deleted=deleted)
+    return {
+        "status": "success",
+        "message": "Library data cleared",
+        "deleted": deleted,
+    }
+
 @app.delete("/library/missing")
 def cleanup_missing_library_movies():
     """Delete records already marked as missing."""

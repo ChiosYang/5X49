@@ -138,7 +138,7 @@ export const API = {
     libraryCleanupMissing: () => `${API_BASE_URL}/library/missing`,
     librarySyncStatus: () => `${API_BASE_URL}/library/sync/status`,
     librarySeed: () => `${API_BASE_URL}/library/seed`,
-    libraryClear: () => `${API_BASE_URL}/library/clear`,
+    libraryClear: () => `${API_BASE_URL}/library/data`,
     watchHistory: () => `${API_BASE_URL}/watch-history`,
 
     // === Settings ===

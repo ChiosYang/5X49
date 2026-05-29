@@ -906,6 +906,24 @@ Root video organization accepts the same `language` and `artwork_language` scrap
 - **Description**: Clears all movies from the library database.
 - **Response**: `{"message": "Library cleared"}`
 
+### Clear All Library Data
+- **URL**: `/library/data`
+- **Method**: `DELETE`
+- **Description**: Deletes all database-backed library data: movies, personal watch states, background jobs, and persisted audit events. It does not delete media files, generated NFO/artwork files, saved settings, or environment configuration.
+- **Response**:
+  ```json
+  {
+    "status": "success",
+    "message": "Library data cleared",
+    "deleted": {
+      "user_states": 3,
+      "movies": 42,
+      "jobs": 5,
+      "events": 120
+    }
+  }
+  ```
+
 ### Ignore Movie
 - **URL**: `/library/{movie_id}/ignore`
 - **Method**: `POST`

@@ -93,6 +93,17 @@ export interface LibraryExternalScoresStatus {
   } | null;
 }
 
+export interface LibraryClearResult {
+  status: "success";
+  message: string;
+  deleted: {
+    user_states: number;
+    movies: number;
+    jobs: number;
+    events: number;
+  };
+}
+
 export interface TmdbSettings {
   configured: boolean;
   source: "environment" | "settings" | null;
@@ -399,6 +410,26 @@ export function useCleanupMissingMovies() {
       const res = await fetch(url, { method: "DELETE" });
       if (!res.ok) throw new Error("Failed to clean missing movies");
       return res.json();
+    }
+  );
+}
+
+export function useClearLibraryData() {
+  const { mutate } = useSWRConfig();
+
+  return useSWRMutation(
+    API.libraryClear(),
+    async (url: string): Promise<LibraryClearResult> => {
+      const res = await fetch(url, { method: "DELETE" });
+      if (!res.ok) throw new Error("Failed to clear library data");
+      const data = await res.json();
+      await Promise.all([
+        mutate(API.library(), []),
+        mutate(API.libraryUserStates(), []),
+        mutate(API.watchHistory(), []),
+        mutate(API.jobs()),
+      ]);
+      return data;
     }
   );
 }

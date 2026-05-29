@@ -6,7 +6,7 @@ from pathlib import Path
 from sqlalchemy import or_
 from sqlmodel import Session, select, delete
 from app.database import engine, create_db_and_tables, get_session
-from app.models import Movie
+from app.models import EventRecord, Job, Movie, MovieUserState
 from app.services.event_store import event_store
 
 # Configuration via environment variables
@@ -319,6 +319,24 @@ class LibraryManager:
             session.exec(statement)
             session.commit()
         event_store.safe_append("LibraryCleared", "library", None, {"deleted": count})
+
+    def clear_all_data(self) -> dict:
+        """Clear application data stored in the database without touching settings or media files."""
+        with Session(engine) as session:
+            counts = {
+                "user_states": len(session.exec(select(MovieUserState.movie_id)).all()),
+                "movies": len(session.exec(select(Movie.id)).all()),
+                "jobs": len(session.exec(select(Job.id)).all()),
+                "events": len(session.exec(select(EventRecord.id)).all()),
+            }
+
+            session.exec(delete(MovieUserState))
+            session.exec(delete(Movie))
+            session.exec(delete(Job))
+            session.exec(delete(EventRecord))
+            session.commit()
+
+        return counts
 
     def seed_test_data(self):
         """Populates the library with mock data from external JSON file."""

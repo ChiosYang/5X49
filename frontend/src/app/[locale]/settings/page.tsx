@@ -38,6 +38,7 @@ import {
   useTmdbSettings,
   useUpdateTmdbKey,
   useTestTmdbKey,
+  useClearLibraryData,
 } from "@/hooks/useSettings";
 
 type SettingSection = "appearance" | "display" | "analysis" | "library";
@@ -84,6 +85,7 @@ function SettingsContent() {
   } = useRefreshLibraryExternalScores();
   const { trigger: organizeRootVideos, isMutating: isOrganizingRoot, data: organizeResult, error: organizeError } = useOrganizeRootVideos();
   const { trigger: cleanupMissing, isMutating: isCleaningMissing, data: cleanupResult, error: cleanupError } = useCleanupMissingMovies();
+  const { trigger: clearLibraryData, isMutating: isClearingData, data: clearDataResult, error: clearDataError } = useClearLibraryData();
 
   // ---- Client State (UI only) ----
   const [activeSection, setActiveSection] = useState<SettingSection>("appearance");
@@ -206,6 +208,11 @@ function SettingsContent() {
     await cleanupMissing();
   };
 
+  const handleClearLibraryData = async () => {
+    if (!window.confirm(t("clearAllDataConfirm"))) return;
+    await clearLibraryData();
+  };
+
   const handleLibraryWatchChange = async () => {
     await updateLibraryWatch(!libraryWatchData?.watch_library);
   };
@@ -268,6 +275,16 @@ function SettingsContent() {
     ? `Deleted ${cleanupResult.deleted ?? 0}`
     : cleanupError
       ? "Failed to clean missing"
+      : "";
+  const clearDataMessage = clearDataResult
+    ? t("clearAllDataSummary", {
+        movies: clearDataResult.deleted.movies,
+        userStates: clearDataResult.deleted.user_states,
+        jobs: clearDataResult.deleted.jobs,
+        events: clearDataResult.deleted.events,
+      })
+    : clearDataError
+      ? t("clearAllDataFailed")
       : "";
 
   return (
@@ -987,6 +1004,38 @@ function SettingsContent() {
                             </>
                           ) : (
                             t("cleanupNow")
+                          )}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="border-b border-red-950/70 pb-6">
+                    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium uppercase tracking-widest mb-1 text-red-400">{t("clearAllData")}</p>
+                        <p className="text-xs text-neutral-600">{t("clearAllDataDesc")}</p>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-4 sm:justify-end">
+                        {clearDataMessage && (
+                          <span className={`max-w-full text-xs uppercase tracking-widest ${
+                            clearDataError ? "text-red-500" : "text-green-500"
+                          }`}>
+                            {clearDataMessage}
+                          </span>
+                        )}
+                        <button
+                          onClick={handleClearLibraryData}
+                          disabled={isClearingData}
+                          className="flex items-center gap-2 border border-red-900 bg-red-950/30 px-4 py-3 text-xs font-medium uppercase tracking-widest text-red-200 transition-colors hover:border-red-600 hover:bg-red-900/40 disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                          {isClearingData ? (
+                            <>
+                              <Loader2 className="w-3 h-3 animate-spin" />
+                              {t("clearing")}
+                            </>
+                          ) : (
+                            t("clearAllDataNow")
                           )}
                         </button>
                       </div>

@@ -153,8 +153,10 @@ curl -s -X PUT http://127.0.0.1:11548/library/96721_2013/user-state \
   -d '{"watched":true,"watched_at":"2026-05-27","rating":5,"favorite":true,"notes":"影院重看"}'
 curl -s http://127.0.0.1:11548/library/user-states
 curl -s http://127.0.0.1:11548/watch-history
+curl -s -X DELETE http://127.0.0.1:11548/library/data
 ```
 `MovieUserState` 是每部电影一条的手动个人状态，字段包括 `movie_id`、`watched`、`watched_at`、`rating`、`favorite`、`notes`、`updated_at`。`rating` 只允许 `1-5` 或 `null`。`GET /library/{movie_id}/user-state` 在尚未保存状态时返回默认未看状态；`GET /watch-history` 只返回 `watched=true` 的电影，按 `watched_at` 和 `updated_at` 倒序排列，元素形如 `{"movie": Movie, "user_state": MovieUserState}`。这些接口不记录播放进度、播放会话或播放器事件。
+`DELETE /library/data` 会清空数据库中的资料库影片、个人观看状态、后台任务和持久化审计事件，返回 `{"status":"success","message":"Library data cleared","deleted":{"user_states":0,"movies":0,"jobs":0,"events":0}}` 形状的计数结果；它不会删除媒体文件、生成的 NFO/图片文件、保存设置或环境变量配置。
 
 ### 获取单部电影详情
 ```bash

@@ -9,7 +9,7 @@ import app.database as database
 import app.services.analysis as analysis_module
 import app.services.event_store as event_store_module
 import app.services.library as library_module
-from app.models import EventRecord
+from app.models import EventRecord, Job, MovieUserState
 from app.services.analysis import analysis_service
 from app.services.library import library_manager
 
@@ -80,6 +80,35 @@ class EventSourcedCommandTests(unittest.TestCase):
         self.assertEqual(stored["micro_genre_definition"], "Reality-bending cyber thriller")
         self.assertIsNotNone(self._latest_event("AnalysisStarted"))
         self.assertIsNotNone(self._latest_event("AnalysisCompleted"))
+
+    def test_clear_all_data_removes_database_backed_library_data(self):
+        library_manager.add_movies([self._movie("local_clear")])
+        with Session(self.engine) as session:
+            session.add(MovieUserState(movie_id="local_clear", watched=True))
+            session.add(Job(id="job_clear", type="library.reconcile"))
+            session.add(
+                EventRecord(
+                    aggregate_type="library",
+                    aggregate_id=None,
+                    type="LibrarySeeded",
+                    payload={"count": 1},
+                )
+            )
+            session.commit()
+
+        counts = library_manager.clear_all_data()
+
+        self.assertEqual(counts, {
+            "user_states": 1,
+            "movies": 1,
+            "jobs": 1,
+            "events": 2,
+        })
+        with Session(self.engine) as session:
+            self.assertEqual(session.exec(select(MovieUserState)).all(), [])
+            self.assertEqual(session.exec(select(Job)).all(), [])
+            self.assertEqual(session.exec(select(EventRecord)).all(), [])
+            self.assertEqual(library_manager.get_movies(), [])
 
     def _latest_event(self, event_type: str) -> EventRecord:
         with Session(self.engine) as session:
