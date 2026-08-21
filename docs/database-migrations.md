@@ -104,10 +104,36 @@ contain the app version, source and target schema versions, UTC timestamp, and a
 hash prefix. The source path is intentionally excluded from the manifest so a
 support bundle does not disclose a user's filesystem layout.
 
-There is no automatic retention or automatic restore in this first slice.
+There is no automatic retention or unattended restore in this first slice.
 Backups are never deleted by migration code. Restore is an explicit offline
-operator action: stop 5X49, preserve the failed database, copy the verified
-backup into place, and restart the previous compatible application version.
+operator action implemented by `python -m app.migrations.restore` from the
+`backend/` directory.
+
+Verification is the default and does not modify the target:
+
+```bash
+uv run python -m app.migrations.restore --manifest <backup.manifest.json>
+```
+
+Replacement requires the application to be stopped, the exact target path, and
+the current target file SHA-256 as a confirmation token:
+
+```bash
+uv run python -m app.migrations.restore \
+  --manifest <backup.manifest.json> \
+  --replace \
+  --target data/library.db \
+  --confirm-current-sha256 <current-library.db-sha256>
+```
+
+Before replacement the command creates and verifies a second backup of the
+current target under `backups/pre-restore/`, checkpoints WAL, checks exclusive
+access, archives remaining WAL/SHM sidecars, copies the selected backup through
+a verified temporary file, atomically replaces the target, and verifies the
+restored integrity, hash, size, and row counts. It refuses path traversal,
+manifest mismatch, a changed target hash, a busy database, or a failed safety
+backup. The previous compatible application version should be used after
+restoring an older schema.
 
 ## Failure and Recovery Semantics
 
@@ -130,13 +156,19 @@ Legacy databases are represented as reviewable SQL fixture sources, not checked
 in binary `.db` files. Tests materialize them in a temporary directory and may
 never open or copy the developer's real `backend/data/library.db`.
 
-The initial compatibility set is:
+The compatibility set is:
 
 - `empty`: no user tables, representing a first installation;
 - `oldest-supported`: minimal historical `movie` and `job` tables with rows that
   require column creation and default backfills;
 - `current-unversioned`: current-era core tables and representative rows but no
   migration journal, representing an existing installation at adoption time.
+- `partial-legacy-columns`: an interrupted or partially upgraded database where
+  some version 1 columns and non-default values already exist;
+- `movie-only`: a historical database containing only the `movie` table;
+- `job-only`: a historical database containing only the `job` table;
+- `legacy-user-state-events`: a pre-journal database with movies, jobs, user
+  state, and audit events that must survive upgrade and restore unchanged.
 
 Each fixture includes expected invariants such as row counts and sentinel field
 values. Fixtures must use synthetic identifiers, relative media paths, and no

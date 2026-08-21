@@ -30,6 +30,13 @@ class BackupArtifact:
     row_counts: dict[str, int]
 
 
+@dataclass(frozen=True)
+class DatabaseSnapshot:
+    sha256: str
+    size_bytes: int
+    row_counts: dict[str, int]
+
+
 def create_verified_backup(
     source_path: Path,
     backup_dir: Path,
@@ -58,25 +65,18 @@ def create_verified_backup(
             with closing(sqlite3.connect(temporary_path)) as target:
                 source.backup(target)
 
-            with closing(_open_read_only(temporary_path)) as backup:
-                _require_integrity(backup, "backup")
-                backup_counts = _row_counts(backup)
+            backup_snapshot = inspect_database(temporary_path)
 
-            if backup_counts != source_counts:
+            if backup_snapshot.row_counts != source_counts:
                 raise BackupValidationError("Backup row counts do not match the source database")
 
-            size_bytes = temporary_path.stat().st_size
-            if size_bytes <= 0:
-                raise BackupValidationError("Backup database is empty")
-
-            sha256 = _sha256(temporary_path)
             created_at = datetime.now(timezone.utc)
             filename = _backup_filename(
                 app_version=app_version,
                 source_schema_version=source_schema_version,
                 target_schema_version=target_schema_version,
                 created_at=created_at,
-                sha256=sha256,
+                sha256=backup_snapshot.sha256,
             )
             database_path = backup_dir / filename
             if database_path.exists():
@@ -90,9 +90,9 @@ def create_verified_backup(
                 "source_schema_version": source_schema_version,
                 "target_schema_version": target_schema_version,
                 "database_file": database_path.name,
-                "sha256": sha256,
-                "size_bytes": size_bytes,
-                "row_counts": backup_counts,
+                "sha256": backup_snapshot.sha256,
+                "size_bytes": backup_snapshot.size_bytes,
+                "row_counts": backup_snapshot.row_counts,
                 "integrity_check": "ok",
             }
             manifest_path = database_path.with_suffix(".manifest.json")
@@ -100,9 +100,9 @@ def create_verified_backup(
             return BackupArtifact(
                 database_path=database_path,
                 manifest_path=manifest_path,
-                sha256=sha256,
-                size_bytes=size_bytes,
-                row_counts=backup_counts,
+                sha256=backup_snapshot.sha256,
+                size_bytes=backup_snapshot.size_bytes,
+                row_counts=backup_snapshot.row_counts,
             )
         finally:
             temporary_path.unlink(missing_ok=True)
@@ -111,6 +111,23 @@ def create_verified_backup(
 def _open_read_only(path: Path) -> sqlite3.Connection:
     uri = f"{path.resolve().as_uri()}?mode=ro"
     return sqlite3.connect(uri, uri=True, timeout=30)
+
+
+def inspect_database(path: Path) -> DatabaseSnapshot:
+    path = path.resolve()
+    if not path.is_file():
+        raise BackupValidationError("SQLite database does not exist")
+    size_bytes = path.stat().st_size
+    if size_bytes <= 0:
+        raise BackupValidationError("SQLite database is empty")
+    with closing(_open_read_only(path)) as connection:
+        _require_integrity(connection, "database")
+        row_counts = _row_counts(connection)
+    return DatabaseSnapshot(
+        sha256=_sha256(path),
+        size_bytes=size_bytes,
+        row_counts=row_counts,
+    )
 
 
 def _require_integrity(connection: sqlite3.Connection, label: str) -> None:

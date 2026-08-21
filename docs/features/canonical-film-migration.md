@@ -42,9 +42,10 @@ watch-history, and audit API behavior throughout migration.
 - Schema migration version 1 records checksums and status in
   `schema_migrations`, creates a verified SQLite online backup before upgrading
   an existing database, and absorbs the former Movie/Job `ADD COLUMN` logic.
-- Three SQL fixture profiles currently cover an empty installation, the oldest
-  supported Movie/Job schema, and a current unversioned schema. The broader RFC
-  compatibility matrix and a complete restore exercise are not yet complete.
+- Seven SQL fixture profiles cover empty, oldest-supported, current-unversioned,
+  partial-column, single-table, and legacy user-state/event databases. The
+  offline restore command is exercised against an upgraded and then mutated
+  legacy database before the restored backup is migrated again.
 
 ## Acceptance criteria
 
@@ -67,7 +68,7 @@ watch-history, and audit API behavior throughout migration.
   versioned API change is approved.
 - [ ] Canonical shadow reads produce an explainable field/count difference
   report before any existing handler switches its read source.
-- [ ] A pre-upgrade backup can be restored offline after an upgraded database is
+- [x] A pre-upgrade backup can be restored offline after an upgraded database is
   mutated, and integrity, counts, sentinel values, and manifest hash are checked.
 - [ ] Migration reports and logs contain no credentials, hidden reasoning, raw
   user media lists, or unredacted absolute paths.
@@ -110,7 +111,7 @@ watch-history, and audit API behavior throughout migration.
 
 ### Slice 0 — Gate A safety baseline
 
-Status: In Progress
+Status: Complete
 
 - Intended behavior: enforce the accepted blocking decisions; expand legacy
   fixtures; fix the current NFO file-snapshot backfill regression; exercise
@@ -189,25 +190,31 @@ Status: Pending
 ## Verification evidence
 
 - `.\.venv\Scripts\python.exe -X utf8 -W error::ResourceWarning -m unittest test_database_migrations.py`
-  — 6 tests passed on 2026-08-21, including open-WAL backup, checksum rejection,
-  failure rollback/retry, and idempotence.
+  — 7 tests passed on 2026-08-21 across seven legacy fixture profiles, including
+  open-WAL backup, checksum rejection, failure rollback/retry, and idempotence.
+- `.\.venv\Scripts\python.exe -X utf8 -W error::ResourceWarning -m unittest test_database_restore.py`
+  — 8 tests passed on 2026-08-21, including read-only verification, manifest
+  tamper/path-traversal rejection, confirmation mismatch, active-writer
+  refusal, CLI replacement, and an upgraded/mutated/restore/remigrate exercise.
+- `.\.venv\Scripts\python.exe -X utf8 -W error::ResourceWarning -m unittest test_event_backfill.py`
+  — 6 tests passed on 2026-08-21 after correcting Windows NFO snapshot path
+  resolution.
 - `.\.venv\Scripts\python.exe -X utf8 -m unittest test_generate_test_data.py`
   — 8 tests passed on 2026-08-21.
-- A 67-test backend run excluding the known event-backfill failure passed on
-  2026-08-21 with `SQLITE_DB_PATH` isolated to a temporary directory.
-- `git diff HEAD~3..HEAD --check` — passed for the migration strategy, runtime,
-  fixture, and test commits on 2026-08-21.
+- An 82-test backend run excluding the credential-dependent `test_agent.py`
+  passed on 2026-08-21 with database and media paths isolated under a verified
+  temporary directory.
+- `.\.venv\Scripts\python.exe -X utf8 -m compileall -q app test_database_restore.py test_database_migrations.py test_event_backfill.py`
+  — passed on 2026-08-21.
 
 ## Remaining risks
 
 - The accepted Gate A decisions are documented but not yet implemented or
   covered by W3 behavior tests.
-- Only three of the broader legacy fixture scenarios currently exist.
-- Backup creation is verified, but replacing an upgraded database from a backup
-  has not completed an end-to-end restore exercise.
+- The seven migration fixtures cover the version 1 safety baseline; canonical
+  identity conflicts, multiple editions, moves, aliases, and Viewing backfill
+  still need W3-specific fixtures in later slices.
 - The current real development database has not been migrated; only temporary
   databases and generated fixtures have been exercised.
-- `test_file_snapshot_backfill_records_existing_files_and_reports_unavailable`
-  currently misses the expected NFO snapshot and must pass before Gate A closes.
 - Docker runtime upgrade and restore behavior remain unverified because the
   recorded clean-install environment did not have Docker available.
