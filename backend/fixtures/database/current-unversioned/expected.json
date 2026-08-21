@@ -1,0 +1,20 @@
+{
+  "row_counts": {
+    "events": 1,
+    "job": 1,
+    "movie": 1,
+    "movie_user_state": 1
+  },
+  "movie": {
+    "id": "current_movie_001",
+    "title": "Current Sentinel",
+    "added_at": "2025-05-06T07:08:09+00:00",
+    "library_status": "available",
+    "scrape_status": "completed"
+  },
+  "job": {
+    "id": "current_job_001",
+    "priority": 5,
+    "cancel_requested": 0
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "row_counts": {
+    "job": 1,
+    "movie": 1
+  },
+  "movie": {
+    "id": "legacy_movie_001",
+    "title": "Legacy Sentinel",
+    "added_at": "2024-01-02T03:04:05+00:00",
+    "library_status": "available",
+    "scrape_status": "pending"
+  },
+  "job": {
+    "id": "legacy_job_001",
+    "priority": 0,
+    "cancel_requested": 0
+  }
+}
