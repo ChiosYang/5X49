@@ -1,0 +1,26 @@
+{
+  "row_counts": {
+    "movie": 6
+  },
+  "sentinels": [
+    {
+      "table": "movie",
+      "key": {"id": "identity_conflict"},
+      "values": {
+        "title": "Conflicting Identity",
+        "tmdb_id": "42",
+        "imdb_id": "tt0000099",
+        "library_status": "available"
+      }
+    },
+    {
+      "table": "movie",
+      "key": {"id": "same_title_two"},
+      "values": {
+        "title": "The Same Name",
+        "year": 1988,
+        "library_status": "ignored"
+      }
+    }
+  ]
+}

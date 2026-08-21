@@ -15,5 +15,7 @@ and no developer or user data belongs in this directory.
 - `job-only`: a queue-only historical database without a Movie table.
 - `legacy-user-state-events`: legacy MovieUserState and EventRecord rows,
   including contradictory watched/rating data that later W3 backfill must review.
+- `canonical-identities`: duplicate, conflicting, and absent external identities
+  used to prove deterministic Film/LibraryItem backfill behavior.
 
 Each `expected.json` records the invariants that must survive an upgrade.

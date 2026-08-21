@@ -66,6 +66,14 @@ Migration version 2 adds the canonical identity and library schema:
 review, and canonical backfill report tables. It creates the single local
 profile idempotently and leaves all legacy tables and public reads unchanged.
 
+Migration version 3 reads legacy Movie rows in stable ID order. Exact TMDB and
+IMDb identities reuse a Film; cross-provider conflicts remain separate and
+create an identity review. Title/year never auto-merges. Each legacy row gets
+one LibraryItem and permanent alias, local/provider assets are normalized and
+deduplicated, and the migration stores aggregate counts without titles or
+paths. Re-executing the backfill skips existing aliases and creates no durable
+duplicates.
+
 ## Startup Sequence
 
 Database initialization runs before the job runtime and filesystem watcher:

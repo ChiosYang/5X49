@@ -97,7 +97,15 @@ class CanonicalSchemaTests(unittest.TestCase):
                 )
 
         with self.engine.connect() as connection:
-            self.assertEqual(connection.execute(text("SELECT COUNT(*) FROM film")).scalar_one(), 2)
+            self.assertEqual(
+                connection.execute(
+                    text(
+                        "SELECT COUNT(*) FROM film "
+                        "WHERE canonical_title = 'Same Title' AND release_year = 2001"
+                    )
+                ).scalar_one(),
+                2,
+            )
             self.assertEqual(
                 connection.execute(
                     text("SELECT COUNT(*) FROM library_item WHERE film_id = :film"),

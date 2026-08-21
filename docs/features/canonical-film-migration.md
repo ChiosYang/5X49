@@ -43,12 +43,15 @@ watch-history, and audit API behavior throughout migration.
 - Schema migration version 1 records checksums and status in
   `schema_migrations`, creates a verified SQLite online backup before upgrading
   an existing database, and absorbs the former Movie/Job `ADD COLUMN` logic.
-- Seven SQL fixture profiles cover empty, oldest-supported, current-unversioned,
+- Eight SQL fixture profiles cover empty, oldest-supported, current-unversioned,
   partial-column, single-table, and legacy user-state/event databases. The
   offline restore command is exercised against an upgraded and then mutated
   legacy database before the restored backup is migrated again.
 - Schema migration version 2 adds the canonical identity/library tables and a
   singleton LocalProfile without modifying legacy Movie reads or events.
+- Schema migration version 3 deterministically backfills Film identities,
+  LibraryItems, MediaAssets, permanent aliases, conflict review records, and a
+  path-free aggregate report while preserving legacy rows.
 
 ## Acceptance criteria
 
@@ -56,13 +59,13 @@ watch-history, and audit API behavior throughout migration.
   schema through ordered, checksum-validated migrations.
 - [x] Film, ExternalIdentity, LibraryItem, MediaAsset, LocalProfile, and
   LegacyMovieAlias constraints match the accepted domain RFC.
-- [ ] Exact TMDB/IMDb identity matches reuse a Film; conflicting identities do
+- [x] Exact TMDB/IMDb identity matches reuse a Film; conflicting identities do
   not auto-merge and produce a review record.
 - [ ] Repeating a scan or backfill creates no duplicate Film, LibraryItem,
   MediaAsset, alias, Viewing, or durable review record.
 - [ ] A local rename/move relinks only one unambiguous LibraryItem candidate;
   ambiguous candidates remain separate and are reported for review.
-- [ ] Every legacy Movie remains resolvable by its old ID, including after Film
+- [x] Every legacy Movie remains resolvable by its old ID, including after Film
   merge redirects or a local path change.
 - [ ] Favorite and non-empty legacy watched/rating/notes data survive migration;
   LibraryItem deletion or retirement does not delete Film-level personal data.
@@ -141,7 +144,7 @@ Status: Complete
 
 ### Slice 2 — Deterministic Movie backfill
 
-Status: Pending
+Status: Complete
 
 - Intended behavior: backfill Film identities, library items, media assets, and
   aliases with dry-run and execution reports.
@@ -192,6 +195,11 @@ Status: Pending
 
 ## Verification evidence
 
+- `.\.venv\Scripts\python.exe -X utf8 -W error::ResourceWarning -m unittest test_canonical_schema.py test_canonical_backfill.py test_database_migrations.py test_database_restore.py`
+  — 22 tests passed on 2026-08-21 after migration v3, including exact identity
+  reuse, cross-provider conflict review, no title/year auto-merge, one alias and
+  item per legacy Movie, asset/status mapping, path-free reports, repeat
+  execution, eight legacy upgrades, backup, and restore.
 - `.\.venv\Scripts\python.exe -X utf8 -W error::ResourceWarning -m unittest test_canonical_schema.py test_database_migrations.py test_database_restore.py`
   — 19 tests passed on 2026-08-21, covering canonical table presence,
   singleton profile creation, identity/source/asset constraints, FK delete
@@ -219,9 +227,10 @@ Status: Pending
 
 - The accepted Gate A decisions are documented but not yet implemented or
   covered by W3 behavior tests.
-- The seven migration fixtures cover the version 1 safety baseline; canonical
-  identity conflicts, multiple editions, moves, aliases, and Viewing backfill
-  still need W3-specific fixtures in later slices.
+- The eight migration fixtures cover the current v1–v3 safety baseline,
+  including identity conflicts, multiple editions, and aliases. Move/relink
+  fingerprints, new post-migration items, and Viewing behavior still need later
+  slices.
 - The current real development database has not been migrated; only temporary
   databases and generated fixtures have been exercised.
 - Docker runtime upgrade and restore behavior remain unverified because the
