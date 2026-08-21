@@ -164,32 +164,29 @@ export default function LibraryManagementClient() {
   };
 
   return (
-    <div className="min-h-screen bg-black px-5 pb-20 pt-28 text-white selection:bg-white selection:text-black sm:px-8 md:px-12 md:pt-32">
-      <div className="mx-auto w-full max-w-7xl space-y-12">
-        <header className="border-b border-neutral-900 pb-8">
-          <p className="text-xs font-bold uppercase tracking-[0.24em] text-neutral-600">
-            {t("eyebrow")}
-          </p>
-          <div className="mt-4 flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+    <div className="min-h-screen bg-black text-white selection:bg-white selection:text-black">
+      <div className="w-full">
+        <header className="border-b border-neutral-900 px-6 py-16 pt-28 sm:px-8 md:px-16 md:py-24 md:pt-32">
+          <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
             <div>
-              <h1 className="font-serif text-5xl leading-none tracking-tighter md:text-7xl">
+              <h1 className="break-words text-4xl font-bold uppercase leading-none tracking-tight sm:text-5xl md:text-7xl">
                 {t("title")}
               </h1>
-              <p className="mt-4 max-w-2xl text-sm leading-6 text-neutral-500">
+              <p className="mt-4 max-w-2xl text-sm uppercase leading-6 tracking-widest text-neutral-500">
                 {t("subtitle")}
               </p>
             </div>
             <div className="flex flex-wrap gap-3">
               <Link
                 href="/settings?section=library"
-                className="inline-flex min-h-11 items-center gap-2 border border-neutral-800 px-4 text-xs font-bold uppercase tracking-[0.16em] text-neutral-300 transition-colors hover:border-neutral-600 hover:text-white"
+                className="inline-flex min-h-11 items-center gap-2 border border-neutral-800 px-4 text-xs font-medium uppercase tracking-widest text-neutral-300 transition-colors hover:border-neutral-600 hover:text-white"
               >
                 {t("openSettings")}
                 <ArrowUpRight className="h-3.5 w-3.5" />
               </Link>
               <Link
                 href="/library/activity"
-                className="inline-flex min-h-11 items-center gap-2 bg-white px-4 text-xs font-bold uppercase tracking-[0.16em] text-black transition-colors hover:bg-neutral-200"
+                className="inline-flex min-h-11 items-center gap-2 bg-white px-4 text-xs font-medium uppercase tracking-widest text-black transition-colors hover:bg-neutral-200"
               >
                 {t("viewActivity")}
                 <ArrowUpRight className="h-3.5 w-3.5" />
@@ -198,9 +195,10 @@ export default function LibraryManagementClient() {
           </div>
         </header>
 
-        <section className="space-y-5">
+        <section className="space-y-16 px-6 py-12 sm:px-8 md:px-16 md:py-16">
+        <section className="space-y-6">
           <div>
-            <h2 className="text-lg font-semibold text-white">{t("statusOverview")}</h2>
+            <h2 className="text-2xl font-bold uppercase tracking-tight text-white">{t("statusOverview")}</h2>
             <p className="mt-1 text-xs leading-5 text-neutral-600">{t("statusOverviewDesc")}</p>
           </div>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
@@ -242,9 +240,9 @@ export default function LibraryManagementClient() {
           </div>
         </section>
 
-        <section className="space-y-5">
+        <section className="space-y-6">
           <div>
-            <h2 className="text-lg font-semibold text-white">{t("scanGroup")}</h2>
+            <h2 className="text-2xl font-bold uppercase tracking-tight text-white">{t("scanGroup")}</h2>
             <p className="mt-1 text-xs leading-5 text-neutral-600">{t("scanGroupDesc")}</p>
           </div>
           <div className="grid gap-4 md:grid-cols-2">
@@ -276,9 +274,9 @@ export default function LibraryManagementClient() {
           </div>
         </section>
 
-        <section className="space-y-5">
+        <section className="space-y-6">
           <div>
-            <h2 className="text-lg font-semibold text-white">{t("metadataGroup")}</h2>
+            <h2 className="text-2xl font-bold uppercase tracking-tight text-white">{t("metadataGroup")}</h2>
             <p className="mt-1 text-xs leading-5 text-neutral-600">{t("metadataGroupDesc")}</p>
           </div>
           <div className="grid gap-4 md:grid-cols-2">
@@ -318,9 +316,9 @@ export default function LibraryManagementClient() {
           </div>
         </section>
 
-        <section className="space-y-5">
+        <section className="space-y-6">
           <div>
-            <h2 className="text-lg font-semibold text-white">{t("organizationGroup")}</h2>
+            <h2 className="text-2xl font-bold uppercase tracking-tight text-white">{t("organizationGroup")}</h2>
             <p className="mt-1 text-xs leading-5 text-neutral-600">{t("organizationGroupDesc")}</p>
           </div>
           <div className="grid gap-4 md:grid-cols-2">
@@ -346,9 +344,9 @@ export default function LibraryManagementClient() {
           </div>
         </section>
 
-        <section className="space-y-5">
+        <section className="space-y-6">
           <div>
-            <h2 className="text-lg font-semibold text-red-300">{t("maintenanceGroup")}</h2>
+            <h2 className="text-2xl font-bold uppercase tracking-tight text-red-300">{t("maintenanceGroup")}</h2>
             <p className="mt-1 text-xs leading-5 text-neutral-600">{t("maintenanceGroupDesc")}</p>
           </div>
           <div className="grid gap-4 md:grid-cols-2">
@@ -375,6 +373,7 @@ export default function LibraryManagementClient() {
               </ActionButton>
             </ActionCard>
           </div>
+        </section>
         </section>
       </div>
 

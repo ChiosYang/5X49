@@ -93,10 +93,12 @@ export default function GeneralSettings() {
         />
       </SettingsPanel>
 
-      <details className="group border border-neutral-900 bg-neutral-950/30">
-        <summary className="flex cursor-pointer list-none items-center justify-between gap-4 px-5 py-5 sm:px-6">
+      <details className="group border-b border-neutral-900 pb-6">
+        <summary className="flex cursor-pointer list-none items-center justify-between gap-4 py-1">
           <span>
-            <span className="block text-sm font-semibold text-neutral-100">{t("roadmap")}</span>
+            <span className="block text-sm font-medium uppercase tracking-widest text-neutral-100">
+              {t("roadmap")}
+            </span>
             <span className="mt-1 block text-xs leading-5 text-neutral-600">{t("roadmapDesc")}</span>
           </span>
           <span className="flex shrink-0 items-center gap-3 text-[10px] font-bold uppercase tracking-[0.2em] text-neutral-600 group-open:text-neutral-400">
@@ -104,10 +106,10 @@ export default function GeneralSettings() {
             <ChevronDown className="h-4 w-4 transition-transform group-open:rotate-180" />
           </span>
         </summary>
-        <div className="grid gap-px border-t border-neutral-900 bg-neutral-900 sm:grid-cols-2">
+        <div className="mt-6 space-y-6 border-t border-neutral-900 pt-6">
           {roadmapItems.map(([title, description]) => (
-            <div key={title} className="bg-black px-5 py-5 sm:px-6">
-              <p className="text-sm font-semibold text-neutral-300">{title}</p>
+            <div key={title} className="border-b border-neutral-900 pb-6 last:border-b-0 last:pb-0">
+              <p className="text-sm font-medium uppercase tracking-widest text-neutral-300">{title}</p>
               <p className="mt-2 text-xs leading-5 text-neutral-600">{description}</p>
             </div>
           ))}

@@ -22,16 +22,16 @@ export function SectionIntro({
   description: string;
 }) {
   return (
-    <header className="space-y-3 border-b border-neutral-900 pb-7">
+    <header>
       {eyebrow && (
-        <p className="text-xs font-bold uppercase tracking-[0.22em] text-neutral-600">
+        <p className="mb-2 text-xs font-medium uppercase tracking-widest text-neutral-600">
           {eyebrow}
         </p>
       )}
-      <h2 className="text-3xl font-semibold tracking-tight text-white md:text-4xl">
+      <h2 className="mb-2 text-2xl font-bold uppercase tracking-tight text-white">
         {title}
       </h2>
-      <p className="max-w-2xl text-sm leading-6 text-neutral-500">{description}</p>
+      <p className="text-sm text-neutral-500">{description}</p>
     </header>
   );
 }
@@ -46,16 +46,16 @@ export function SettingsPanel({
   children: ReactNode;
 }) {
   return (
-    <section className="border border-neutral-900 bg-neutral-950/40">
-      <div className="border-b border-neutral-900 px-5 py-4 sm:px-6">
-        <h3 className="text-xs font-bold uppercase tracking-[0.2em] text-neutral-200">
+    <section>
+      <div className="mb-6">
+        <h3 className="text-xs font-medium uppercase tracking-widest text-neutral-400">
           {title}
         </h3>
         {description && (
           <p className="mt-2 text-xs leading-5 text-neutral-600">{description}</p>
         )}
       </div>
-      <div className="divide-y divide-neutral-900">{children}</div>
+      <div className="space-y-6">{children}</div>
     </section>
   );
 }
@@ -74,11 +74,13 @@ export function SettingRow({
   children?: ReactNode;
 }) {
   return (
-    <div className="px-5 py-5 sm:px-6">
+    <div className="border-b border-neutral-900 pb-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-semibold text-neutral-100">{title}</p>
-          <p className="mt-1 max-w-2xl text-xs leading-5 text-neutral-600">{description}</p>
+          <p className="mb-1 text-sm font-medium uppercase tracking-widest text-neutral-100">
+            {title}
+          </p>
+          <p className="max-w-2xl text-xs leading-5 text-neutral-600">{description}</p>
         </div>
         {control && <div className="shrink-0 sm:max-w-[60%]">{control}</div>}
       </div>
@@ -150,10 +152,12 @@ export function DisclosurePanel({
   children: ReactNode;
 }) {
   return (
-    <details className="group border border-neutral-900 bg-neutral-950/30">
-      <summary className="flex cursor-pointer list-none items-center justify-between gap-5 px-5 py-5 sm:px-6">
+    <details className="group border-b border-neutral-900 pb-6">
+      <summary className="flex cursor-pointer list-none items-center justify-between gap-5 py-1">
         <span className="min-w-0">
-          <span className="block text-sm font-semibold text-neutral-100">{title}</span>
+          <span className="block text-sm font-medium uppercase tracking-widest text-neutral-100">
+            {title}
+          </span>
           <span className="mt-1 block text-xs leading-5 text-neutral-600">{description}</span>
         </span>
         <span className="flex shrink-0 items-center gap-3">
@@ -165,7 +169,7 @@ export function DisclosurePanel({
           <ChevronDown className="h-4 w-4 text-neutral-500 transition-transform group-open:rotate-180" />
         </span>
       </summary>
-      <div className="divide-y divide-neutral-900 border-t border-neutral-900">{children}</div>
+      <div className="mt-6 space-y-6 border-t border-neutral-900 pt-6">{children}</div>
     </details>
   );
 }
@@ -189,14 +193,14 @@ export function ActionCard({
 }) {
   return (
     <article
-      className={`flex h-full flex-col border p-5 sm:p-6 ${
+      className={`flex h-full flex-col border-b pb-6 ${
         danger
-          ? "border-red-950/80 bg-red-950/10"
-          : "border-neutral-900 bg-neutral-950/40"
+          ? "border-red-950/80"
+          : "border-neutral-900"
       }`}
     >
-      <div className="min-h-28 flex-1">
-        <h3 className={`text-sm font-semibold ${danger ? "text-red-300" : "text-neutral-100"}`}>
+      <div className="flex-1">
+        <h3 className={`text-sm font-medium uppercase tracking-widest ${danger ? "text-red-300" : "text-neutral-100"}`}>
           {title}
         </h3>
         <p className="mt-2 text-xs leading-5 text-neutral-600">{description}</p>
@@ -228,7 +232,7 @@ export function ActionButton({
       type="button"
       onClick={onClick}
       disabled={disabled || busy}
-      className={`inline-flex min-h-11 w-full items-center justify-center gap-2 px-4 text-xs font-bold uppercase tracking-[0.16em] transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
+      className={`inline-flex min-h-11 w-full items-center justify-center gap-2 px-5 text-xs font-medium uppercase tracking-widest transition-colors disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto ${
         danger
           ? "border border-red-900 bg-red-950/30 text-red-200 hover:border-red-600 hover:bg-red-900/40"
           : "border border-neutral-800 bg-neutral-900 text-white hover:border-neutral-600 hover:bg-neutral-800"
@@ -254,8 +258,8 @@ export function StatusTile({
   error?: boolean;
 }) {
   return (
-    <div className="border border-neutral-900 bg-neutral-950/40 p-4">
-      <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-neutral-600">{label}</p>
+    <div className="border-l border-neutral-800 py-1 pl-4">
+      <p className="text-[10px] font-medium uppercase tracking-widest text-neutral-600">{label}</p>
       <p
         className={`mt-3 text-sm font-semibold ${
           error ? "text-red-400" : active ? "text-emerald-400" : "text-neutral-200"

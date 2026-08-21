@@ -37,58 +37,47 @@ function SettingsContent() {
   };
 
   return (
-    <div className="min-h-screen bg-black px-5 pb-20 pt-28 text-white selection:bg-white selection:text-black sm:px-8 md:px-12 md:pt-32">
-      <div className="mx-auto w-full max-w-7xl">
-        <header className="border-b border-neutral-900 pb-8">
-          <p className="text-xs font-bold uppercase tracking-[0.24em] text-neutral-600">
-            {t("systemConfiguration")}
-          </p>
-          <div className="mt-4 flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
-            <div>
-              <h1 className="font-serif text-5xl leading-none tracking-tighter md:text-7xl">
-                {t("title")}
-              </h1>
-              <p className="mt-4 max-w-2xl text-sm leading-6 text-neutral-500">
-                {t("subtitle")}
-              </p>
-            </div>
-            <p className="max-w-sm text-xs leading-5 text-neutral-600 lg:text-right">
-              {t("settingsHint")}
-            </p>
-          </div>
-        </header>
+    <div className="min-h-screen bg-black text-white selection:bg-white selection:text-black">
+      <header className="border-b border-neutral-900 px-6 py-16 pt-28 sm:px-8 md:px-16 md:py-24 md:pt-32">
+        <h1 className="mb-4 text-5xl font-bold uppercase tracking-tight md:text-7xl">
+          {t("title")}
+        </h1>
+        <p className="max-w-2xl text-sm uppercase tracking-widest text-neutral-500">
+          {t("subtitle")}
+        </p>
+      </header>
 
-        <div className="mt-8 grid gap-8 lg:grid-cols-[220px_minmax(0,1fr)] lg:gap-12">
-          <aside className="min-w-0 overflow-hidden">
-            <nav
-              aria-label={t("settingsNavigation")}
-              className="scrollbar-minimal flex w-full max-w-full gap-2 overflow-x-auto pb-2 lg:sticky lg:top-28 lg:flex-col lg:overflow-visible"
-            >
-              {settingSections.map((section, index) => (
-                <button
-                  key={section}
-                  type="button"
-                  onClick={() => selectSection(section)}
-                  aria-current={activeSection === section ? "page" : undefined}
-                  className={`flex min-w-max items-center gap-3 border px-4 py-3 text-left text-xs font-bold uppercase tracking-[0.16em] transition-colors lg:w-full ${
-                    activeSection === section
-                      ? "border-white bg-white text-black"
-                      : "border-neutral-900 text-neutral-500 hover:border-neutral-700 hover:text-white"
-                  }`}
-                >
-                  <span className="text-[10px] opacity-60">0{index + 1}</span>
-                  {labels[section]}
-                </button>
-              ))}
-            </nav>
-          </aside>
+      <div className="flex min-h-[60vh] flex-col md:flex-row">
+        <aside className="w-full min-w-0 overflow-hidden border-b border-neutral-900 bg-black md:w-64 md:shrink-0 md:border-b-0 md:border-r">
+          <nav
+            aria-label={t("settingsNavigation")}
+            className="scrollbar-minimal flex w-full max-w-full gap-2 overflow-x-auto p-6 sm:p-8 md:sticky md:top-24 md:flex-col md:overflow-visible md:p-12"
+          >
+            {settingSections.map((section) => (
+              <button
+                key={section}
+                type="button"
+                onClick={() => selectSection(section)}
+                aria-current={activeSection === section ? "page" : undefined}
+                className={`block min-w-max px-4 py-3 text-left text-sm font-medium uppercase tracking-widest transition-colors md:w-full ${
+                  activeSection === section
+                    ? "bg-white text-black"
+                    : "text-neutral-500 hover:bg-neutral-900 hover:text-white"
+                }`}
+              >
+                {labels[section]}
+              </button>
+            ))}
+          </nav>
+        </aside>
 
-          <section className="min-w-0 max-w-4xl">
+        <section className="min-w-0 flex-1 p-6 sm:p-8 md:p-12 lg:p-16">
+          <div className="max-w-3xl">
             {activeSection === "general" && <GeneralSettings />}
             {activeSection === "integrations" && <IntegrationSettings />}
             {activeSection === "library" && <LibrarySettings />}
-          </section>
-        </div>
+          </div>
+        </section>
       </div>
     </div>
   );
@@ -96,12 +85,12 @@ function SettingsContent() {
 
 function SettingsFallback() {
   return (
-    <div className="min-h-screen bg-black px-5 pb-20 pt-28 text-white sm:px-8 md:px-12 md:pt-32">
-      <div className="mx-auto max-w-7xl animate-pulse">
-        <div className="h-20 border-b border-neutral-900" />
-        <div className="mt-8 grid gap-8 lg:grid-cols-[220px_minmax(0,1fr)] lg:gap-12">
-          <div className="h-36 bg-neutral-950" />
-          <div className="h-96 border border-neutral-900 bg-neutral-950/40" />
+    <div className="min-h-screen animate-pulse bg-black text-white">
+      <div className="h-64 border-b border-neutral-900 px-8 py-24 md:px-16" />
+      <div className="flex min-h-[60vh] flex-col md:flex-row">
+        <div className="h-28 border-b border-neutral-900 md:h-auto md:w-64 md:border-b-0 md:border-r" />
+        <div className="flex-1 p-8 md:p-16">
+          <div className="h-96 max-w-3xl border-b border-neutral-900" />
         </div>
       </div>
     </div>
