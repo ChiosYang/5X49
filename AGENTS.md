@@ -152,7 +152,7 @@ Running the two dev servers (commands are in "Common Commands" above):
 
 - Backend: `cd backend && uv run uvicorn app.main:app --reload` serves on
   port `8000` (health at `/health`, OpenAPI docs at `/docs`).
-- Frontend: `cd frontend && npm run dev` serves on port `3000`.
+- Frontend: `cd frontend && npm run dev` serves on port `5549`.
 
 Non-obvious caveats:
 

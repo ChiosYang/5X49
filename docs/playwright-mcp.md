@@ -84,7 +84,7 @@ Then ask the coding agent to use Playwright MCP for a browser check. Example:
 
 ```text
 Use the Playwright MCP browser agent to verify /zh/library:
-1. Open http://localhost:3000/zh/library.
+1. Open http://localhost:5549/zh/library.
 2. Confirm the library refresh icon is visible in the header summary.
 3. Click the icon and confirm it sends a request to /api/library/reconcile.
 4. Confirm the button enters a loading/disabled state while the request is pending.

@@ -70,7 +70,7 @@ services:
   frontend:
     image: alicolia/5x49-frontend:latest
     ports:
-      - "3000:3000"
+      - "5549:3000"
     depends_on:
       - backend
 
@@ -90,7 +90,7 @@ Run the containers:
 docker-compose up -d
 ```
 
-Access the app at [http://localhost:3000](http://localhost:3000).
+Access the app at [http://localhost:5549](http://localhost:5549).
 
 ## 💻 Local Development
 
@@ -116,7 +116,7 @@ npm run dev
 | `OPENROUTER_API_KEY` | API Key for LLM analysis | **Required** |
 | `MEDIA_DIR` | Path to your movie collection (NFOs) | `/media` (Docker) |
 | `API_BASE_URL` | LLM API Endpoint | `https://openrouter.ai/api/v1` |
-| `ALLOWED_ORIGINS` | CORS allowed origins | `http://localhost:3000` |
+| `ALLOWED_ORIGINS` | CORS allowed origins | `http://localhost:5549` |
 
 ---
 

@@ -31,7 +31,7 @@
 
 3. **访问应用**
 
-   - 前端: http://localhost:3000
+   - 前端: http://localhost:5549
    - 后端 API: http://localhost:8000
    - API 文档: http://localhost:8000/docs
 

@@ -73,7 +73,7 @@ services:
   frontend:
     image: alicolia/5x49-frontend:latest
     ports:
-      - "3000:3000"
+      - "5549:3000"
     depends_on:
       - backend
 
@@ -93,7 +93,7 @@ bash <(curl -sL https://raw.githubusercontent.com/chiosyang/5x49/main/setup.sh)
 docker-compose up -d
 ```
 
-然后在浏览器访问 [http://localhost:3000](http://localhost:3000)。
+然后在浏览器访问 [http://localhost:5549](http://localhost:5549)。
 
 ## 💻 本地开发
 
@@ -119,7 +119,7 @@ npm run dev
 | `OPENROUTER_API_KEY` | 用于 LLM 分析的 API Key | **必填** |
 | `MEDIA_DIR` | 你的电影收藏路径 (NFOs) | `/media` (Docker) |
 | `API_BASE_URL` | LLM API 端点 | `https://openrouter.ai/api/v1` |
-| `ALLOWED_ORIGINS` | 允许的 CORS 来源 | `http://localhost:3000` |
+| `ALLOWED_ORIGINS` | 允许的 CORS 来源 | `http://localhost:5549` |
 
 ---
 

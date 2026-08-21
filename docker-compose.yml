@@ -27,7 +27,7 @@ services:
     image: alicolia/5x49-frontend:latest
     container_name: 5x49-frontend
     ports:
-      - "11549:3000"
+      - "5549:3000"
     environment:
       - API_URL=http://backend:8000
     depends_on:
