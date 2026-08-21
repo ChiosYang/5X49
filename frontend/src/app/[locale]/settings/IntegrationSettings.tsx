@@ -22,11 +22,11 @@ import {
 } from "@/hooks/useSettings";
 
 const inputClass =
-  "min-h-11 w-full border border-neutral-800 bg-neutral-900 px-4 text-sm text-white placeholder:text-neutral-600 hover:border-neutral-600 focus:border-white focus:outline-none disabled:cursor-not-allowed disabled:opacity-50";
+  "focus-ring duration-standard min-h-11 w-full border border-line-strong bg-surface-raised px-4 text-sm text-ink placeholder:text-ink-disabled transition-colors hover:border-ink-disabled disabled:cursor-not-allowed disabled:opacity-50";
 const primaryButtonClass =
-  "min-h-11 shrink-0 bg-white px-5 text-xs font-bold uppercase tracking-[0.16em] text-black transition-colors hover:bg-neutral-200 disabled:cursor-not-allowed disabled:opacity-40";
+  "focus-ring duration-fast min-h-11 shrink-0 bg-inverse px-5 text-xs font-bold tracking-[0.16em] text-inverse-ink uppercase transition-colors hover:bg-neutral-200 disabled:cursor-not-allowed disabled:opacity-40";
 const secondaryButtonClass =
-  "min-h-11 shrink-0 border border-neutral-800 bg-neutral-900 px-5 text-xs font-bold uppercase tracking-[0.16em] text-white transition-colors hover:border-neutral-600 hover:bg-neutral-800 disabled:cursor-not-allowed disabled:opacity-40";
+  "focus-ring duration-fast min-h-11 shrink-0 border border-line-strong bg-surface-raised px-5 text-xs font-bold tracking-[0.16em] text-ink uppercase transition-colors hover:border-ink-disabled hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-40";
 
 function isValidHttpUrl(value: string) {
   try {
@@ -208,26 +208,26 @@ export default function IntegrationSettings() {
               className={`${inputClass} flex items-center justify-between gap-4 text-left`}
             >
               <span className="truncate">{currentModel || t("selectModel")}</span>
-              <span className="text-neutral-500">▾</span>
+              <span className="text-ink-subtle">▾</span>
             </button>
             {modelMenuOpen && (
               <>
                 <button
                   type="button"
                   aria-label={t("closeModelMenu")}
-                  className="fixed inset-0 z-10 cursor-default"
+                  className="z-overlay fixed inset-0 cursor-default"
                   onClick={() => setModelMenuOpen(false)}
                 />
-                <div className="liquid-glass-popover absolute z-20 mt-2 flex max-h-72 w-full flex-col border border-neutral-900/80">
-                  <div className="relative border-b border-neutral-800 p-2">
-                    <Search className="pointer-events-none absolute left-5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-neutral-600" />
+                <div className="liquid-glass-popover z-popover absolute mt-2 flex max-h-72 w-full flex-col border border-line/80">
+                  <div className="relative border-b border-line-strong p-2">
+                    <Search className="pointer-events-none absolute top-1/2 left-5 h-3.5 w-3.5 -translate-y-1/2 text-ink-disabled" />
                     <input
                       type="search"
                       value={modelSearch}
                       onChange={(event) => setModelSearch(event.target.value)}
                       placeholder={t("searchModels")}
                       aria-label={t("searchModels")}
-                      className="w-full bg-neutral-950 py-2 pl-9 pr-3 text-xs text-white placeholder:text-neutral-600 focus:outline-none"
+                      className="focus-ring w-full bg-surface py-2 pr-3 pl-9 text-xs text-ink placeholder:text-ink-disabled"
                       autoFocus
                     />
                   </div>
@@ -238,15 +238,15 @@ export default function IntegrationSettings() {
                           key={model}
                           type="button"
                           onClick={() => handleModelChange(model)}
-                          className={`w-full px-4 py-3 text-left text-sm transition-colors hover:bg-neutral-800 ${
-                            currentModel === model ? "bg-white font-medium text-black" : "text-white"
+                          className={`focus-ring duration-standard w-full px-4 py-3 text-left text-sm transition-colors hover:bg-surface-hover ${
+                            currentModel === model ? "bg-inverse font-medium text-inverse-ink" : "text-ink"
                           }`}
                         >
                           {model}
                         </button>
                       ))
                     ) : (
-                      <p className="px-4 py-8 text-center text-sm text-neutral-600">{t("noModelsFound")}</p>
+                      <p className="px-4 py-8 text-center text-sm text-ink-disabled">{t("noModelsFound")}</p>
                     )}
                   </div>
                 </div>
@@ -319,8 +319,8 @@ export default function IntegrationSettings() {
                 className={`${inputClass} pr-28`}
               />
               <span
-                className={`pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-bold uppercase tracking-widest ${
-                  tmdbStatus?.configured ? "text-emerald-400" : "text-neutral-600"
+                className={`pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 text-[10px] font-bold tracking-widest uppercase ${
+                  tmdbStatus?.configured ? "text-success" : "text-ink-disabled"
                 }`}
               >
                 {tmdbSourceLabel}
@@ -392,7 +392,7 @@ export default function IntegrationSettings() {
                 key={label}
                 type="button"
                 onClick={() => setBaseUrlDraft(value)}
-                className="border border-neutral-900 px-3 py-2 text-[11px] text-neutral-500 transition-colors hover:border-neutral-700 hover:text-white"
+                className="focus-ring duration-standard border border-line px-3 py-2 text-[11px] text-ink-subtle transition-colors hover:border-line-strong hover:text-ink"
               >
                 {label}
               </button>

@@ -5,12 +5,12 @@ import NavigationMenu from "./NavigationMenu";
 
 export default function Navigation() {
   return (
-    <nav className="fixed top-0 left-0 right-0 z-[60] flex justify-between items-center p-8 text-white">
+    <nav className="z-navigation fixed top-0 right-0 left-0 flex items-center justify-between p-8 text-ink">
       {/* Left: Menu Trigger */}
       <NavigationMenu />
 
       {/* Center: Logo */}
-      <Link href="/" className="font-serif font-bold text-2xl tracking-tighter absolute left-1/2 -translate-x-1/2 z-50 drop-shadow-lg">
+      <Link href="/" className="focus-ring z-navigation absolute left-1/2 -translate-x-1/2 font-serif text-2xl font-bold tracking-tighter drop-shadow-lg">
         5X49
       </Link>
 

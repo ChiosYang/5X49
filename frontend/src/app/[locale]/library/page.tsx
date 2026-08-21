@@ -157,16 +157,16 @@ export default async function LibraryPage({ params, searchParams }: LibraryPageP
   const sortedMovies = sortMovies(filteredMovies, sort, direction, locale);
 
   return (
-    <div className="min-h-screen bg-black text-white px-8 py-6 md:px-12 md:py-12 selection:bg-white selection:text-black">
+    <div className="page-x min-h-screen bg-canvas py-6 text-ink selection:bg-inverse selection:text-inverse-ink md:py-12">
       <div className="w-full space-y-20 pt-32">
-        <header className="flex flex-col gap-6 border-b border-neutral-900 pb-8 md:flex-row md:items-end md:justify-between">
+        <header className="flex flex-col gap-6 border-b border-line pb-8 md:flex-row md:items-end md:justify-between">
           <div>
-            <h1 className="text-6xl md:text-9xl font-serif tracking-tighter leading-none">
+            <h1 className="type-display-editorial">
               {t("title")}
             </h1>
           </div>
           <div className="flex flex-wrap items-center gap-4 md:justify-end md:gap-6">
-            <span className="text-neutral-500 text-xs font-bold uppercase tracking-widest hidden md:inline-block">
+            <span className="hidden text-xs font-bold tracking-widest text-ink-subtle uppercase md:inline-block">
               {filteredMovies.length} FILMS
             </span>
             <div className="group/filter relative">
@@ -174,16 +174,16 @@ export default async function LibraryPage({ params, searchParams }: LibraryPageP
                 type="button"
                 aria-label={t("filter")}
                 title={t("filter")}
-                className={`inline-flex h-10 w-10 items-center justify-center rounded-md border transition-colors focus:bg-white focus:text-black focus:outline-none ${
+                className={`focus-ring duration-standard inline-flex h-10 w-10 items-center justify-center rounded-media border transition-colors ${
                   filter === "all"
-                    ? "border-neutral-800 bg-neutral-950/70 text-neutral-400 hover:bg-white hover:text-black"
-                    : "border-white bg-white text-black"
+                    ? "border-line-strong bg-surface/70 text-ink-muted hover:bg-inverse hover:text-inverse-ink"
+                    : "border-inverse bg-inverse text-inverse-ink"
                 }`}
               >
                 <ListFilter className="h-4 w-4" />
               </button>
-              <div className="pointer-events-none absolute right-0 top-full z-40 w-48 pt-3 opacity-0 transition-opacity duration-150 group-hover/filter:pointer-events-auto group-hover/filter:opacity-100 group-focus-within/filter:pointer-events-auto group-focus-within/filter:opacity-100">
-                <div className="liquid-glass-popover relative rounded-md border border-neutral-900/80 p-1">
+              <div className="z-popover pointer-events-none absolute top-full right-0 w-48 pt-3 opacity-0 transition-opacity duration-standard group-hover/filter:pointer-events-auto group-hover/filter:opacity-100 group-focus-within/filter:pointer-events-auto group-focus-within/filter:opacity-100">
+                <div className="liquid-glass-popover relative rounded-media border border-line/80 p-1">
                   {FILTER_OPTIONS.map((option) => {
                     const Icon = option.icon;
                     const isActive = filter === option.key;
@@ -192,10 +192,10 @@ export default async function LibraryPage({ params, searchParams }: LibraryPageP
                         key={option.key}
                         href={libraryHref(sort, direction, option.key)}
                         aria-label={t(option.labelKey)}
-                        className={`flex h-10 items-center justify-between rounded px-3 text-sm transition-colors ${
+                        className={`focus-ring duration-standard flex h-10 items-center justify-between rounded-control px-3 text-sm transition-colors ${
                           isActive
-                            ? "bg-white text-black"
-                            : "text-neutral-400 hover:bg-neutral-900 hover:text-white"
+                            ? "bg-inverse text-inverse-ink"
+                            : "text-ink-muted hover:bg-surface-raised hover:text-ink"
                         }`}
                       >
                         <span className="flex min-w-0 items-center gap-2">
@@ -214,12 +214,12 @@ export default async function LibraryPage({ params, searchParams }: LibraryPageP
                 type="button"
                 aria-label={t("sort")}
                 title={t("sort")}
-                className="inline-flex h-10 w-10 items-center justify-center rounded-md border border-neutral-800 bg-neutral-950/70 text-neutral-400 transition-colors hover:bg-white hover:text-black focus:bg-white focus:text-black focus:outline-none"
+                className="focus-ring duration-standard inline-flex h-10 w-10 items-center justify-center rounded-media border border-line-strong bg-surface/70 text-ink-muted transition-colors hover:bg-inverse hover:text-inverse-ink"
               >
                 <ArrowUpDown className="h-4 w-4" />
               </button>
-              <div className="pointer-events-none absolute right-0 top-full z-40 w-48 pt-3 opacity-0 transition-opacity duration-150 group-hover/sort:pointer-events-auto group-hover/sort:opacity-100 group-focus-within/sort:pointer-events-auto group-focus-within/sort:opacity-100">
-                <div className="liquid-glass-popover relative rounded-md border border-neutral-900/80 p-1">
+              <div className="z-popover pointer-events-none absolute top-full right-0 w-48 pt-3 opacity-0 transition-opacity duration-standard group-hover/sort:pointer-events-auto group-hover/sort:opacity-100 group-focus-within/sort:pointer-events-auto group-focus-within/sort:opacity-100">
+                <div className="liquid-glass-popover relative rounded-media border border-line/80 p-1">
                   {SORT_OPTIONS.map((option) => {
                     const Icon = option.icon;
                     const isActive = sort === option.key;
@@ -233,10 +233,10 @@ export default async function LibraryPage({ params, searchParams }: LibraryPageP
                         key={option.key}
                         href={libraryHref(option.key, nextDirection, filter)}
                         aria-label={t("sortBy", { field: t(option.labelKey) })}
-                        className={`flex h-10 items-center justify-between rounded px-3 text-sm transition-colors ${
+                        className={`focus-ring duration-standard flex h-10 items-center justify-between rounded-control px-3 text-sm transition-colors ${
                           isActive
-                            ? "bg-white text-black"
-                            : "text-neutral-400 hover:bg-neutral-900 hover:text-white"
+                            ? "bg-inverse text-inverse-ink"
+                            : "text-ink-muted hover:bg-surface-raised hover:text-ink"
                         }`}
                       >
                         <span className="flex min-w-0 items-center gap-2">
@@ -258,11 +258,11 @@ export default async function LibraryPage({ params, searchParams }: LibraryPageP
         </header>
 
         {filteredMovies.length === 0 ? (
-          <div className="py-24 text-center space-y-4">
-            <p className="text-neutral-500 font-serif italic text-xl">{t("empty")}</p>
+          <div className="space-y-4 py-24 text-center">
+            <p className="font-serif text-xl text-ink-subtle italic">{t("empty")}</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-x-5 xl:gap-x-6 gap-y-12 xl:gap-y-14">
+          <div className="grid grid-cols-1 gap-x-5 gap-y-12 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 xl:gap-x-6 xl:gap-y-14 2xl:grid-cols-5">
             {sortedMovies.map((movie, i) => (
               <LibraryMovieCard
                 key={movie.id}

@@ -64,10 +64,10 @@ export default function ExternalScoreStrip({
         {visibleScores.map((score) => (
           <span
             key={score.source}
-            className="inline-flex h-5 max-w-full items-center gap-1 rounded-[4px] border border-white/20 bg-white/[0.07] px-1.5 text-[10px] font-black uppercase leading-none text-neutral-100"
+            className="inline-flex h-5 max-w-full items-center gap-1 rounded-control border border-ink/20 bg-ink/[0.07] px-1.5 text-[10px] leading-none font-black text-ink uppercase"
             title={[score.list_name, score.edition].filter(Boolean).join(" ")}
           >
-            <span className="truncate text-neutral-400">{shortLabel(score)}</span>
+            <span className="truncate text-ink-muted">{shortLabel(score)}</span>
             <span>{primaryValue(score)}</span>
           </span>
         ))}
@@ -81,34 +81,34 @@ export default function ExternalScoreStrip({
         const value = primaryValue(score);
         const delta = movement(score);
         const content = (
-          <div className="min-w-0 border border-neutral-800 bg-neutral-950 px-4 py-3 transition-colors hover:border-neutral-600">
+          <div className="duration-standard min-w-0 border border-line-strong bg-surface px-4 py-3 transition-colors hover:border-ink-disabled">
             <div className="flex items-center justify-between gap-4">
-              <span className="truncate text-[10px] font-bold uppercase tracking-widest text-neutral-500">
+              <span className="truncate text-[10px] font-bold tracking-widest text-ink-subtle uppercase">
                 {score.label || score.source}
               </span>
               {score.edition && (
-                <span className="shrink-0 text-[10px] font-bold uppercase tracking-widest text-neutral-600">
+                <span className="shrink-0 text-[10px] font-bold tracking-widest text-ink-disabled uppercase">
                   {score.edition}
                 </span>
               )}
             </div>
             <div className="mt-2 flex items-baseline gap-2">
-              <span className="text-2xl font-black uppercase leading-none text-white">{value}</span>
+              <span className="text-2xl leading-none font-black text-ink uppercase">{value}</span>
               {delta && (
-                <span className="text-xs font-bold uppercase tracking-widest text-neutral-400">
+                <span className="text-xs font-bold tracking-widest text-ink-muted uppercase">
                   {delta}
                 </span>
               )}
             </div>
             {score.list_name && (
-              <p className="mt-2 truncate text-xs font-medium text-neutral-500">{score.list_name}</p>
+              <p className="mt-2 truncate text-xs font-medium text-ink-subtle">{score.list_name}</p>
             )}
           </div>
         );
 
         if (showLinks && score.url) {
           return (
-            <a key={score.source} href={score.url} target="_blank" rel="noreferrer" className="block">
+            <a key={score.source} href={score.url} target="_blank" rel="noreferrer" className="focus-ring block">
               {content}
             </a>
           );

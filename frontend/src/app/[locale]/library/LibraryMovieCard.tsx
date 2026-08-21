@@ -313,9 +313,9 @@ export default function LibraryMovieCard({ movie, userState, priority = false }:
     <div className="block">
       <div className="space-y-4">
         {/* Landscape Still */}
-        <div className="peer/card group relative z-0 aspect-video w-full bg-neutral-900 hover:z-30">
-          <Link href={`/library/${movie.id}`} scroll={false} onClick={handleMovieLinkClick} className="block h-full cursor-pointer">
-            <div className="relative h-full w-full overflow-hidden rounded-md">
+        <div className="peer/card group z-content hover:z-inspector relative aspect-video w-full bg-surface-raised">
+          <Link href={`/library/${movie.id}`} scroll={false} onClick={handleMovieLinkClick} className="focus-ring block h-full cursor-pointer rounded-media">
+            <div className="relative h-full w-full overflow-hidden rounded-media">
               {backdropSrc ? (
                 <Image
                   src={backdropSrc!}
@@ -323,47 +323,47 @@ export default function LibraryMovieCard({ movie, userState, priority = false }:
                   fill
                   priority={priority}
                   sizes="(min-width: 1536px) 20vw, (min-width: 1280px) 25vw, (min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
-                  className="object-cover transition-transform delay-0 duration-200 ease-out group-hover:scale-[1.05] group-hover:delay-500"
+                  className="object-cover transition-transform delay-0 duration-standard ease-exit group-hover:scale-[1.05] group-hover:delay-inspection"
                 />
               ) : (
-                <div className="flex h-full w-full items-center justify-center border border-neutral-800 transition-transform delay-0 duration-200 ease-out group-hover:scale-[1.05] group-hover:delay-500">
-                  <span className="font-serif text-4xl text-neutral-800">?</span>
+                <div className="flex h-full w-full items-center justify-center border border-line-strong transition-transform delay-0 duration-standard ease-exit group-hover:scale-[1.05] group-hover:delay-inspection">
+                  <span className="font-serif text-4xl text-surface-hover">?</span>
                 </div>
               )}
               {metadataBadge && (
-                <span className="absolute left-3 top-3 z-10 rounded-sm bg-black/80 px-2 py-1 text-[10px] font-black uppercase tracking-widest text-white">
+                <span className="z-raised absolute top-3 left-3 rounded-small bg-canvas/80 px-2 py-1 text-[10px] font-black tracking-widest text-ink uppercase">
                   {metadataBadge}
                 </span>
               )}
               {watched && (
-                <span className="absolute right-3 top-3 z-10 text-white drop-shadow-[0_1px_4px_rgba(0,0,0,0.9)]">
+                <span className="z-raised absolute top-3 right-3 text-ink drop-shadow-[0_1px_4px_rgba(0,0,0,0.9)]">
                   <Check className="h-5 w-5 stroke-[3]" aria-label={t("watched")} />
                 </span>
               )}
               {/* Hover Overlay */}
-              <div className="absolute inset-0 bg-black/0 transition-colors delay-0 duration-200 group-hover:bg-black/35 group-hover:delay-500" />
-              <div className="invisible absolute inset-x-0 bottom-0 flex translate-y-1 flex-col gap-1 bg-gradient-to-t from-black/80 via-black/35 to-transparent px-5 pb-4 pt-12 opacity-0 transition-[opacity,transform] delay-0 duration-200 group-hover:visible group-hover:translate-y-0 group-hover:opacity-100 group-hover:delay-500">
-                <h3 className="line-clamp-1 text-2xl font-black uppercase leading-none text-white">
+              <div className="absolute inset-0 bg-canvas/0 transition-colors delay-0 duration-standard group-hover:bg-canvas/35 group-hover:delay-inspection" />
+              <div className="invisible absolute inset-x-0 bottom-0 flex translate-y-1 flex-col gap-1 bg-gradient-to-t from-canvas/80 via-canvas/35 to-transparent px-5 pt-12 pb-4 opacity-0 transition-[opacity,transform] delay-0 duration-standard group-hover:visible group-hover:translate-y-0 group-hover:opacity-100 group-hover:delay-inspection">
+                <h3 className="line-clamp-1 text-2xl leading-none font-black text-ink uppercase">
                   {title}
                 </h3>
-                <p className="line-clamp-1 text-xs font-bold uppercase tracking-wide text-white">
+                <p className="line-clamp-1 text-xs font-bold tracking-wide text-ink uppercase">
                   {movie.director || movie.title} {movie.year}
                 </p>
               </div>
             </div>
           </Link>
 
-          <div className="liquid-glass-popover invisible absolute left-0 right-0 top-full z-20 origin-top translate-y-1 scale-95 overflow-hidden rounded-b-md border border-neutral-900/80 p-5 text-white opacity-0 transition-[opacity,transform] delay-0 duration-200 ease-out group-hover:visible group-hover:translate-y-0 group-hover:scale-100 group-hover:opacity-100 group-hover:delay-500">
-            <div className="relative z-10 space-y-4">
+          <div className="liquid-glass-popover z-inspector invisible absolute top-full right-0 left-0 origin-top translate-y-1 scale-95 overflow-hidden rounded-b-media border border-line/80 p-5 text-ink opacity-0 transition-[opacity,transform] delay-0 duration-standard ease-exit group-hover:visible group-hover:translate-y-0 group-hover:scale-100 group-hover:opacity-100 group-hover:delay-inspection">
+            <div className="z-raised relative space-y-4">
               <div className="flex items-center gap-3">
                 <button
                   type="button"
                   onClick={() => updateUserState({ watched: !watched })}
                   disabled={isMutating}
-                  className={`inline-flex h-10 items-center gap-2 rounded-full px-4 text-sm font-black uppercase tracking-wide transition-colors ${
+                  className={`focus-ring duration-standard inline-flex h-10 items-center gap-2 rounded-pill px-4 text-sm font-black tracking-wide uppercase transition-colors ${
                     watched
-                      ? "bg-white text-black group-hover:bg-neutral-200"
-                      : "border border-white/55 text-white hover:border-white hover:bg-white hover:text-black"
+                      ? "bg-inverse text-inverse-ink group-hover:bg-neutral-200"
+                      : "border border-ink/55 text-ink hover:border-ink hover:bg-inverse hover:text-inverse-ink"
                   } disabled:cursor-not-allowed disabled:opacity-60`}
                   aria-label={watched ? t("markUnwatched") : t("markWatched")}
                   title={watched ? t("markUnwatched") : t("markWatched")}
@@ -375,10 +375,10 @@ export default function LibraryMovieCard({ movie, userState, priority = false }:
                   type="button"
                   onClick={() => updateUserState({ favorite: !favorite })}
                   disabled={isMutating}
-                  className={`flex h-8 w-8 items-center justify-center rounded-full border transition-colors ${
+                  className={`focus-ring duration-standard flex h-8 w-8 items-center justify-center rounded-pill border transition-colors ${
                     favorite
-                      ? "border-white bg-white text-black"
-                      : "border-white/55 text-white hover:border-white"
+                      ? "border-inverse bg-inverse text-inverse-ink"
+                      : "border-ink/55 text-ink hover:border-ink"
                   } disabled:cursor-not-allowed disabled:opacity-60`}
                   aria-label={favorite ? t("unfavorite") : t("favorite")}
                   title={favorite ? t("unfavorite") : t("favorite")}
@@ -387,7 +387,7 @@ export default function LibraryMovieCard({ movie, userState, priority = false }:
                 </button>
               </div>
 
-              <p className="overflow-hidden text-[15px] leading-snug text-neutral-300 [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:4]">
+              <p className="overflow-hidden text-[15px] leading-snug text-ink-muted [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:4]">
                 {description || `${title} (${movie.year})`}
               </p>
 
@@ -400,10 +400,10 @@ export default function LibraryMovieCard({ movie, userState, priority = false }:
                       key={badge.label}
                       className={
                         badge.kind
-                          ? "inline-flex h-5 items-center text-neutral-200"
+                          ? "inline-flex h-5 items-center text-ink"
                           : badge.variant === "solid"
-                          ? "inline-flex h-5 items-center rounded-[4px] border border-white/60 bg-neutral-200 px-1.5 text-[10px] font-black uppercase leading-none text-neutral-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.8),0_1px_6px_rgba(255,255,255,0.08)]"
-                          : "inline-flex h-5 items-center rounded-[4px] border border-white/35 bg-white/[0.06] px-1.5 text-[10px] font-black uppercase leading-none text-neutral-200 shadow-[inset_0_1px_0_rgba(255,255,255,0.14)]"
+                          ? "inline-flex h-5 items-center rounded-control border border-ink/60 bg-ink/90 px-1.5 text-[10px] leading-none font-black text-line-strong uppercase shadow-[inset_0_1px_0_rgba(255,255,255,0.8),0_1px_6px_rgba(255,255,255,0.08)]"
+                          : "inline-flex h-5 items-center rounded-control border border-ink/35 bg-ink/[0.06] px-1.5 text-[10px] leading-none font-black text-ink uppercase shadow-[inset_0_1px_0_rgba(255,255,255,0.14)]"
                       }
                     >
                       {badge.kind === "dolby-vision" ? (
@@ -431,8 +431,8 @@ export default function LibraryMovieCard({ movie, userState, priority = false }:
                     <span
                       className={
                         countryFlag
-                          ? "inline-flex h-5 items-center gap-1 text-neutral-300"
-                          : "inline-flex h-5 items-center gap-1 rounded-[4px] border border-white/35 bg-white/[0.06] px-1.5 text-[10px] font-black uppercase leading-none text-neutral-200 shadow-[inset_0_1px_0_rgba(255,255,255,0.14)]"
+                          ? "inline-flex h-5 items-center gap-1 text-ink-muted"
+                          : "inline-flex h-5 items-center gap-1 rounded-control border border-ink/35 bg-ink/[0.06] px-1.5 text-[10px] leading-none font-black text-ink uppercase shadow-[inset_0_1px_0_rgba(255,255,255,0.14)]"
                       }
                       title={movie.countries?.join(", ")}
                       aria-label={movie.countries?.join(", ")}
@@ -441,12 +441,12 @@ export default function LibraryMovieCard({ movie, userState, priority = false }:
                         <span className="text-base leading-none">{countryFlag}</span>
                       ) : (
                         <>
-                          <Globe2 className="h-3.5 w-3.5 text-neutral-500" />
+                          <Globe2 className="h-3.5 w-3.5 text-ink-subtle" />
                           <span className="max-w-20 truncate">{country}</span>
                         </>
                       )}
                       {extraCountryCount > 0 && (
-                        <span className="text-xs font-bold text-neutral-400">+{extraCountryCount}</span>
+                        <span className="text-xs font-bold text-ink-muted">+{extraCountryCount}</span>
                       )}
                     </span>
                   )}
@@ -458,7 +458,7 @@ export default function LibraryMovieCard({ movie, userState, priority = false }:
                   {tags.map((tag) => (
                     <span
                       key={tag}
-                      className="max-w-full truncate rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[10px] font-black uppercase tracking-widest text-neutral-300"
+                      className="max-w-full truncate rounded-pill border border-ink/10 bg-ink/5 px-2.5 py-1 text-[10px] font-black tracking-widest text-ink-muted uppercase"
                     >
                       {tag}
                     </span>
@@ -470,18 +470,18 @@ export default function LibraryMovieCard({ movie, userState, priority = false }:
         </div>
 
         {/* Title & Info */}
-        <Link href={`/library/${movie.id}`} scroll={false} onClick={handleMovieLinkClick} className="flex cursor-pointer items-start justify-between transition-opacity delay-0 duration-200 peer-hover/card:pointer-events-none peer-hover/card:opacity-0 peer-hover/card:delay-500">
+        <Link href={`/library/${movie.id}`} scroll={false} onClick={handleMovieLinkClick} className="focus-ring duration-standard flex cursor-pointer items-start justify-between transition-opacity delay-0 peer-hover/card:pointer-events-none peer-hover/card:opacity-0 peer-hover/card:delay-inspection">
           <div className="space-y-1">
-            <h3 className="text-xl md:text-2xl font-bold uppercase leading-none tracking-tight">
+            <h3 className="text-xl leading-none font-bold tracking-tight uppercase md:text-2xl">
               {title}
             </h3>
             {metadataBadge && (
-              <p className="text-[10px] font-black uppercase tracking-widest text-neutral-500">
+              <p className="text-[10px] font-black tracking-widest text-ink-subtle uppercase">
                 {metadataBadge}
               </p>
             )}
           </div>
-          <span className="font-serif text-xl italic text-neutral-400">
+          <span className="font-serif text-xl text-ink-muted italic">
             {movie.year}
           </span>
         </Link>

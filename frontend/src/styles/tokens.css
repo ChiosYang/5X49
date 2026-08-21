@@ -1,0 +1,306 @@
+@theme inline {
+  /* Next Font emits these variables on <body>. Inline aliases avoid circular
+     custom-property resolution while preserving Tailwind's font utilities. */
+  --font-sans: var(--font-inter);
+  --font-serif: var(--font-playfair);
+
+  /* Semantic color roles. Tailwind's default palette remains available. */
+  --color-canvas: #000000;
+  --color-surface: var(--color-neutral-950);
+  --color-surface-raised: var(--color-neutral-900);
+  --color-surface-hover: var(--color-neutral-800);
+  --color-ink: #ffffff;
+  --color-ink-muted: var(--color-neutral-400);
+  --color-ink-subtle: var(--color-neutral-500);
+  --color-ink-disabled: var(--color-neutral-600);
+  --color-line: var(--color-neutral-900);
+  --color-line-strong: var(--color-neutral-700);
+  --color-inverse: #ffffff;
+  --color-inverse-ink: #000000;
+  --color-success: var(--color-emerald-400);
+  --color-warning: var(--color-amber-300);
+  --color-danger: var(--color-red-400);
+  --color-scrim: rgb(0 0 0 / 75%);
+
+  /* Compatibility aliases retained during the incremental migration. */
+  --color-background: var(--color-canvas);
+  --color-foreground: var(--color-ink);
+  --color-muted: var(--color-ink-muted);
+
+  /* Repeated layout relationships. Numeric spacing remains available. */
+  --spacing-page-x: clamp(1.5rem, 5vw, 4rem);
+  --spacing-page-y: clamp(4rem, 8vw, 6rem);
+  --spacing-section-gap: 4rem;
+  --spacing-editorial-gap: 6rem;
+
+  /* Shape roles. */
+  --radius-structural: 0;
+  --radius-small: 0.125rem;
+  --radius-control: 0.25rem;
+  --radius-media: 0.375rem;
+  --radius-pill: 9999px;
+
+  /* Shared transition curves. */
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --ease-enter: cubic-bezier(0, 0, 0.2, 1);
+  --ease-exit: cubic-bezier(0.4, 0, 1, 1);
+}
+
+:root {
+  --duration-fast: 100ms;
+  --duration-standard: 150ms;
+  --duration-deliberate: 300ms;
+  --delay-inspection: 500ms;
+
+  --z-content: 0;
+  --z-raised: 10;
+  --z-sticky: 20;
+  --z-inspector: 30;
+  --z-overlay: 40;
+  --z-navigation: 50;
+  --z-popover: 60;
+  --z-modal: 70;
+  --z-toast: 80;
+
+  --focus-ring-width: 2px;
+  --focus-ring-offset: 2px;
+
+  --glass-background: rgb(8 8 8 / 42%);
+  --glass-highlight: rgb(255 255 255 / 8%);
+  --glass-middle: rgb(28 28 28 / 34%);
+  --glass-shadow-edge: rgb(0 0 0 / 42%);
+  --glass-shadow: 0 18px 60px rgb(0 0 0 / 58%);
+  --glass-surface-blur: 3px;
+  --glass-overlay-blur: 12px;
+  --glass-saturation: 170%;
+  --glass-contrast: 106%;
+  --glass-grain-opacity: 0.045;
+}
+
+@utility type-display-ui {
+  font-family: var(--font-sans);
+  font-size: clamp(2.5rem, 6vw, 4.5rem);
+  font-weight: 700;
+  line-height: 0.95;
+  letter-spacing: -0.025em;
+  text-transform: uppercase;
+  overflow-wrap: anywhere;
+}
+
+@utility type-display-editorial {
+  font-family: var(--font-serif);
+  font-size: clamp(3.75rem, 9vw, 8rem);
+  font-weight: 400;
+  line-height: 0.9;
+  letter-spacing: -0.04em;
+  overflow-wrap: anywhere;
+}
+
+@utility type-display-film {
+  font-family: var(--font-sans);
+  font-size: clamp(3.75rem, 9vw, 8rem);
+  font-weight: 700;
+  line-height: 0.9;
+  letter-spacing: -0.04em;
+  text-transform: uppercase;
+  overflow-wrap: anywhere;
+}
+
+@utility type-section-title {
+  font-family: var(--font-sans);
+  font-size: 1.5rem;
+  font-weight: 700;
+  line-height: 2rem;
+  letter-spacing: -0.02em;
+  text-transform: uppercase;
+}
+
+@utility type-card-title {
+  font-family: var(--font-sans);
+  font-size: 1.5rem;
+  font-weight: 800;
+  line-height: 1.75rem;
+  letter-spacing: -0.02em;
+}
+
+@utility type-editorial-lead {
+  font-family: var(--font-serif);
+  font-size: clamp(1.25rem, 2vw, 1.5rem);
+  font-style: italic;
+  font-weight: 400;
+  line-height: 1.4;
+}
+
+@utility type-body {
+  font-family: var(--font-sans);
+  font-size: 0.875rem;
+  font-weight: 400;
+  line-height: 1.5rem;
+  letter-spacing: 0;
+}
+
+@utility type-label {
+  font-family: var(--font-sans);
+  font-size: 0.75rem;
+  font-weight: 500;
+  line-height: 1rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+}
+
+@utility type-meta {
+  font-family: var(--font-sans);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  line-height: 1rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+}
+
+@utility type-badge {
+  font-family: var(--font-sans);
+  font-size: 0.625rem;
+  font-weight: 900;
+  line-height: 0.625rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+@utility page-x {
+  padding-inline: var(--spacing-page-x);
+}
+
+@utility page-y {
+  padding-block: var(--spacing-page-y);
+}
+
+@utility section-gap {
+  gap: var(--spacing-section-gap);
+}
+
+@utility editorial-gap {
+  gap: var(--spacing-editorial-gap);
+}
+
+@utility duration-fast {
+  transition-duration: var(--duration-fast);
+}
+
+@utility duration-standard {
+  transition-duration: var(--duration-standard);
+}
+
+@utility duration-deliberate {
+  transition-duration: var(--duration-deliberate);
+}
+
+@utility delay-inspection {
+  transition-delay: var(--delay-inspection);
+}
+
+@utility z-content {
+  z-index: var(--z-content);
+}
+
+@utility z-raised {
+  z-index: var(--z-raised);
+}
+
+@utility z-sticky {
+  z-index: var(--z-sticky);
+}
+
+@utility z-inspector {
+  z-index: var(--z-inspector);
+}
+
+@utility z-overlay {
+  z-index: var(--z-overlay);
+}
+
+@utility z-navigation {
+  z-index: var(--z-navigation);
+}
+
+@utility z-popover {
+  z-index: var(--z-popover);
+}
+
+@utility z-modal {
+  z-index: var(--z-modal);
+}
+
+@utility z-toast {
+  z-index: var(--z-toast);
+}
+
+@utility focus-ring {
+  &:focus-visible {
+    outline: var(--focus-ring-width) solid var(--color-ink);
+    outline-offset: var(--focus-ring-offset);
+  }
+}
+
+.glass-surface,
+.liquid-glass-popover,
+.liquid-glass-modal,
+.liquid-glass-sidebar {
+  isolation: isolate;
+  background:
+    linear-gradient(
+      135deg,
+      var(--glass-highlight),
+      var(--glass-middle) 34%,
+      var(--glass-shadow-edge)
+    ),
+    var(--glass-background);
+  box-shadow: var(--glass-shadow);
+  -webkit-backdrop-filter:
+    blur(var(--glass-surface-blur))
+    saturate(var(--glass-saturation))
+    contrast(var(--glass-contrast));
+  backdrop-filter:
+    blur(var(--glass-surface-blur))
+    saturate(var(--glass-saturation))
+    contrast(var(--glass-contrast));
+  transform: translateZ(0);
+  will-change: transform, opacity, backdrop-filter;
+}
+
+.scrim-backdrop {
+  background: var(--color-scrim);
+  -webkit-backdrop-filter: blur(var(--glass-overlay-blur));
+  backdrop-filter: blur(var(--glass-overlay-blur));
+}
+
+.glass-surface::before,
+.liquid-glass-popover::before,
+.liquid-glass-modal::before,
+.liquid-glass-sidebar::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 160 160' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.55'/%3E%3C/svg%3E");
+  background-size: 160px 160px;
+  mix-blend-mode: overlay;
+  opacity: var(--glass-grain-opacity);
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important;
+    transition-delay: 0ms !important;
+  }
+
+  .animate-spin {
+    animation-duration: 1s !important;
+    animation-iteration-count: infinite !important;
+  }
+}

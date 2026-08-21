@@ -164,29 +164,29 @@ export default function LibraryManagementClient() {
   };
 
   return (
-    <div className="min-h-screen bg-black text-white selection:bg-white selection:text-black">
+    <div className="min-h-screen bg-canvas text-ink selection:bg-inverse selection:text-inverse-ink">
       <div className="w-full">
-        <header className="border-b border-neutral-900 px-6 py-16 pt-28 sm:px-8 md:px-16 md:py-24 md:pt-32">
+        <header className="page-x border-b border-line py-16 pt-28 md:py-24 md:pt-32">
           <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
             <div>
-              <h1 className="break-words text-4xl font-bold uppercase leading-none tracking-tight sm:text-5xl md:text-7xl">
+              <h1 className="type-display-ui">
                 {t("title")}
               </h1>
-              <p className="mt-4 max-w-2xl text-sm uppercase leading-6 tracking-widest text-neutral-500">
+              <p className="mt-4 max-w-2xl text-sm leading-6 tracking-widest text-ink-subtle uppercase">
                 {t("subtitle")}
               </p>
             </div>
             <div className="flex flex-wrap gap-3">
               <Link
                 href="/settings?section=library"
-                className="inline-flex min-h-11 items-center gap-2 border border-neutral-800 px-4 text-xs font-medium uppercase tracking-widest text-neutral-300 transition-colors hover:border-neutral-600 hover:text-white"
+                className="focus-ring duration-fast inline-flex min-h-11 items-center gap-2 border border-line-strong px-4 text-xs font-medium tracking-widest text-ink-muted uppercase transition-colors hover:border-ink-disabled hover:text-ink"
               >
                 {t("openSettings")}
                 <ArrowUpRight className="h-3.5 w-3.5" />
               </Link>
               <Link
                 href="/library/activity"
-                className="inline-flex min-h-11 items-center gap-2 bg-white px-4 text-xs font-medium uppercase tracking-widest text-black transition-colors hover:bg-neutral-200"
+                className="focus-ring duration-fast inline-flex min-h-11 items-center gap-2 bg-inverse px-4 text-xs font-medium tracking-widest text-inverse-ink uppercase transition-colors hover:bg-neutral-200"
               >
                 {t("viewActivity")}
                 <ArrowUpRight className="h-3.5 w-3.5" />
@@ -195,11 +195,11 @@ export default function LibraryManagementClient() {
           </div>
         </header>
 
-        <section className="space-y-16 px-6 py-12 sm:px-8 md:px-16 md:py-16">
+        <section className="page-x section-gap flex flex-col py-12 md:py-16">
         <section className="space-y-6">
           <div>
-            <h2 className="text-2xl font-bold uppercase tracking-tight text-white">{t("statusOverview")}</h2>
-            <p className="mt-1 text-xs leading-5 text-neutral-600">{t("statusOverviewDesc")}</p>
+            <h2 className="type-section-title text-ink">{t("statusOverview")}</h2>
+            <p className="mt-1 text-xs leading-5 text-ink-disabled">{t("statusOverviewDesc")}</p>
           </div>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
             <StatusTile
@@ -242,8 +242,8 @@ export default function LibraryManagementClient() {
 
         <section className="space-y-6">
           <div>
-            <h2 className="text-2xl font-bold uppercase tracking-tight text-white">{t("scanGroup")}</h2>
-            <p className="mt-1 text-xs leading-5 text-neutral-600">{t("scanGroupDesc")}</p>
+            <h2 className="type-section-title text-ink">{t("scanGroup")}</h2>
+            <p className="mt-1 text-xs leading-5 text-ink-disabled">{t("scanGroupDesc")}</p>
           </div>
           <div className="grid gap-4 md:grid-cols-2">
             <ActionCard
@@ -276,8 +276,8 @@ export default function LibraryManagementClient() {
 
         <section className="space-y-6">
           <div>
-            <h2 className="text-2xl font-bold uppercase tracking-tight text-white">{t("metadataGroup")}</h2>
-            <p className="mt-1 text-xs leading-5 text-neutral-600">{t("metadataGroupDesc")}</p>
+            <h2 className="type-section-title text-ink">{t("metadataGroup")}</h2>
+            <p className="mt-1 text-xs leading-5 text-ink-disabled">{t("metadataGroupDesc")}</p>
           </div>
           <div className="grid gap-4 md:grid-cols-2">
             <ActionCard
@@ -318,8 +318,8 @@ export default function LibraryManagementClient() {
 
         <section className="space-y-6">
           <div>
-            <h2 className="text-2xl font-bold uppercase tracking-tight text-white">{t("organizationGroup")}</h2>
-            <p className="mt-1 text-xs leading-5 text-neutral-600">{t("organizationGroupDesc")}</p>
+            <h2 className="type-section-title text-ink">{t("organizationGroup")}</h2>
+            <p className="mt-1 text-xs leading-5 text-ink-disabled">{t("organizationGroupDesc")}</p>
           </div>
           <div className="grid gap-4 md:grid-cols-2">
             <ActionCard
@@ -346,8 +346,8 @@ export default function LibraryManagementClient() {
 
         <section className="space-y-6">
           <div>
-            <h2 className="text-2xl font-bold uppercase tracking-tight text-red-300">{t("maintenanceGroup")}</h2>
-            <p className="mt-1 text-xs leading-5 text-neutral-600">{t("maintenanceGroupDesc")}</p>
+            <h2 className="type-section-title text-danger">{t("maintenanceGroup")}</h2>
+            <p className="mt-1 text-xs leading-5 text-ink-disabled">{t("maintenanceGroupDesc")}</p>
           </div>
           <div className="grid gap-4 md:grid-cols-2">
             <ActionCard

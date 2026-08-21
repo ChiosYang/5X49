@@ -283,7 +283,7 @@ export default function MovieRefreshButton({ movieId }: { movieId: string }) {
   };
 
   return (
-    <div className="p-8 md:px-16 flex items-center justify-between gap-4">
+    <div className="flex flex-col items-start justify-between gap-4 p-8 sm:flex-row sm:items-center md:px-16">
       <div className="space-y-2">
         <span className="block text-xs font-bold uppercase tracking-widest text-neutral-500">
           Metadata
@@ -299,7 +299,7 @@ export default function MovieRefreshButton({ movieId }: { movieId: string }) {
           </span>
         )}
       </div>
-      <div className="flex shrink-0 items-center gap-2">
+      <div className="flex max-w-full flex-wrap items-center gap-2 sm:shrink-0">
         <button
           type="button"
           onClick={handleToggleWatched}

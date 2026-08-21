@@ -26,11 +26,11 @@ import {
 } from "@/hooks/useSettings";
 
 const inputClass =
-  "min-h-11 w-full border border-neutral-800 bg-neutral-900 px-4 text-sm text-white placeholder:text-neutral-600 hover:border-neutral-600 focus:border-white focus:outline-none";
+  "focus-ring duration-standard min-h-11 w-full border border-line-strong bg-surface-raised px-4 text-sm text-ink placeholder:text-ink-disabled transition-colors hover:border-ink-disabled";
 const primaryButtonClass =
-  "min-h-11 shrink-0 bg-white px-5 text-xs font-bold uppercase tracking-[0.16em] text-black transition-colors hover:bg-neutral-200 disabled:cursor-not-allowed disabled:opacity-40";
+  "focus-ring duration-fast min-h-11 shrink-0 bg-inverse px-5 text-xs font-bold tracking-[0.16em] text-inverse-ink uppercase transition-colors hover:bg-neutral-200 disabled:cursor-not-allowed disabled:opacity-40";
 const secondaryButtonClass =
-  "min-h-11 shrink-0 border border-neutral-800 bg-neutral-900 px-5 text-xs font-bold uppercase tracking-[0.16em] text-white transition-colors hover:border-neutral-600 hover:bg-neutral-800";
+  "focus-ring duration-fast min-h-11 shrink-0 border border-line-strong bg-surface-raised px-5 text-xs font-bold tracking-[0.16em] text-ink uppercase transition-colors hover:border-ink-disabled hover:bg-surface-hover";
 
 function useTransientMutationResult(result: unknown, reset: () => void) {
   useEffect(() => {
@@ -205,7 +205,7 @@ export default function LibrarySettings() {
               {mediaDirSaving ? t("saving") : t("save")}
             </button>
           </div>
-          <p className="mt-3 text-xs leading-5 text-neutral-600">{t("noteDocker")}</p>
+          <p className="mt-3 text-xs leading-5 text-ink-disabled">{t("noteDocker")}</p>
         </SettingRow>
       </SettingsPanel>
 
@@ -233,17 +233,17 @@ export default function LibrarySettings() {
             ) : null
           }
         >
-          <div className="inline-flex max-w-full flex-wrap border border-neutral-800 bg-neutral-900 p-1">
+          <div className="inline-flex max-w-full flex-wrap border border-line-strong bg-surface-raised p-1">
             {artworkLanguageOptions.map((option) => (
               <button
                 key={option.value}
                 type="button"
                 onClick={() => handleArtworkLanguageChange(option.value)}
                 disabled={artworkLanguageSaving}
-                className={`px-3 py-2 text-xs font-bold uppercase tracking-widest transition-colors ${
+                className={`focus-ring duration-standard px-3 py-2 text-xs font-bold tracking-widest uppercase transition-colors ${
                   (artworkLanguageData?.artwork_language ?? "metadata") === option.value
-                    ? "bg-white text-black"
-                    : "text-neutral-500 hover:text-white"
+                    ? "bg-inverse text-inverse-ink"
+                    : "text-ink-subtle hover:text-ink"
                 } disabled:cursor-not-allowed disabled:opacity-50`}
               >
                 {option.label}

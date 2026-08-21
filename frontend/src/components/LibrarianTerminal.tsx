@@ -113,24 +113,24 @@ export default function LibrarianTerminal({ isOpen, onClose }: LibrarianTerminal
   const renderLog = (log: LogMessage) => {
     switch (log.type) {
       case "info":
-        return <div className="text-neutral-500">[{log.timestamp}] [SYSTEM] {log.message}</div>;
+        return <div className="break-words text-ink-subtle">[{log.timestamp}] [SYSTEM] {log.message}</div>;
       case "thought":
-        return <div className="text-white">[{log.timestamp}] [REASONING] {log.message}</div>;
+        return <div className="break-words text-ink">[{log.timestamp}] [REASONING] {log.message}</div>;
       case "tool_execution":
         return (
-          <div className="text-neutral-400 my-4 bg-neutral-950 p-4 border border-neutral-800">
+          <div className="my-4 break-words border border-line-strong bg-surface p-4 text-ink-muted">
             <div>[{log.timestamp}] [SYSTEM_CALL: {log.tool_name}]</div>
-            <div className="text-neutral-300 mt-2 pl-4 border-l-2 border-white whitespace-pre-wrap font-mono text-xs max-h-32 overflow-y-auto scrollbar-minimal">
+            <div className="scrollbar-minimal mt-2 max-h-32 overflow-y-auto border-l-2 border-ink pl-4 font-mono text-xs whitespace-pre-wrap text-ink-muted">
               {log.content}
             </div>
           </div>
         );
       case "done":
-        return <div className="text-white font-bold uppercase tracking-widest mt-4">[{log.timestamp}] [DONE] {log.message}</div>;
+        return <div className="mt-4 break-words font-bold tracking-widest text-success uppercase">[{log.timestamp}] [DONE] {log.message}</div>;
       case "error":
-        return <div className="text-red-500 font-bold uppercase tracking-widest mt-4">[{log.timestamp}] [ERROR] {log.message}</div>;
+        return <div className="mt-4 break-words font-bold tracking-widest text-danger uppercase">[{log.timestamp}] [ERROR] {log.message}</div>;
       default:
-        return <div className="text-neutral-500">[{log.timestamp}] Unknown log type</div>;
+        return <div className="text-ink-subtle">[{log.timestamp}] Unknown log type</div>;
     }
   };
 
@@ -141,19 +141,19 @@ export default function LibrarianTerminal({ isOpen, onClose }: LibrarianTerminal
           initial={{ opacity: 0, scale: 0.95, y: 20 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: 20 }}
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 lg:p-12 bg-black/90 backdrop-blur-md"
+          className="scrim-backdrop z-modal fixed inset-0 flex items-center justify-center p-4 lg:p-12"
         >
-          <div className="liquid-glass-modal relative w-full max-w-5xl border border-neutral-900/80 rounded-none overflow-hidden flex flex-col h-[80vh] font-mono text-neutral-400">
+          <div className="liquid-glass-modal relative flex h-[80vh] w-full max-w-5xl flex-col overflow-hidden rounded-structural border border-line/80 font-mono text-ink-muted">
             {/* Header */}
-            <div className="px-6 py-5 border-b border-neutral-900 bg-black/40 flex items-center justify-between">
-              <div className="flex items-center gap-4 text-white">
+            <div className="flex items-center justify-between border-b border-line bg-canvas/40 px-6 py-5">
+              <div className="flex items-center gap-4 text-ink">
                 <Terminal className="w-4 h-4" />
                 <span className="text-sm tracking-widest uppercase">Librarian Console</span>
-                {isRunning && <Loader2 className="w-3 h-3 animate-spin ml-2 text-neutral-500" />}
+                {isRunning && <Loader2 className="ml-2 h-3 w-3 animate-spin text-ink-subtle" />}
               </div>
               <button
                 onClick={handleClose}
-                className="text-neutral-600 hover:text-white transition-colors"
+                className="focus-ring duration-standard text-ink-disabled transition-colors hover:text-ink"
                 title="Close"
               >
                 <X className="w-6 h-6" />
@@ -163,13 +163,13 @@ export default function LibrarianTerminal({ isOpen, onClose }: LibrarianTerminal
             {/* Terminal Body */}
             <div 
               ref={scrollRef}
-              className="flex-1 overflow-y-auto p-6 md:p-8 text-xs sm:text-sm bg-black/65 space-y-3"
+              className="flex-1 space-y-3 overflow-y-auto bg-canvas/65 p-6 text-xs sm:text-sm md:p-8"
             >
               {logs.length === 0 && !isRunning ? (
-                <div className="text-neutral-600 h-full flex flex-col items-center justify-center text-center">
+                <div className="flex h-full flex-col items-center justify-center text-center text-ink-disabled">
                   <Terminal className="w-12 h-12 mb-6 opacity-20" />
                   <p className="uppercase tracking-widest text-xs mb-2">Agent Dormant</p>
-                  <p className="text-xs text-neutral-700 max-w-xs">Awaiting initialization command to process the inbox through AI reasoning.</p>
+                  <p className="max-w-xs text-xs break-words text-ink-disabled/70">Awaiting initialization command to process the inbox through AI reasoning.</p>
                 </div>
               ) : (
                 logs.map((log) => (
@@ -185,17 +185,17 @@ export default function LibrarianTerminal({ isOpen, onClose }: LibrarianTerminal
             </div>
 
             {/* Footer Controls */}
-            <div className="px-6 py-5 border-t border-neutral-900 bg-black/40 flex flex-col sm:flex-row gap-4 justify-between items-center">
-              <div className="text-xs text-neutral-600 uppercase tracking-widest flex items-center gap-3">
+            <div className="flex flex-col items-center justify-between gap-4 border-t border-line bg-canvas/40 px-6 py-5 sm:flex-row">
+              <div className="flex items-center gap-3 text-xs tracking-widest text-ink-disabled uppercase">
                 <span className="hidden sm:inline">System:</span>
-                <span className="bg-neutral-900 px-2 py-1 text-neutral-400">LangGraph / ReAct</span>
+                <span className="bg-surface-raised px-2 py-1 text-ink-muted">LangGraph / ReAct</span>
               </div>
               <button
                 onClick={isRunning ? stopAgent : startCleaning}
-                className={`flex items-center gap-3 px-8 py-3.5 text-xs font-semibold uppercase tracking-widest transition-all ${
+                className={`focus-ring duration-standard flex items-center gap-3 px-8 py-3.5 text-xs font-semibold tracking-widest uppercase transition-all ${
                   isRunning 
-                    ? "bg-neutral-900 text-neutral-500 hover:bg-neutral-800 hover:text-white" 
-                    : "bg-white text-black hover:bg-neutral-200"
+                    ? "bg-surface-raised text-ink-subtle hover:bg-surface-hover hover:text-ink"
+                    : "bg-inverse text-inverse-ink hover:bg-neutral-200"
                 }`}
               >
                 {isRunning ? (

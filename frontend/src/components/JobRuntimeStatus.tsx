@@ -27,15 +27,15 @@ function jobLabel(type: string) {
 
 function statusIcon(job: Job) {
   if (job.status === "running" || job.status === "cancelling") {
-    return <Loader2 className="h-3.5 w-3.5 animate-spin text-white" />;
+    return <Loader2 className="h-3.5 w-3.5 animate-spin text-ink" />;
   }
   if (job.status === "queued") {
-    return <Clock3 className="h-3.5 w-3.5 text-neutral-400" />;
+    return <Clock3 className="h-3.5 w-3.5 text-ink-muted" />;
   }
   if (job.status === "failed") {
-    return <AlertTriangle className="h-3.5 w-3.5 text-red-400" />;
+    return <AlertTriangle className="h-3.5 w-3.5 text-danger" />;
   }
-  return <CheckCircle2 className="h-3.5 w-3.5 text-green-400" />;
+  return <CheckCircle2 className="h-3.5 w-3.5 text-success" />;
 }
 
 function resultSummary(job: Job) {
@@ -143,58 +143,58 @@ export default function JobRuntimeStatus() {
   }, [refreshJobs, router, upsertJob]);
 
   return (
-    <div className="group/jobs relative text-white">
+    <div className="group/jobs relative text-ink">
       <button
         type="button"
-        className="relative flex h-10 w-10 items-center justify-center text-white drop-shadow-lg transition-opacity hover:opacity-70"
+        className="focus-ring duration-standard relative flex h-10 w-10 items-center justify-center text-ink drop-shadow-lg transition-opacity hover:opacity-70"
         aria-label="Background jobs"
         title="Background jobs"
       >
         {activeJobs.length > 0 ? (
           <Loader2 className="h-4 w-4 animate-spin" />
         ) : hasRecentFailure ? (
-          <AlertTriangle className="h-4 w-4 text-red-300" />
+          <AlertTriangle className="h-4 w-4 text-danger" />
         ) : (
           <ListTodo className="h-4 w-4" />
         )}
         {activeJobs.length > 0 && (
-          <span className="absolute -right-1.5 -top-1.5 flex min-h-4 min-w-4 items-center justify-center border border-black bg-white px-1 text-[10px] font-bold leading-none text-black">
+          <span className="absolute -top-1.5 -right-1.5 flex min-h-4 min-w-4 items-center justify-center border border-canvas bg-inverse px-1 text-[10px] leading-none font-bold text-inverse-ink">
             {activeJobs.length > 9 ? "9+" : activeJobs.length}
           </span>
         )}
       </button>
 
-      <div className="pointer-events-none absolute right-0 top-full z-[80] w-[min(24rem,calc(100vw-2rem))] pt-3 opacity-0 transition-opacity duration-150 group-hover/jobs:pointer-events-auto group-hover/jobs:opacity-100 group-focus-within/jobs:pointer-events-auto group-focus-within/jobs:opacity-100">
-        <div className="liquid-glass-popover relative max-h-80 overflow-y-auto border border-neutral-900/80 p-2 scrollbar-minimal">
-          <div className="border-b border-neutral-900 px-3 py-2">
-            <p className="text-xs font-bold uppercase tracking-widest text-neutral-300">Background Jobs</p>
-            <p className="mt-1 truncate text-xs text-neutral-600">
+      <div className="z-popover pointer-events-none absolute top-full right-0 w-[min(24rem,calc(100vw-2rem))] pt-3 opacity-0 transition-opacity duration-standard group-hover/jobs:pointer-events-auto group-hover/jobs:opacity-100 group-focus-within/jobs:pointer-events-auto group-focus-within/jobs:opacity-100">
+        <div className="liquid-glass-popover scrollbar-minimal relative max-h-80 overflow-y-auto border border-line/80 p-2">
+          <div className="border-b border-line px-3 py-2">
+            <p className="text-xs font-bold tracking-widest text-ink-muted uppercase">Background Jobs</p>
+            <p className="mt-1 truncate text-xs text-ink-disabled">
               {latestJob ? `${jobLabel(latestJob.type)} - ${resultSummary(latestJob)}` : "No recent jobs"}
             </p>
           </div>
           {jobs.length === 0 ? (
-            <div className="px-3 py-6 text-center text-xs font-bold uppercase tracking-widest text-neutral-600">
+            <div className="px-3 py-6 text-center text-xs font-bold tracking-widest text-ink-disabled uppercase">
               No Jobs
             </div>
           ) : (
             <ul className="mt-2 space-y-1">
               {jobs.map((job) => (
-                <li key={job.id} className="grid grid-cols-[auto_1fr_auto] gap-3 border border-neutral-900 bg-neutral-950/70 p-3">
+                <li key={job.id} className="grid grid-cols-[auto_1fr_auto] gap-3 border border-line bg-surface/70 p-3">
                   <span className="mt-0.5">{statusIcon(job)}</span>
                   <span className="min-w-0">
                     <span className="flex min-w-0 items-center justify-between gap-3">
                       <span className="truncate text-xs font-bold uppercase tracking-widest">{jobLabel(job.type)}</span>
-                      <span className="shrink-0 text-[10px] font-bold uppercase tracking-widest text-neutral-500">
+                      <span className="shrink-0 text-[10px] font-bold tracking-widest text-ink-subtle uppercase">
                         {job.status}
                       </span>
                     </span>
-                    <span className={`mt-1 block truncate text-xs ${job.status === "failed" ? "text-red-400" : "text-neutral-500"}`}>
+                    <span className={`mt-1 block truncate text-xs ${job.status === "failed" ? "text-danger" : "text-ink-subtle"}`}>
                       {resultSummary(job)}
                     </span>
                     {progressPercent(job) !== null && (
-                      <span className="mt-2 block h-1 overflow-hidden bg-neutral-900">
+                      <span className="mt-2 block h-1 overflow-hidden bg-surface-raised">
                         <span
-                          className="block h-full bg-white transition-[width]"
+                          className="duration-standard block h-full bg-ink transition-[width]"
                           style={{ width: `${progressPercent(job)}%` }}
                         />
                       </span>
@@ -206,7 +206,7 @@ export default function JobRuntimeStatus() {
                         type="button"
                         onClick={() => void cancelJob(job.id)}
                         disabled={isCancelling}
-                        className="flex h-6 w-6 items-center justify-center text-neutral-500 hover:text-white disabled:opacity-50"
+                        className="focus-ring duration-standard flex h-6 w-6 items-center justify-center text-ink-subtle transition-colors hover:text-ink disabled:opacity-50"
                         aria-label="Cancel job"
                         title="Cancel"
                       >
@@ -218,7 +218,7 @@ export default function JobRuntimeStatus() {
                         type="button"
                         onClick={() => void retryJob(job.id)}
                         disabled={isRetrying}
-                        className="flex h-6 w-6 items-center justify-center text-neutral-500 hover:text-white disabled:opacity-50"
+                        className="focus-ring duration-standard flex h-6 w-6 items-center justify-center text-ink-subtle transition-colors hover:text-ink disabled:opacity-50"
                         aria-label="Retry job"
                         title="Retry"
                       >

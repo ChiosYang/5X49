@@ -63,24 +63,24 @@ export default function GeneralSettings() {
           description={t("languageDesc")}
           control={
             <div className="flex items-center gap-3">
-              <div className="flex border border-neutral-800 bg-neutral-900 p-1">
+              <div className="flex border border-line-strong bg-surface-raised p-1">
                 {(["zh", "en"] as const).map((language) => (
                   <button
                     key={language}
                     type="button"
                     onClick={() => handleLanguageChange(language)}
                     disabled={languageSaving}
-                    className={`min-w-12 px-3 py-2 text-xs font-bold uppercase tracking-widest transition-colors ${
+                    className={`focus-ring duration-standard min-w-12 px-3 py-2 text-xs font-bold tracking-widest uppercase transition-colors ${
                       languageData?.language === language
-                        ? "bg-white text-black"
-                        : "text-neutral-500 hover:text-white"
+                        ? "bg-inverse text-inverse-ink"
+                        : "text-ink-subtle hover:text-ink"
                     } disabled:cursor-not-allowed disabled:opacity-50`}
                   >
                     {language}
                   </button>
                 ))}
               </div>
-              {languageSaving && <Loader2 className="h-4 w-4 animate-spin text-neutral-500" />}
+              {languageSaving && <Loader2 className="h-4 w-4 animate-spin text-ink-subtle" />}
             </div>
           }
           feedback={
@@ -93,24 +93,24 @@ export default function GeneralSettings() {
         />
       </SettingsPanel>
 
-      <details className="group border-b border-neutral-900 pb-6">
-        <summary className="flex cursor-pointer list-none items-center justify-between gap-4 py-1">
+      <details className="group border-b border-line pb-6">
+        <summary className="focus-ring flex cursor-pointer list-none items-center justify-between gap-4 py-1">
           <span>
-            <span className="block text-sm font-medium uppercase tracking-widest text-neutral-100">
+            <span className="block text-sm font-medium tracking-widest text-ink uppercase">
               {t("roadmap")}
             </span>
-            <span className="mt-1 block text-xs leading-5 text-neutral-600">{t("roadmapDesc")}</span>
+            <span className="mt-1 block text-xs leading-5 text-ink-disabled">{t("roadmapDesc")}</span>
           </span>
-          <span className="flex shrink-0 items-center gap-3 text-[10px] font-bold uppercase tracking-[0.2em] text-neutral-600 group-open:text-neutral-400">
+          <span className="flex shrink-0 items-center gap-3 text-[10px] font-bold tracking-[0.2em] text-ink-disabled uppercase group-open:text-ink-muted">
             <span className="hidden sm:inline">{t("comingSoon")}</span>
-            <ChevronDown className="h-4 w-4 transition-transform group-open:rotate-180" />
+            <ChevronDown className="duration-standard h-4 w-4 transition-transform group-open:rotate-180" />
           </span>
         </summary>
-        <div className="mt-6 space-y-6 border-t border-neutral-900 pt-6">
+        <div className="mt-6 space-y-6 border-t border-line pt-6">
           {roadmapItems.map(([title, description]) => (
-            <div key={title} className="border-b border-neutral-900 pb-6 last:border-b-0 last:pb-0">
-              <p className="text-sm font-medium uppercase tracking-widest text-neutral-300">{title}</p>
-              <p className="mt-2 text-xs leading-5 text-neutral-600">{description}</p>
+            <div key={title} className="border-b border-line pb-6 last:border-b-0 last:pb-0">
+              <p className="text-sm font-medium tracking-widest text-ink-muted uppercase">{title}</p>
+              <p className="mt-2 text-xs leading-5 text-ink-disabled">{description}</p>
             </div>
           ))}
         </div>

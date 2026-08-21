@@ -22,41 +22,41 @@ export default function FileBrowser({ initialPath, onSelect, onCancel, isOpen }:
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-      <div className="liquid-glass-modal relative w-full max-w-2xl flex flex-col max-h-[80vh] overflow-hidden border border-neutral-900/80">
+    <div className="scrim-backdrop z-modal fixed inset-0 flex items-center justify-center p-4">
+      <div className="liquid-glass-modal relative flex max-h-[80vh] w-full max-w-2xl flex-col overflow-hidden border border-line/80 text-ink">
         {/* Header */}
-        <div className="p-4 border-b border-neutral-800 flex justify-between items-center bg-black/35">
-          <h3 className="text-lg font-bold uppercase tracking-widest text-white">Select Directory</h3>
-          <button onClick={onCancel} className="text-neutral-500 hover:text-white transition-colors">✕</button>
+        <div className="flex items-center justify-between border-b border-line-strong bg-canvas/35 p-4">
+          <h3 className="text-lg font-bold tracking-widest text-ink uppercase">Select Directory</h3>
+          <button onClick={onCancel} className="focus-ring duration-standard text-ink-subtle transition-colors hover:text-ink">✕</button>
         </div>
 
         {/* Current Path & Navigation */}
-        <div className="p-4 bg-black/20 border-b border-neutral-800 flex items-center gap-2">
+        <div className="flex items-center gap-2 border-b border-line-strong bg-canvas/20 p-4">
           <button
             onClick={() => data?.parent_path && handleNavigate(data.parent_path)}
             disabled={!data?.parent_path}
-            className="px-3 py-1 bg-neutral-800 hover:bg-neutral-700 disabled:opacity-30 disabled:cursor-not-allowed text-white text-sm rounded transition-colors"
+            className="focus-ring duration-standard rounded-control bg-surface-hover px-3 py-1 text-sm text-ink transition-colors hover:bg-line-strong disabled:cursor-not-allowed disabled:opacity-30"
             title="Go Up"
           >
             ⬆ Up
           </button>
-          <div className="flex-1 bg-black/35 border border-neutral-800 px-3 py-2 text-sm text-neutral-300 font-mono truncate">
+          <div className="min-w-0 flex-1 break-all border border-line-strong bg-canvas/35 px-3 py-2 font-mono text-sm text-ink-muted">
             {data?.current_path || currentPath}
           </div>
         </div>
 
         {/* Directory List */}
-        <div className="flex-1 overflow-y-auto p-2 min-h-[300px] bg-black/25">
+        <div className="min-h-[300px] flex-1 overflow-y-auto bg-canvas/25 p-2">
             {isLoading ? (
-                <div className="flex items-center justify-center h-full text-neutral-500 text-sm animate-pulse">
+                <div className="flex h-full items-center justify-center text-sm text-ink-subtle animate-pulse">
                     Loading...
                 </div>
             ) : error ? (
-                <div className="flex items-center justify-center h-full text-red-500 text-sm">
+                <div className="flex h-full items-center justify-center break-words text-sm text-danger">
                     {error.message}
                 </div>
             ) : !data?.directories || data.directories.length === 0 ? (
-                <div className="flex items-center justify-center h-full text-neutral-600 text-sm italic">
+                <div className="flex h-full items-center justify-center text-sm text-ink-disabled italic">
                     No subdirectories found
                 </div>
             ) : (
@@ -65,10 +65,10 @@ export default function FileBrowser({ initialPath, onSelect, onCancel, isOpen }:
                         <button
                             key={dir.path}
                             onClick={() => handleNavigate(dir.path)}
-                            className="flex items-center gap-3 px-4 py-3 text-left hover:bg-white/5 transition-colors group"
+                            className="focus-ring duration-standard group flex items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-ink/5"
                         >
-                            <span className="text-yellow-600 group-hover:text-yellow-500 text-xl">📁</span>
-                            <span className="text-neutral-300 group-hover:text-white text-sm font-medium truncate">{dir.name}</span>
+                            <span className="text-xl text-warning/70 group-hover:text-warning">📁</span>
+                            <span className="truncate text-sm font-medium text-ink-muted group-hover:text-ink">{dir.name}</span>
                         </button>
                     ))}
                 </div>
@@ -76,16 +76,16 @@ export default function FileBrowser({ initialPath, onSelect, onCancel, isOpen }:
         </div>
 
         {/* Footer */}
-        <div className="p-4 border-t border-neutral-800 bg-black/25 flex justify-end gap-3">
+        <div className="flex justify-end gap-3 border-t border-line-strong bg-canvas/25 p-4">
             <button
                 onClick={onCancel}
-                className="px-4 py-2 text-xs font-medium uppercase tracking-widest text-neutral-400 hover:text-white transition-colors"
+                className="focus-ring duration-fast px-4 py-2 text-xs font-medium tracking-widest text-ink-muted uppercase transition-colors hover:text-ink"
             >
                 Cancel
             </button>
             <button
                 onClick={() => onSelect(data?.current_path || currentPath)}
-                className="px-6 py-2 bg-white text-black text-xs font-bold uppercase tracking-widest hover:bg-neutral-200 transition-colors"
+                className="focus-ring duration-fast bg-inverse px-6 py-2 text-xs font-bold tracking-widest text-inverse-ink uppercase transition-colors hover:bg-neutral-200"
             >
                 Select Current Folder
             </button>

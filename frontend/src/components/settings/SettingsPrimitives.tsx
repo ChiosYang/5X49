@@ -6,10 +6,10 @@ import { ChevronDown, Loader2 } from "lucide-react";
 type StatusTone = "neutral" | "success" | "error" | "warning";
 
 const statusToneClasses: Record<StatusTone, string> = {
-  neutral: "text-neutral-500",
-  success: "text-emerald-400",
-  error: "text-red-400",
-  warning: "text-amber-300",
+  neutral: "text-ink-subtle",
+  success: "text-success",
+  error: "text-danger",
+  warning: "text-warning",
 };
 
 export function SectionIntro({
@@ -24,14 +24,14 @@ export function SectionIntro({
   return (
     <header>
       {eyebrow && (
-        <p className="mb-2 text-xs font-medium uppercase tracking-widest text-neutral-600">
+        <p className="type-label mb-2 text-ink-disabled">
           {eyebrow}
         </p>
       )}
-      <h2 className="mb-2 text-2xl font-bold uppercase tracking-tight text-white">
+      <h2 className="type-section-title mb-2 text-ink">
         {title}
       </h2>
-      <p className="text-sm text-neutral-500">{description}</p>
+      <p className="text-sm text-ink-subtle">{description}</p>
     </header>
   );
 }
@@ -48,11 +48,11 @@ export function SettingsPanel({
   return (
     <section>
       <div className="mb-6">
-        <h3 className="text-xs font-medium uppercase tracking-widest text-neutral-400">
+        <h3 className="type-label text-ink-muted">
           {title}
         </h3>
         {description && (
-          <p className="mt-2 text-xs leading-5 text-neutral-600">{description}</p>
+          <p className="mt-2 text-xs leading-5 text-ink-disabled">{description}</p>
         )}
       </div>
       <div className="space-y-6">{children}</div>
@@ -74,13 +74,13 @@ export function SettingRow({
   children?: ReactNode;
 }) {
   return (
-    <div className="border-b border-neutral-900 pb-6">
+    <div className="border-b border-line pb-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0 flex-1">
-          <p className="mb-1 text-sm font-medium uppercase tracking-widest text-neutral-100">
+          <p className="mb-1 text-sm font-medium tracking-widest text-ink uppercase">
             {title}
           </p>
-          <p className="max-w-2xl text-xs leading-5 text-neutral-600">{description}</p>
+          <p className="max-w-2xl text-xs leading-5 text-ink-disabled">{description}</p>
         </div>
         {control && <div className="shrink-0 sm:max-w-[60%]">{control}</div>}
       </div>
@@ -127,12 +127,12 @@ export function ToggleSwitch({
       aria-label={label}
       onClick={onChange}
       disabled={disabled}
-      className={`relative h-7 w-12 shrink-0 border transition-colors ${
-        checked ? "border-white bg-white" : "border-neutral-700 bg-neutral-900"
+      className={`focus-ring duration-standard relative h-7 w-12 shrink-0 border transition-colors ${
+        checked ? "border-inverse bg-inverse" : "border-line-strong bg-surface-raised"
       } disabled:cursor-not-allowed disabled:opacity-50`}
     >
       <span
-        className={`absolute left-1 top-1 h-5 w-5 bg-black transition-transform ${
+        className={`duration-standard absolute top-1 left-1 h-5 w-5 bg-inverse-ink transition-transform ${
           checked ? "translate-x-5" : "translate-x-0"
         }`}
       />
@@ -152,24 +152,24 @@ export function DisclosurePanel({
   children: ReactNode;
 }) {
   return (
-    <details className="group border-b border-neutral-900 pb-6">
-      <summary className="flex cursor-pointer list-none items-center justify-between gap-5 py-1">
+    <details className="group border-b border-line pb-6">
+      <summary className="focus-ring flex cursor-pointer list-none items-center justify-between gap-5 py-1">
         <span className="min-w-0">
-          <span className="block text-sm font-medium uppercase tracking-widest text-neutral-100">
+          <span className="block text-sm font-medium tracking-widest text-ink uppercase">
             {title}
           </span>
-          <span className="mt-1 block text-xs leading-5 text-neutral-600">{description}</span>
+          <span className="mt-1 block text-xs leading-5 text-ink-disabled">{description}</span>
         </span>
         <span className="flex shrink-0 items-center gap-3">
           {summary && (
-            <span className="hidden max-w-56 truncate text-[11px] font-bold uppercase tracking-widest text-neutral-500 sm:inline lg:max-w-80">
+            <span className="hidden max-w-56 truncate text-[11px] font-bold tracking-widest text-ink-subtle uppercase sm:inline lg:max-w-80">
               {summary}
             </span>
           )}
-          <ChevronDown className="h-4 w-4 text-neutral-500 transition-transform group-open:rotate-180" />
+          <ChevronDown className="duration-standard h-4 w-4 text-ink-subtle transition-transform group-open:rotate-180" />
         </span>
       </summary>
-      <div className="mt-6 space-y-6 border-t border-neutral-900 pt-6">{children}</div>
+      <div className="mt-6 space-y-6 border-t border-line pt-6">{children}</div>
     </details>
   );
 }
@@ -195,16 +195,16 @@ export function ActionCard({
     <article
       className={`flex h-full flex-col border-b pb-6 ${
         danger
-          ? "border-red-950/80"
-          : "border-neutral-900"
+          ? "border-danger/20"
+          : "border-line"
       }`}
     >
       <div className="flex-1">
-        <h3 className={`text-sm font-medium uppercase tracking-widest ${danger ? "text-red-300" : "text-neutral-100"}`}>
+        <h3 className={`text-sm font-medium tracking-widest uppercase ${danger ? "text-danger" : "text-ink"}`}>
           {title}
         </h3>
-        <p className="mt-2 text-xs leading-5 text-neutral-600">{description}</p>
-        {meta && <div className="mt-3 text-xs leading-5 text-neutral-500">{meta}</div>}
+        <p className="mt-2 text-xs leading-5 text-ink-disabled">{description}</p>
+        {meta && <div className="mt-3 text-xs leading-5 text-ink-subtle">{meta}</div>}
       </div>
       <div className="mt-5 min-h-5" aria-live="polite">
         <InlineStatus tone={statusTone}>{status}</InlineStatus>
@@ -232,10 +232,10 @@ export function ActionButton({
       type="button"
       onClick={onClick}
       disabled={disabled || busy}
-      className={`inline-flex min-h-11 w-full items-center justify-center gap-2 px-5 text-xs font-medium uppercase tracking-widest transition-colors disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto ${
+      className={`focus-ring duration-fast inline-flex min-h-11 w-full items-center justify-center gap-2 px-5 text-xs font-medium tracking-widest uppercase transition-colors disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto ${
         danger
-          ? "border border-red-900 bg-red-950/30 text-red-200 hover:border-red-600 hover:bg-red-900/40"
-          : "border border-neutral-800 bg-neutral-900 text-white hover:border-neutral-600 hover:bg-neutral-800"
+          ? "border border-danger/40 bg-danger/10 text-danger hover:border-danger/70 hover:bg-danger/20"
+          : "border border-line-strong bg-surface-raised text-ink hover:border-ink-disabled hover:bg-surface-hover"
       }`}
     >
       {busy && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
@@ -258,16 +258,16 @@ export function StatusTile({
   error?: boolean;
 }) {
   return (
-    <div className="border-l border-neutral-800 py-1 pl-4">
-      <p className="text-[10px] font-medium uppercase tracking-widest text-neutral-600">{label}</p>
+    <div className="border-l border-line-strong py-1 pl-4">
+      <p className="text-[10px] font-medium tracking-widest text-ink-disabled uppercase">{label}</p>
       <p
         className={`mt-3 text-sm font-semibold ${
-          error ? "text-red-400" : active ? "text-emerald-400" : "text-neutral-200"
+          error ? "text-danger" : active ? "text-success" : "text-ink"
         }`}
       >
         {value}
       </p>
-      {detail && <p className="mt-1 truncate text-xs text-neutral-600">{detail}</p>}
+      {detail && <p className="mt-1 truncate text-xs text-ink-disabled">{detail}</p>}
     </div>
   );
 }

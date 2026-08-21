@@ -37,21 +37,21 @@ function SettingsContent() {
   };
 
   return (
-    <div className="min-h-screen bg-black text-white selection:bg-white selection:text-black">
-      <header className="border-b border-neutral-900 px-6 py-16 pt-28 sm:px-8 md:px-16 md:py-24 md:pt-32">
-        <h1 className="mb-4 text-5xl font-bold uppercase tracking-tight md:text-7xl">
+    <div className="min-h-screen bg-canvas text-ink selection:bg-inverse selection:text-inverse-ink">
+      <header className="page-x border-b border-line py-16 pt-28 md:py-24 md:pt-32">
+        <h1 className="type-display-ui mb-4">
           {t("title")}
         </h1>
-        <p className="max-w-2xl text-sm uppercase tracking-widest text-neutral-500">
+        <p className="max-w-2xl text-sm tracking-widest text-ink-subtle uppercase">
           {t("subtitle")}
         </p>
       </header>
 
       <div className="flex min-h-[60vh] flex-col md:flex-row">
-        <aside className="w-full min-w-0 overflow-hidden border-b border-neutral-900 bg-black md:w-64 md:shrink-0 md:border-b-0 md:border-r">
+        <aside className="w-full min-w-0 overflow-hidden border-b border-line bg-canvas md:w-64 md:shrink-0 md:border-r md:border-b-0">
           <nav
             aria-label={t("settingsNavigation")}
-            className="scrollbar-minimal flex w-full max-w-full gap-2 overflow-x-auto p-6 sm:p-8 md:sticky md:top-24 md:flex-col md:overflow-visible md:p-12"
+            className="scrollbar-minimal z-sticky flex w-full max-w-full gap-2 overflow-x-auto p-6 sm:p-8 md:sticky md:top-24 md:flex-col md:overflow-visible md:p-12"
           >
             {settingSections.map((section) => (
               <button
@@ -59,10 +59,10 @@ function SettingsContent() {
                 type="button"
                 onClick={() => selectSection(section)}
                 aria-current={activeSection === section ? "page" : undefined}
-                className={`block min-w-max px-4 py-3 text-left text-sm font-medium uppercase tracking-widest transition-colors md:w-full ${
+                className={`focus-ring duration-standard block min-w-max px-4 py-3 text-left text-sm font-medium tracking-widest uppercase transition-colors md:w-full ${
                   activeSection === section
-                    ? "bg-white text-black"
-                    : "text-neutral-500 hover:bg-neutral-900 hover:text-white"
+                    ? "bg-inverse text-inverse-ink"
+                    : "text-ink-subtle hover:bg-surface-raised hover:text-ink"
                 }`}
               >
                 {labels[section]}
@@ -71,7 +71,7 @@ function SettingsContent() {
           </nav>
         </aside>
 
-        <section className="min-w-0 flex-1 p-6 sm:p-8 md:p-12 lg:p-16">
+        <section className="page-x min-w-0 flex-1 py-6 sm:py-8 md:py-12 lg:py-16">
           <div className="max-w-3xl">
             {activeSection === "general" && <GeneralSettings />}
             {activeSection === "integrations" && <IntegrationSettings />}
@@ -85,12 +85,12 @@ function SettingsContent() {
 
 function SettingsFallback() {
   return (
-    <div className="min-h-screen animate-pulse bg-black text-white">
-      <div className="h-64 border-b border-neutral-900 px-8 py-24 md:px-16" />
+    <div className="min-h-screen animate-pulse bg-canvas text-ink">
+      <div className="page-x h-64 border-b border-line py-24" />
       <div className="flex min-h-[60vh] flex-col md:flex-row">
-        <div className="h-28 border-b border-neutral-900 md:h-auto md:w-64 md:border-b-0 md:border-r" />
+        <div className="h-28 border-b border-line md:h-auto md:w-64 md:border-r md:border-b-0" />
         <div className="flex-1 p-8 md:p-16">
-          <div className="h-96 max-w-3xl border-b border-neutral-900" />
+          <div className="h-96 max-w-3xl border-b border-line" />
         </div>
       </div>
     </div>
