@@ -74,6 +74,13 @@ deduplicated, and the migration stores aggregate counts without titles or
 paths. Re-executing the backfill skips existing aliases and creates no durable
 duplicates.
 
+Migration version 4 adds FilmProfileState and Viewing. Favorite values use OR
+semantics when multiple legacy Movie aliases resolve to one Film. Watched rows
+and rows with a watched timestamp become confirmed Viewings; unwatched rows
+with rating or notes become `needs_review` and do not affect watched/history
+projections. Empty default rows create no durable personal record. Source IDs
+make reruns idempotent, while aggregate reports contain only counts.
+
 ## Startup Sequence
 
 Database initialization runs before the job runtime and filesystem watcher:

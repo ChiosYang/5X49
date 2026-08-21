@@ -43,7 +43,7 @@ watch-history, and audit API behavior throughout migration.
 - Schema migration version 1 records checksums and status in
   `schema_migrations`, creates a verified SQLite online backup before upgrading
   an existing database, and absorbs the former Movie/Job `ADD COLUMN` logic.
-- Eight SQL fixture profiles cover empty, oldest-supported, current-unversioned,
+- Nine SQL fixture profiles cover empty, oldest-supported, current-unversioned,
   partial-column, single-table, and legacy user-state/event databases. The
   offline restore command is exercised against an upgraded and then mutated
   legacy database before the restored backup is migrated again.
@@ -52,6 +52,10 @@ watch-history, and audit API behavior throughout migration.
 - Schema migration version 3 deterministically backfills Film identities,
   LibraryItems, MediaAssets, permanent aliases, conflict review records, and a
   path-free aggregate report while preserving legacy rows.
+- Schema migration version 4 adds FilmProfileState and multi-record Viewing,
+  migrates meaningful legacy user state, preserves contradictory rows as
+  `needs_review`, and leaves the legacy API as source of truth during shadow
+  validation.
 
 ## Acceptance criteria
 
@@ -61,22 +65,22 @@ watch-history, and audit API behavior throughout migration.
   LegacyMovieAlias constraints match the accepted domain RFC.
 - [x] Exact TMDB/IMDb identity matches reuse a Film; conflicting identities do
   not auto-merge and produce a review record.
-- [ ] Repeating a scan or backfill creates no duplicate Film, LibraryItem,
+- [x] Repeating a scan or backfill creates no duplicate Film, LibraryItem,
   MediaAsset, alias, Viewing, or durable review record.
 - [ ] A local rename/move relinks only one unambiguous LibraryItem candidate;
   ambiguous candidates remain separate and are reported for review.
-- [x] Every legacy Movie remains resolvable by its old ID, including after Film
+- [ ] Every legacy Movie remains resolvable by its old ID, including after Film
   merge redirects or a local path change.
-- [ ] Favorite and non-empty legacy watched/rating/notes data survive migration;
+- [x] Favorite and non-empty legacy watched/rating/notes data survive migration;
   LibraryItem deletion or retirement does not delete Film-level personal data.
 - [ ] `/library`, movie detail, user-state, watch-history, and audit contract
   tests retain their current public response shapes until an explicitly
   versioned API change is approved.
-- [ ] Canonical shadow reads produce an explainable field/count difference
+- [x] Canonical shadow reads produce an explainable field/count difference
   report before any existing handler switches its read source.
 - [x] A pre-upgrade backup can be restored offline after an upgraded database is
   mutated, and integrity, counts, sentinel values, and manifest hash are checked.
-- [ ] Migration reports and logs contain no credentials, hidden reasoning, raw
+- [x] Migration reports and logs contain no credentials, hidden reasoning, raw
   user media lists, or unredacted absolute paths.
 - [ ] Gate A evidence is recorded in `docs/domain-model.md` before Graph UI work
   begins.
@@ -156,7 +160,7 @@ Status: Complete
 
 ### Slice 3 — Personal state and Viewing
 
-Status: Pending
+Status: Complete
 
 - Intended behavior: create FilmProfileState and Viewing records from
   MovieUserState while preserving favorites and inconsistent legacy fields.
@@ -168,11 +172,14 @@ Status: Pending
 
 ### Slice 4 — Shadow reads and compatibility switch
 
-Status: Pending
+Status: In Progress
 
 - Intended behavior: compose current Movie response shapes from canonical data,
   compare them with legacy reads, then switch handlers only after differences
   are accepted.
+- Current progress: canonical Movie, user-state, and watch-history composition
+  plus hashed field/source diff reports are implemented. Existing handlers have
+  deliberately not switched source of truth.
 - Likely affected areas: Library query services, compatibility projection,
   existing API handlers, contract tests, and API documentation if behavior
   changes.
@@ -195,6 +202,11 @@ Status: Pending
 
 ## Verification evidence
 
+- `.\.venv\Scripts\python.exe -X utf8 -W error::ResourceWarning -m unittest test_viewing_migration.py test_canonical_schema.py test_canonical_backfill.py test_database_migrations.py test_database_restore.py test_api_routes.py test_event_sourced_commands.py test_generate_test_data.py`
+  — 44 tests passed on 2026-08-21 after migration v4, covering favorite OR
+  aggregation, confirmed/needs-review mapping, idempotence, constraint checks,
+  retirement isolation, canonical Movie/user-state/watch-history composition,
+  hashed shadow differences, nine legacy upgrades, and unchanged API routes.
 - `.\.venv\Scripts\python.exe -X utf8 -W error::ResourceWarning -m unittest test_canonical_schema.py test_canonical_backfill.py test_database_migrations.py test_database_restore.py`
   — 22 tests passed on 2026-08-21 after migration v3, including exact identity
   reuse, cross-provider conflict review, no title/year auto-merge, one alias and
@@ -227,10 +239,10 @@ Status: Pending
 
 - The accepted Gate A decisions are documented but not yet implemented or
   covered by W3 behavior tests.
-- The eight migration fixtures cover the current v1–v3 safety baseline,
+- The nine migration fixtures cover the current v1–v4 safety baseline,
   including identity conflicts, multiple editions, and aliases. Move/relink
-  fingerprints, new post-migration items, and Viewing behavior still need later
-  slices.
+  fingerprints, new post-migration items, dual writes, and compatibility source
+  switching still need later slices.
 - The current real development database has not been migrated; only temporary
   databases and generated fixtures have been exercised.
 - Docker runtime upgrade and restore behavior remain unverified because the

@@ -15,7 +15,7 @@ SOURCE_INSTANCE_ID = "legacy.local"
 
 @dataclass(frozen=True)
 class BackfillIssue:
-    legacy_movie_id: str
+    record_key: str
     code: str
 
 
@@ -126,7 +126,7 @@ def backfill_legacy_movies(
             _create_film(connection, movie, film_id, now, dry_run)
             counts["films_created"] += 1
             counts["identity_reviews_created"] += 1
-            issues.append(BackfillIssue(legacy_id, "identity_conflict"))
+            issues.append(BackfillIssue(_record_key(legacy_id), "identity_conflict"))
             if not dry_run:
                 _create_identity_review(connection, movie, identity_map, now)
         elif candidate_ids:
@@ -157,7 +157,7 @@ def backfill_legacy_movies(
         if source_key in source_keys:
             source_item_key = f"{source_item_key}#legacy:{legacy_id}"
             source_key = (SOURCE_INSTANCE_ID, source_item_key)
-            issues.append(BackfillIssue(legacy_id, "duplicate_source_item_key"))
+            issues.append(BackfillIssue(_record_key(legacy_id), "duplicate_source_item_key"))
         source_keys.add(source_key)
 
         library_item_id = _new_id("lib", dry_run, legacy_id, index)
@@ -525,3 +525,7 @@ def _clean_value(value: Any) -> str | None:
         return None
     cleaned = str(value).strip()
     return cleaned or None
+
+
+def _record_key(legacy_id: str) -> str:
+    return hashlib.sha256(legacy_id.encode("utf-8")).hexdigest()[:16]

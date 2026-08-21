@@ -100,7 +100,10 @@ class CanonicalBackfillTests(unittest.TestCase):
     def test_report_is_auditable_without_paths_and_repeat_execution_is_idempotent(self):
         with self.engine.begin() as connection:
             report_row = connection.execute(
-                text("SELECT * FROM canonical_backfill_run")
+                text(
+                    "SELECT * FROM canonical_backfill_run "
+                    "WHERE run_key = 'legacy_movie_to_canonical.v1'"
+                )
             ).mappings().one()
             first_counts = self._durable_counts(connection)
             dry_run = backfill_legacy_movies(connection, dry_run=True)

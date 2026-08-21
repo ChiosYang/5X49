@@ -20,6 +20,7 @@ ADDITIONAL_FIXTURES = (
     "job-only",
     "legacy-user-state-events",
     "canonical-identities",
+    "viewing-migration",
 )
 CURRENT_VERSION = MIGRATIONS[-1].version
 ALL_VERSIONS = tuple(migration.version for migration in MIGRATIONS)

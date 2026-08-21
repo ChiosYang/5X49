@@ -17,5 +17,7 @@ and no developer or user data belongs in this directory.
   including contradictory watched/rating data that later W3 backfill must review.
 - `canonical-identities`: duplicate, conflicting, and absent external identities
   used to prove deterministic Film/LibraryItem backfill behavior.
+- `viewing-migration`: multiple aliases for one Film plus confirmed,
+  contradictory, empty, and favorite-only legacy personal states.
 
 Each `expected.json` records the invariants that must survive an upgrade.

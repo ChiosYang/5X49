@@ -294,3 +294,61 @@ class CanonicalBackfillRun(SQLModel, table=True):
     conflict_count: int = 0
     started_at: str
     finished_at: str | None = None
+
+
+class FilmProfileState(SQLModel, table=True):
+    __tablename__ = "film_profile_state"
+
+    profile_id: str = Field(
+        primary_key=True,
+        foreign_key="local_profile.id",
+        ondelete="RESTRICT",
+    )
+    film_id: str = Field(primary_key=True, foreign_key="film.id", ondelete="RESTRICT")
+    favorite: bool = Field(default=False, index=True)
+    created_at: str = Field(default_factory=canonical_utc_now_iso)
+    updated_at: str = Field(default_factory=canonical_utc_now_iso)
+
+
+class Viewing(SQLModel, table=True):
+    __tablename__ = "viewing"
+    __table_args__ = (
+        CheckConstraint("rating IS NULL OR (rating >= 1 AND rating <= 5)", name="ck_viewing_rating"),
+        CheckConstraint(
+            "watched_at_precision IN ('timestamp', 'date', 'year', 'unknown')",
+            name="ck_viewing_precision",
+        ),
+        CheckConstraint(
+            "review_status IN ('confirmed', 'needs_review', 'rejected')",
+            name="ck_viewing_review_status",
+        ),
+        UniqueConstraint(
+            "profile_id",
+            "source",
+            "source_record_id",
+            name="uq_viewing_source_record",
+        ),
+        Index("ix_viewing_profile_watched_at", "profile_id", "watched_at"),
+        Index("ix_viewing_profile_film_watched_at", "profile_id", "film_id", "watched_at"),
+    )
+
+    id: str = Field(primary_key=True)
+    profile_id: str = Field(
+        foreign_key="local_profile.id",
+        ondelete="RESTRICT",
+        index=True,
+    )
+    film_id: str = Field(foreign_key="film.id", ondelete="RESTRICT", index=True)
+    watched_at: str | None = None
+    watched_at_precision: str = "unknown"
+    rating: int | None = Field(default=None, ge=1, le=5)
+    review: str | None = None
+    tags: list[str] | None = Field(default=None, sa_column=Column(JSON))
+    mood: str | None = None
+    favorite_scene: str | None = None
+    source: str
+    source_record_id: str | None = None
+    review_status: str = Field(default="confirmed", index=True)
+    created_at: str = Field(default_factory=canonical_utc_now_iso)
+    updated_at: str = Field(default_factory=canonical_utc_now_iso)
+    deleted_at: str | None = Field(default=None, index=True)

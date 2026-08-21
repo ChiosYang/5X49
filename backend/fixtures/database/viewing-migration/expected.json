@@ -1,0 +1,28 @@
+{
+  "row_counts": {
+    "movie": 4,
+    "movie_user_state": 4
+  },
+  "sentinels": [
+    {
+      "table": "movie_user_state",
+      "key": {"movie_id": "viewing_a"},
+      "values": {
+        "watched": 1,
+        "rating": 5,
+        "favorite": 0,
+        "notes": "Confirmed legacy viewing"
+      }
+    },
+    {
+      "table": "movie_user_state",
+      "key": {"movie_id": "viewing_b"},
+      "values": {
+        "watched": 0,
+        "watched_at": null,
+        "rating": 3,
+        "favorite": 1
+      }
+    }
+  ]
+}

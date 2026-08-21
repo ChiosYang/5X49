@@ -143,6 +143,7 @@ from app.canonical_models import (  # noqa: E402, F401
     CanonicalBackfillRun,
     ExternalIdentity,
     Film,
+    FilmProfileState,
     GraphEntity,
     IdentityReview,
     LegacyMovieAlias,
@@ -150,4 +151,5 @@ from app.canonical_models import (  # noqa: E402, F401
     LibraryItemLocatorHistory,
     LocalProfile,
     MediaAsset,
+    Viewing,
 )
