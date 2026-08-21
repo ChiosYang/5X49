@@ -10,6 +10,7 @@ from sqlalchemy import inspect, text
 from sqlmodel import SQLModel, create_engine
 
 from app.migrations.runner import Migration, MigrationError, run_migrations
+from app.migrations.versions import MIGRATIONS
 
 
 FIXTURES_DIR = Path(__file__).parent / "fixtures" / "database"
@@ -19,6 +20,8 @@ ADDITIONAL_FIXTURES = (
     "job-only",
     "legacy-user-state-events",
 )
+CURRENT_VERSION = MIGRATIONS[-1].version
+ALL_VERSIONS = tuple(migration.version for migration in MIGRATIONS)
 
 
 class DatabaseMigrationTests(unittest.TestCase):
@@ -44,8 +47,8 @@ class DatabaseMigrationTests(unittest.TestCase):
             )
 
             self.assertEqual(expected["row_counts"], {})
-            self.assertEqual(report.current_version, 1)
-            self.assertEqual(report.applied_versions, (1,))
+            self.assertEqual(report.current_version, CURRENT_VERSION)
+            self.assertEqual(report.applied_versions, ALL_VERSIONS)
             self.assertIsNone(report.backup)
             self.assertEqual(self._journal_status(engine, 1), "applied")
             self.assertIn("movie", inspect(engine).get_table_names())
@@ -64,8 +67,8 @@ class DatabaseMigrationTests(unittest.TestCase):
                 backup_dir=backup_dir,
             )
 
-            self.assertEqual(report.current_version, 1)
-            self.assertEqual(report.applied_versions, (1,))
+            self.assertEqual(report.current_version, CURRENT_VERSION)
+            self.assertEqual(report.applied_versions, ALL_VERSIONS)
             self.assertIsNotNone(report.backup)
             self._assert_backup(report.backup, expected["row_counts"])
             self._assert_sentinels(engine, expected)
@@ -101,7 +104,7 @@ class DatabaseMigrationTests(unittest.TestCase):
                 backup_dir=self.tmp_path / "backups",
             )
 
-            self.assertEqual(report.applied_versions, (1,))
+            self.assertEqual(report.applied_versions, ALL_VERSIONS)
             self._assert_backup(report.backup, expected["row_counts"])
             self._assert_sentinels(engine, expected)
             for table, columns in before_columns.items():
@@ -123,7 +126,7 @@ class DatabaseMigrationTests(unittest.TestCase):
                         backup_dir=backup_dir,
                     )
 
-                    self.assertEqual(report.applied_versions, (1,))
+                    self.assertEqual(report.applied_versions, ALL_VERSIONS)
                     self._assert_backup(report.backup, expected["row_counts"])
                     self._assert_declared_sentinels(engine, expected)
 

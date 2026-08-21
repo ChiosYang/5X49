@@ -1,6 +1,6 @@
 # Film / LibraryItem 领域模型 RFC
 
-> 状态：Proposed
+> 状态：Adopted；W3 Slice 1 Schema 已实现
 > 目标阶段：Gate A / W2 Schema Ready
 > 基线：`origin/main` at `4426a6a`
 > 范围：领域边界、逻辑 Schema、约束、兼容与迁移策略

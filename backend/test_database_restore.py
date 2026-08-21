@@ -18,9 +18,12 @@ from app.migrations.restore import (
     verify_backup_manifest,
 )
 from app.migrations.runner import run_migrations
+from app.migrations.versions import MIGRATIONS
 
 
 FIXTURES_DIR = Path(__file__).parent / "fixtures" / "database"
+CURRENT_VERSION = MIGRATIONS[-1].version
+ALL_VERSIONS = tuple(migration.version for migration in MIGRATIONS)
 
 
 class DatabaseRestoreTests(unittest.TestCase):
@@ -49,7 +52,7 @@ class DatabaseRestoreTests(unittest.TestCase):
         self.assertEqual(verified.artifact.sha256, migration.backup.sha256)
         self.assertEqual(verified.artifact.row_counts, {"job": 1, "movie": 1})
         self.assertEqual(verified.source_schema_version, 0)
-        self.assertEqual(verified.target_schema_version, 1)
+        self.assertEqual(verified.target_schema_version, CURRENT_VERSION)
 
     def test_verify_cli_reports_manifest_metadata_without_modifying_database(self):
         database_path = self._materialize("oldest-supported")
@@ -169,7 +172,7 @@ class DatabaseRestoreTests(unittest.TestCase):
 
         preserved = verify_backup_manifest(report.preserved_manifest_path)
         self.assertEqual(preserved.artifact.row_counts["events"], 3)
-        self.assertEqual(preserved.artifact.row_counts["schema_migrations"], 1)
+        self.assertEqual(preserved.artifact.row_counts["schema_migrations"], len(MIGRATIONS))
         with closing(sqlite3.connect(report.preserved_database_path)) as current_backup:
             preserved_title = current_backup.execute(
                 "SELECT title FROM movie WHERE id = 'state_movie_watched'"
@@ -184,7 +187,7 @@ class DatabaseRestoreTests(unittest.TestCase):
                 app_version="test",
                 backup_dir=self.tmp_path / "retry-backups",
             )
-            self.assertEqual(retry.applied_versions, (1,))
+            self.assertEqual(retry.applied_versions, ALL_VERSIONS)
         finally:
             retry_engine.dispose()
 

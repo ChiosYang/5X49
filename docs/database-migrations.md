@@ -60,6 +60,12 @@ The initial migration, version 1, absorbs the former hand-written `ADD COLUMN`
 logic for `movie` and `job`. It is intentionally idempotent so it can stamp a
 database that already has the current columns without rewriting data.
 
+Migration version 2 adds the canonical identity and library schema:
+`graph_entity`, `local_profile`, `film`, `external_identity`, `library_item`,
+`library_item_locator_history`, `media_asset`, `legacy_movie_alias`, identity
+review, and canonical backfill report tables. It creates the single local
+profile idempotently and leaves all legacy tables and public reads unchanged.
+
 ## Startup Sequence
 
 Database initialization runs before the job runtime and filesystem watcher:

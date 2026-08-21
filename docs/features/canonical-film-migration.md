@@ -1,8 +1,9 @@
 # Canonical Film Migration
 
-Status: Draft
+Status: In Progress
 Last updated: 2026-08-21
-Related: `docs/domain-model.md`, `docs/database-migrations.md`, W2–W3 in `docs/product-roadmap.md`
+Related: `docs/domain-model.md`, `docs/database-migrations.md`,
+`docs/analysis-v2-contract.md`, W2–W3 in `docs/product-roadmap.md`
 
 ## Goal
 
@@ -46,12 +47,14 @@ watch-history, and audit API behavior throughout migration.
   partial-column, single-table, and legacy user-state/event databases. The
   offline restore command is exercised against an upgraded and then mutated
   legacy database before the restored backup is migrated again.
+- Schema migration version 2 adds the canonical identity/library tables and a
+  singleton LocalProfile without modifying legacy Movie reads or events.
 
 ## Acceptance criteria
 
-- [ ] A new installation and every supported legacy fixture reach the canonical
+- [x] A new installation and every supported legacy fixture reach the canonical
   schema through ordered, checksum-validated migrations.
-- [ ] Film, ExternalIdentity, LibraryItem, MediaAsset, LocalProfile, and
+- [x] Film, ExternalIdentity, LibraryItem, MediaAsset, LocalProfile, and
   LegacyMovieAlias constraints match the accepted domain RFC.
 - [ ] Exact TMDB/IMDb identity matches reuse a Film; conflicting identities do
   not auto-merge and produce a review record.
@@ -125,7 +128,7 @@ Status: Complete
 
 ### Slice 1 — Canonical identity and library schema
 
-Status: Pending
+Status: Complete
 
 - Intended behavior: add LocalProfile, Film, ExternalIdentity, LibraryItem,
   MediaAsset, LegacyMovieAlias, and locator-history tables without changing
@@ -188,6 +191,11 @@ Status: Pending
   exercise, sensitive-data scan, and recorded Gate A review conclusion.
 
 ## Verification evidence
+
+- `.\.venv\Scripts\python.exe -X utf8 -W error::ResourceWarning -m unittest test_canonical_schema.py test_database_migrations.py test_database_restore.py`
+  — 19 tests passed on 2026-08-21, covering canonical table presence,
+  singleton profile creation, identity/source/asset constraints, FK delete
+  restriction, seven legacy upgrades, repeat migration, backup, and restore.
 
 - `.\.venv\Scripts\python.exe -X utf8 -W error::ResourceWarning -m unittest test_database_migrations.py`
   — 7 tests passed on 2026-08-21 across seven legacy fixture profiles, including

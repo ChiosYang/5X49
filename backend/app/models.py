@@ -135,3 +135,19 @@ class EventRecord(SQLModel, table=True):
     context: Optional[dict] = Field(default=None, sa_column=Column(JSON))
     schema_version: int = Field(default=1)
     occurred_at: str = Field(default_factory=utc_now_iso, index=True)
+
+
+# Import canonical models after legacy definitions so SQLModel registers their
+# tables whenever the existing `app.models` module is imported.
+from app.canonical_models import (  # noqa: E402, F401
+    CanonicalBackfillRun,
+    ExternalIdentity,
+    Film,
+    GraphEntity,
+    IdentityReview,
+    LegacyMovieAlias,
+    LibraryItem,
+    LibraryItemLocatorHistory,
+    LocalProfile,
+    MediaAsset,
+)
