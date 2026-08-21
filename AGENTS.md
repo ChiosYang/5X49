@@ -122,6 +122,11 @@ environment constraints, report the exact command and reason.
 
 ## Git Workflow
 
+- This repository uses a single working tree at `D:/Projects/5X49`.
+- Do not create or use additional Git worktrees unless the user explicitly
+  requests one for a specific task.
+- Perform sequential development in the main checkout. Create and switch
+  ordinary feature/fix/refactor branches there when branch isolation is needed.
 - Branch naming:
   - `feat/<short-topic>`
   - `fix/<short-topic>`
