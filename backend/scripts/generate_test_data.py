@@ -19,6 +19,8 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
+from PIL import Image, ImageDraw
+
 
 GENERATOR_NAME = "5X49 local test data generator"
 SCHEMA_VERSION = 1
@@ -26,6 +28,7 @@ DEFAULT_SEED = 549
 DEFAULT_COUNT = 200
 DEFAULT_OUTPUT_DIR = Path(__file__).resolve().parents[1] / "data" / "generated-test-data"
 VIDEO_BYTES = b"5X49_TEST_VIDEO_PLACEHOLDER\n"
+DATA_PROFILES = ("mixed", "normal")
 
 TITLE_PAIRS = (
     ("The Quiet Signal", "静默信号"),
@@ -68,17 +71,20 @@ def generate_dataset(
     *,
     count: int = DEFAULT_COUNT,
     seed: int = DEFAULT_SEED,
+    profile: str = "mixed",
     force: bool = False,
 ) -> dict[str, Any]:
     """Generate a model-compatible JSON fixture and a small media tree."""
     if count < 0:
         raise ValueError("count must be non-negative")
+    if profile not in DATA_PROFILES:
+        raise ValueError(f"profile must be one of: {', '.join(DATA_PROFILES)}")
 
     output = _safe_output_path(output_dir)
     if output.exists() and not output.is_dir():
         raise ValueError(f"Output path is not a directory: {output}")
 
-    complete, incomplete, edge = _distribution(count)
+    complete, incomplete, edge = (count, 0, 0) if profile == "normal" else _distribution(count)
     rng = random.Random(seed)
     base_time = datetime(2025, 1, 1, tzinfo=timezone.utc)
     staging = Path(tempfile.mkdtemp(prefix=f".{output.name}.", dir=str(output.parent)))
@@ -95,7 +101,11 @@ def generate_dataset(
             scenario = EDGE_SCENARIOS[edge_index % len(EDGE_SCENARIOS)] if category == "edge" else "valid_nfo"
             title, title_cn = TITLE_PAIRS[index % len(TITLE_PAIRS)]
             year = 1950 + ((index * 37 + seed) % 76)
-            movie_id = f"fixture_{index + 1:04d}"
+            movie_id = (
+                f"{100000 + index}_{year}"
+                if profile == "normal"
+                else f"fixture_{index + 1:04d}"
+            )
             folder_name = f"movie-{index + 1:04d}"
             if scenario == "special_path":
                 folder_name = f"电影 & Cafe [{seed}] ({year})"
@@ -113,6 +123,7 @@ def generate_dataset(
                 folder_name=folder_name,
                 base_time=base_time,
                 rng=rng,
+                with_artwork=profile == "normal",
             )
             movies.append(movie)
             user_states.append(_user_state(movie_id, index, base_time))
@@ -126,17 +137,22 @@ def generate_dataset(
                 scenario=scenario,
                 folder_name=folder_name,
                 seed=seed,
+                with_artwork=profile == "normal",
             )
             media_scenarios.append(scenario_info)
 
-        root_video = media_root / "Root Only (2024).mp4"
-        if not root_video.exists():
-            root_video.write_bytes(VIDEO_BYTES)
+        root_video_path = None
+        if profile == "mixed":
+            root_video = media_root / "Root Only (2024).mp4"
+            if not root_video.exists():
+                root_video.write_bytes(VIDEO_BYTES)
+            root_video_path = "media/Root Only (2024).mp4"
 
-        invalid_records = _invalid_records()
+        invalid_records = _invalid_records() if profile == "mixed" else []
         manifest = {
             "generator": GENERATOR_NAME,
             "schema_version": SCHEMA_VERSION,
+            "profile": profile,
             "seed": seed,
             "count": count,
             "distribution": {
@@ -151,7 +167,7 @@ def generate_dataset(
                 "media_root": "media",
             },
             "media_scenarios": media_scenarios,
-            "root_video": "media/Root Only (2024).mp4",
+            "root_video": root_video_path,
             "invalid_record_names": [record["name"] for record in invalid_records],
             "cleanup": "uv run python scripts/generate_test_data.py --clean --output-dir <same-dir>",
         }
@@ -192,6 +208,12 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--count", type=int, default=DEFAULT_COUNT, help="number of movie records (default: 200)")
     parser.add_argument("--seed", type=int, default=DEFAULT_SEED, help="random seed (default: 549)")
+    parser.add_argument(
+        "--profile",
+        choices=DATA_PROFILES,
+        default="mixed",
+        help="mixed includes edge cases; normal creates only valid demo movies with local artwork",
+    )
     parser.add_argument("--output-dir", type=Path, default=DEFAULT_OUTPUT_DIR)
     parser.add_argument("--force", action="store_true", help="replace an existing generator-owned output directory")
     parser.add_argument("--clean", action="store_true", help="remove the exact generator-owned output directory")
@@ -206,6 +228,7 @@ def main(argv: list[str] | None = None) -> int:
                 args.output_dir,
                 count=args.count,
                 seed=args.seed,
+                profile=args.profile,
                 force=args.force,
             )
             print(
@@ -244,6 +267,7 @@ def _movie_record(
     folder_name: str,
     base_time: datetime,
     rng: random.Random,
+    with_artwork: bool,
 ) -> dict[str, Any]:
     stamp = (base_time + timedelta(days=index)).isoformat()
     complete = category == "complete"
@@ -272,8 +296,12 @@ def _movie_record(
         "title": title,
         "title_cn": title_cn,
         "year": year,
-        "poster_local": f"{scenario_path}/poster.jpg" if complete and index % 4 == 0 else None,
-        "backdrop_local": None,
+        "poster_local": (
+            f"{scenario_path}/movie-poster.jpg"
+            if with_artwork
+            else (f"{scenario_path}/poster.jpg" if complete and index % 4 == 0 else None)
+        ),
+        "backdrop_local": f"{scenario_path}/movie-fanart.jpg" if with_artwork else None,
         "poster_thumb_local": None,
         "backdrop_thumb_local": None,
         "poster_path": f"/fixture/poster-{index + 1:04d}.jpg" if complete else None,
@@ -365,6 +393,7 @@ def _write_media_case(
     scenario: str,
     folder_name: str,
     seed: int,
+    with_artwork: bool,
 ) -> dict[str, Any]:
     if scenario == "root_video":
         root_video = media_root / "Root Only (2024).mp4"
@@ -416,6 +445,10 @@ def _write_media_case(
         _write_nfo(folder / "movie.nfo", title, title_cn, year, seed, index)
         expected = "parsed"
 
+    if with_artwork:
+        _write_demo_artwork(folder / "movie-poster.jpg", (600, 900), index, year, "PORTRAIT")
+        _write_demo_artwork(folder / "movie-fanart.jpg", (1280, 720), index, year, "LANDSCAPE")
+
     return {
         "index": index,
         "scenario": scenario,
@@ -465,6 +498,54 @@ def _write_nfo(
     tree = ET.ElementTree(root)
     ET.indent(tree, space="  ")
     tree.write(path, encoding="utf-8", xml_declaration=True)
+
+
+def _write_demo_artwork(
+    path: Path,
+    size: tuple[int, int],
+    index: int,
+    year: int,
+    layout: str,
+) -> None:
+    """Write deterministic local artwork for the normal demo profile."""
+    width, height = size
+    palette = (
+        ((20, 24, 36), (170, 54, 62), (244, 178, 71)),
+        ((13, 31, 34), (32, 117, 126), (180, 225, 151)),
+        ((28, 19, 45), (116, 68, 153), (229, 164, 255)),
+        ((38, 24, 13), (174, 91, 38), (255, 205, 126)),
+        ((13, 24, 45), (42, 91, 168), (138, 198, 255)),
+        ((35, 16, 25), (151, 48, 89), (255, 153, 188)),
+    )[index % 6]
+    start, middle, accent = palette
+    image = Image.new("RGB", size, start)
+    draw = ImageDraw.Draw(image, "RGBA")
+
+    for y in range(height):
+        ratio = y / max(height - 1, 1)
+        color = tuple(round(start[channel] * (1 - ratio) + middle[channel] * ratio) for channel in range(3))
+        draw.line((0, y, width, y), fill=(*color, 255))
+
+    orbit_size = int(min(width, height) * 0.72)
+    orbit_left = int(width * (0.55 if layout == "PORTRAIT" else 0.68)) - orbit_size // 2
+    orbit_top = int(height * 0.32) - orbit_size // 2
+    draw.ellipse(
+        (orbit_left, orbit_top, orbit_left + orbit_size, orbit_top + orbit_size),
+        outline=(*accent, 170),
+        width=max(3, width // 120),
+    )
+    draw.rectangle((0, int(height * 0.72), width, height), fill=(0, 0, 0, 105))
+    draw.text(
+        (int(width * 0.07), int(height * 0.78)),
+        f"5X49 TEST FILM {index + 1:02d}",
+        fill=(255, 255, 255, 235),
+    )
+    draw.text(
+        (int(width * 0.07), int(height * 0.84)),
+        str(year),
+        fill=(*accent, 255),
+    )
+    image.save(path, format="JPEG", quality=88, optimize=True)
 
 
 def _invalid_records() -> list[dict[str, Any]]:

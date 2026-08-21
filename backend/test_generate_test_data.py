@@ -6,6 +6,7 @@ from collections import Counter
 from pathlib import Path
 from unittest.mock import patch
 
+from PIL import Image
 from pydantic import ValidationError
 from sqlmodel import Session, SQLModel, create_engine, select
 
@@ -74,6 +75,46 @@ class TestDataGeneratorTests(unittest.TestCase):
             root_video = output / manifest["root_video"]
             self.assertTrue(root_video.is_file())
             self.assertNotIn(root_video.stem, scanned_titles)
+
+    def test_normal_profile_generates_only_valid_movies_with_local_artwork(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            output = Path(tmp) / "normal"
+            manifest = generate_dataset(output, count=12, seed=549, profile="normal")
+
+            self.assertEqual(manifest["profile"], "normal")
+            self.assertEqual(
+                manifest["distribution"],
+                {"complete": 12, "incomplete": 0, "edge": 0},
+            )
+            self.assertIsNone(manifest["root_video"])
+            self.assertEqual(manifest["invalid_record_names"], [])
+            self.assertTrue(
+                all(item["scenario"] == "valid_nfo" for item in manifest["media_scenarios"])
+            )
+
+            for item in manifest["media_scenarios"]:
+                movie_dir = output / item["path"]
+                poster = movie_dir / "movie-poster.jpg"
+                backdrop = movie_dir / "movie-fanart.jpg"
+                self.assertTrue((movie_dir / "movie.nfo").is_file())
+                self.assertTrue((movie_dir / "movie.mp4").is_file())
+                with Image.open(poster) as image:
+                    self.assertEqual(image.size, (600, 900))
+                with Image.open(backdrop) as image:
+                    self.assertEqual(image.size, (1280, 720))
+
+            with patch("app.services.scanner.artwork_cache.generate", return_value=None), patch(
+                "app.services.scanner.video_probe_service.probe", return_value={}
+            ):
+                scanned = NFOScanner(str(output / "media")).scan()
+            self.assertEqual(len(scanned), 12)
+            generated_movies = json.loads((output / "movies.json").read_text(encoding="utf-8"))
+            self.assertEqual(
+                {movie["id"] for movie in scanned},
+                {movie["id"] for movie in generated_movies},
+            )
+            self.assertTrue(all(movie["poster_local"] for movie in scanned))
+            self.assertTrue(all(movie["backdrop_local"] for movie in scanned))
 
     def test_generated_movies_can_be_imported_into_a_temporary_database(self):
         with tempfile.TemporaryDirectory() as tmp:

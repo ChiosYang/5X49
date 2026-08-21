@@ -11,6 +11,13 @@ versions, special paths, and root-video cases, run from `backend/`:
 uv run python scripts/generate_test_data.py --count 12 --seed 549 --output-dir data/generated-test-data
 ```
 
+For a UI-friendly demo library containing only valid NFO movies plus generated
+local poster and backdrop artwork, use the normal profile:
+
+```powershell
+uv run python scripts/generate_test_data.py --profile normal --count 12 --seed 549 --output-dir data/demo-library
+```
+
 The generated directory is gitignored. Remove only that exact generator-owned
 directory with:
 
