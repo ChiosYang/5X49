@@ -120,6 +120,14 @@ environment constraints, report the exact command and reason.
    accidental unrelated changes.
 6. Summarize what changed, what was verified, and any remaining risk.
 
+For non-trivial work that is likely to span multiple sessions or contains
+multiple independently verifiable behavior slices, create or update
+`docs/features/<feature-slug>.md` using `docs/features/README.md`. Keep the
+document focused on the behavior contract, decisions, slices, verification
+evidence, and remaining risks. Do not require a feature document for small,
+isolated changes. Use multi-agent workflow orchestration only when the user
+explicitly requests it, including by invoking an applicable workflow Skill.
+
 ## Git Workflow
 
 - This repository uses a single working tree at `D:/Projects/5X49`.
