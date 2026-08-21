@@ -261,6 +261,7 @@ UNIQUE(profile_id, film_id)
 | `tags` / `mood` / `favorite_scene` | 可空的 Diary 数据 |
 | `source` | `manual/legacy_movie_user_state/import/...` |
 | `source_record_id` | 外部或兼容导入记录 ID，可空 |
+| `review_status` | `confirmed/needs_review/rejected`；正常写入默认 confirmed |
 | `created_at` / `updated_at` / `deleted_at` | 生命周期；删除先写 tombstone |
 
 约束与索引：
@@ -269,6 +270,8 @@ UNIQUE(profile_id, film_id)
 - 索引 `(profile_id, watched_at DESC)`、`(profile_id, film_id, watched_at)`、`film_id`。
 - 非空外部来源 ID 使用 `UNIQUE(profile_id, source, source_record_id)` 保证导入幂等。
 - 同一 Film、同一日期允许多条记录，不能对 `(film_id, watched_at)` 建唯一约束。
+- 只有 `review_status=confirmed` 且未删除的 Viewing 进入 watched、最近观看和观看次数投影；
+  `needs_review/rejected` 记录仍是 durable data，但不能让系统推断用户看过该片。
 - 删除 LibraryItem 不影响 Viewing。用户删除 Viewing 时保留 tombstone，导出默认排除已删除项，
   恢复/彻底清除必须是显式操作。
 
@@ -490,10 +493,13 @@ sha256(
 | `notes` | `Viewing.review` | 不写 Film 公共 metadata |
 | `updated_at` | Viewing/FilmProfileState migration 时间来源 | 同时保留原值供核对 |
 
-若 `watched=true`，或 `watched_at/rating/notes` 任一非空，创建一个
-`source=legacy_movie_user_state` 的兼容 Viewing。对于 `watched=false` 但存在 rating/notes 的
-不一致旧行，保留字段并将该记录标记为 migration review；在 Gate A fixture 中验证不会静默
-丢失。完全空且 favorite=false 的默认行无需制造 durable Viewing。
+若 `watched=true`，或 `watched_at` 非空，创建一个 `review_status=confirmed`、
+`source=legacy_movie_user_state` 的兼容 Viewing。对于 `watched=false` 且没有 `watched_at`、
+但存在 rating/notes 的不一致旧行，仍创建 Viewing 以保留原字段，但标记
+`review_status=needs_review`、`watched_at_precision=unknown`；该行不进入 watched、最近观看和
+观看次数投影。兼容 GET 在没有 confirmed Viewing 时继续返回 `watched=false`，同时可从这条
+待审核记录回显原 rating/notes，直到用户确认或拒绝。完全空且 favorite=false 的默认行无需
+制造 durable Viewing。
 
 若多个旧 Movie 合并为同一 Film，每条非空 MovieUserState 仍以原 `movie_id` 作为
 `source_record_id` 独立迁移，避免猜测两次观看是否重复；favorite 采用 OR 语义。冲突记录进入
@@ -585,9 +591,12 @@ MovieUserState 当前行 + verified backup 为基线，事件只用于审计核�
 ### 8.2 user-state 与 Watch History
 
 - `GET /library/{movie_id}/user-state` 和 `/library/user-states` 返回原字段：
-  `movie_id` 为请求/主兼容 alias，`watched` 由 active Viewing 是否存在推导，`watched_at`、
-  `rating`、`notes` 取最近 Viewing，`favorite` 来自 FilmProfileState。
-- `GET /watch-history` 仍每 Film 一项，使用最近 Viewing 排序；新 Diary API 才返回每次观看。
+  `movie_id` 为请求/主兼容 alias，`watched` 只由 confirmed active Viewing 是否存在推导，
+  `watched_at`、`rating`、`notes` 通常取最近 confirmed Viewing，`favorite` 来自
+  FilmProfileState。若没有 confirmed Viewing 但有 `needs_review` 的 legacy 记录，则保持
+  `watched=false`、`watched_at=null`，并回显待审核记录的 rating/notes，避免静默丢失。
+- `GET /watch-history` 仍每 Film 一项，只使用最近 confirmed Viewing 排序；新 Diary API 才
+  返回每次观看，待审核迁移记录通过独立 review 状态展示。
 - `PUT .../user-state` 更新 `favorite`，并只 upsert 一条唯一的 compatibility Viewing
   (`source=legacy_user_state_api`)；不能覆盖 Diary 创建的其他 Viewing。
 - 设置 `watched=false` 只 soft-delete compatibility Viewing。若仍存在其他 Diary Viewing，
@@ -687,7 +696,7 @@ RFC/决策：
 - [x] 稳定 ID、外部身份、唯一约束、索引、关系和删除语义明确。
 - [x] 旧字段映射、Owned/Unowned、多 item、孤立 Film、missing/restore 行为明确。
 - [x] 兼容层、迁移顺序、备份/回滚和 fixture 范围明确。
-- [ ] 第 13 节的 Gate A blocking 决策由维护者确认。
+- [x] 第 13 节的 Gate A blocking 决策已由维护者于 2026-08-21 确认。
 
 实现 Gate（本 RFC 不声称已经通过）：
 
@@ -702,16 +711,32 @@ RFC/决策：
 - [ ] 迁移/诊断/日志不泄露密钥或未脱敏绝对路径。
 - [ ] Gate A 审核结论记录为通过后，才开始 Graph UI。
 
-## 13. 仍需决策
+## 13. 决策记录与后续开放项
 
-以下项目保留 RFC 默认值；标记为 Gate A blocking 的项目应在 W3 Schema 实现前确认：
+以下三个 Gate A blocking 项已由维护者于 2026-08-21 确认，W3 Schema 和回填必须以此为准：
 
-1. **多 LibraryItem 的旧 `/library` 表示（Gate A blocking）**：本 RFC 默认“一 item 一兼容
-   Movie 行”，它最能保留路径字段；另一选择是每 Film 只返回 primary item，但会隐藏版本。
-2. **本地改名/移动的稳定匹配算法（Gate A blocking）**：需要确定平台文件 ID、快速 fingerprint
-   与完整 content hash 的优先级、性能预算和歧义阈值。默认歧义时不自动合并。
-3. **不一致 legacy UserState（Gate A blocking）**：本 RFC 默认保留为 migration-review
-   Viewing；需确认 `watched=false + rating/notes` 在兼容 GET 中是否视为 watched。
+1. **多 LibraryItem 的旧 `/library` 表示（已确认）**：每个非 retired LibraryItem 生成一条
+   兼容 Movie 行。多个 item 指向同一 Film 时返回多条，Film metadata 可以相同，但每行保留
+   自己的兼容 ID、路径、媒体状态和资产字段；不使用 primary item 隐藏其他版本。旧 item
+   保留 LegacyMovieAlias，新 item 使用 `lib_<uuid>` 兼容 ID。
+2. **本地改名/移动的稳定匹配算法（已确认）**：只在同一 profile 和 source instance 内按
+   以下顺序重新关联 LibraryItem：
+   1. 当前或历史 `source_item_key` 精确命中；
+   2. 同一文件系统卷内的平台稳定文件 ID 精确命中；
+   3. `file_size + SHA-256(first/middle/last 4 MiB)` 快速 fingerprint 唯一命中，小于采样窗口
+      的文件直接计算完整内容 hash；单个候选前台读取预算最多 12 MiB；
+   4. 快速 fingerprint 冲突时，仅由单并发后台任务计算完整 content hash，不能阻塞正常扫描。
+
+   自动重新关联必须只有一个候选，且不能与已知 ExternalIdentity 冲突。零个候选、多个候选、
+   完整 hash 仍重复或身份冲突时均保持独立并进入 review；title/year、规范化文件名和目录名只
+   用于候选排序和人工说明，绝不单独触发自动合并。
+3. **不一致 legacy UserState（已确认）**：`watched=false` 且无 `watched_at`、但有 rating/notes
+   时创建 `review_status=needs_review` 的 legacy Viewing 保存原字段。它不进入 watched、最近
+   观看或观看次数投影；兼容 GET 返回 `watched=false`、`watched_at=null`，但在没有 confirmed
+   Viewing 时回显原 rating/notes。用户确认后改为 confirmed；拒绝后保留 rejected 审计记录。
+
+以下项目不是 W3 Schema 的 Gate A blocker，仍按对应阶段单独决策：
+
 4. **兼容 PUT `watched=false`**：本 RFC 默认只删除 compatibility Viewing，不删除 Diary
    Viewing；需要在 API 文档实施阶段明确告知旧客户端。
 5. **Analysis raw input/output 保留期**：需在可诊断性、隐私、成本复核和数据库体积之间确定

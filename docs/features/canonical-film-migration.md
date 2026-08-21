@@ -89,15 +89,20 @@ watch-history, and audit API behavior throughout migration.
   flag day rewrite.
 - Keep Graph/Analysis work out of this feature except for the durable foreign-key
   boundaries required by the accepted domain model.
+- Preserve one compatibility Movie row per non-retired LibraryItem. Multiple
+  editions of one Film remain visible and keep item-specific IDs, paths, status,
+  and assets.
+- Relink a moved local item only from an unambiguous source-key, platform file
+  identity, or bounded sampled fingerprint match. Full hashes run only as a
+  single-concurrency background disambiguation step; title/year never auto-merge
+  items.
+- Preserve `watched=false` legacy rows with rating/notes as `needs_review`
+  Viewings. They retain the fields but do not count as watched until confirmed.
 
 ## Open questions
 
-- Gate A blocking: whether legacy `/library` returns one compatibility Movie per
-  LibraryItem or only a primary item per Film.
-- Gate A blocking: the exact platform file identity, sampled fingerprint, full
-  hash, performance-budget, and ambiguity policy for local rename/move matching.
-- Gate A blocking: how `watched=false` with legacy rating/notes is represented in
-  Viewing and whether compatibility GET reports it as watched.
+- No Gate A blocking domain questions remain for the W3 schema. The three former
+  blockers were accepted in `docs/domain-model.md` on 2026-08-21.
 - Non-blocking for the first schema slice: retention for Analysis raw artifacts,
   controlled Concept vocabulary, Evidence fetching boundaries, and merge UI.
 
@@ -107,9 +112,9 @@ watch-history, and audit API behavior throughout migration.
 
 Status: In Progress
 
-- Intended behavior: close blocking decisions; expand legacy fixtures; fix the
-  current NFO file-snapshot backfill regression; exercise verified offline
-  backup restoration.
+- Intended behavior: enforce the accepted blocking decisions; expand legacy
+  fixtures; fix the current NFO file-snapshot backfill regression; exercise
+  verified offline backup restoration.
 - Likely affected areas: `docs/domain-model.md`, `backend/fixtures/database/`,
   `backend/test_database_migrations.py`, migration backup/restore tooling, event
   backfill tests.
@@ -126,8 +131,7 @@ Status: Pending
   current reads.
 - Likely affected areas: SQLModel models, migration version 2, schema tests, and
   domain consistency checks.
-- Dependencies: Gate A blocking decisions are confirmed; Slice 0 restore path is
-  executable.
+- Dependencies: accepted Gate A decisions; Slice 0 restore path is executable.
 - Verification: empty/current/legacy schema upgrades, FK and unique constraints,
   delete restrictions, and repeat migration.
 
@@ -196,8 +200,8 @@ Status: Pending
 
 ## Remaining risks
 
-- The three Gate A blocking decisions above are not yet marked accepted in the
-  domain RFC.
+- The accepted Gate A decisions are documented but not yet implemented or
+  covered by W3 behavior tests.
 - Only three of the broader legacy fixture scenarios currently exist.
 - Backup creation is verified, but replacing an upgraded database from a backup
   has not completed an end-to-end restore exercise.
