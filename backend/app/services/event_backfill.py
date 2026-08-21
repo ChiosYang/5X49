@@ -254,7 +254,7 @@ class MovieReplayBackfill:
                     continue
                 raw_path = movie_data.get(field)
                 if not raw_path and file_type == "nfo" and movie_data.get("folder_path") and movie_data.get("nfo_file"):
-                    raw_path = str(Path(movie_data["folder_path"]) / movie_data["nfo_file"])
+                    raw_path = movie_data["nfo_file"]
                 if not raw_path:
                     continue
                 try:
