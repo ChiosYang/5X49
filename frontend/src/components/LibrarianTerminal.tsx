@@ -2,7 +2,9 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import { Terminal, X, Play, Loader2 } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
+import { Button, IconButton } from "@/components/ui/Button";
+import { Dialog } from "@/components/ui/Dialog";
 
 interface LogMessage {
   id: string;
@@ -135,29 +137,34 @@ export default function LibrarianTerminal({ isOpen, onClose }: LibrarianTerminal
   };
 
   return (
-    <AnimatePresence>
-      {isOpen && (
-        <motion.div
-          initial={{ opacity: 0, scale: 0.95, y: 20 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          exit={{ opacity: 0, scale: 0.95, y: 20 }}
-          className="scrim-backdrop z-modal fixed inset-0 flex items-center justify-center p-4 lg:p-12"
-        >
-          <div className="liquid-glass-modal relative flex h-[80vh] w-full max-w-5xl flex-col overflow-hidden rounded-structural border border-line/80 font-mono text-ink-muted">
+    <Dialog
+      open={isOpen}
+      onClose={handleClose}
+      closeLabel="Close Librarian Console"
+      closeOnBackdrop={false}
+      closeOnEscape={false}
+      lockScroll={false}
+      animated
+      size="lg"
+      ariaLabelledBy="librarian-console-title"
+      overlayClassName="lg:p-12"
+      panelClassName="flex h-[80vh] flex-col rounded-structural font-mono text-ink-muted"
+    >
             {/* Header */}
             <div className="flex items-center justify-between border-b border-line bg-canvas/40 px-6 py-5">
               <div className="flex items-center gap-4 text-ink">
                 <Terminal className="w-4 h-4" />
-                <span className="text-sm tracking-widest uppercase">Librarian Console</span>
+                <span id="librarian-console-title" className="text-sm tracking-widest uppercase">Librarian Console</span>
                 {isRunning && <Loader2 className="ml-2 h-3 w-3 animate-spin text-ink-subtle" />}
               </div>
-              <button
+              <IconButton
                 onClick={handleClose}
-                className="focus-ring duration-standard text-ink-disabled transition-colors hover:text-ink"
+                variant="ghost"
+                className="h-10 w-10 text-ink-disabled"
+                aria-label="Close Librarian Console"
                 title="Close"
-              >
-                <X className="w-6 h-6" />
-              </button>
+                icon={<X className="h-6 w-6" />}
+              />
             </div>
 
             {/* Terminal Body */}
@@ -190,27 +197,15 @@ export default function LibrarianTerminal({ isOpen, onClose }: LibrarianTerminal
                 <span className="hidden sm:inline">System:</span>
                 <span className="bg-surface-raised px-2 py-1 text-ink-muted">LangGraph / ReAct</span>
               </div>
-              <button
+              <Button
                 onClick={isRunning ? stopAgent : startCleaning}
-                className={`focus-ring duration-standard flex items-center gap-3 px-8 py-3.5 text-xs font-semibold tracking-widest uppercase transition-all ${
-                  isRunning 
-                    ? "bg-surface-raised text-ink-subtle hover:bg-surface-hover hover:text-ink"
-                    : "bg-inverse text-inverse-ink hover:bg-neutral-200"
-                }`}
+                variant={isRunning ? "secondary" : "primary"}
+                icon={isRunning ? undefined : <Play className="h-3.5 w-3.5" />}
+                className="px-8 py-3.5"
               >
-                {isRunning ? (
-                  <>Halt Sequence</>
-                ) : (
-                  <>
-                    <Play className="w-3.5 h-3.5" />
-                    Initialize
-                  </>
-                )}
-              </button>
+                {isRunning ? "Halt Sequence" : "Initialize"}
+              </Button>
             </div>
-          </div>
-        </motion.div>
-      )}
-    </AnimatePresence>
+    </Dialog>
   );
 }

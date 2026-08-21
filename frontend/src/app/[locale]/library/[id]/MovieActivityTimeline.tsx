@@ -1,23 +1,20 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { ChevronDown, Clock, Film, Loader2, X } from "lucide-react";
-import OperationDryRunPanel from "@/components/OperationDryRunPanel";
+import { useState } from "react";
+import { ChevronDown, Clock, Film, X } from "lucide-react";
+import { ActivityOperationDetails } from "@/components/activity/ActivityOperationDetails";
 import { useTechnicalMode } from "@/components/TechnicalModeProvider";
-import TimelineRestorePreviewPanel from "@/components/TimelineRestorePreviewPanel";
+import { IconButton } from "@/components/ui/Button";
+import { Dialog } from "@/components/ui/Dialog";
+import { Spinner, StateMessage } from "@/components/ui/Feedback";
 import { useMovieAuditEvents } from "@/hooks/useMovie";
 import {
-  EVENT_LABELS,
   TECHNICAL_EVENT_TYPES,
-  eventActionName,
-  eventSummary,
   formatEventTime,
   formatRelativeEventTime,
   groupActivityEvents,
   operationDisplaySummary,
   operationDisplayTitle,
-  videoDetailItems,
-  type ActivityOperation,
 } from "@/lib/activity";
 
 interface MovieActivityTimelineProps {
@@ -45,35 +42,18 @@ export default function MovieActivityTimeline({ movieId, open, onClose }: MovieA
     ));
   };
 
-  useEffect(() => {
-    if (!open) return;
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        onClose();
-      }
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [onClose, open]);
-
-  if (!open) {
-    return null;
-  }
-
   return (
-    <div className="scrim-backdrop z-modal fixed inset-0 flex items-end justify-center px-4 py-6 sm:items-center">
-      <button
-        type="button"
-        className="z-content absolute inset-0 cursor-default"
-        onClick={onClose}
-        aria-label="Close library history"
-      />
-      <section
-        className="liquid-glass-modal z-raised relative max-h-[min(42rem,calc(100vh-3rem))] w-full max-w-2xl overflow-hidden border border-line/80 text-ink"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="movie-activity-title"
-      >
+    <Dialog
+      open={open}
+      onClose={onClose}
+      closeLabel="Close library history"
+      closeOnBackdrop
+      closeOnEscape
+      lockScroll={false}
+      placement="bottom"
+      ariaLabelledBy="movie-activity-title"
+      panelClassName="max-h-[min(42rem,calc(100vh-3rem))]"
+    >
         <div className="flex items-start justify-between gap-6 border-b border-line-strong px-5 py-5 sm:px-6">
           <div className="min-w-0 flex-1">
             <span className="block text-xs font-bold tracking-widest text-ink-subtle uppercase">
@@ -96,30 +76,28 @@ export default function MovieActivityTimeline({ movieId, open, onClose }: MovieA
             </label>
           </div>
           <div className="flex shrink-0 items-center gap-3">
-            {isLoading && <Loader2 className="h-5 w-5 animate-spin text-ink-subtle" />}
-            <button
-              type="button"
+            {isLoading && <Spinner className="h-5 w-5 text-ink-subtle" />}
+            <IconButton
               onClick={onClose}
-              className="focus-ring duration-standard flex h-10 w-10 items-center justify-center border border-line-strong bg-surface text-ink-muted transition-colors hover:border-ink-subtle hover:text-ink"
+              className="h-10 w-10"
               aria-label="Close library history"
               title="Close library history"
-            >
-              <X className="h-4 w-4" />
-            </button>
+              icon={<X className="h-4 w-4" />}
+            />
           </div>
         </div>
 
         <div className="max-h-[calc(min(42rem,100vh-3rem)-6.75rem)] overflow-y-auto px-5 py-6 sm:px-6">
           {error ? (
-            <div className="break-words border border-line-strong bg-surface px-4 py-4 text-sm text-ink-muted">
+            <StateMessage state="error">
               Activity could not be loaded.
-            </div>
+            </StateMessage>
           ) : visibleOperations.length === 0 ? (
-            <div className="break-words border border-line-strong bg-surface px-4 py-4 text-sm text-ink-subtle">
+            <StateMessage>
               {events.length > 0 && hiddenTechnicalCount === events.length
                 ? "Only technical events are hidden."
                 : "No activity recorded yet."}
-            </div>
+            </StateMessage>
           ) : (
             <ol className="relative space-y-5 border-l border-line-strong pl-6">
               {visibleOperations.map((operation) => {
@@ -146,11 +124,12 @@ export default function MovieActivityTimeline({ movieId, open, onClose }: MovieA
                           {operation.eventCount} {operation.eventCount === 1 ? "step" : "steps"}
                         </p>
                         {expanded ? (
-                          isTechnical ? (
-                            <TechnicalOperationDetails operation={operation} movieId={movieId} />
-                          ) : (
-                            <FriendlyOperationDetails operation={operation} />
-                          )
+                          <ActivityOperationDetails
+                            operation={operation}
+                            mode={isTechnical ? "technical" : "friendly"}
+                            movieId={movieId}
+                            variant="timeline"
+                          />
                         ) : null}
                       </div>
                       <time className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs tracking-widest text-ink-disabled uppercase sm:justify-end">
@@ -165,98 +144,6 @@ export default function MovieActivityTimeline({ movieId, open, onClose }: MovieA
             </ol>
           )}
         </div>
-      </section>
-    </div>
-  );
-}
-
-function FriendlyOperationDetails({ operation }: { operation: ActivityOperation }) {
-  return (
-    <ul className="mt-4 space-y-3 border-l border-line pl-4">
-      {operation.events.map((event) => {
-        const details = videoDetailItems(event);
-        return (
-          <li key={event.id} className="grid gap-1 sm:grid-cols-[8.5rem_minmax(0,1fr)]">
-            <time className="flex items-center gap-1.5 text-xs tracking-widest text-ink-disabled/70 uppercase">
-              <Clock className="h-3 w-3" />
-              {formatEventTime(event.occurred_at)}
-            </time>
-            <div className="min-w-0">
-              <p className="break-words text-sm leading-relaxed text-ink-subtle">
-                {eventActionName(event)}
-              </p>
-              {details.length ? <VideoDetailList items={details} /> : null}
-            </div>
-          </li>
-        );
-      })}
-    </ul>
-  );
-}
-
-function VideoDetailList({ items }: { items: ReturnType<typeof videoDetailItems> }) {
-  return (
-    <dl className="mt-3 grid gap-2 text-xs sm:grid-cols-2">
-      {items.map((item) => (
-        <div key={item.label} className="min-w-0 border border-line bg-canvas/30 px-3 py-2">
-          <dt className="truncate tracking-widest text-ink-disabled/70 uppercase">{item.label}</dt>
-          <dd className="mt-1 break-words font-medium text-ink-muted">{item.value}</dd>
-        </div>
-      ))}
-    </dl>
-  );
-}
-
-function TechnicalOperationDetails({ operation, movieId }: { operation: ActivityOperation; movieId: string }) {
-  return (
-    <>
-      <OperationDryRunPanel
-        commandId={operation.command_id}
-        correlationId={operation.correlation_id}
-      />
-      <ul className="mt-4 space-y-5 border-l border-line pl-4">
-        {operation.events.map((event) => (
-          <li key={event.id} className="min-w-0 space-y-3">
-            <div>
-              <p className="truncate text-xs font-bold tracking-widest text-ink-muted uppercase">
-                {EVENT_LABELS[event.type] || event.type}
-              </p>
-              <p className="mt-1 break-words text-sm leading-relaxed text-ink-subtle">
-                {eventSummary(event, true)}
-              </p>
-              <div className="mt-2 grid gap-1 text-xs tracking-widest text-ink-disabled/70 uppercase">
-                <span className="break-all">Event: {event.id}</span>
-                {event.command_id ? <span className="break-all">Command: {event.command_id}</span> : null}
-                {event.correlation_id ? <span className="break-all">Correlation: {event.correlation_id}</span> : null}
-                {event.aggregate_id ? <span className="break-all">Aggregate: {event.aggregate_type}/{event.aggregate_id}</span> : null}
-              </div>
-            </div>
-            <JsonBlock label="Payload" value={event.payload} />
-            <JsonBlock label="Context" value={event.context} />
-            <TimelineRestorePreviewPanel
-              event={event}
-              movieId={movieId}
-            />
-          </li>
-        ))}
-      </ul>
-    </>
-  );
-}
-
-function JsonBlock({ label, value }: { label: string; value?: Record<string, unknown> | null }) {
-  if (!value || Object.keys(value).length === 0) {
-    return null;
-  }
-
-  return (
-    <details className="border border-line bg-canvas/40 p-3">
-      <summary className="focus-ring cursor-pointer text-xs font-bold tracking-widest text-ink-subtle uppercase">
-        {label}
-      </summary>
-      <pre className="mt-3 max-h-72 overflow-auto text-xs leading-relaxed whitespace-pre-wrap break-words text-ink-subtle">
-        {JSON.stringify(value, null, 2)}
-      </pre>
-    </details>
+    </Dialog>
   );
 }

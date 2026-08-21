@@ -2,8 +2,11 @@
 
 import { useState } from "react";
 import Image from "next/image";
-import { Check, ImageIcon, Loader2, X } from "lucide-react";
+import { Check, ImageIcon, X } from "lucide-react";
 import { useSWRConfig } from "swr";
+import { Button, IconButton } from "@/components/ui/Button";
+import { Dialog } from "@/components/ui/Dialog";
+import { InlineFeedback, Spinner } from "@/components/ui/Feedback";
 import { API } from "@/lib/api";
 import type { ArtworkImage, MovieArtworkOptions, MovieArtworkUpdateResponse } from "@/types/movie";
 import { useMovieArtwork } from "./MovieArtworkProvider";
@@ -100,43 +103,47 @@ export default function MovieArtworkPicker({ movieId }: MovieArtworkPickerProps)
 
   return (
     <>
-      <button
-        type="button"
+      <IconButton
         onClick={handleOpen}
-        className="flex h-11 w-11 items-center justify-center border border-neutral-800 bg-neutral-950 text-white hover:border-neutral-500 hover:bg-neutral-900 disabled:cursor-not-allowed disabled:opacity-50"
         aria-label="Choose artwork"
         title="Choose artwork"
-      >
-        <ImageIcon className="h-4 w-4" />
-      </button>
+        icon={<ImageIcon className="h-4 w-4" />}
+      />
 
-      {open && (
-        <div className="fixed inset-0 z-[70] flex items-center justify-center p-4">
-          <div className="liquid-glass-modal relative flex max-h-[90vh] w-full max-w-6xl flex-col overflow-hidden border border-neutral-900/80 text-white">
-            <div className="flex items-center justify-between border-b border-neutral-800 px-4 py-3 md:px-6">
+      <Dialog
+        open={open}
+        onClose={() => setOpen(false)}
+        closeLabel="Close artwork picker"
+        closeOnBackdrop={false}
+        closeOnEscape={false}
+        lockScroll={false}
+        size="xl"
+        ariaLabelledBy="artwork-picker-title"
+        panelClassName="flex max-h-[90vh] flex-col"
+      >
+            <div className="flex items-center justify-between border-b border-line-strong px-4 py-3 md:px-6">
               <div>
-                <p className="text-xs font-bold uppercase tracking-widest text-neutral-500">Artwork</p>
-                <p className="text-lg font-bold uppercase tracking-widest">Choose Images</p>
+                <p className="type-label text-ink-subtle">Artwork</p>
+                <p id="artwork-picker-title" className="text-lg font-bold tracking-widest text-ink uppercase">Choose Images</p>
               </div>
-              <button
-                type="button"
+              <IconButton
                 onClick={() => setOpen(false)}
-                className="flex h-10 w-10 items-center justify-center text-white transition-colors hover:text-neutral-300"
+                variant="ghost"
+                className="h-10 w-10"
                 aria-label="Close artwork picker"
                 title="Close"
-              >
-                <X className="h-4 w-4" />
-              </button>
+                icon={<X className="h-4 w-4" />}
+              />
             </div>
 
-            <div className="flex border-b border-neutral-800 bg-black/20 p-1">
+            <div className="flex border-b border-line-strong bg-canvas/20 p-1">
               <button
                 type="button"
                 onClick={() => setActiveTab("poster")}
                 className={`h-11 flex-1 rounded-sm border text-xs font-bold uppercase tracking-widest transition-colors ${
                   activeTab === "poster"
-                    ? "border-white/25 bg-white/15 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]"
-                    : "border-transparent text-neutral-500 hover:bg-white/5 hover:text-neutral-200"
+                    ? "border-ink/25 bg-ink/15 text-ink shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]"
+                    : "border-transparent text-ink-subtle hover:bg-ink/5 hover:text-ink-muted"
                 }`}
               >
                 Posters
@@ -146,8 +153,8 @@ export default function MovieArtworkPicker({ movieId }: MovieArtworkPickerProps)
                 onClick={() => setActiveTab("backdrop")}
                 className={`h-11 flex-1 rounded-sm border text-xs font-bold uppercase tracking-widest transition-colors ${
                   activeTab === "backdrop"
-                    ? "border-white/25 bg-white/15 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]"
-                    : "border-transparent text-neutral-500 hover:bg-white/5 hover:text-neutral-200"
+                    ? "border-ink/25 bg-ink/15 text-ink shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]"
+                    : "border-transparent text-ink-subtle hover:bg-ink/5 hover:text-ink-muted"
                 }`}
               >
                 Backdrops
@@ -156,13 +163,13 @@ export default function MovieArtworkPicker({ movieId }: MovieArtworkPickerProps)
 
             <div className="min-h-0 flex-1 overflow-y-auto p-4 md:p-6">
               {loading && (
-                <div className="flex h-64 items-center justify-center text-neutral-500">
-                  <Loader2 className="h-6 w-6 animate-spin" />
+                <div className="flex h-64 items-center justify-center text-ink-subtle">
+                  <Spinner className="h-6 w-6" />
                 </div>
               )}
 
               {!loading && message && (
-                <p className="mb-4 text-sm font-bold uppercase tracking-widest text-red-500">{message}</p>
+                <InlineFeedback tone="error" className="mb-4 font-bold tracking-widest uppercase">{message}</InlineFeedback>
               )}
 
               {!loading && options && (
@@ -180,8 +187,8 @@ export default function MovieArtworkPicker({ movieId }: MovieArtworkPickerProps)
                             setSelectedBackdrop(image.file_path);
                           }
                         }}
-                        className={`group relative overflow-hidden border bg-neutral-950 text-left ${
-                          selected ? "border-white" : "border-neutral-800 hover:border-neutral-500"
+                        className={`group relative overflow-hidden border bg-surface text-left ${
+                          selected ? "border-ink" : "border-line-strong hover:border-ink-disabled"
                         }`}
                       >
                         <Image
@@ -193,11 +200,11 @@ export default function MovieArtworkPicker({ movieId }: MovieArtworkPickerProps)
                           unoptimized
                           className={`w-full object-cover ${activeTab === "poster" ? "aspect-[2/3]" : "aspect-video"}`}
                         />
-                        <span className="block border-t border-neutral-800 px-2 py-2 text-[10px] font-bold uppercase tracking-widest text-neutral-400">
+                        <span className="block border-t border-line-strong px-2 py-2 text-[10px] font-bold tracking-widest text-ink-muted uppercase">
                           {imageLabel(image)}
                         </span>
                         {selected && (
-                          <span className="absolute right-2 top-2 flex h-7 w-7 items-center justify-center bg-white text-black">
+                          <span className="absolute top-2 right-2 flex h-7 w-7 items-center justify-center bg-inverse text-inverse-ink">
                             <Check className="h-4 w-4" />
                           </span>
                         )}
@@ -208,27 +215,24 @@ export default function MovieArtworkPicker({ movieId }: MovieArtworkPickerProps)
               )}
             </div>
 
-            <div className="flex items-center justify-end gap-3 border-t border-neutral-800 px-4 py-3 md:px-6">
-              <button
-                type="button"
+            <div className="flex items-center justify-end gap-3 border-t border-line-strong px-4 py-3 md:px-6">
+              <Button
                 onClick={() => setOpen(false)}
-                className="h-10 border border-neutral-800 px-4 text-xs font-bold uppercase tracking-widest text-neutral-400 hover:border-neutral-500 hover:text-white"
+                className="h-10"
               >
                 Cancel
-              </button>
-              <button
-                type="button"
+              </Button>
+              <Button
                 onClick={handleSave}
                 disabled={loading || saving || !options}
-                className="flex h-10 items-center gap-2 bg-white px-4 text-xs font-bold uppercase tracking-widest text-black disabled:cursor-not-allowed disabled:opacity-50"
+                busy={saving}
+                variant="primary"
+                className="h-10"
               >
-                {saving && <Loader2 className="h-4 w-4 animate-spin" />}
                 Save
-              </button>
+              </Button>
             </div>
-          </div>
-        </div>
-      )}
+      </Dialog>
     </>
   );
 }

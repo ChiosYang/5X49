@@ -1,16 +1,8 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { ChevronDown, Loader2 } from "lucide-react";
-
-type StatusTone = "neutral" | "success" | "error" | "warning";
-
-const statusToneClasses: Record<StatusTone, string> = {
-  neutral: "text-ink-subtle",
-  success: "text-success",
-  error: "text-danger",
-  warning: "text-warning",
-};
+import { ChevronDown } from "lucide-react";
+import { InlineFeedback, type FeedbackTone } from "@/components/ui/Feedback";
 
 export function SectionIntro({
   eyebrow,
@@ -92,54 +84,6 @@ export function SettingRow({
   );
 }
 
-export function InlineStatus({
-  children,
-  tone = "neutral",
-}: {
-  children?: ReactNode;
-  tone?: StatusTone;
-}) {
-  if (!children) return null;
-
-  return (
-    <p className={`break-words text-xs leading-5 ${statusToneClasses[tone]}`}>
-      {children}
-    </p>
-  );
-}
-
-export function ToggleSwitch({
-  checked,
-  disabled,
-  label,
-  onChange,
-}: {
-  checked: boolean;
-  disabled?: boolean;
-  label: string;
-  onChange: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      role="switch"
-      aria-checked={checked}
-      aria-label={label}
-      onClick={onChange}
-      disabled={disabled}
-      className={`focus-ring duration-standard relative h-7 w-12 shrink-0 border transition-colors ${
-        checked ? "border-inverse bg-inverse" : "border-line-strong bg-surface-raised"
-      } disabled:cursor-not-allowed disabled:opacity-50`}
-    >
-      <span
-        className={`duration-standard absolute top-1 left-1 h-5 w-5 bg-inverse-ink transition-transform ${
-          checked ? "translate-x-5" : "translate-x-0"
-        }`}
-      />
-    </button>
-  );
-}
-
 export function DisclosurePanel({
   title,
   description,
@@ -187,7 +131,7 @@ export function ActionCard({
   description: string;
   meta?: ReactNode;
   status?: ReactNode;
-  statusTone?: StatusTone;
+  statusTone?: FeedbackTone;
   children: ReactNode;
   danger?: boolean;
 }) {
@@ -207,40 +151,10 @@ export function ActionCard({
         {meta && <div className="mt-3 text-xs leading-5 text-ink-subtle">{meta}</div>}
       </div>
       <div className="mt-5 min-h-5" aria-live="polite">
-        <InlineStatus tone={statusTone}>{status}</InlineStatus>
+        <InlineFeedback tone={statusTone}>{status}</InlineFeedback>
       </div>
       <div className="mt-3">{children}</div>
     </article>
-  );
-}
-
-export function ActionButton({
-  children,
-  busy = false,
-  disabled = false,
-  danger = false,
-  onClick,
-}: {
-  children: ReactNode;
-  busy?: boolean;
-  disabled?: boolean;
-  danger?: boolean;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={disabled || busy}
-      className={`focus-ring duration-fast inline-flex min-h-11 w-full items-center justify-center gap-2 px-5 text-xs font-medium tracking-widest uppercase transition-colors disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto ${
-        danger
-          ? "border border-danger/40 bg-danger/10 text-danger hover:border-danger/70 hover:bg-danger/20"
-          : "border border-line-strong bg-surface-raised text-ink hover:border-ink-disabled hover:bg-surface-hover"
-      }`}
-    >
-      {busy && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-      {children}
-    </button>
   );
 }
 

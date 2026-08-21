@@ -5,11 +5,13 @@ import { Search } from "lucide-react";
 import { useTranslations } from "next-intl";
 import {
   DisclosurePanel,
-  InlineStatus,
   SectionIntro,
   SettingRow,
   SettingsPanel,
 } from "@/components/settings/SettingsPrimitives";
+import { Button } from "@/components/ui/Button";
+import { InlineFeedback } from "@/components/ui/Feedback";
+import { InputButton, TextInput } from "@/components/ui/FormControls";
 import {
   useBaseUrl,
   useModelSettings,
@@ -20,13 +22,6 @@ import {
   useUpdateModel,
   useUpdateTmdbKey,
 } from "@/hooks/useSettings";
-
-const inputClass =
-  "focus-ring duration-standard min-h-11 w-full border border-line-strong bg-surface-raised px-4 text-sm text-ink placeholder:text-ink-disabled transition-colors hover:border-ink-disabled disabled:cursor-not-allowed disabled:opacity-50";
-const primaryButtonClass =
-  "focus-ring duration-fast min-h-11 shrink-0 bg-inverse px-5 text-xs font-bold tracking-[0.16em] text-inverse-ink uppercase transition-colors hover:bg-neutral-200 disabled:cursor-not-allowed disabled:opacity-40";
-const secondaryButtonClass =
-  "focus-ring duration-fast min-h-11 shrink-0 border border-line-strong bg-surface-raised px-5 text-xs font-bold tracking-[0.16em] text-ink uppercase transition-colors hover:border-ink-disabled hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-40";
 
 function isValidHttpUrl(value: string) {
   try {
@@ -191,25 +186,24 @@ export default function IntegrationSettings() {
           description={t("modelDesc")}
           feedback={
             modelSaving ? (
-              <InlineStatus>{t("saving")}</InlineStatus>
+              <InlineFeedback>{t("saving")}</InlineFeedback>
             ) : modelSaveError ? (
-              <InlineStatus tone="error">{t("modelSaveFailed")}</InlineStatus>
+              <InlineFeedback tone="error">{t("modelSaveFailed")}</InlineFeedback>
             ) : modelSaveResult ? (
-              <InlineStatus tone="success">{t("saved")}</InlineStatus>
+              <InlineFeedback tone="success">{t("saved")}</InlineFeedback>
             ) : null
           }
         >
           <div className="relative max-w-xl">
-            <button
-              type="button"
+            <InputButton
               aria-expanded={modelMenuOpen}
               onClick={() => setModelMenuOpen((open) => !open)}
               disabled={modelSaving}
-              className={`${inputClass} flex items-center justify-between gap-4 text-left`}
+              className="flex items-center justify-between gap-4 text-left"
             >
               <span className="truncate">{currentModel || t("selectModel")}</span>
               <span className="text-ink-subtle">▾</span>
-            </button>
+            </InputButton>
             {modelMenuOpen && (
               <>
                 <button
@@ -221,13 +215,13 @@ export default function IntegrationSettings() {
                 <div className="liquid-glass-popover z-popover absolute mt-2 flex max-h-72 w-full flex-col border border-line/80">
                   <div className="relative border-b border-line-strong p-2">
                     <Search className="pointer-events-none absolute top-1/2 left-5 h-3.5 w-3.5 -translate-y-1/2 text-ink-disabled" />
-                    <input
+                    <TextInput
                       type="search"
                       value={modelSearch}
                       onChange={(event) => setModelSearch(event.target.value)}
                       placeholder={t("searchModels")}
                       aria-label={t("searchModels")}
-                      className="focus-ring w-full bg-surface py-2 pr-3 pl-9 text-xs text-ink placeholder:text-ink-disabled"
+                      className="min-h-0 border-0 bg-surface py-2 pr-3 pl-9 text-xs hover:border-0"
                       autoFocus
                     />
                   </div>
@@ -259,24 +253,22 @@ export default function IntegrationSettings() {
           title={t("apiKey")}
           description={t("apiDesc")}
           control={
-            <button
-              type="button"
+            <Button
               onClick={handleApiTest}
-              disabled={apiTesting}
-              className={secondaryButtonClass}
+              busy={apiTesting}
             >
               {apiTesting ? t("testingBtn") : t("testBtn")}
-            </button>
+            </Button>
           }
           feedback={
             apiTesting ? (
-              <InlineStatus>{t("testingBtn")}</InlineStatus>
+              <InlineFeedback>{t("testingBtn")}</InlineFeedback>
             ) : apiTestError ? (
-              <InlineStatus tone="error">{t("apiTestFailed")}</InlineStatus>
+              <InlineFeedback tone="error">{t("apiTestFailed")}</InlineFeedback>
             ) : apiTestResult ? (
-              <InlineStatus tone={apiTestResult.status === "success" ? "success" : "error"}>
+              <InlineFeedback tone={apiTestResult.status === "success" ? "success" : "error"}>
                 {apiTestResult.message}
-              </InlineStatus>
+              </InlineFeedback>
             ) : null
           }
         />
@@ -288,25 +280,25 @@ export default function IntegrationSettings() {
           description={t("tmdbApiKeyDesc")}
           feedback={
             tmdbSaveError ? (
-              <InlineStatus tone="error">
+              <InlineFeedback tone="error">
                 {tmdbSaveError instanceof Error ? tmdbSaveError.message : t("tmdbSaveFailed")}
-              </InlineStatus>
+              </InlineFeedback>
             ) : tmdbTestError ? (
-              <InlineStatus tone="error">
+              <InlineFeedback tone="error">
                 {tmdbTestError instanceof Error ? tmdbTestError.message : t("tmdbTestFailed")}
-              </InlineStatus>
+              </InlineFeedback>
             ) : tmdbSaveResult ? (
-              <InlineStatus tone="success">{t("saved")}</InlineStatus>
+              <InlineFeedback tone="success">{t("saved")}</InlineFeedback>
             ) : tmdbTestResult ? (
-              <InlineStatus tone={tmdbTestResult.status === "success" ? "success" : "error"}>
+              <InlineFeedback tone={tmdbTestResult.status === "success" ? "success" : "error"}>
                 {tmdbTestResult.message}
-              </InlineStatus>
+              </InlineFeedback>
             ) : null
           }
         >
           <div className="flex flex-col gap-3 lg:flex-row">
             <div className="relative min-w-0 flex-1">
-              <input
+              <TextInput
                 type="password"
                 value={tmdbKeyDraft}
                 onChange={(event) => {
@@ -316,7 +308,7 @@ export default function IntegrationSettings() {
                 disabled={!tmdbCanSave}
                 aria-label={t("tmdbApiKey")}
                 placeholder={tmdbCanSave ? t("tmdbApiKeyPlaceholder") : t("tmdbApiKeyEnvironment")}
-                className={`${inputClass} pr-28`}
+                className="pr-28"
               />
               <span
                 className={`pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 text-[10px] font-bold tracking-widest uppercase ${
@@ -326,22 +318,21 @@ export default function IntegrationSettings() {
                 {tmdbSourceLabel}
               </span>
             </div>
-            <button
-              type="button"
+            <Button
               onClick={handleTmdbSave}
               disabled={!tmdbCanSave || !tmdbKeyTouched || tmdbSaving}
-              className={primaryButtonClass}
+              busy={tmdbSaving}
+              variant="primary"
             >
               {tmdbSaving ? t("saving") : t("save")}
-            </button>
-            <button
-              type="button"
+            </Button>
+            <Button
               onClick={handleTmdbTest}
               disabled={tmdbTesting || !tmdbStatus?.configured}
-              className={secondaryButtonClass}
+              busy={tmdbTesting}
             >
               {tmdbTesting ? t("testingBtn") : t("tmdbTestBtn")}
-            </button>
+            </Button>
           </div>
         </SettingRow>
       </SettingsPanel>
@@ -356,31 +347,30 @@ export default function IntegrationSettings() {
           description={t("baseUrlDesc")}
           feedback={
             baseUrlSaveError ? (
-              <InlineStatus tone="error">{t("baseUrlSaveFailed")}</InlineStatus>
+              <InlineFeedback tone="error">{t("baseUrlSaveFailed")}</InlineFeedback>
             ) : baseUrlDraft !== undefined && !baseUrlValid ? (
-              <InlineStatus tone="warning">{t("invalidBaseUrl")}</InlineStatus>
+              <InlineFeedback tone="warning">{t("invalidBaseUrl")}</InlineFeedback>
             ) : baseUrlSaveResult ? (
-              <InlineStatus tone="success">{t("saved")}</InlineStatus>
+              <InlineFeedback tone="success">{t("saved")}</InlineFeedback>
             ) : null
           }
         >
           <div className="flex flex-col gap-3 sm:flex-row">
-            <input
+            <TextInput
               type="url"
               value={baseUrlValue}
               onChange={(event) => setBaseUrlDraft(event.target.value)}
               aria-label={t("baseUrl")}
               placeholder="https://openrouter.ai/api/v1"
-              className={inputClass}
             />
-            <button
-              type="button"
+            <Button
               onClick={handleBaseUrlSave}
               disabled={!baseUrlDirty || !baseUrlValid || baseUrlSaving}
-              className={primaryButtonClass}
+              busy={baseUrlSaving}
+              variant="primary"
             >
               {baseUrlSaving ? t("saving") : t("save")}
-            </button>
+            </Button>
           </div>
           <div className="mt-4 flex flex-wrap gap-2">
             {[
@@ -388,14 +378,15 @@ export default function IntegrationSettings() {
               ["OpenAI", "https://api.openai.com/v1"],
               ["Anthropic", "https://api.anthropic.com/v1"],
             ].map(([label, value]) => (
-              <button
+              <Button
                 key={label}
-                type="button"
                 onClick={() => setBaseUrlDraft(value)}
-                className="focus-ring duration-standard border border-line px-3 py-2 text-[11px] text-ink-subtle transition-colors hover:border-line-strong hover:text-ink"
+                size="sm"
+                variant="ghost"
+                className="border border-line text-ink-subtle hover:border-line-strong"
               >
                 {label}
-              </button>
+              </Button>
             ))}
           </div>
         </SettingRow>

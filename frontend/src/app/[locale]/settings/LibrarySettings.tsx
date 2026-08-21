@@ -5,12 +5,13 @@ import { useTranslations } from "next-intl";
 import FileBrowser from "@/components/FileBrowser";
 import {
   DisclosurePanel,
-  InlineStatus,
   SectionIntro,
   SettingRow,
   SettingsPanel,
-  ToggleSwitch,
 } from "@/components/settings/SettingsPrimitives";
+import { Button } from "@/components/ui/Button";
+import { InlineFeedback } from "@/components/ui/Feedback";
+import { TextInput, ToggleSwitch } from "@/components/ui/FormControls";
 import {
   type ArtworkLanguage,
   useArtworkLanguageSetting,
@@ -24,13 +25,6 @@ import {
   useUpdateMediaDir,
   useUpdateScrapeConfirmation,
 } from "@/hooks/useSettings";
-
-const inputClass =
-  "focus-ring duration-standard min-h-11 w-full border border-line-strong bg-surface-raised px-4 text-sm text-ink placeholder:text-ink-disabled transition-colors hover:border-ink-disabled";
-const primaryButtonClass =
-  "focus-ring duration-fast min-h-11 shrink-0 bg-inverse px-5 text-xs font-bold tracking-[0.16em] text-inverse-ink uppercase transition-colors hover:bg-neutral-200 disabled:cursor-not-allowed disabled:opacity-40";
-const secondaryButtonClass =
-  "focus-ring duration-fast min-h-11 shrink-0 border border-line-strong bg-surface-raised px-5 text-xs font-bold tracking-[0.16em] text-ink uppercase transition-colors hover:border-ink-disabled hover:bg-surface-hover";
 
 function useTransientMutationResult(result: unknown, reset: () => void) {
   useEffect(() => {
@@ -172,38 +166,35 @@ export default function LibrarySettings() {
           description={t("mediaDirDesc")}
           feedback={
             mediaDirSaveError ? (
-              <InlineStatus tone="error">{t("mediaDirSaveFailed")}</InlineStatus>
+              <InlineFeedback tone="error">{t("mediaDirSaveFailed")}</InlineFeedback>
             ) : mediaDirSaveResult ? (
-              <InlineStatus tone="success">{t("saved")}</InlineStatus>
+              <InlineFeedback tone="success">{t("saved")}</InlineFeedback>
             ) : (
-              <InlineStatus>{t("noteRestart")}</InlineStatus>
+              <InlineFeedback>{t("noteRestart")}</InlineFeedback>
             )
           }
         >
           <div className="flex flex-col gap-3 md:flex-row">
-            <input
+            <TextInput
               type="text"
               value={mediaDirValue}
               onChange={(event) => setMediaDirDraft(event.target.value)}
               aria-label={t("mediaDir")}
               placeholder="/path/to/movies"
-              className={inputClass}
             />
-            <button
-              type="button"
+            <Button
               onClick={() => setFileBrowserOpen(true)}
-              className={secondaryButtonClass}
             >
               {t("browse")}
-            </button>
-            <button
-              type="button"
+            </Button>
+            <Button
               onClick={handleMediaDirSave}
               disabled={!mediaDirDirty || !mediaDirValue.trim() || mediaDirSaving}
-              className={primaryButtonClass}
+              busy={mediaDirSaving}
+              variant="primary"
             >
               {mediaDirSaving ? t("saving") : t("save")}
-            </button>
+            </Button>
           </div>
           <p className="mt-3 text-xs leading-5 text-ink-disabled">{t("noteDocker")}</p>
         </SettingRow>
@@ -227,9 +218,9 @@ export default function LibrarySettings() {
           description={t("artworkLanguageDesc")}
           feedback={
             artworkLanguageError ? (
-              <InlineStatus tone="error">{t("artworkLanguageSaveFailed")}</InlineStatus>
+              <InlineFeedback tone="error">{t("artworkLanguageSaveFailed")}</InlineFeedback>
             ) : artworkLanguageSaveResult ? (
-              <InlineStatus tone="success">{t("saved")}</InlineStatus>
+              <InlineFeedback tone="success">{t("saved")}</InlineFeedback>
             ) : null
           }
         >
@@ -267,13 +258,13 @@ export default function LibrarySettings() {
           }
           feedback={
             watchError ? (
-              <InlineStatus tone="error">{t("autoScanSaveFailed")}</InlineStatus>
+              <InlineFeedback tone="error">{t("autoScanSaveFailed")}</InlineFeedback>
             ) : watchSaveResult ? (
-              <InlineStatus tone="success">{t("saved")}</InlineStatus>
+              <InlineFeedback tone="success">{t("saved")}</InlineFeedback>
             ) : (
-              <InlineStatus>
+              <InlineFeedback>
                 {libraryWatchData?.watch_library ? t("watching") : t("notWatching")}
-              </InlineStatus>
+              </InlineFeedback>
             )
           }
         />
@@ -297,9 +288,9 @@ export default function LibrarySettings() {
           }
           feedback={
             autoOrganizeError ? (
-              <InlineStatus tone="error">{t("autoOrganizeSaveFailed")}</InlineStatus>
+              <InlineFeedback tone="error">{t("autoOrganizeSaveFailed")}</InlineFeedback>
             ) : autoOrganizeSaveResult ? (
-              <InlineStatus tone="success">{t("saved")}</InlineStatus>
+              <InlineFeedback tone="success">{t("saved")}</InlineFeedback>
             ) : null
           }
         />
@@ -316,9 +307,9 @@ export default function LibrarySettings() {
           }
           feedback={
             scrapeConfirmationError ? (
-              <InlineStatus tone="error">{t("scrapeConfirmationSaveFailed")}</InlineStatus>
+              <InlineFeedback tone="error">{t("scrapeConfirmationSaveFailed")}</InlineFeedback>
             ) : scrapeConfirmationSaveResult ? (
-              <InlineStatus tone="success">{t("saved")}</InlineStatus>
+              <InlineFeedback tone="success">{t("saved")}</InlineFeedback>
             ) : null
           }
         />

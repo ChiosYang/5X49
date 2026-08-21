@@ -1,15 +1,16 @@
 "use client";
 
 import { useEffect } from "react";
-import { ChevronDown, Loader2 } from "lucide-react";
+import { ChevronDown } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { usePathname, useRouter } from "@/i18n/routing";
 import {
-  InlineStatus,
   SectionIntro,
   SettingRow,
   SettingsPanel,
 } from "@/components/settings/SettingsPrimitives";
+import { Button } from "@/components/ui/Button";
+import { InlineFeedback, Spinner } from "@/components/ui/Feedback";
 import { useLanguageSetting, useUpdateLanguage } from "@/hooks/useSettings";
 
 export default function GeneralSettings() {
@@ -65,29 +66,26 @@ export default function GeneralSettings() {
             <div className="flex items-center gap-3">
               <div className="flex border border-line-strong bg-surface-raised p-1">
                 {(["zh", "en"] as const).map((language) => (
-                  <button
+                  <Button
                     key={language}
-                    type="button"
                     onClick={() => handleLanguageChange(language)}
                     disabled={languageSaving}
-                    className={`focus-ring duration-standard min-w-12 px-3 py-2 text-xs font-bold tracking-widest uppercase transition-colors ${
-                      languageData?.language === language
-                        ? "bg-inverse text-inverse-ink"
-                        : "text-ink-subtle hover:text-ink"
-                    } disabled:cursor-not-allowed disabled:opacity-50`}
+                    size="sm"
+                    variant={languageData?.language === language ? "primary" : "ghost"}
+                    className="min-w-12"
                   >
                     {language}
-                  </button>
+                  </Button>
                 ))}
               </div>
-              {languageSaving && <Loader2 className="h-4 w-4 animate-spin text-ink-subtle" />}
+              {languageSaving && <Spinner className="text-ink-subtle" />}
             </div>
           }
           feedback={
             languageError ? (
-              <InlineStatus tone="error">{t("languageSaveFailed")}</InlineStatus>
+              <InlineFeedback tone="error">{t("languageSaveFailed")}</InlineFeedback>
             ) : languageSaveResult ? (
-              <InlineStatus tone="success">{t("saved")}</InlineStatus>
+              <InlineFeedback tone="success">{t("saved")}</InlineFeedback>
             ) : null
           }
         />

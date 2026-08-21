@@ -6,10 +6,10 @@ import { useLocale, useTranslations } from "next-intl";
 import { Link } from "@/i18n/routing";
 import LibrarianTerminal from "@/components/LibrarianTerminal";
 import {
-  ActionButton,
   ActionCard,
   StatusTile,
 } from "@/components/settings/SettingsPrimitives";
+import { Button } from "@/components/ui/Button";
 import {
   useCleanupMissingMovies,
   useClearLibraryData,
@@ -252,9 +252,9 @@ export default function LibraryManagementClient() {
               status={scanMessage}
               statusTone={scanError ? "error" : scanResult ? "success" : "neutral"}
             >
-              <ActionButton busy={isScanning} onClick={() => void run(() => scanLibrary())}>
+              <Button responsiveWidth busy={isScanning} onClick={() => void run(() => scanLibrary())}>
                 {isScanning ? settingsT("scanning") : settingsT("scanNow")}
-              </ActionButton>
+              </Button>
             </ActionCard>
             <ActionCard
               title={settingsT("reconcileLibrary")}
@@ -267,9 +267,9 @@ export default function LibraryManagementClient() {
               status={reconcileMessage}
               statusTone={reconcileError ? "error" : reconcileResult ? "success" : "neutral"}
             >
-              <ActionButton busy={isReconciling} onClick={() => void run(() => reconcileLibrary())}>
+              <Button responsiveWidth busy={isReconciling} onClick={() => void run(() => reconcileLibrary())}>
                 {isReconciling ? settingsT("scanning") : settingsT("reconcileNow")}
-              </ActionButton>
+              </Button>
             </ActionCard>
           </div>
         </section>
@@ -287,7 +287,8 @@ export default function LibraryManagementClient() {
               status={!tmdbData?.configured ? settingsT("tmdbRequiredForScrape") : scrapeMessage}
               statusTone={scrapeError || !tmdbData?.configured ? "error" : scrapeResult ? "success" : "neutral"}
             >
-              <ActionButton
+              <Button
+                responsiveWidth
                 busy={isScraping || scrapeStatus?.state === "running"}
                 disabled={!tmdbData?.configured}
                 onClick={() => void run(() => scrapeLibrary())}
@@ -295,7 +296,7 @@ export default function LibraryManagementClient() {
                 {isScraping || scrapeStatus?.state === "running"
                   ? settingsT("scraping")
                   : settingsT("scrapeNow")}
-              </ActionButton>
+              </Button>
             </ActionCard>
             <ActionCard
               title={settingsT("externalScores")}
@@ -304,14 +305,15 @@ export default function LibraryManagementClient() {
               status={scoresMessage}
               statusTone={externalScoresError ? "error" : externalScoresResult ? "success" : "neutral"}
             >
-              <ActionButton
+              <Button
+                responsiveWidth
                 busy={isRefreshingScores || externalScoresStatus?.state === "running"}
                 onClick={() => void run(() => refreshExternalScores())}
               >
                 {isRefreshingScores || externalScoresStatus?.state === "running"
                   ? settingsT("externalScoresRefreshing")
                   : settingsT("externalScoresNow")}
-              </ActionButton>
+              </Button>
             </ActionCard>
           </div>
         </section>
@@ -329,17 +331,18 @@ export default function LibraryManagementClient() {
               status={organizeMessage}
               statusTone={organizeError ? "error" : organizeResult ? "success" : "neutral"}
             >
-              <ActionButton
+              <Button
+                responsiveWidth
                 busy={isOrganizing || organizeStatus?.state === "running"}
                 onClick={() => void run(() => organizeRootVideos())}
               >
                 {isOrganizing || organizeStatus?.state === "running"
                   ? settingsT("organizing")
                   : settingsT("organizeNow")}
-              </ActionButton>
+              </Button>
             </ActionCard>
             <ActionCard title={t("librarianAgent")} description={t("librarianAgentDesc")}>
-              <ActionButton onClick={() => setTerminalOpen(true)}>{t("openConsole")}</ActionButton>
+              <Button responsiveWidth onClick={() => setTerminalOpen(true)}>{t("openConsole")}</Button>
             </ActionCard>
           </div>
         </section>
@@ -357,9 +360,9 @@ export default function LibraryManagementClient() {
               statusTone={cleanupError ? "error" : cleanupResult ? "success" : "warning"}
               danger
             >
-              <ActionButton danger busy={isCleaning} onClick={() => void run(() => cleanupMissing())}>
+              <Button responsiveWidth variant="danger" busy={isCleaning} onClick={() => void run(() => cleanupMissing())}>
                 {isCleaning ? settingsT("cleaning") : settingsT("cleanupNow")}
-              </ActionButton>
+              </Button>
             </ActionCard>
             <ActionCard
               title={settingsT("clearAllData")}
@@ -368,9 +371,9 @@ export default function LibraryManagementClient() {
               statusTone={clearError ? "error" : clearResult ? "success" : "warning"}
               danger
             >
-              <ActionButton danger busy={isClearing} onClick={handleClearLibraryData}>
+              <Button responsiveWidth variant="danger" busy={isClearing} onClick={handleClearLibraryData}>
                 {isClearing ? settingsT("clearing") : settingsT("clearAllDataNow")}
-              </ActionButton>
+              </Button>
             </ActionCard>
           </div>
         </section>
