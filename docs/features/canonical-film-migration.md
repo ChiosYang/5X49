@@ -202,11 +202,19 @@ Status: Pending
 
 ## Verification evidence
 
+- A 101-test backend run excluding the credential-dependent `test_agent.py`
+  passed on 2026-08-21 in 37.972 seconds with exit code 0. Database and media
+  paths were isolated under a validated temporary directory and cleaned after
+  the run.
 - `.\.venv\Scripts\python.exe -X utf8 -W error::ResourceWarning -m unittest test_viewing_migration.py test_canonical_schema.py test_canonical_backfill.py test_database_migrations.py test_database_restore.py test_api_routes.py test_event_sourced_commands.py test_generate_test_data.py`
   — 44 tests passed on 2026-08-21 after migration v4, covering favorite OR
   aggregation, confirmed/needs-review mapping, idempotence, constraint checks,
   retirement isolation, canonical Movie/user-state/watch-history composition,
   hashed shadow differences, nine legacy upgrades, and unchanged API routes.
+- `.\.venv\Scripts\python.exe -X utf8 -W error::ResourceWarning -m unittest test_canonical_schema.py test_event_sourced_commands.py test_viewing_migration.py test_database_migrations.py test_database_restore.py`
+  — 30 tests passed on 2026-08-21 after enabling SQLite foreign keys for
+  application connections and making legacy clear/missing cleanup delete
+  dependent MovieUserState rows before Movie rows.
 - `.\.venv\Scripts\python.exe -X utf8 -W error::ResourceWarning -m unittest test_canonical_schema.py test_canonical_backfill.py test_database_migrations.py test_database_restore.py`
   — 22 tests passed on 2026-08-21 after migration v3, including exact identity
   reuse, cross-provider conflict review, no title/year auto-merge, one alias and

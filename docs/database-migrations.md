@@ -102,6 +102,9 @@ Database initialization runs before the job runtime and filesystem watcher:
    current version.
 
 No migration runs from a request handler or background job.
+Application SQLite connections enable `PRAGMA foreign_keys=ON`, so the
+canonical `RESTRICT`, XOR, and uniqueness constraints are enforced at runtime,
+not only represented in table DDL.
 
 ## Pre-upgrade Backup Contract
 

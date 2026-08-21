@@ -297,6 +297,10 @@ class LibraryManager:
         deleted_ids: list[str] = []
         with Session(engine) as session:
             deleted_ids = [movie.id for movie in session.exec(select(Movie).where(Movie.library_status == "missing")).all()]
+            if deleted_ids:
+                session.exec(
+                    delete(MovieUserState).where(MovieUserState.movie_id.in_(deleted_ids))
+                )
             statement = delete(Movie).where(Movie.library_status == "missing")
             result = session.exec(statement)
             session.commit()
@@ -315,6 +319,7 @@ class LibraryManager:
         count = 0
         with Session(engine) as session:
             count = len(session.exec(select(Movie)).all())
+            session.exec(delete(MovieUserState))
             statement = delete(Movie)
             session.exec(statement)
             session.commit()

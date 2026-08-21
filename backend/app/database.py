@@ -3,6 +3,7 @@ from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
 from shutil import copy2
 
+from sqlalchemy import event
 from sqlmodel import SQLModel, create_engine, Session
 
 from app.migrations import run_migrations
@@ -27,6 +28,21 @@ if "SQLITE_DB_PATH" not in os.environ:
 sqlite_url = f"sqlite:///{sqlite_path}"
 
 engine = create_engine(sqlite_url, connect_args={"timeout": 30})
+
+
+def configure_sqlite_engine(sqlite_engine) -> None:
+    event.listen(sqlite_engine, "connect", _enable_sqlite_foreign_keys)
+
+
+def _enable_sqlite_foreign_keys(dbapi_connection, _connection_record) -> None:
+    cursor = dbapi_connection.cursor()
+    try:
+        cursor.execute("PRAGMA foreign_keys = ON")
+    finally:
+        cursor.close()
+
+
+configure_sqlite_engine(engine)
 
 
 def create_db_and_tables():

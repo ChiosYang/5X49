@@ -8,6 +8,7 @@ from sqlalchemy import inspect, text
 from sqlalchemy.exc import IntegrityError
 from sqlmodel import create_engine
 
+from app.database import configure_sqlite_engine
 from app.migrations.runner import run_migrations
 
 
@@ -22,6 +23,7 @@ class CanonicalSchemaTests(unittest.TestCase):
                 "INSERT INTO movie VALUES ('legacy_schema', 'Schema Sentinel', 2001);"
             )
         self.engine = create_engine(f"sqlite:///{self.database_path}")
+        configure_sqlite_engine(self.engine)
         run_migrations(
             self.engine,
             self.database_path,
@@ -54,6 +56,8 @@ class CanonicalSchemaTests(unittest.TestCase):
         self.assertEqual(len(profiles), 1)
         self.assertEqual(profiles[0]["profile_key"], "local")
         self.assertRegex(profiles[0]["id"], r"^profile_[0-9a-f]{32}$")
+        with self.engine.connect() as connection:
+            self.assertEqual(connection.execute(text("PRAGMA foreign_keys")).scalar_one(), 1)
 
     def test_same_title_year_and_multiple_library_items_are_allowed(self):
         with self.engine.begin() as connection:

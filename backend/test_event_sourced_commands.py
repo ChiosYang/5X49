@@ -110,6 +110,37 @@ class EventSourcedCommandTests(unittest.TestCase):
             self.assertEqual(session.exec(select(EventRecord)).all(), [])
             self.assertEqual(library_manager.get_movies(), [])
 
+    def test_clear_library_removes_legacy_user_state_before_movies(self):
+        library_manager.add_movies([self._movie("local_clear_library")])
+        with Session(self.engine) as session:
+            session.add(MovieUserState(movie_id="local_clear_library", watched=True))
+            session.commit()
+
+        library_manager.clear_library()
+
+        with Session(self.engine) as session:
+            self.assertEqual(session.exec(select(MovieUserState)).all(), [])
+        self.assertEqual(library_manager.get_movies(), [])
+
+    def test_cleanup_missing_removes_only_matching_legacy_user_state(self):
+        library_manager.add_movies([
+            {**self._movie("local_missing_cleanup"), "library_status": "missing"},
+            self._movie("local_available_keep"),
+        ])
+        with Session(self.engine) as session:
+            session.add_all([
+                MovieUserState(movie_id="local_missing_cleanup", watched=True),
+                MovieUserState(movie_id="local_available_keep", favorite=True),
+            ])
+            session.commit()
+
+        deleted = library_manager.cleanup_missing()
+
+        self.assertEqual(deleted, 1)
+        with Session(self.engine) as session:
+            states = session.exec(select(MovieUserState)).all()
+        self.assertEqual([state.movie_id for state in states], ["local_available_keep"])
+
     def _latest_event(self, event_type: str) -> EventRecord:
         with Session(self.engine) as session:
             return session.exec(
