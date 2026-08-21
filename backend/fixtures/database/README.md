@@ -9,5 +9,11 @@ and no developer or user data belongs in this directory.
   sentinel rows that exercise version 1 defaults and timestamp backfill.
 - `current-unversioned`: the schema surface managed by version 1 plus current
   user-state and event tables, but without `schema_migrations`.
+- `partial-legacy-columns`: an interrupted historical rollout where some version
+  1 columns and non-default values already exist.
+- `movie-only`: a minimal library database without a Job table.
+- `job-only`: a queue-only historical database without a Movie table.
+- `legacy-user-state-events`: legacy MovieUserState and EventRecord rows,
+  including contradictory watched/rating data that later W3 backfill must review.
 
 Each `expected.json` records the invariants that must survive an upgrade.

@@ -1,0 +1,49 @@
+{
+  "row_counts": {
+    "events": 2,
+    "job": 1,
+    "movie": 2,
+    "movie_user_state": 2
+  },
+  "sentinels": [
+    {
+      "table": "movie",
+      "key": {"id": "state_movie_watched"},
+      "values": {
+        "title": "Watched Legacy Movie",
+        "added_at": "2023-01-01T10:00:00+00:00",
+        "library_status": "available"
+      }
+    },
+    {
+      "table": "movie_user_state",
+      "key": {"movie_id": "state_movie_watched"},
+      "values": {
+        "watched": 1,
+        "rating": 5,
+        "favorite": 1,
+        "notes": "Synthetic watched state"
+      }
+    },
+    {
+      "table": "movie_user_state",
+      "key": {"movie_id": "state_movie_review"},
+      "values": {
+        "watched": 0,
+        "watched_at": null,
+        "rating": 3,
+        "notes": "Synthetic contradictory state"
+      }
+    },
+    {
+      "table": "events",
+      "key": {"id": "evt_legacy_state_002"},
+      "values": {
+        "aggregate_id": "state_movie_review",
+        "type": "MovieIgnored",
+        "actor_type": "user",
+        "schema_version": 1
+      }
+    }
+  ]
+}

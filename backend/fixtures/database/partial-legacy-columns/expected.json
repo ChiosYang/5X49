@@ -1,0 +1,26 @@
+{
+  "row_counts": {
+    "job": 1,
+    "movie": 1
+  },
+  "sentinels": [
+    {
+      "table": "movie",
+      "key": {"id": "partial_movie_001"},
+      "values": {
+        "title": "Partially Migrated",
+        "added_at": "2025-02-03T04:05:06+00:00",
+        "library_status": "missing",
+        "scrape_status": "pending"
+      }
+    },
+    {
+      "table": "job",
+      "key": {"id": "partial_job_001"},
+      "values": {
+        "priority": 7,
+        "cancel_requested": 0
+      }
+    }
+  ]
+}

@@ -1,0 +1,16 @@
+{
+  "row_counts": {
+    "movie": 1
+  },
+  "sentinels": [
+    {
+      "table": "movie",
+      "key": {"id": "movie_only_001"},
+      "values": {
+        "title": "Movie Without Jobs",
+        "library_status": "available",
+        "scrape_status": "pending"
+      }
+    }
+  ]
+}

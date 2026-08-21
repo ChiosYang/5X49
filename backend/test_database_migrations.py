@@ -13,6 +13,12 @@ from app.migrations.runner import Migration, MigrationError, run_migrations
 
 
 FIXTURES_DIR = Path(__file__).parent / "fixtures" / "database"
+ADDITIONAL_FIXTURES = (
+    "partial-legacy-columns",
+    "movie-only",
+    "job-only",
+    "legacy-user-state-events",
+)
 
 
 class DatabaseMigrationTests(unittest.TestCase):
@@ -102,6 +108,37 @@ class DatabaseMigrationTests(unittest.TestCase):
                 self.assertEqual(self._columns(engine, table), columns)
         finally:
             engine.dispose()
+
+    def test_additional_legacy_fixture_matrix_preserves_declared_data(self):
+        for fixture_name in ADDITIONAL_FIXTURES:
+            with self.subTest(fixture=fixture_name):
+                database_path, expected = self._materialize(fixture_name)
+                engine = self._engine(database_path)
+                backup_dir = self.tmp_path / f"{fixture_name}-backups"
+                try:
+                    report = run_migrations(
+                        engine,
+                        database_path,
+                        app_version="test",
+                        backup_dir=backup_dir,
+                    )
+
+                    self.assertEqual(report.applied_versions, (1,))
+                    self._assert_backup(report.backup, expected["row_counts"])
+                    self._assert_declared_sentinels(engine, expected)
+
+                    second = run_migrations(
+                        engine,
+                        database_path,
+                        app_version="test",
+                        backup_dir=backup_dir,
+                    )
+                    self.assertEqual(second.applied_versions, ())
+                    self.assertIsNone(second.backup)
+                    self.assertEqual(len(list(backup_dir.glob("*.db"))), 1)
+                    self._assert_declared_sentinels(engine, expected)
+                finally:
+                    engine.dispose()
 
     def test_backup_includes_committed_rows_from_an_open_wal(self):
         database_path, expected = self._materialize("current-unversioned")
@@ -261,6 +298,27 @@ class DatabaseMigrationTests(unittest.TestCase):
             self.assertEqual(movie[key], value)
         for key, value in expected["job"].items():
             self.assertEqual(job[key], value)
+
+    def _assert_declared_sentinels(self, engine, expected: dict) -> None:
+        with engine.connect() as connection:
+            for sentinel in expected.get("sentinels", []):
+                table = self._quoted_identifier(sentinel["table"])
+                predicates = []
+                parameters = {}
+                for index, (column, value) in enumerate(sentinel["key"].items()):
+                    parameter = f"key_{index}"
+                    predicates.append(f"{self._quoted_identifier(column)} = :{parameter}")
+                    parameters[parameter] = value
+                row = connection.execute(
+                    text(f"SELECT * FROM {table} WHERE {' AND '.join(predicates)}"),
+                    parameters,
+                ).mappings().one()
+                for column, value in sentinel["values"].items():
+                    self.assertEqual(row[column], value)
+
+    @staticmethod
+    def _quoted_identifier(value: str) -> str:
+        return '"' + value.replace('"', '""') + '"'
 
     def _assert_backup(self, artifact, expected_counts: dict[str, int]) -> None:
         self.assertIsNotNone(artifact)
