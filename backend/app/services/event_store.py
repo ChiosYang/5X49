@@ -83,6 +83,14 @@ class EventStore:
             from app.services.projections.movie_projection import movie_projector
 
             projected = movie_projector.apply(event, session)
+            if projected is not None:
+                from app.services.canonical_runtime import canonical_runtime_writer
+
+                canonical_runtime_writer.sync_movie(
+                    session,
+                    projected,
+                    preserve_id=aggregate_id,
+                )
             session.commit()
             session.refresh(event)
             return event.model_dump(), projected

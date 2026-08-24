@@ -12,6 +12,7 @@ description: 电影族谱 API (FastAPI) 的接口调用指南
 - **Base URL**: `http://127.0.0.1:11548`
 - **Content-Type**: `application/json`
 - **事件契约**: 资料库事件的 v1 payload、分类、投影状态和兼容策略见 `docs/event-contracts.md`。新增或修改事件 payload 时必须同步更新该文档、`docs/api.md` 和本 skill。
+- **兼容读取**: `LIBRARY_READ_SOURCE=canonical|shadow|legacy`，默认 `canonical`。`shadow` 返回 Legacy 并做脱敏对比，`legacy` 是无需回滚数据库的紧急读取回退；任何模式都继续在同一事务中双写 Canonical 与 Legacy。
 
 ## 接口列表
 
@@ -70,7 +71,8 @@ description: 电影族谱 API (FastAPI) 的接口调用指南
 | GET | `/library/sync/status` | 获取校准与自动监听状态 |
 | POST | `/library/{movie_id}/ignore` | 忽略一条误扫描记录 |
 | DELETE | `/library/missing` | 删除已标记为 missing 的记录 |
-| DELETE | `/library` | 清空电影库 |
+| DELETE | `/library` | 清空当前集合但保留 Film 级个人数据 |
+| DELETE | `/library/data` | 彻底清空 Legacy 与 Canonical 资料库领域数据 |
 | GET | `/metadata/movie/{tmdb_id}` | 按 TMDB ID 获取候选信息，用于确认前预览 |
 
 ### 分析功能
@@ -139,6 +141,8 @@ curl -s -X POST http://127.0.0.1:11548/jobs/job_abc/retry
 
 `GET /library/events` 除 `library_changed` 外，还会推送 `job_queued`、`job_started`、`job_progress`、`job_succeeded`、`job_failed`、`job_cancelled`、`job_retried`。任务完成后的最终结果位于 job 的 `result` 字段，UI 文案位于 `result_summary`，失败原因位于 `error` 字段。批量刮削、根目录整理、批量外部评分会写入 `progress.current` / `progress.total`；重复提交同一 active job 会通过 `dedupe_key` 复用已有任务。
 
+文件快速指纹出现多个候选时，系统会内部排队单并发 `library.resolve_relink`。该 Job 的公开 payload/result 只含状态、计数、来源实例和截断哈希标识，不应包含电影标题或绝对路径。
+
 ### 获取所有电影
 ```bash
 curl -s http://127.0.0.1:11548/library
@@ -155,8 +159,8 @@ curl -s http://127.0.0.1:11548/library/user-states
 curl -s http://127.0.0.1:11548/watch-history
 curl -s -X DELETE http://127.0.0.1:11548/library/data
 ```
-`MovieUserState` 是每部电影一条的手动个人状态，字段包括 `movie_id`、`watched`、`watched_at`、`rating`、`favorite`、`notes`、`updated_at`。`rating` 只允许 `1-5` 或 `null`。`GET /library/{movie_id}/user-state` 在尚未保存状态时返回默认未看状态；`GET /watch-history` 只返回 `watched=true` 的电影，按 `watched_at` 和 `updated_at` 倒序排列，元素形如 `{"movie": Movie, "user_state": MovieUserState}`。这些接口不记录播放进度、播放会话或播放器事件。
-`DELETE /library/data` 会清空数据库中的资料库影片、个人观看状态、后台任务和持久化审计事件，返回 `{"status":"success","message":"Library data cleared","deleted":{"user_states":0,"movies":0,"jobs":0,"events":0}}` 形状的计数结果；它不会删除媒体文件、生成的 NFO/图片文件、保存设置或环境变量配置。
+`MovieUserState` 是兼容响应形状；收藏和 Viewing 实际按 Film 共享，同一 Film 的多个可见 alias 会得到一致投影。字段包括 `movie_id`、`watched`、`watched_at`、`rating`、`favorite`、`notes`、`updated_at`，`rating` 只允许 `1-5` 或 `null`。`watched=false` 只软删除 compatibility Viewing，不删除 Diary 等其他来源；若仍有 confirmed Viewing，派生 `watched` 仍为 `true`。只有评分/笔记而没有 confirmed Viewing 时会以 `needs_review` 保存，不进入 watch history。`GET /watch-history` 每个 Film 只返回一项，并使用最小的非 retired alias 作为兼容 Movie ID。
+`DELETE /library` 只清空当前 Legacy Movie 集合并退休 LibraryItem/本地资产，保留 Film、外部身份、Viewing 和收藏；再次扫描会恢复原 alias 和个人状态投影。`DELETE /library/data` 才会彻底清空 Legacy 与 Canonical 资料库领域数据、后台任务、审计事件和 backfill report，返回原有四项计数形状；migration journal、媒体/NFO/图片、保存设置和环境变量配置仍保留。
 
 ### 获取单部电影详情
 ```bash

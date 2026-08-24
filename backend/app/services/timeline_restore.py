@@ -277,6 +277,14 @@ class MovieTimelineRestore:
             session.add(event)
             session.flush()
             projected = movie_projector.apply(event, session)
+            if projected is not None:
+                from app.services.canonical_runtime import canonical_runtime_writer
+
+                canonical_runtime_writer.sync_movie(
+                    session,
+                    projected,
+                    preserve_id=movie_id,
+                )
             event.payload = {
                 **(event.payload or {}),
                 "after": projected or movie.model_dump(),

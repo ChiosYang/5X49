@@ -185,6 +185,13 @@ class MovieProjectionDryRun:
                 },
             )
             session.add(movie)
+            from app.services.canonical_runtime import canonical_runtime_writer
+
+            canonical_runtime_writer.sync_movie(
+                session,
+                after,
+                preserve_id=movie_id,
+            )
             session.add(event)
             session.commit()
             session.refresh(event)

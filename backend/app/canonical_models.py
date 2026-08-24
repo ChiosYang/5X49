@@ -234,7 +234,9 @@ class MediaAsset(SQLModel, table=True):
     availability_status: str = Field(default="unknown")
     file_size: int | None = None
     file_mtime: float | None = None
+    platform_file_id: str | None = Field(default=None, index=True)
     content_fingerprint: str | None = None
+    content_hash: str | None = Field(default=None, index=True)
     width: int | None = None
     height: int | None = None
     codec: str | None = None

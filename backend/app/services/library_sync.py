@@ -84,6 +84,8 @@ class LibrarySyncService:
         updated_movie = self.scan_folder(folder_path, preserve_id=movie_id)
         if not updated_movie:
             raise FileNotFoundError("Movie folder or video file not found")
+        if updated_movie.get("status") == "pending_relink":
+            return updated_movie
 
         return {
             "status": "success",
@@ -115,6 +117,11 @@ class LibrarySyncService:
             command_id=command_id,
             correlation_id=correlation_id,
         )
+        if upsert_result and upsert_result.get("pending_relink_job_id"):
+            return {
+                "status": "pending_relink",
+                "pending_relink_job_id": upsert_result["pending_relink_job_id"],
+            }
         movie = upsert_result["movie"] if upsert_result else None
         if movie:
             library_event_bus.publish_library_changed(

@@ -310,6 +310,13 @@ class OperationRestore:
                 raise ValueError(f"No {source_event_type} fields can be safely restored")
 
             session.add(movie)
+            from app.services.canonical_runtime import canonical_runtime_writer
+
+            canonical_runtime_writer.sync_movie(
+                session,
+                movie.model_dump(),
+                preserve_id=movie.id,
+            )
             restore_event = EventRecord(
                 aggregate_type="movie",
                 aggregate_id=event.aggregate_id,

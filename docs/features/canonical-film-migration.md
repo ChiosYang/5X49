@@ -1,7 +1,7 @@
 # Canonical Film Migration
 
 Status: In Progress
-Last updated: 2026-08-21
+Last updated: 2026-08-24
 Related: `docs/domain-model.md`, `docs/database-migrations.md`,
 `docs/analysis-v2-contract.md`, W2–W3 in `docs/product-roadmap.md`
 
@@ -56,6 +56,10 @@ watch-history, and audit API behavior throughout migration.
   migrates meaningful legacy user state, preserves contradictory rows as
   `needs_review`, and leaves the legacy API as source of truth during shadow
   validation.
+- Schema migration version 5 adds nullable platform file identity and complete
+  content hash fields to MediaAsset. Runtime commands now dual-write canonical
+  records and the legacy compatibility projection in one transaction, while
+  `LIBRARY_READ_SOURCE` selects canonical, shadow, or emergency legacy reads.
 
 ## Acceptance criteria
 
@@ -67,13 +71,13 @@ watch-history, and audit API behavior throughout migration.
   not auto-merge and produce a review record.
 - [x] Repeating a scan or backfill creates no duplicate Film, LibraryItem,
   MediaAsset, alias, Viewing, or durable review record.
-- [ ] A local rename/move relinks only one unambiguous LibraryItem candidate;
+- [x] A local rename/move relinks only one unambiguous LibraryItem candidate;
   ambiguous candidates remain separate and are reported for review.
-- [ ] Every legacy Movie remains resolvable by its old ID, including after Film
+- [x] Every legacy Movie remains resolvable by its old ID, including after Film
   merge redirects or a local path change.
 - [x] Favorite and non-empty legacy watched/rating/notes data survive migration;
   LibraryItem deletion or retirement does not delete Film-level personal data.
-- [ ] `/library`, movie detail, user-state, watch-history, and audit contract
+- [x] `/library`, movie detail, user-state, watch-history, and audit contract
   tests retain their current public response shapes until an explicitly
   versioned API change is approved.
 - [x] Canonical shadow reads produce an explainable field/count difference
@@ -172,14 +176,17 @@ Status: Complete
 
 ### Slice 4 — Shadow reads and compatibility switch
 
-Status: In Progress
+Status: Complete
 
 - Intended behavior: compose current Movie response shapes from canonical data,
   compare them with legacy reads, then switch handlers only after differences
   are accepted.
-- Current progress: canonical Movie, user-state, and watch-history composition
-  plus hashed field/source diff reports are implemented. Existing handlers have
-  deliberately not switched source of truth.
+- Completed behavior: canonical Movie, user-state, and watch-history composition
+  now back the existing handlers by default. Runtime writes are transactional
+  dual writes; `shadow` returns legacy data while recording sanitized
+  differences, and `legacy` provides restart-based rollback. Local moves use
+  source keys, platform identity, bounded fingerprints, and a single-concurrency
+  complete-hash job when candidates are ambiguous.
 - Likely affected areas: Library query services, compatibility projection,
   existing API handlers, contract tests, and API documentation if behavior
   changes.
@@ -201,6 +208,32 @@ Status: Pending
   exercise, sensitive-data scan, and recorded Gate A review conclusion.
 
 ## Verification evidence
+
+- A 115-test backend run excluding the credential-dependent `test_agent.py`
+  passed on 2026-08-24 in 49.555 seconds with exit code 0. It includes runtime
+  dual writes and rollback, canonical/shadow/legacy reads, alias and personal
+  state projection, legacy-compatible sorting, relink resolution and privacy,
+  ordinary/full clears, migration/restore, events, metadata, projections, and
+  generated fixtures.
+- `.\.venv\Scripts\python.exe -X utf8 -W error::ResourceWarning -m unittest test_canonical_schema.py test_canonical_backfill.py test_database_migrations.py test_database_restore.py test_viewing_migration.py`
+  — 28 migration-focused tests passed on 2026-08-24, including all nine legacy
+  fixtures and fresh `create_all` databases reaching schema v5 idempotently.
+- `.\.venv\Scripts\python.exe -X utf8 -m compileall -q app test_canonical_runtime.py test_canonical_schema.py test_generate_test_data.py`
+  — passed on 2026-08-24.
+- `npm run lint`, `npm run typecheck`, and `npm run build` passed on
+  2026-08-24. A second production build with
+  `BACKEND_URL=http://127.0.0.1:8000` also passed for local smoke testing.
+- Both Compose files parsed successfully and expose
+  `LIBRARY_READ_SOURCE=${LIBRARY_READ_SOURCE:-canonical}`. Docker CLI config and
+  runtime smoke could not be executed because Docker is not installed on this
+  machine.
+- Production browser smoke on port 5549 covered Chinese and English Library,
+  detail, Watch History, Activity, and Library Management pages with no console
+  errors. A 375 px viewport had no document-level horizontal overflow.
+- An isolated normal-profile library was cleared and reconciled on 2026-08-24:
+  the cleared alias returned 404 while 12 Films, its Viewing, and favorite state
+  remained; reconcile restored all 12 aliases and the original favorite,
+  watched, rating, notes, and one-Film watch-history entry.
 
 - A 101-test backend run excluding the credential-dependent `test_agent.py`
   passed on 2026-08-21 in 37.972 seconds with exit code 0. Database and media
@@ -245,13 +278,14 @@ Status: Pending
 
 ## Remaining risks
 
-- The accepted Gate A decisions are documented but not yet implemented or
-  covered by W3 behavior tests.
-- The nine migration fixtures cover the current v1–v4 safety baseline,
-  including identity conflicts, multiple editions, and aliases. Move/relink
-  fingerprints, new post-migration items, dual writes, and compatibility source
-  switching still need later slices.
+- Slice 4 is complete, but Gate A remains pending until Slice 5 records a
+  real-library-copy rehearsal, restore evidence, privacy review, and review
+  conclusion.
+- The nine migration fixtures and generated runtime fixtures cover schema v5,
+  identity conflicts, multiple editions, aliases, relink fingerprints, dual
+  writes, and compatibility switching. They are not a substitute for exercising
+  a private real-world library copy with large media files.
 - The current real development database has not been migrated; only temporary
   databases and generated fixtures have been exercised.
-- Docker runtime upgrade and restore behavior remain unverified because the
-  recorded clean-install environment did not have Docker available.
+- Docker config, runtime upgrade, environment rollback, and restore behavior
+  remain unverified because Docker is not installed on this machine.

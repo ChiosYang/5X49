@@ -83,7 +83,8 @@ class JobRuntime:
         return job
 
     def get(self, job_id: str) -> dict | None:
-        return job_store.get(job_id)
+        job = job_store.get(job_id)
+        return self.public_job(job) if job else None
 
     def list(
         self,
@@ -91,21 +92,21 @@ class JobRuntime:
         job_type: str | None = None,
         limit: int = 50,
     ) -> list[dict]:
-        return job_store.list(status, job_type, limit)
+        return [self.public_job(job) for job in job_store.list(status, job_type, limit)]
 
     def cancel(self, job_id: str) -> dict | None:
         job = job_store.request_cancel(job_id)
         if job:
             event = "job_cancelled" if job["status"] == "cancelled" else "job_progress"
             library_event_bus.publish(event, {"job": self.public_job(job)})
-        return job
+        return self.public_job(job) if job else None
 
     def retry(self, job_id: str) -> dict | None:
         job = job_store.retry(job_id)
         if job:
             library_event_bus.publish("job_retried", {"job": self.public_job(job)})
             library_event_bus.publish("job_queued", {"job": self.public_job(job)})
-        return job
+        return self.public_job(job) if job else None
 
     def delete(self, job_id: str) -> bool:
         return job_store.delete(job_id)
@@ -159,11 +160,24 @@ class JobRuntime:
 
     @staticmethod
     def public_job(job: dict) -> dict:
+        payload = job.get("payload")
+        if job.get("type") == "library.resolve_relink":
+            items = (payload or {}).get("items") or []
+            payload = {
+                "source_instance_id": (payload or {}).get("source_instance_id"),
+                "fingerprint_id": (payload or {}).get("fingerprint_id"),
+                "candidate_count": len({
+                    candidate
+                    for item in items
+                    for candidate in item.get("candidate_item_ids") or []
+                }),
+                "pending_count": len(items),
+            }
         return {
             "id": job["id"],
             "type": job["type"],
             "status": job["status"],
-            "payload": job.get("payload"),
+            "payload": payload,
             "progress": job.get("progress"),
             "result": job.get("result"),
             "result_summary": job.get("result_summary"),
@@ -204,6 +218,11 @@ class JobRuntime:
             return "External scores refreshed" if result.get("updated_sources") else "No external score match"
         if job_type == "analysis.analyze_movie":
             return "Analysis finished"
+        if job_type == "library.resolve_relink":
+            return (
+                f"Relink {result.get('status', 'completed')}, "
+                f"matched {result.get('matched', 0)}"
+            )
         if result.get("status"):
             return str(result["status"])
         return "Completed"

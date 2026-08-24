@@ -59,6 +59,17 @@ class CanonicalSchemaTests(unittest.TestCase):
         with self.engine.connect() as connection:
             self.assertEqual(connection.execute(text("PRAGMA foreign_keys")).scalar_one(), 1)
 
+    def test_media_asset_runtime_identity_columns_and_indexes_are_available(self):
+        inspector = inspect(self.engine)
+        columns = {column["name"] for column in inspector.get_columns("media_asset")}
+        indexes = {index["name"] for index in inspector.get_indexes("media_asset")}
+
+        self.assertTrue({"platform_file_id", "content_hash"}.issubset(columns))
+        self.assertTrue({
+            "ix_media_asset_platform_file_id",
+            "ix_media_asset_content_hash",
+        }.issubset(indexes))
+
     def test_same_title_year_and_multiple_library_items_are_allowed(self):
         with self.engine.begin() as connection:
             profile_id = connection.execute(

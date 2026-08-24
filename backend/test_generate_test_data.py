@@ -10,7 +10,7 @@ from PIL import Image
 from pydantic import ValidationError
 from sqlmodel import Session, SQLModel, create_engine, select
 
-from app.models import Movie, MovieUserState
+from app.models import Job, Movie, MovieUserState
 from app.services.scanner import NFOScanner
 from app.services import event_store as event_store_module
 from app.services import library as library_module
@@ -130,7 +130,16 @@ class TestDataGeneratorTests(unittest.TestCase):
                 event_store_module, "engine", engine
             ):
                 self.assertEqual(library_module.library_manager.add_movies(movies), 12)
-                self.assertEqual(library_module.library_manager.add_movies(scanned_movies), len(scanned_movies))
+                immediate = library_module.library_manager.add_movies(scanned_movies)
+                with Session(engine) as session:
+                    relink_jobs = session.exec(
+                        select(Job).where(Job.type == "library.resolve_relink")
+                    ).all()
+                resolved = sum(
+                    library_module.library_manager.resolve_relink(job.payload)["processed"]
+                    for job in relink_jobs
+                )
+                self.assertEqual(immediate + resolved, len(scanned_movies))
                 with Session(engine) as session:
                     session.add_all(MovieUserState.model_validate(state) for state in states)
                     session.commit()

@@ -10,7 +10,7 @@ projection support, operation dry-runs, and compensation actions.
 Every persisted event is an `EventRecord` row in the `events` table.
 
 - `id`: Event ID, formatted as `evt_<uuid-hex>`.
-- `aggregate_type`: Aggregate category. Current values include `movie`, `library`, and `file`.
+- `aggregate_type`: Aggregate category. Current values include `movie`, `library`, `library_item`, and `file`.
 - `aggregate_id`: Aggregate identifier. Movie events use the movie ID; file events usually use a path.
 - `type`: Semantic event type.
 - `actor_type`: Actor category. Current default is `system`.
@@ -133,6 +133,7 @@ side-effect-only, or not yet projectable unless this document says otherwise.
 | `LibraryCleared` | The library table was cleared. | system/audit | Not projectable. | `deleted`. | Replay ignores it until a dedicated destructive-event strategy exists. |
 | `MissingMoviesCleaned` | Missing movie rows were deleted. | system/audit | Not projectable. | `deleted`, `movie_ids`, `truncated`. | Replay ignores it until delete/tombstone projection exists. |
 | `LibrarySeeded` | Test seed data was inserted. | system/audit | Not projectable. | `count`. | Replay ignores it. |
+| `LibraryItemRelinkNeedsReview` | An ambiguous local-file relink was kept separate for manual review. | domain/audit | Not projectable and never included in the legacy `movie` aggregate audit endpoint. | `reason`, `candidate_count`, `source_instance_id`, and a truncated `fingerprint_id`; `aggregate_type="library_item"`. Titles and absolute paths are forbidden. | Audit only. Replay and Movie timeline tools ignore it. |
 | `MovieProjectionRebuilt` | A controlled projection rebuild replaced one Movie read-model row from an empty-base replay. | projection/audit | Not projectable. | `movie_id`, `confirmation_token`, `fields_replaced`, `before`, `after`, `dry_run_summary`; `aggregate_type="projection"`. | Audit only. It must not be replayed as a movie domain event. |
 
 ## Compensation Rules

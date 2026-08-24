@@ -61,6 +61,15 @@ FIELD_SOURCES = {
     "updated_at": "viewing",
 }
 
+LEGACY_JSON_FIELDS = {
+    "countries",
+    "audio_tracks",
+    "external_scores",
+    "genres",
+    "actors",
+    "analysis_data",
+}
+
 
 class CanonicalShadowReader:
     def __init__(self, engine: Engine | None = None):
@@ -88,7 +97,9 @@ class CanonicalShadowReader:
                     "FROM legacy_movie_alias a "
                     "JOIN film f ON f.id = a.film_id "
                     "JOIN library_item li ON li.id = a.library_item_id "
-                    "WHERE a.legacy_movie_id = :movie_id"
+                    "WHERE a.legacy_movie_id = :movie_id "
+                    "AND (li.availability_status <> 'retired' "
+                    "OR a.legacy_library_status = 'reverted')"
                 ),
                 {"movie_id": movie_id},
             ).mappings().one_or_none()
@@ -115,11 +126,14 @@ class CanonicalShadowReader:
                 ).mappings()
             }
 
-        result = dict(legacy or {})
+        result = {
+            key: _json_value(value) if key in LEGACY_JSON_FIELDS else value
+            for key, value in dict(legacy or {}).items()
+        }
         result.update({
             "id": movie_id,
             "title": canonical["original_title"] or canonical["canonical_title"],
-            "title_cn": result.get("title_cn") or (
+            "title_cn": (
                 canonical["canonical_title"]
                 if canonical["canonical_title"] != canonical["original_title"]
                 else None
@@ -148,6 +162,30 @@ class CanonicalShadowReader:
         })
         self._apply_asset_projection(result, assets, canonical["library_item_id"])
         return result
+
+    def get_movies(self) -> list[dict[str, Any]]:
+        with self.engine.connect() as connection:
+            movie_ids = [
+                str(value)
+                for value in connection.execute(
+                    text(
+                        "SELECT a.legacy_movie_id FROM legacy_movie_alias a "
+                        "JOIN library_item li ON li.id = a.library_item_id "
+                        "WHERE li.availability_status <> 'retired' "
+                        "OR a.legacy_library_status = 'reverted' "
+                        "ORDER BY a.legacy_movie_id"
+                    )
+                ).scalars()
+            ]
+        movies = [movie for movie_id in movie_ids if (movie := self.get_movie(movie_id))]
+        return sorted(
+            movies,
+            key=lambda movie: (
+                str(movie.get("title") or "").casefold(),
+                movie.get("year") or 0,
+                str(movie.get("id") or ""),
+            ),
+        )
 
     def get_user_state(self, movie_id: str) -> dict[str, Any] | None:
         with self.engine.connect() as connection:
@@ -200,6 +238,25 @@ class CanonicalShadowReader:
             "updated_at": max(updated_values) if updated_values else None,
         }
 
+    def list_user_states(self) -> list[dict[str, Any]]:
+        with self.engine.connect() as connection:
+            movie_ids = [
+                str(value)
+                for value in connection.execute(
+                    text(
+                        "SELECT a.legacy_movie_id FROM legacy_movie_alias a "
+                        "JOIN library_item li ON li.id = a.library_item_id "
+                        "WHERE (li.availability_status <> 'retired' "
+                        "OR a.legacy_library_status = 'reverted') "
+                        "AND (EXISTS (SELECT 1 FROM film_profile_state fps "
+                        "WHERE fps.film_id = a.film_id AND fps.favorite = 1) "
+                        "OR EXISTS (SELECT 1 FROM viewing v WHERE v.film_id = a.film_id "
+                        "AND v.deleted_at IS NULL)) ORDER BY a.legacy_movie_id"
+                    )
+                ).scalars()
+            ]
+        return [state for movie_id in movie_ids if (state := self.get_user_state(movie_id))]
+
     def watch_history(self) -> list[dict[str, Any]]:
         with self.engine.connect() as connection:
             rows = connection.execute(
@@ -213,8 +270,11 @@ class CanonicalShadowReader:
                 row["film_id"]: row["legacy_movie_id"]
                 for row in connection.execute(
                     text(
-                        "SELECT film_id, MIN(legacy_movie_id) AS legacy_movie_id "
-                        "FROM legacy_movie_alias GROUP BY film_id"
+                        "SELECT a.film_id, MIN(a.legacy_movie_id) AS legacy_movie_id "
+                        "FROM legacy_movie_alias a JOIN library_item li "
+                        "ON li.id = a.library_item_id "
+                        "WHERE li.availability_status <> 'retired' "
+                        "OR a.legacy_library_status = 'reverted' GROUP BY a.film_id"
                     )
                 ).mappings()
             }
@@ -239,6 +299,14 @@ class CanonicalShadowReader:
             ]
         return self._compare_records("library", movie_ids, self._legacy_movie, self.get_movie)
 
+    def compare_movie(self, movie_id: str) -> ShadowReadReport:
+        return self._compare_records(
+            "movie",
+            [movie_id],
+            self._legacy_movie,
+            self.get_movie,
+        )
+
     def compare_user_states(self) -> ShadowReadReport:
         with self.engine.connect() as connection:
             movie_ids = [
@@ -260,7 +328,12 @@ class CanonicalShadowReader:
                 text("SELECT * FROM movie WHERE id = :movie_id"),
                 {"movie_id": movie_id},
             ).mappings().one_or_none()
-        return dict(row) if row else None
+        if not row:
+            return None
+        return {
+            key: _json_value(value) if key in LEGACY_JSON_FIELDS else value
+            for key, value in dict(row).items()
+        }
 
     def _legacy_user_state(self, movie_id: str) -> dict[str, Any]:
         with self.engine.connect() as connection:
@@ -339,7 +412,20 @@ class CanonicalShadowReader:
 
     @staticmethod
     def _apply_asset_projection(result, assets, library_item_id):
+        selected_assets = {}
         for asset in assets:
+            owner = "library" if asset["library_item_id"] == library_item_id else "film"
+            key = (owner, asset["asset_kind"])
+            rank = (
+                0 if asset["availability_status"] == "retired" else 1,
+                asset["updated_at"] or "",
+                asset["id"],
+            )
+            current = selected_assets.get(key)
+            if current is None or rank > current[0]:
+                selected_assets[key] = (rank, asset)
+
+        for _, asset in selected_assets.values():
             owned_by_item = asset["library_item_id"] == library_item_id
             kind = asset["asset_kind"]
             if owned_by_item and kind == "video":

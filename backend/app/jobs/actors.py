@@ -33,6 +33,8 @@ def scan_folder(payload: dict, ctx) -> dict:
     movie = library_sync_service.scan_folder(folder_path)
     if not movie:
         raise FileNotFoundError("Movie folder or video file not found")
+    if movie.get("status") == "pending_relink":
+        return movie
     return {"status": "success", "movie": movie}
 
 
@@ -45,6 +47,18 @@ def mark_path_missing(payload: dict, ctx) -> dict:
 def refresh_movie(payload: dict, ctx) -> dict:
     ctx.progress(stage="refreshing", message="Refreshing movie")
     return library_sync_service.refresh_movie(payload["movie_id"])
+
+
+def resolve_relink(payload: dict, ctx) -> dict:
+    ctx.progress(stage="resolving", message="Resolving an ambiguous file identity")
+    ctx.raise_if_cancelled()
+    try:
+        return library_manager.resolve_relink(
+            payload,
+            job_id=getattr(ctx, "job_id", None),
+        )
+    except Exception:
+        raise RuntimeError("Relink resolution failed") from None
 
 
 def scrape_library(payload: dict, ctx) -> dict:
@@ -280,6 +294,7 @@ JOB_HANDLERS: dict[str, Callable[[dict, object], dict]] = {
     "library.scan_folder": scan_folder,
     "library.mark_path_missing": mark_path_missing,
     "library.refresh_movie": refresh_movie,
+    "library.resolve_relink": resolve_relink,
     "metadata.scrape_library": scrape_library,
     "organizer.organize_root": organize_root,
     "organizer.confirm_root_video": confirm_root_video,

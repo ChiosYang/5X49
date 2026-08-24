@@ -31,6 +31,22 @@ This document describes the REST API endpoints available in the backend applicat
 
 ## Library Management
 
+Library compatibility reads are selected at process startup with
+`LIBRARY_READ_SOURCE=canonical|shadow|legacy`:
+
+- `canonical` is the default. Canonical Film/LibraryItem/MediaAsset and personal
+  state fields are overlaid on the existing `Movie` response shape.
+- `shadow` returns Legacy rows while comparing the corresponding Canonical
+  result. Logs contain only scope/counts, field names, null flags, source layers,
+  and truncated hashes.
+- `legacy` uses the pre-migration read path as an emergency rollback. Invalid
+  values emit one warning and also fall back to `legacy`.
+
+All three modes keep Canonical and Legacy writes enabled in the same database
+transaction. Changing the read source therefore does not require a database
+rollback; container deployments should restart the backend after changing the
+environment variable.
+
 ### Search Metadata
 - **URL**: `/metadata/search`
 - **Method**: `GET`
@@ -95,7 +111,7 @@ This document describes the REST API endpoints available in the backend applicat
 ### Get Watch History
 - **URL**: `/watch-history`
 - **Method**: `GET`
-- **Description**: Lists movies manually marked as watched, newest first by `watched_at` and then `updated_at`. This endpoint does not use playback progress or playback sessions.
+- **Description**: Lists the latest active confirmed Viewing for each Film, newest first. Multiple visible aliases for the same Film produce one history entry, using the lexicographically smallest non-retired alias as the stable compatibility movie ID. This endpoint does not use playback progress or playback sessions.
 - **Response**: Array of objects with:
   - `movie` (`Movie`): The matching library movie.
   - `user_state` (`MovieUserState`): Personal state containing `movie_id`, `watched`, `watched_at`, `rating`, `favorite`, `notes`, and `updated_at`.
@@ -160,6 +176,10 @@ This document describes the REST API endpoints available in the backend applicat
   - `type` (string, optional): Filter by job type, such as `library.reconcile`.
   - `limit` (integer, optional): Number of jobs to return, 1-200. Defaults to 50.
 - **Response**: Array of `Job` objects.
+- **Internal relink job**: `library.resolve_relink` is queued only when a sampled
+  file fingerprint has multiple candidates. Public Job payloads/results expose
+  counts, status, source instance, and truncated hash identifiers only; titles
+  and absolute paths are redacted.
 
 ### Get Background Job
 - **URL**: `/jobs/{job_id}`
@@ -238,7 +258,7 @@ Long-running mutation endpoints return an accepted-job envelope:
 ### Update Movie User State
 - **URL**: `/library/{movie_id}/user-state`
 - **Method**: `PUT`
-- **Description**: Creates or updates the personal watch state for one movie. This is manual state only; it does not record playback progress or sessions.
+- **Description**: Creates or updates Film-level personal state through any permanent movie alias. The result is projected to every visible alias for Legacy rollback compatibility. This is manual state only; it does not record playback progress or sessions.
 - **Path Parameters**:
   - `movie_id` (string): ASCII movie ID.
 - **Request Body**:
@@ -247,6 +267,7 @@ Long-running mutation endpoints return an accepted-job envelope:
   - `rating` (integer or null, optional): Personal rating from 1 to 5.
   - `favorite` (boolean, optional): Favorite marker.
   - `notes` (string or null, optional): Free-form personal notes.
+- **Viewing behavior**: `watched=false` soft-deletes only compatibility Viewings created by the legacy state/API adapters; Diary or other confirmed Viewings remain active, so derived `watched` may remain `true`. Rating or notes without a confirmed compatibility Viewing are retained as `needs_review` and do not appear in watch history.
 - **Response**: Updated `MovieUserState`.
 - **Errors**: `400 Invalid ID format`, `404 Movie not found`, `422 rating must be between 1 and 5`.
 
@@ -904,13 +925,13 @@ Root video organization accepts the same `language` and `artwork_language` scrap
 ### Clear Library
 - **URL**: `/library`
 - **Method**: `DELETE`
-- **Description**: Clears all movies from the library database.
+- **Description**: Removes the Legacy Movie compatibility rows and retires their LibraryItem, local MediaAsset, and active locator history. Film identity, external identities, Viewings, and favorites are retained. A later scan of the same item reactivates its original LibraryItem and permanent alias and rebuilds the Legacy personal-state projection.
 - **Response**: `{"message": "Library cleared"}`
 
 ### Clear All Library Data
 - **URL**: `/library/data`
 - **Method**: `DELETE`
-- **Description**: Deletes all database-backed library data: movies, personal watch states, background jobs, and persisted audit events. It does not delete media files, generated NFO/artwork files, saved settings, or environment configuration.
+- **Description**: Irreversibly deletes all Legacy and Canonical library-domain data, including movies, aliases, Films, identities, assets, locator history, personal state/Viewings, background jobs, persisted events, identity reviews, and Canonical backfill reports. It preserves the migration journal, media files, generated NFO/artwork files, saved settings, and environment configuration.
 - **Response**:
   ```json
   {
@@ -937,7 +958,7 @@ Root video organization accepts the same `language` and `artwork_language` scrap
 ### Clean Missing Records
 - **URL**: `/library/missing`
 - **Method**: `DELETE`
-- **Description**: Deletes database records already marked as `library_status=missing`.
+- **Description**: Deletes Legacy Movie compatibility rows already marked `library_status=missing` and retires their Canonical LibraryItem/assets. Film identities and Film-level personal data remain available for a later rescan and alias restoration.
 - **Response**: `{"status": "success", "deleted": 3}`
 
 ---
