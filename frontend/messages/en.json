@@ -1,7 +1,7 @@
 {
   "Navigation": {
-    "library": "Genealogy Library",
-    "libraryManagement": "Library Management",
+    "library": "Library",
+    "libraryManagement": "Management",
     "search": "Search",
     "activity": "Activity",
     "watchHistory": "Watch History",
