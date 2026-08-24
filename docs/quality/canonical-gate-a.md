@@ -2,7 +2,7 @@
 
 - Evidence date: 2026-08-24
 - Report schema: 1
-- Git base: `993faf3` plus the uncommitted Slice 5 working tree
+- Gate implementation commit: `70f525a`
 - Development-copy source fingerprint: `b7a2da987e309d52`
 - Curated-acceptance source fingerprint: `978d1a20ee62b4ac`
 - Gate conclusion: **Blocked**
