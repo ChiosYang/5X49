@@ -158,7 +158,11 @@ class LibraryManager:
                     self._queue_relink_job(session, movie_dict, ambiguity)
                     continue
                 movie_id = resolution.compatibility_id
-                movie_dict = {**movie_dict, "id": movie_id}
+                movie_dict = {
+                    **movie_dict,
+                    **canonical_runtime_writer.compatibility_projection_fields(session, resolution),
+                    "id": movie_id,
+                }
                 
                 existing_movie = session.get(Movie, movie_id)
                 if not existing_movie and movie_dict.get("media_path"):
@@ -254,7 +258,11 @@ class LibraryManager:
                 session.commit()
                 return {"movie": None, "event_types": [], "pending_relink_job_id": job_id}
             movie_id = resolution.compatibility_id
-            movie_data = {**movie_data, "id": movie_id}
+            movie_data = {
+                **movie_data,
+                **canonical_runtime_writer.compatibility_projection_fields(session, resolution),
+                "id": movie_id,
+            }
             existing_movie = session.get(Movie, movie_id)
             if not existing_movie and movie_data.get("media_path"):
                 existing_movie = self._get_by_media_path(session, movie_data["media_path"])

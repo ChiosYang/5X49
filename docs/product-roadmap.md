@@ -477,6 +477,9 @@ POST   /restore/preview
 - 增加唯一约束、索引和重复扫描测试。
 - 设计孤立 Film、缺失媒体和多 LibraryItem 指向同一 Film 的行为。
 
+Gate A 只验收 Canonical Library、Media、Viewing 和旧 API 兼容层。Person、Credit、Concept
+仍属于 W3 的后续实现，不阻塞 Slice 5 的本地工具完成，但它们完成前 W3 本身不算结束。
+
 #### 交付物
 
 - 新领域表与迁移。
@@ -505,6 +508,8 @@ POST   /restore/preview
 - 将每个电影引用解析到 Film；解析失败的引用进入 review queue。
 - 将结构化事实、外部证据和 AI 推断分开保存。
 - 实现 Assertion 去重、status、来源和 AnalysisRun。
+- 将 Assertion/Evidence/AnalysisRun 持久化、幂等去重和 rejected 状态保护作为 Gate B
+  的实现证据，不回填到 Gate A。
 - 保存 provider、model、prompt/schema version、token、成本和 input hash。
 - 支持分析失败重试、幂等写入和版本变化后的选择性重算。
 - 建立 30–50 部电影的固定评测集，覆盖中英文片名、重名、冷门电影和不同年代。
@@ -975,10 +980,16 @@ Started Install
 
 - Film 与 LibraryItem 已分离。
 - Viewing 为多记录模型。
-- Assertion、Evidence、AnalysisRun 的边界明确。
+- Canonical Library、Media、Viewing 与旧 API 兼容读取/双写经过真实库副本演练。
+- Assertion、Evidence、AnalysisRun 的边界明确，但其持久化、去重和拒绝保护由 W4/Gate B
+  验收。
 - 旧数据迁移和恢复方案可执行。
+- Docker 首装、旧库升级、canonical/shadow/legacy 回退、恢复和中英文 smoke 有脱敏证据。
 
 未通过：继续完善领域模型，不开始 Graph UI。
+
+当前状态（2026-08-24）：**Blocked**。策展式验收库已通过本地 Gate，但自然积累的真实资料库
+副本和 Docker 运行证据仍缺失；不能记录 Gate A Passed。
 
 ### Gate B｜W4 Graph Data Trusted
 

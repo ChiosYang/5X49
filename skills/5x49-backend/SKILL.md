@@ -139,7 +139,7 @@ curl -s -X POST http://127.0.0.1:11548/jobs/job_abc/cancel
 curl -s -X POST http://127.0.0.1:11548/jobs/job_abc/retry
 ```
 
-`GET /library/events` 除 `library_changed` 外，还会推送 `job_queued`、`job_started`、`job_progress`、`job_succeeded`、`job_failed`、`job_cancelled`、`job_retried`。任务完成后的最终结果位于 job 的 `result` 字段，UI 文案位于 `result_summary`，失败原因位于 `error` 字段。批量刮削、根目录整理、批量外部评分会写入 `progress.current` / `progress.total`；重复提交同一 active job 会通过 `dedupe_key` 复用已有任务。
+`GET /library/events` 除 `library_changed` 外，还会推送 `job_queued`、`job_started`、`job_progress`、`job_succeeded`、`job_failed`、`job_cancelled`、`job_retried`。任务完成后的公开结果位于 job 的 `result` 字段，UI 安全文案位于 `result_summary`，失败时 `error` 只返回通用提示。Job 的数据库记录保留 worker 重试所需的完整内部 payload/result；HTTP 和 SSE 只返回脱敏投影：普通 payload 为空，result 保留状态/计数/布尔值，progress 保留阶段和数值进度，原始 dedupe key 改为截断 SHA-256 标识，标题、绝对路径、自由文本和密钥不得进入公开响应。批量刮削、根目录整理、批量外部评分会写入 `progress.current` / `progress.total`；重复提交同一 active job 仍通过内部完整 `dedupe_key` 复用已有任务。
 
 文件快速指纹出现多个候选时，系统会内部排队单并发 `library.resolve_relink`。该 Job 的公开 payload/result 只含状态、计数、来源实例和截断哈希标识，不应包含电影标题或绝对路径。
 

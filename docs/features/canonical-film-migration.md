@@ -1,6 +1,6 @@
 # Canonical Film Migration
 
-Status: In Progress
+Status: Blocked
 Last updated: 2026-08-24
 Related: `docs/domain-model.md`, `docs/database-migrations.md`,
 `docs/analysis-v2-contract.md`, W2–W3 in `docs/product-roadmap.md`
@@ -196,18 +196,58 @@ Status: Complete
 
 ### Slice 5 — Gate A evidence and handoff
 
-Status: Pending
+Status: Blocked
 
-- Intended behavior: collect review evidence, close the implementation checklist,
-  and make canonical Film data safe for Analysis V2 and later single-film Graph
-  work.
+- Intended behavior: collect repeatable, privacy-safe evidence and make Canonical
+  Library, Media, Viewing, and the compatibility layer eligible for a strict
+  Gate A conclusion.
+- Implemented behavior: `python -m app.migrations.gate_a rehearse` validates the
+  fixed offline input contract, creates a verified backup and isolated working
+  database, proves upgrade/idempotence/consistency/restore, runs repeatable media
+  reconcile and clear/restore exercises when real media is present, and writes a
+  versioned sanitized report. Its isolated mini-library covers platform-ID
+  rename relink, missing/restore, multiple items per Film, the bounded sampling
+  budget, deduped collision jobs, and complete-hash disambiguation. `conclude`
+  refuses to pass incomplete local or
+  Docker evidence. `backend/scripts/gate_a_docker_smoke.ps1` uses unique resource
+  names, random host ports, and isolated bind mounts.
+- Evidence state: the manually exercised curated acceptance library passed all
+  local upgrade, consistency, runtime, restore, and privacy phases in
+  `acceptance-final-20260824-1810`. It is still generated media rather than a
+  naturally aged private library. Docker is not installed. Strict Gate A
+  therefore remains `Blocked`; neither Slice 5 nor this Feature may be marked
+  complete from curated fixtures or a development clone.
 - Likely affected areas: feature document, domain RFC, migration/restore runbook,
   and quality reports.
 - Dependencies: all prior slices.
 - Verification: complete fixture matrix, real-library-copy rehearsal, restore
   exercise, sensitive-data scan, and recorded Gate A review conclusion.
 
+Person/Credit/Concept implementation remains later W3 work. Assertion,
+Evidence, and AnalysisRun persistence, deduplication, rejected-state protection,
+and quality evaluation belong to W4 and Gate B; their design boundary is not a
+Gate A implementation requirement.
+
 ## Verification evidence
+
+- The Git-safe Slice 5 evidence summary is
+  `docs/quality/canonical-gate-a.md`. It records Gate A as `Blocked`; raw
+  versioned reports remain under ignored `backend/data/gate-a/` run directories.
+- `.\.venv\Scripts\python.exe -m unittest` over every `test_*.py` module except
+  credential-dependent `test_agent.py` — 127 tests passed on 2026-08-24 in
+  42.867 seconds, including public Job redaction and pending-file alias recovery.
+- The focused Gate/migration/runtime command ran 50 tests covering Gate CLI,
+  schema/backfill, nine legacy fixture profiles, backup/restore, Viewing, and
+  Canonical runtime behavior; all passed on 2026-08-24.
+- `.\.venv\Scripts\python.exe -X utf8 -m compileall -q app scripts test_gate_a.py test_canonical_runtime.py`
+  passed. `npm run lint`, `npm run typecheck`, and `npm run build` also passed.
+- Both Compose YAML files parsed, and
+  `backend/scripts/gate_a_docker_smoke.ps1` passed PowerShell syntax validation.
+  Docker runtime evidence remains blocked because the Docker CLI is unavailable.
+- A byte-identical development-database copy reached v5 with no second-run
+  migration/backup or Shadow drift, restored exactly, and preserved the source
+  hash/size/sidecars. The strict conclusion remained blocked because it was a
+  development clone with no real media root and no Docker report.
 
 - A 115-test backend run excluding the credential-dependent `test_agent.py`
   passed on 2026-08-24 in 49.555 seconds with exit code 0. It includes runtime
@@ -278,9 +318,10 @@ Status: Pending
 
 ## Remaining risks
 
-- Slice 4 is complete, but Gate A remains pending until Slice 5 records a
-  real-library-copy rehearsal, restore evidence, privacy review, and review
-  conclusion.
+- Slice 4 is complete, but Slice 5 and the overall Feature are blocked until a
+  naturally aged real-library-copy rehearsal and the Docker evidence matrix both
+  pass. The curated acceptance rehearsal passes locally but Gate A has not
+  passed.
 - The nine migration fixtures and generated runtime fixtures cover schema v5,
   identity conflicts, multiple editions, aliases, relink fingerprints, dual
   writes, and compatibility switching. They are not a substitute for exercising

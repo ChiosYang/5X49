@@ -49,6 +49,21 @@ FIELD_SOURCES = {
     "scraped_at": "library_item",
     "tmdb_confidence": "library_item",
     "media_path": "media_asset",
+    "file_size": "media_asset",
+    "file_mtime": "media_asset",
+    "audio_tracks": "media_asset",
+    "video_width": "media_asset",
+    "video_height": "media_asset",
+    "video_codec": "media_asset",
+    "video_bitrate": "media_asset",
+    "video_duration": "media_asset",
+    "video_fps": "media_asset",
+    "video_dynamic_range": "media_asset",
+    "video_bit_depth": "media_asset",
+    "nfo_path": "media_asset",
+    "nfo_size": "media_asset",
+    "nfo_mtime": "media_asset",
+    "nfo_fingerprint": "media_asset",
     "poster_local": "media_asset",
     "backdrop_local": "media_asset",
     "poster_path": "media_asset",
@@ -294,7 +309,13 @@ class CanonicalShadowReader:
             movie_ids = [
                 str(value)
                 for value in connection.execute(
-                    text("SELECT legacy_movie_id FROM legacy_movie_alias ORDER BY legacy_movie_id")
+                    text(
+                        "SELECT a.legacy_movie_id FROM legacy_movie_alias a "
+                        "JOIN library_item li ON li.id = a.library_item_id "
+                        "WHERE li.availability_status <> 'retired' "
+                        "OR a.legacy_library_status = 'reverted' "
+                        "ORDER BY a.legacy_movie_id"
+                    )
                 ).scalars()
             ]
         return self._compare_records("library", movie_ids, self._legacy_movie, self.get_movie)
@@ -312,7 +333,13 @@ class CanonicalShadowReader:
             movie_ids = [
                 str(value)
                 for value in connection.execute(
-                    text("SELECT legacy_movie_id FROM legacy_movie_alias ORDER BY legacy_movie_id")
+                    text(
+                        "SELECT a.legacy_movie_id FROM legacy_movie_alias a "
+                        "JOIN library_item li ON li.id = a.library_item_id "
+                        "WHERE li.availability_status <> 'retired' "
+                        "OR a.legacy_library_status = 'reverted' "
+                        "ORDER BY a.legacy_movie_id"
+                    )
                 ).scalars()
             ]
         return self._compare_records(

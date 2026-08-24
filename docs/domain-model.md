@@ -622,20 +622,22 @@ MovieUserState 当前行 + verified backup 为基线，事件只用于审计核�
    `create_all + ALTER ADD COLUMN` 作为长期方案。
 2. **升级前检查与备份**：暂停写入/Job/watcher，执行 WAL checkpoint 或 SQLite online backup，
    校验 `PRAGMA integrity_check`、可打开性、文件大小和 backup hash。
-3. **Additive Schema**：只新增 GraphEntity、Film、ExternalIdentity、LibraryItem、MediaAsset、
-   LocalProfile、Viewing、FilmProfileState、Person、Credit、Concept、Assertion、Evidence、
-   AnalysisRun、provenance/join/alias/migration 表；旧表不改名、不删除。
+3. **Gate A Additive Schema**：只新增 GraphEntity、Film、ExternalIdentity、LibraryItem、
+   MediaAsset、LocalProfile、Viewing、FilmProfileState、alias/review/migration 表；旧表不改名、
+   不删除。Person/Credit/Concept 属于后续 W3；Assertion/Evidence/AnalysisRun 持久化属于
+   W4/Gate B。
 4. **创建单例 profile**：幂等创建 `profile_key=local`。
 5. **回填 Film 身份**：按 TMDB 精确 ID、IMDb 精确 ID 顺序复用 Film；两者冲突时停止自动合并并
    记录 review。无外部身份时每旧 Movie 单独创建 Film。
 6. **回填收藏与资产**：每旧 Movie 创建 LibraryItem、LegacyMovieAlias、视频/NFO/artwork
    MediaAsset；保留 status 和时间。
-7. **回填结构化 metadata**：title/country、Person/Credit、Genre Concept/Assertion；保留 raw
-   source 和无法解析项。
+7. **后续 W3 结构化 metadata**：title/country、Person/Credit 与 Genre Concept 基础映射；
+   保留 raw source 和无法解析项，不作为 Gate A 通过条件。
 8. **回填个人数据**：先 FilmProfileState，再按第 5.2 节创建 legacy Viewing；对每个旧状态记录
    输出迁移结果。
-9. **回填分析**：每个 legacy analysis payload 创建 migration AnalysisRun/artifact；可解析边按
-   assertion_key 去重，未解析边进入 review。legacy LLM reason 不生成 Evidence。
+9. **后续 W4 分析迁移**：每个 legacy analysis payload 创建 migration AnalysisRun/artifact；
+   可解析边按 assertion_key 去重，未解析边进入 review。legacy LLM reason 不生成 Evidence。
+   此步骤由 Gate B 验收。
 10. **一致性检查**：核对旧 Movie → alias/item 一一覆盖、身份冲突、UserState 字段、状态分布、
     引用完整性和可重跑结果；migration 重跑不得增加记录。
 11. **双读/影子校验**：旧 API 仍读旧表，同时生成新兼容 payload 做 diff；路径字段允许规范化
@@ -657,8 +659,8 @@ MovieUserState 当前行 + verified backup 为基线，事件只用于审计核�
   rollback 以恢复已验证备份为准，不承诺危险的自动 down migration。
 - 切换新表写入后，旧版本应用可能看不到新 Viewing/审核结果。允许应用回滚前必须先证明
   dual write 完整，或提供向旧 schema 的导出；否则回滚应用与恢复数据库必须成对执行。
-- 恢复演练必须比较 Film、LibraryItem、Viewing、accepted/rejected Assertion 和 alias 数量，
-  并抽查内容/hash，而不只验证进程能启动。
+- Gate A 恢复演练必须比较 Film、LibraryItem、Viewing 和 alias，并抽查内容/hash，而不只验证
+  进程能启动。accepted/rejected Assertion 的恢复与状态保护由 W4/Gate B 验收。
 - 备份失败、完整性检查失败、磁盘空间不足、身份冲突超过阈值或 fixture 回归失败时，migration
   必须 fail closed，不切换 source of truth。
 
@@ -683,8 +685,9 @@ MovieUserState 当前行 + verified backup 为基线，事件只用于审计核�
 14. migration 在每个主要阶段中断后重跑；
 15. 升级 → 写入新 Viewing/审核状态 → 备份 → 恢复 → 数量和内容一致。
 
-fixture 断言至少覆盖：record count、唯一约束、FK、alias 可解析、幂等重跑、状态映射、
-兼容 JSON contract、rejected Assertion 重分析后仍 rejected，以及数据库恢复后的 hash/抽查。
+Gate A fixture 断言至少覆盖：record count、唯一约束、FK、alias 可解析、幂等重跑、状态映射、
+兼容 JSON contract，以及数据库恢复后的 hash/抽查。rejected Assertion 重分析保护进入
+W4/Gate B fixture。
 
 ## 12. Gate A 验收检查表
 
@@ -700,16 +703,22 @@ RFC/决策：
 
 实现 Gate（本 RFC 不声称已经通过）：
 
-- [ ] 版本化 migration runner 和 schema migration 已实现并 review。
-- [ ] 全部旧库 fixture 向前迁移和重复执行通过。
-- [ ] 迁移前备份、失败恢复和完整恢复演练通过。
-- [ ] Film/LibraryItem/Viewing/Assertion 数量与字段一致性报告通过。
-- [ ] ExternalIdentity 冲突、Assertion 去重和拒绝状态保护测试通过。
-- [ ] 重复扫描、路径改名、媒体缺失/恢复和多 LibraryItem 测试通过。
-- [ ] `/library`、详情、user-state、watch-history 兼容 contract tests 通过。
-- [ ] 旧 EventRecord 保留且新聚合事件不会破坏现有 audit API。
-- [ ] 迁移/诊断/日志不泄露密钥或未脱敏绝对路径。
+- [x] 版本化 migration runner 和 v1–v5 additive schema migration 已实现并 review。
+- [x] 九套旧库 fixture 与 fresh `create_all` 向前迁移和重复执行通过。
+- [x] 隔离 fixture 的迁移前备份、失败恢复和离线恢复/重迁移测试通过。
+- [ ] 真实资料库副本的 Film/LibraryItem/Viewing/alias 数量与字段一致性报告通过。
+- [x] ExternalIdentity 冲突、错误合并拒绝和 review 关联测试通过。
+- [x] 生成 fixture 的重复扫描、路径改名、媒体缺失/恢复和多 LibraryItem 测试通过。
+- [x] `/library`、详情、user-state、watch-history 兼容 contract tests 通过。
+- [x] 旧 Movie/Library EventRecord 逐字节语义保留；稳定 LibraryItem 事件和公开 Job 结果通过
+  canary 扫描。
+- [ ] 真实资料库的迁移/诊断/日志隐私 canary 检查通过。
+- [ ] Docker 首装、旧库升级、三读源回退、恢复和中英文浏览器 smoke 通过。
 - [ ] Gate A 审核结论记录为通过后，才开始 Graph UI。
+
+当前结论（2026-08-24）：**Blocked**。人工刮削并添加个人状态的策展式验收库已通过全部本地
+Gate 阶段，但它仍是生成媒体，不替代自然积累的真实资料库副本；Docker CLI 也尚不可用。
+严格 Gate 不允许用开发库副本、策展 fixture 或静态脚本检查替代上述两类证据。
 
 ## 13. 决策记录与后续开放项
 

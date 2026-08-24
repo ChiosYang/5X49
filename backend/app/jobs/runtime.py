@@ -1,3 +1,4 @@
+import hashlib
 import threading
 
 from app.jobs.actors import JOB_HANDLERS
@@ -77,10 +78,11 @@ class JobRuntime:
         if dedupe_key:
             existing_job = job_store.find_active(dedupe_key)
             if existing_job:
-                return existing_job
+                return self.public_job(existing_job)
         job = job_store.create(job_type, payload, max_attempts, priority, dedupe_key)
-        library_event_bus.publish("job_queued", {"job": self.public_job(job)})
-        return job
+        public = self.public_job(job)
+        library_event_bus.publish("job_queued", {"job": public})
+        return public
 
     def get(self, job_id: str) -> dict | None:
         job = job_store.get(job_id)
@@ -160,12 +162,13 @@ class JobRuntime:
 
     @staticmethod
     def public_job(job: dict) -> dict:
-        payload = job.get("payload")
+        payload = {}
         if job.get("type") == "library.resolve_relink":
-            items = (payload or {}).get("items") or []
+            internal_payload = job.get("payload") or {}
+            items = internal_payload.get("items") or []
             payload = {
-                "source_instance_id": (payload or {}).get("source_instance_id"),
-                "fingerprint_id": (payload or {}).get("fingerprint_id"),
+                "source_instance_id": internal_payload.get("source_instance_id"),
+                "fingerprint_id": internal_payload.get("fingerprint_id"),
                 "candidate_count": len({
                     candidate
                     for item in items
@@ -173,19 +176,21 @@ class JobRuntime:
                 }),
                 "pending_count": len(items),
             }
+        result = JobRuntime._public_result(job.get("result"))
+        status = job["status"]
         return {
             "id": job["id"],
             "type": job["type"],
-            "status": job["status"],
+            "status": status,
             "payload": payload,
-            "progress": job.get("progress"),
-            "result": job.get("result"),
-            "result_summary": job.get("result_summary"),
-            "error": job.get("error"),
+            "progress": JobRuntime._public_progress(job.get("progress")),
+            "result": result,
+            "result_summary": JobRuntime._public_summary(job["type"], status, result),
+            "error": JobRuntime._public_error(status, job.get("error")),
             "attempts": job.get("attempts"),
             "max_attempts": job.get("max_attempts"),
             "priority": job.get("priority"),
-            "dedupe_key": job.get("dedupe_key"),
+            "dedupe_key": JobRuntime._public_dedupe_key(job.get("dedupe_key")),
             "cancel_requested": job.get("cancel_requested"),
             "created_at": job.get("created_at"),
             "updated_at": job.get("updated_at"),
@@ -193,7 +198,72 @@ class JobRuntime:
             "finished_at": job.get("finished_at"),
         }
 
-    def _result_summary(self, job_type: str, result: dict) -> str:
+    @staticmethod
+    def _public_result(result: object) -> dict:
+        if not isinstance(result, dict):
+            return {}
+        public: dict = {}
+        for key, value in result.items():
+            if value is None or isinstance(value, (bool, int, float)):
+                public[key] = value
+            elif key == "status" and JobRuntime._is_public_token(value):
+                public[key] = value
+            elif key in {"event_types", "updated_sources"} and isinstance(value, list):
+                tokens = [item for item in value if JobRuntime._is_public_token(item)]
+                if len(tokens) == len(value):
+                    public[key] = tokens
+        return public
+
+    @staticmethod
+    def _public_progress(progress: object) -> dict | None:
+        if not isinstance(progress, dict):
+            return None
+        public = {
+            key: value
+            for key, value in progress.items()
+            if key in {"current", "total", "percent"}
+            and (value is None or isinstance(value, (bool, int, float)))
+        }
+        stage = progress.get("stage")
+        if JobRuntime._is_public_token(stage):
+            public["stage"] = stage
+        return public or None
+
+    @staticmethod
+    def _public_summary(job_type: str, status: str, result: dict) -> str | None:
+        if status == "failed":
+            return "Job failed"
+        if status == "cancelled":
+            return "Cancelled"
+        if status not in {"succeeded"}:
+            return None
+        return JobRuntime._result_summary(job_type, result)
+
+    @staticmethod
+    def _public_error(status: str, error: object) -> str | None:
+        if not error:
+            return None
+        if status == "cancelled":
+            return "Job cancelled"
+        return "Job failed; inspect server logs for details"
+
+    @staticmethod
+    def _public_dedupe_key(dedupe_key: object) -> str | None:
+        if not dedupe_key:
+            return None
+        digest = hashlib.sha256(str(dedupe_key).encode("utf-8")).hexdigest()[:16]
+        return f"dedupe_{digest}"
+
+    @staticmethod
+    def _is_public_token(value: object) -> bool:
+        return (
+            isinstance(value, str)
+            and 0 < len(value) <= 64
+            and all(character.isalnum() or character in "._-" for character in value)
+        )
+
+    @staticmethod
+    def _result_summary(job_type: str, result: dict) -> str:
         if job_type == "library.reconcile":
             return (
                 f"Scanned {result.get('scanned', 0)}, "

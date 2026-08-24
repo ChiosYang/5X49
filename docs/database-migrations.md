@@ -81,6 +81,11 @@ with rating or notes become `needs_review` and do not affect watched/history
 projections. Empty default rows create no durable personal record. Source IDs
 make reruns idempotent, while aggregate reports contain only counts.
 
+Migration version 5 adds nullable `platform_file_id` and `content_hash` fields
+and indexes to MediaAsset. Existing files are not opened during migration;
+normal reconcile fills stable platform identity, the versioned bounded
+fingerprint, and complete hashes where the foreground read budget permits.
+
 ## Startup Sequence
 
 Database initialization runs before the job runtime and filesystem watcher:
@@ -98,7 +103,11 @@ Database initialization runs before the job runtime and filesystem watcher:
 5. Run `SQLModel.metadata.create_all()` only after existing-schema migrations
    succeed. For a new empty database, create the current schema first and then
    run the idempotent migrations without a backup.
-6. Start jobs, watchers, and API traffic only after the database reaches the
+6. Idempotently calibrate Canonical-owned Movie and MovieUserState compatibility
+   fields from Film/LibraryItem/MediaAsset/Viewing. This emits no events and
+   leaves legacy-owned analysis, people, genres, scores, and audit payloads
+   unchanged.
+7. Start jobs, watchers, and API traffic only after the database reaches the
    current version.
 
 No migration runs from a request handler or background job.
@@ -193,6 +202,9 @@ The compatibility set is:
 - `job-only`: a historical database containing only the `job` table;
 - `legacy-user-state-events`: a pre-journal database with movies, jobs, user
   state, and audit events that must survive upgrade and restore unchanged.
+- `canonical-identities`: canonical identity reuse and conflict-review rows;
+- `viewing-migration`: multiple aliases, meaningful/default personal state, and
+  confirmed/needs-review Viewing conversion.
 
 Each fixture includes expected invariants such as row counts and sentinel field
 values. Fixtures must use synthetic identifiers, relative media paths, and no
@@ -219,3 +231,66 @@ Every migration change must test, where applicable:
   recovery behavior changes.
 - Before a release containing a new migration, exercise backup restoration in a
   temporary environment and compare integrity, row counts, and sentinel data.
+
+## Strict Gate A rehearsal
+
+Gate A never operates on `backend/data/library.db` or writes to the supplied
+media root. Stop writers and place an offline SQLite copy and the read-only media
+root pointer at the fixed ignored locations:
+
+```text
+backend/data/gate-a/input/library.db
+backend/data/gate-a/input/media-root.txt
+```
+
+The database must not have `-wal` or `-shm` sidecars. `media-root.txt` is UTF-8
+and contains one absolute existing directory. Run from `backend/` with a new,
+unique run ID:
+
+```powershell
+python -m app.migrations.gate_a rehearse `
+  --input-dir data/gate-a/input `
+  --run-dir data/gate-a/runs/<run-id>
+```
+
+The command refuses the live application database, a byte-identical development
+clone as strict evidence, broken integrity/FKs, an invalid migration journal,
+insufficient disk, SQLite sidecars, an existing run directory, or a run path
+outside `data/gate-a/runs/`. It creates a verified source backup, migrates only a
+working copy, proves the second migration is a no-op, audits Canonical/Legacy
+consistency, restores the original backup byte-for-byte, remigrates it, and—when
+real media is present—performs two reconciles plus ordinary/deep-clear recovery
+exercises. Input hash, size, and sidecar state must be unchanged afterward.
+
+Raw working databases, manifests, cache files, and versioned JSON evidence stay
+under the Git-ignored run directory for human review. The JSON report contains
+only check IDs, statuses, booleans/counts, failed field names, and truncated
+fingerprints. Legacy Movie/Library audit payloads are immutable compatibility
+records: the rehearsal compares their digest before/after migration. Privacy
+canaries are enforced on CLI/report output, stable LibraryItem events, and the
+public Job representation; raw titles, paths, secrets, or full identifiers in
+those surfaces fail the run.
+
+After local evidence passes, run the isolated Docker matrix from the repository
+root. It uses a unique Compose project/container name, random host ports,
+read-only media and isolated data bind mounts, and cleans only its own runtime
+resources:
+
+```powershell
+backend/scripts/gate_a_docker_smoke.ps1 `
+  -InputDir backend/data/gate-a/input `
+  -RunDir backend/data/gate-a/runs/<run-id>
+```
+
+Finally combine both version-1 reports:
+
+```powershell
+python -m app.migrations.gate_a conclude `
+  --local-report data/gate-a/runs/<run-id>/local-report.json `
+  --docker-report data/gate-a/runs/<run-id>/docker-report.json
+```
+
+Exit codes are `0` passed, `2` failed, and `3` blocked. Missing real-library or
+Docker evidence is always `blocked`, never a warning or an implicit pass. Keep
+the raw run until manual review; afterward delete only the exact reviewed run
+directory and input copy.

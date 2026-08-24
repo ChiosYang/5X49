@@ -401,6 +401,55 @@ class CanonicalRuntimeWriter:
         )
         return str(raw).replace("\\", "/").rstrip("/").strip()
 
+    def compatibility_projection_fields(
+        self,
+        session: Session,
+        resolution: RuntimeMovieResolution,
+    ) -> dict[str, Any]:
+        """Return Canonical-owned values for the legacy Movie projection."""
+        film = session.get(Film, resolution.film_id)
+        item = session.get(LibraryItem, resolution.library_item_id)
+        alias = session.get(LegacyMovieAlias, resolution.compatibility_id)
+        if film is None or item is None or alias is None:
+            return {}
+        identities = {
+            identity.provider: identity.external_id
+            for identity in session.exec(
+                select(ExternalIdentity)
+                .where(ExternalIdentity.entity_id == film.id)
+                .where(ExternalIdentity.identity_status == "active")
+            ).all()
+        }
+        return {
+            "title": film.original_title or film.canonical_title,
+            "title_cn": (
+                film.canonical_title
+                if film.canonical_title != film.original_title
+                else None
+            ),
+            "year": film.release_year or 0,
+            "runtime": film.runtime_minutes,
+            "overview": film.overview,
+            "tmdb_id": identities.get("tmdb.movie"),
+            "imdb_id": identities.get("imdb.title"),
+            "folder_name": item.display_name,
+            "folder_path": item.source_item_key,
+            "library_status": (
+                alias.legacy_library_status
+                if alias.legacy_library_status == "reverted"
+                else item.availability_status
+            ),
+            "added_at": item.added_at,
+            "last_seen_at": item.last_seen_at,
+            "missing_since": item.missing_since,
+            "metadata_source": item.metadata_source,
+            "metadata_updated_at": item.metadata_updated_at,
+            "scrape_status": item.scrape_status,
+            "scrape_error": item.scrape_error,
+            "scraped_at": item.scraped_at,
+            "tmdb_confidence": item.match_confidence,
+        }
+
     def _by_alias(self, session: Session, movie_id: str | None) -> RuntimeMovieResolution | None:
         if not movie_id:
             return None

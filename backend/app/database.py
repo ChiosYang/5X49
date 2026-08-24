@@ -66,6 +66,12 @@ def create_db_and_tables():
             backup_required=False,
         )
 
+    from app.services.compatibility_projection import (
+        rebuild_legacy_compatibility_projections,
+    )
+
+    rebuild_legacy_compatibility_projections(engine)
+
 
 def _app_version() -> str:
     try:

@@ -176,6 +176,12 @@ environment variable.
   - `type` (string, optional): Filter by job type, such as `library.reconcile`.
   - `limit` (integer, optional): Number of jobs to return, 1-200. Defaults to 50.
 - **Response**: Array of `Job` objects.
+- **Privacy boundary**: Job execution keeps its full internal payload/result in
+  SQLite, but list, detail, cancel/retry responses and SSE job events expose a
+  sanitized projection. Internal paths, titles, free-form progress/error text,
+  and raw dedupe keys are not returned. Public payloads contain only explicitly
+  allowed summaries; results retain status and count/boolean fields; dedupe keys
+  are represented by a truncated SHA-256 identifier.
 - **Internal relink job**: `library.resolve_relink` is queued only when a sampled
   file fingerprint has multiple candidates. Public Job payloads/results expose
   counts, status, source instance, and truncated hash identifiers only; titles
@@ -191,14 +197,14 @@ environment variable.
     "id": "job_abc",
     "type": "library.reconcile",
     "status": "succeeded",
-    "payload": {"media_dir": "/media"},
-    "progress": {"stage": "scanning", "current": 10, "total": 10, "message": "Scanning library"},
+    "payload": {},
+    "progress": {"stage": "scanning", "current": 10, "total": 10},
     "result": {"scanned": 10, "added": 2, "missing": 1},
     "result_summary": "Scanned 10, added 2, missing 1",
     "error": null,
     "attempts": 1,
     "max_attempts": 1,
-    "dedupe_key": "library.reconcile:/media",
+    "dedupe_key": "dedupe_0123456789abcdef",
     "cancel_requested": false,
     "created_at": "2026-05-19T00:00:00+00:00",
     "updated_at": "2026-05-19T00:00:03+00:00",
@@ -1199,19 +1205,26 @@ Root video organization accepts the same `language` and `artwork_language` scrap
 
 ### Job schema
 
-Background jobs are persisted in SQLite and executed by the in-process actor runtime.
+Background jobs are persisted in SQLite and executed by the in-process actor
+runtime. The schema below describes the public projection; stored execution
+records retain their internal payload/result for retry and worker execution.
 
 - `id` (String): Primary key, formatted as `job_<uuid-hex>`.
 - `type` (String): Actor command such as `library.reconcile`, `metadata.scrape_library`, `analysis.analyze_movie`, or `organizer.organize_root`.
 - `status` (String): `queued`, `running`, `cancelling`, `succeeded`, `failed`, or `cancelled`.
-- `payload` (Object, Optional): Input captured when the job was queued.
-- `progress` (Object, Optional): Current stage, message, and optional `current` / `total` counters.
-- `result` (Object, Optional): Final handler result for succeeded jobs.
-- `result_summary` (String, Optional): UI-ready result text.
-- `error` (String, Optional): Failure message for failed jobs.
+- `payload` (Object, Optional): Sanitized, type-specific input summary. Most job
+  types expose `{}`; relink jobs expose source/hash identifiers and counts only.
+- `progress` (Object, Optional): Sanitized stage and optional numeric
+  `current` / `total` / `percent` counters; free-form messages are internal.
+- `result` (Object, Optional): Sanitized status, counts, booleans, and approved
+  token lists from the final handler result.
+- `result_summary` (String, Optional): Generated UI-safe result text.
+- `error` (String, Optional): Generic public failure/cancellation text; detailed
+  worker errors remain in the internal record and server logs.
 - `attempts` / `max_attempts` (Integer): Execution attempt counters.
 - `priority` (Integer): Higher-priority jobs are claimed first.
-- `dedupe_key` (String, Optional): Active jobs with the same key are reused instead of duplicated.
+- `dedupe_key` (String, Optional): Truncated SHA-256 identifier for the internal
+  dedupe key. Active jobs still reuse the full stored key.
 - `cancel_requested` (Boolean): Cooperative cancellation flag checked by long-running handlers.
 - `created_at`, `updated_at`, `started_at`, `finished_at` (String, Optional): UTC ISO timestamps.
 

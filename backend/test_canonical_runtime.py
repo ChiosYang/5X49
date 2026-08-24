@@ -12,12 +12,15 @@ import app.services.event_store as event_store_module
 import app.services.library as library_module
 import app.services.user_state as user_state_module
 from app.database import configure_sqlite_engine
+from app.jobs.runtime import JobRuntime
 from app.migrations.runner import run_migrations
 from app.models import Job, Viewing
 from app.services.canonical_runtime import canonical_runtime_writer
 from app.services.file_identity import FOREGROUND_BUDGET_BYTES, full_content_hash, observe_file
 from app.services.canonical_shadow import CanonicalShadowReader
+from app.services.compatibility_projection import rebuild_legacy_compatibility_projections
 from app.services.library import library_manager
+from app.services.library_sync import library_sync_service
 from app.services.user_state import movie_user_state_manager
 
 
@@ -71,6 +74,42 @@ class CanonicalRuntimeTests(unittest.TestCase):
                 for table in ("film", "library_item", "legacy_movie_alias")
             }
         self.assertEqual(counts, {"film": 1, "library_item": 2, "legacy_movie_alias": 2})
+
+    def test_startup_projection_calibration_repairs_drift_and_is_idempotent(self):
+        library_manager.add_movies([self._movie("projection_drift", "/media/drift/movie.mkv")])
+        movie_id = library_manager.get_movies()[0]["id"]
+        movie_user_state_manager.upsert(
+            movie_id,
+            favorite=True,
+            fields_set={"favorite"},
+        )
+        with self.engine.begin() as connection:
+            connection.execute(
+                text(
+                    "UPDATE movie SET overview=NULL, folder_path='legacy\\\\drift' "
+                    "WHERE id=:movie_id"
+                ),
+                {"movie_id": movie_id},
+            )
+            connection.execute(
+                text(
+                    "UPDATE movie_user_state SET updated_at='2000-01-01T00:00:00+00:00' "
+                    "WHERE movie_id=:movie_id"
+                ),
+                {"movie_id": movie_id},
+            )
+
+        before_movie = self.reader.compare_movie(movie_id)
+        before_state = self.reader.compare_user_states()
+        first = rebuild_legacy_compatibility_projections(self.engine)
+        second = rebuild_legacy_compatibility_projections(self.engine)
+
+        self.assertGreater(before_movie.records_different, 0)
+        self.assertGreater(before_state.records_different, 0)
+        self.assertEqual(self.reader.compare_movie(movie_id).records_different, 0)
+        self.assertEqual(self.reader.compare_user_states().records_different, 0)
+        self.assertEqual(first, {"movies_updated": 1, "user_states_updated": 1})
+        self.assertEqual(second, {"movies_updated": 0, "user_states_updated": 0})
 
     def test_library_read_source_defaults_to_canonical_and_can_roll_back_to_legacy(self):
         library_manager.add_movies([self._movie("scanner_read", "/media/read/movie.mkv")])
@@ -307,6 +346,69 @@ class CanonicalRuntimeTests(unittest.TestCase):
             self.assertTrue(restored["watched"])
             self.assertTrue(restored["favorite"])
             self.assertEqual(restored["notes"], "Keep me")
+
+    def test_pending_file_reconcile_clear_restore_preserves_permanent_alias(self):
+        media_root = Path(self._tmp.name) / "media"
+        movie_folder = media_root / "Pending Film (2026)"
+        movie_folder.mkdir(parents=True)
+        (movie_folder / "Pending Film (2026).mp4").write_bytes(b"pending-video")
+
+        first = library_sync_service.reconcile(str(media_root))
+        library_sync_service.reconcile(str(media_root))
+        original_id = library_manager.get_movies()[0]["id"]
+        movie_user_state_manager.upsert(
+            original_id,
+            favorite=True,
+            fields_set={"favorite"},
+        )
+
+        library_manager.clear_library()
+        restored = library_sync_service.reconcile(str(media_root))
+
+        self.assertEqual(first["scanned"], 1)
+        self.assertEqual(restored["scanned"], 1)
+        self.assertEqual([movie["id"] for movie in library_manager.get_movies()], [original_id])
+        self.assertTrue(movie_user_state_manager.get(original_id)["favorite"])
+
+    def test_public_job_redacts_internal_paths_from_all_exposed_fields(self):
+        media_root = str((Path(self._tmp.name) / "private-media").resolve())
+        internal = {
+            "id": "job_private_path",
+            "type": "library.reconcile",
+            "status": "succeeded",
+            "payload": {"media_dir": media_root},
+            "result": {"status": "success", "media_dir": media_root, "scanned": 1},
+            "result_summary": f"Scanned private media at {media_root}",
+            "error": f"Previous path: {media_root}",
+            "dedupe_key": f"library.reconcile:{media_root}",
+        }
+        public = JobRuntime.public_job(internal)
+
+        self.assertNotIn(media_root, json.dumps(public))
+        self.assertEqual(public["payload"], {})
+        self.assertEqual(public["result"], {"status": "success", "scanned": 1})
+
+        queued_internal = {
+            **internal,
+            "status": "queued",
+            "result": None,
+            "result_summary": None,
+            "error": None,
+        }
+        with patch("app.jobs.runtime.job_store") as store, patch(
+            "app.jobs.runtime.library_event_bus"
+        ) as event_bus:
+            store.find_active.return_value = None
+            store.create.return_value = queued_internal
+            accepted = JobRuntime().enqueue(
+                "library.reconcile",
+                {"media_dir": media_root},
+                dedupe_key=f"library.reconcile:{media_root}",
+            )
+
+        self.assertNotIn(media_root, json.dumps(accepted))
+        self.assertEqual(accepted["payload"], {})
+        event_bus.publish.assert_called_once_with("job_queued", {"job": accepted})
 
     def test_missing_cleanup_retires_item_and_rescan_restores_state(self):
         movie = self._movie("cleanup-restore", "/media/cleanup-restore/movie.mkv")
