@@ -106,6 +106,228 @@ class ExternalIdentity(SQLModel, table=True):
     updated_at: str = Field(default_factory=canonical_utc_now_iso)
 
 
+class Person(SQLModel, table=True):
+    __tablename__ = "person"
+    __table_args__ = (
+        CheckConstraint(
+            "resolution_status IN ('provisional', 'verified', 'review_required')",
+            name="ck_person_resolution",
+        ),
+        CheckConstraint(
+            "lifecycle_status IN ('active', 'merged', 'tombstoned')",
+            name="ck_person_lifecycle",
+        ),
+        Index("ix_person_normalized_name", "normalized_name"),
+        Index("ix_person_merged_into_id", "merged_into_id"),
+    )
+
+    id: str = Field(
+        primary_key=True,
+        foreign_key="graph_entity.id",
+        ondelete="RESTRICT",
+    )
+    canonical_name: str
+    normalized_name: str
+    sort_name: str | None = None
+    resolution_status: str = Field(default="provisional", index=True)
+    lifecycle_status: str = Field(default="active", index=True)
+    merged_into_id: str | None = Field(
+        default=None,
+        foreign_key="person.id",
+        ondelete="RESTRICT",
+    )
+    created_at: str = Field(default_factory=canonical_utc_now_iso)
+    updated_at: str = Field(default_factory=canonical_utc_now_iso)
+
+
+class Credit(SQLModel, table=True):
+    __tablename__ = "credit"
+    __table_args__ = (
+        UniqueConstraint("semantic_key", name="uq_credit_semantic_key"),
+        CheckConstraint(
+            "billing_order IS NULL OR billing_order >= 0",
+            name="ck_credit_billing_order",
+        ),
+        CheckConstraint("length(trim(department)) > 0", name="ck_credit_department"),
+        CheckConstraint("length(trim(job)) > 0", name="ck_credit_job"),
+        Index("ix_credit_film_department", "film_id", "department"),
+        Index("ix_credit_person_job", "person_id", "job"),
+    )
+
+    id: str = Field(primary_key=True)
+    film_id: str = Field(foreign_key="film.id", ondelete="RESTRICT", index=True)
+    person_id: str = Field(foreign_key="person.id", ondelete="RESTRICT", index=True)
+    department: str
+    job: str
+    character: str = ""
+    billing_order: int | None = None
+    semantic_key: str
+    created_at: str = Field(default_factory=canonical_utc_now_iso)
+    updated_at: str = Field(default_factory=canonical_utc_now_iso)
+
+
+class CreditProvenance(SQLModel, table=True):
+    __tablename__ = "credit_provenance"
+    __table_args__ = (
+        UniqueConstraint(
+            "credit_id",
+            "origin_kind",
+            "origin_ref",
+            name="uq_credit_provenance_origin",
+        ),
+        Index(
+            "ix_credit_provenance_origin_active",
+            "origin_kind",
+            "origin_ref",
+            "superseded_at",
+        ),
+    )
+
+    id: str = Field(primary_key=True)
+    credit_id: str = Field(foreign_key="credit.id", ondelete="RESTRICT", index=True)
+    origin_kind: str
+    origin_ref: str
+    observed_at: str
+    superseded_at: str | None = None
+
+
+class Concept(SQLModel, table=True):
+    __tablename__ = "concept"
+    __table_args__ = (
+        UniqueConstraint("kind", "canonical_key", name="uq_concept_kind_key"),
+        CheckConstraint(
+            "kind IN ('genre', 'theme', 'movement', 'visual_style', 'micro_genre')",
+            name="ck_concept_kind",
+        ),
+        CheckConstraint(
+            "lifecycle_status IN ('active', 'merged', 'tombstoned')",
+            name="ck_concept_lifecycle",
+        ),
+        Index("ix_concept_kind_name", "kind", "canonical_name"),
+        Index("ix_concept_merged_into_id", "merged_into_id"),
+    )
+
+    id: str = Field(
+        primary_key=True,
+        foreign_key="graph_entity.id",
+        ondelete="RESTRICT",
+    )
+    kind: str
+    canonical_key: str
+    canonical_name: str
+    description: str | None = None
+    lifecycle_status: str = Field(default="active", index=True)
+    merged_into_id: str | None = Field(
+        default=None,
+        foreign_key="concept.id",
+        ondelete="RESTRICT",
+    )
+    created_at: str = Field(default_factory=canonical_utc_now_iso)
+    updated_at: str = Field(default_factory=canonical_utc_now_iso)
+
+
+class ConceptAlias(SQLModel, table=True):
+    __tablename__ = "concept_alias"
+    __table_args__ = (
+        UniqueConstraint(
+            "concept_id",
+            "locale",
+            "normalized_alias",
+            name="uq_concept_alias_value",
+        ),
+        Index("ix_concept_alias_locale_value", "locale", "normalized_alias"),
+    )
+
+    id: str = Field(primary_key=True)
+    concept_id: str = Field(foreign_key="concept.id", ondelete="RESTRICT", index=True)
+    locale: str = "und"
+    alias: str
+    normalized_alias: str
+    provenance_ref: str
+    created_at: str = Field(default_factory=canonical_utc_now_iso)
+    updated_at: str = Field(default_factory=canonical_utc_now_iso)
+
+
+class FilmTitle(SQLModel, table=True):
+    __tablename__ = "film_title"
+    __table_args__ = (
+        UniqueConstraint(
+            "film_id",
+            "locale",
+            "title_type",
+            "normalized_title",
+            "origin_kind",
+            "origin_ref",
+            name="uq_film_title_source_value",
+        ),
+        CheckConstraint(
+            "title_type IN ('canonical', 'original', 'localized', 'alternative')",
+            name="ck_film_title_type",
+        ),
+        Index("ix_film_title_search", "normalized_title", "locale"),
+        Index("ix_film_title_film_active", "film_id", "superseded_at"),
+    )
+
+    id: str = Field(primary_key=True)
+    film_id: str = Field(foreign_key="film.id", ondelete="RESTRICT", index=True)
+    locale: str = "und"
+    title_type: str
+    title: str
+    normalized_title: str
+    origin_kind: str
+    origin_ref: str
+    observed_at: str
+    superseded_at: str | None = None
+
+
+class FilmCountry(SQLModel, table=True):
+    __tablename__ = "film_country"
+    __table_args__ = (
+        UniqueConstraint("film_id", "iso_3166_1", name="uq_film_country_code"),
+        CheckConstraint(
+            "length(iso_3166_1) = 2 AND iso_3166_1 = upper(iso_3166_1) "
+            "AND iso_3166_1 GLOB '[A-Z][A-Z]'",
+            name="ck_film_country_iso_3166_1",
+        ),
+        Index("ix_film_country_code", "iso_3166_1"),
+    )
+
+    id: str = Field(primary_key=True)
+    film_id: str = Field(foreign_key="film.id", ondelete="RESTRICT", index=True)
+    iso_3166_1: str
+    created_at: str = Field(default_factory=canonical_utc_now_iso)
+    updated_at: str = Field(default_factory=canonical_utc_now_iso)
+
+
+class FilmCountryProvenance(SQLModel, table=True):
+    __tablename__ = "film_country_provenance"
+    __table_args__ = (
+        UniqueConstraint(
+            "film_country_id",
+            "origin_kind",
+            "origin_ref",
+            name="uq_film_country_provenance_origin",
+        ),
+        Index(
+            "ix_film_country_provenance_origin_active",
+            "origin_kind",
+            "origin_ref",
+            "superseded_at",
+        ),
+    )
+
+    id: str = Field(primary_key=True)
+    film_country_id: str = Field(
+        foreign_key="film_country.id",
+        ondelete="RESTRICT",
+        index=True,
+    )
+    origin_kind: str
+    origin_ref: str
+    observed_at: str
+    superseded_at: str | None = None
+
+
 class LibraryItem(SQLModel, table=True):
     __tablename__ = "library_item"
     __table_args__ = (
@@ -158,6 +380,51 @@ class LibraryItem(SQLModel, table=True):
     match_confidence: float | None = None
     created_at: str = Field(default_factory=canonical_utc_now_iso)
     updated_at: str = Field(default_factory=canonical_utc_now_iso)
+
+
+class StructuredMetadataReview(SQLModel, table=True):
+    __tablename__ = "structured_metadata_review"
+    __table_args__ = (
+        UniqueConstraint("review_key", name="uq_structured_metadata_review_key"),
+        CheckConstraint(
+            "field_kind IN ('title', 'country', 'person', 'credit', 'concept')",
+            name="ck_structured_metadata_review_field",
+        ),
+        CheckConstraint(
+            "status IN ('open', 'resolved', 'dismissed')",
+            name="ck_structured_metadata_review_status",
+        ),
+        Index(
+            "ix_structured_metadata_review_film_status",
+            "film_id",
+            "status",
+        ),
+        Index(
+            "ix_structured_metadata_review_field_status",
+            "field_kind",
+            "status",
+        ),
+    )
+
+    id: str = Field(primary_key=True)
+    film_id: str = Field(foreign_key="film.id", ondelete="RESTRICT", index=True)
+    library_item_id: str | None = Field(
+        default=None,
+        foreign_key="library_item.id",
+        ondelete="RESTRICT",
+        index=True,
+    )
+    field_kind: str
+    reason_code: str
+    raw_value: Any | None = Field(default=None, sa_column=Column(JSON))
+    raw_value_hash: str
+    origin_kind: str
+    origin_ref: str
+    review_key: str
+    status: str = Field(default="open", index=True)
+    created_at: str = Field(default_factory=canonical_utc_now_iso)
+    updated_at: str = Field(default_factory=canonical_utc_now_iso)
+    resolved_at: str | None = None
 
 
 class LibraryItemLocatorHistory(SQLModel, table=True):

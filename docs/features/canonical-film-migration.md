@@ -223,10 +223,15 @@ Status: Blocked
 - Verification: complete fixture matrix, real-library-copy rehearsal, restore
   exercise, sensitive-data scan, and recorded Gate A review conclusion.
 
-Person/Credit/Concept implementation remains later W3 work. Assertion,
-Evidence, and AnalysisRun persistence, deduplication, rejected-state protection,
-and quality evaluation belong to W4 and Gate B; their design boundary is not a
-Gate A implementation requirement.
+Person/Credit/Concept schema is implemented by the later W3 structured-metadata
+feature; its deterministic backfill and runtime synchronization remain later W3
+work. Assertion, Evidence, and AnalysisRun persistence, deduplication,
+rejected-state protection, and quality evaluation belong to W4 and Gate B;
+their design boundary is not a Gate A implementation requirement.
+
+The later W3 work is tracked independently in
+`docs/features/structured-metadata-migration.md`. Its schema v6 regression was
+rehearsed through this Gate tool without expanding Gate A's evidence boundary.
 
 ## Verification evidence
 
@@ -322,7 +327,7 @@ Gate A implementation requirement.
   naturally aged real-library-copy rehearsal and the Docker evidence matrix both
   pass. The curated acceptance rehearsal passes locally but Gate A has not
   passed.
-- The nine migration fixtures and generated runtime fixtures cover schema v5,
+- The nine migration fixtures and generated runtime fixtures now extend through schema v6,
   identity conflicts, multiple editions, aliases, relink fingerprints, dual
   writes, and compatibility switching. They are not a substitute for exercising
   a private real-world library copy with large media files.

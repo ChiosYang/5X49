@@ -10,10 +10,17 @@ from sqlmodel import Session, select, delete
 from app.database import engine, create_db_and_tables, get_session
 from app.models import (
     CanonicalBackfillRun,
+    Concept,
+    ConceptAlias,
+    Credit,
+    CreditProvenance,
     EventRecord,
     ExternalIdentity,
     Film,
+    FilmCountry,
+    FilmCountryProvenance,
     FilmProfileState,
+    FilmTitle,
     GraphEntity,
     IdentityReview,
     Job,
@@ -24,6 +31,8 @@ from app.models import (
     MediaAsset,
     Movie,
     MovieUserState,
+    Person,
+    StructuredMetadataReview,
     Viewing,
 )
 from app.services.event_store import event_store
@@ -638,12 +647,21 @@ class LibraryManager:
             session.exec(delete(EventRecord))
             session.exec(delete(Viewing))
             session.exec(delete(FilmProfileState))
+            session.exec(delete(StructuredMetadataReview))
+            session.exec(delete(CreditProvenance))
+            session.exec(delete(Credit))
+            session.exec(delete(FilmCountryProvenance))
+            session.exec(delete(FilmCountry))
+            session.exec(delete(FilmTitle))
+            session.exec(delete(ConceptAlias))
             session.exec(delete(IdentityReview))
             session.exec(delete(MediaAsset))
             session.exec(delete(LibraryItemLocatorHistory))
             session.exec(delete(LegacyMovieAlias))
             session.exec(delete(LibraryItem))
             session.exec(delete(ExternalIdentity))
+            session.exec(delete(Person))
+            session.exec(delete(Concept))
             session.exec(delete(Film))
             session.exec(delete(GraphEntity))
             session.exec(delete(LocalProfile))

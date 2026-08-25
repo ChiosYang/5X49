@@ -1,8 +1,9 @@
 # Canonical Migration Gate A quality summary
 
-- Evidence date: 2026-08-24
+- Evidence date: 2026-08-25
 - Report schema: 1
 - Gate implementation commit: `70f525a`
+- Current migration target: schema v6
 - Development-copy source fingerprint: `b7a2da987e309d52`
 - Curated-acceptance source fingerprint: `978d1a20ee62b4ac`
 - Gate conclusion: **Blocked**
@@ -20,11 +21,11 @@ Git-ignored `backend/data/gate-a/` review area.
 | Runtime reconcile, clear/restore, relink, and hashing | Passed | Generated normal-profile plus isolated mini-library |
 | Canonical/Legacy consistency and privacy canaries | Passed | Fixtures and generated mini-library |
 | Development database copy rehearsal | Passed locally, blocked as evidence | Byte-identical clone; non-gating only |
-| Curated acceptance database and media-root rehearsal | Passed locally, non-gating | Normal product scan, scrape, organizer, personal-state, restore, and privacy paths |
+| Curated acceptance database and media-root rehearsal | Passed locally on v6, non-gating | Normal product scan, scrape, organizer, personal-state, restore, and privacy paths |
 | Naturally aged real-library rehearsal | Blocked | Private real-world input not supplied |
 | Docker config/build/upgrade/read-source/restore/browser matrix | Blocked | Docker CLI unavailable |
 
-Automated backend verification completed in under one minute with 127 passing
+Automated backend verification completed in under one minute with 135 passing
 tests and reported only synthetic test totals. Compose files parsed, the Docker
 script passed PowerShell syntax validation, and frontend lint, type checking,
 and production build completed successfully. No real-library record count is
@@ -58,7 +59,15 @@ error, and dedupe fields are now sanitized while stored worker data remains
 available for execution and retry. This evidence remains curated and does not
 replace a naturally aged private library copy.
 
-Person/Credit/Concept implementation remains later W3 work.
+The schema v6 regression run `structured-metadata-v6-20260825` upgraded the
+same fixed offline input without modifying it and passed every local upgrade,
+idempotence, consistency, restore, runtime, destructive-clear, and privacy
+check. The new structured-metadata tables remained schema-only, fresh/create-all
+and v5-to-v6 paths were equivalent, and deep clear covered the new FK order.
+This regression does not change the input's curated/non-gating classification.
+
+Person/Credit/Concept schema is implemented in W3 version 6; deterministic
+backfill and runtime synchronization remain later W3 work.
 Assertion/Evidence/AnalysisRun persistence, deduplication, rejected-state
 protection, and evaluation are W4/Gate B evidence, not Gate A implementation
 checks.

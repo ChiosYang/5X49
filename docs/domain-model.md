@@ -1,6 +1,6 @@
 # Film / LibraryItem 领域模型 RFC
 
-> 状态：Adopted；W3 Slice 1 Schema 已实现
+> 状态：Adopted；Canonical v1–v5 与 W3 Structured Metadata Schema v6 已实现
 > 目标阶段：Gate A / W2 Schema Ready
 > 基线：`origin/main` at `4426a6a`
 > 范围：领域边界、逻辑 Schema、约束、兼容与迁移策略
@@ -96,8 +96,9 @@ erDiagram
 ```
 
 辅助关系 `FilmTitle`、`ConceptAlias`、`FilmCountry`、`FilmProfileState`、
-`LibraryItemLocatorHistory` 和 `CreditProvenance` 可以在 W3 Schema 中实现；它们不改变
-本 RFC 的聚合边界。
+`LibraryItemLocatorHistory` 和 `CreditProvenance` 已由相应 W3 additive Schema 实现；它们不改变
+本 RFC 的聚合边界。W3 不增加临时 `FilmConcept` 表，Film 与 Concept 的正式关系仍由 W4
+factual Assertion 表达。
 
 ## 4. 模型定义
 
@@ -125,10 +126,12 @@ erDiagram
 - PK `id`；`merged_into_id` FK → `Film.id`，`ON DELETE RESTRICT`。
 - 索引 `(release_year, canonical_title)`、规范化 title 搜索索引和 `merged_into_id`。
 - title + year **不唯一**。同名、同年不同作品必须可以共存。
-- `FilmTitle(film_id, locale, title_type, title, normalized_title, provenance_ref)` 保存
-  `title_cn`、别名和本地化标题；索引 `(normalized_title, locale)`。
-- `FilmCountry(film_id, iso_3166_1, provenance_ref)` 保存国家代码。无法规范化的旧名称先进入
-  review/raw source，不用本地化名称生成稳定 ID。
+- `FilmTitle(film_id, locale, title_type, title, normalized_title, origin_kind, origin_ref,
+  observed_at, superseded_at)` 保存 `title_cn`、别名和本地化标题；索引
+  `(normalized_title, locale)`。同一来源刷新只 supersede 自己的候选。
+- `FilmCountry(film_id, iso_3166_1)` 保存唯一的大写 ISO 3166-1 alpha-2 关系，
+  `FilmCountryProvenance` 保存多来源观察。无法规范化的旧名称先进入 review/raw source，不用
+  本地化名称生成稳定 ID。
 
 生命周期：扫描不能删除 Film。没有 LibraryItem 的 Film 是合法孤立/Unowned Film，仍可被
 Viewing、Credit、Assertion 或 Graph 引用。硬删除仅允许显式维护操作，并要求不存在这些
@@ -277,10 +280,12 @@ UNIQUE(profile_id, film_id)
 
 ### 4.7 Person 与 Credit
 
-`Person` 字段为 `id`（FK → GraphEntity）、`canonical_name`、可选 `sort_name`、
-`lifecycle_status`、`merged_into_id` 和时间戳。姓名不唯一；规范化姓名只建搜索索引。TMDB 等
-身份使用 ExternalIdentity；没有外部 ID 的旧演员/导演先创建 source-scoped provisional
-Person，不能仅按同名全库强制合并。
+`Person` 字段为 `id`（FK → GraphEntity）、`canonical_name`、`normalized_name`、可选
+`sort_name`、`resolution_status`（`provisional/verified/review_required`）、
+`lifecycle_status`、`merged_into_id` 和时间戳。姓名不唯一；规范化姓名只建非唯一搜索索引。
+TMDB 等身份使用 ExternalIdentity；没有外部 ID 的旧演员/导演使用 provider
+`legacy.local.person`，external ID 为 `SHA-256(source_instance_id + normalized_name)` 的不透明
+值，只在同一 source instance 内复用，不能仅按同名跨来源合并。
 
 `Credit` 字段：
 
@@ -295,8 +300,8 @@ Person，不能仅按同名全库强制合并。
 | `created_at` / `updated_at` | 审计时间 |
 
 `UNIQUE(semantic_key)` 去重 canonical Credit。不同 NFO/TMDB/人工来源写入
-`CreditProvenance(credit_id, origin_kind, origin_ref, observed_at)`，不通过复制 Credit 表达。
-metadata 刷新只能 supersede 对应来源，不能删除人工 curated Credit。
+`CreditProvenance(credit_id, origin_kind, origin_ref, observed_at, superseded_at)`，不通过复制
+Credit 表达。metadata 刷新只能 supersede 对应来源，不能删除人工 curated Credit。
 
 ### 4.8 Concept
 
@@ -312,9 +317,18 @@ metadata 刷新只能 supersede 对应来源，不能删除人工 curated Credit
 | `created_at` / `updated_at` | 审计时间 |
 
 `UNIQUE(kind, canonical_key)`；索引 `(kind, canonical_name)`。别名和本地化值进入
-`ConceptAlias(concept_id, locale, alias, normalized_alias, provenance_ref)`。Genre 等结构化
-赋值可以落为 `source_scope=factual` 的 Assertion；Theme/Movement/Visual Style 通常来自
-curated 或 inferred Assertion。概念名称本身不构成关系 Evidence。
+`ConceptAlias(concept_id, locale, alias, normalized_alias, provenance_ref)` 在同一 Concept 内
+去重，但允许两个 Concept 拥有相同别名，以便解析歧义进入 review。W3 只建立受控 Genre
+字典与别名，不持久化 Film-to-Concept；Genre 等结构化赋值在 W4 落为
+`source_scope=factual` 的 Assertion。Theme/Movement/Visual Style 通常来自 curated 或
+inferred Assertion。概念名称本身不构成关系 Evidence。
+
+### 4.8.1 Structured metadata review
+
+`StructuredMetadataReview` 保存 Film、可选 LibraryItem、字段类型、原因码、字段级 raw value、
+raw hash、来源、唯一 review key、状态和时间戳。raw value 上限为 4 KiB，不得包含绝对路径、
+file URI、credential 字段、API key 或整个 NFO/TMDB 文档。review key 对 Film、字段、原因、
+来源和 raw hash 的 canonical JSON 计算 SHA-256，保证回填和刷新幂等。
 
 ### 4.9 Assertion
 
@@ -631,8 +645,9 @@ MovieUserState 当前行 + verified backup 为基线，事件只用于审计核�
    记录 review。无外部身份时每旧 Movie 单独创建 Film。
 6. **回填收藏与资产**：每旧 Movie 创建 LibraryItem、LegacyMovieAlias、视频/NFO/artwork
    MediaAsset；保留 status 和时间。
-7. **后续 W3 结构化 metadata**：title/country、Person/Credit 与 Genre Concept 基础映射；
-   保留 raw source 和无法解析项，不作为 Gate A 通过条件。
+7. **后续 W3 结构化 metadata**：Schema v6 已建立 title/country、Person/Credit、Genre Concept
+   字典与 review/provenance 基础；回填与运行时同步由独立 Feature 的后续 slices 完成。保留
+   字段级 raw source 和无法解析项，不作为 Gate A 通过条件。
 8. **回填个人数据**：先 FilmProfileState，再按第 5.2 节创建 legacy Viewing；对每个旧状态记录
    输出迁移结果。
 9. **后续 W4 分析迁移**：每个 legacy analysis payload 创建 migration AnalysisRun/artifact；
@@ -703,7 +718,8 @@ RFC/决策：
 
 实现 Gate（本 RFC 不声称已经通过）：
 
-- [x] 版本化 migration runner 和 v1–v5 additive schema migration 已实现并 review。
+- [x] 版本化 migration runner 和 v1–v6 additive schema migration 已实现并 review；v6 不扩大
+  Gate A 的验收边界。
 - [x] 九套旧库 fixture 与 fresh `create_all` 向前迁移和重复执行通过。
 - [x] 隔离 fixture 的迁移前备份、失败恢复和离线恢复/重迁移测试通过。
 - [ ] 真实资料库副本的 Film/LibraryItem/Viewing/alias 数量与字段一致性报告通过。
@@ -750,8 +766,9 @@ Gate 阶段，但它仍是生成媒体，不替代自然积累的真实资料库
    Viewing；需要在 API 文档实施阶段明确告知旧客户端。
 5. **Analysis raw input/output 保留期**：需在可诊断性、隐私、成本复核和数据库体积之间确定
    默认期限；密钥、绝对路径和 hidden reasoning 无论如何都不保存。
-6. **Concept 受控词表治理**：Genre/micro-genre/theme/movement 的 canonical key、别名合并和
-   人工审核入口需要独立字典/Graph RFC。
+6. **Concept 受控词表治理**：Schema 与 W3/W4 持久化边界已确认；Genre canonical key、初始
+   别名集和来源优先级必须在 Structured Metadata Slice 2 开始前形成版本化字典。micro-genre、
+   theme 和 movement 的治理仍留给 Analysis/Graph RFC。
 7. **Evidence 抓取边界**：允许保存的 claim 长度、URI allow/deny 规则、失效链接和版权处理
    需要在 Analysis V2 RFC 中确定。
 8. **Film merge/unmerge 操作面**：本 RFC 定义 redirect 与 RESTRICT，但批量合并、撤销和冲突

@@ -86,6 +86,15 @@ and indexes to MediaAsset. Existing files are not opened during migration;
 normal reconcile fills stable platform identity, the versioned bounded
 fingerprint, and complete hashes where the foreground read budget permits.
 
+Migration version 6 adds the W3 structured-metadata foundation: Person, Credit
+and CreditProvenance, Concept and ConceptAlias, source-owned FilmTitle,
+FilmCountry and its provenance, and StructuredMetadataReview. The migration is
+schema-only. It does not inspect legacy rows, seed a vocabulary, access media or
+the network, or change the legacy API. Provider person identities continue to
+use ExternalIdentity; provisional local identities are hashed from one source
+instance and a normalized name by the runtime contract. Film-to-Concept edges
+remain W4 factual Assertions and are not part of version 6.
+
 ## Startup Sequence
 
 Database initialization runs before the job runtime and filesystem watcher:

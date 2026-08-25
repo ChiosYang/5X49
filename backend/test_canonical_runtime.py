@@ -317,6 +317,7 @@ class CanonicalRuntimeTests(unittest.TestCase):
             notes="Keep me",
             fields_set={"watched", "favorite", "notes"},
         )
+        self._insert_structured_metadata(compatibility_id)
 
         library_manager.clear_library()
 
@@ -325,6 +326,22 @@ class CanonicalRuntimeTests(unittest.TestCase):
         with self.engine.connect() as connection:
             self.assertEqual(connection.execute(text("SELECT COUNT(*) FROM film")).scalar_one(), 1)
             self.assertEqual(connection.execute(text("SELECT COUNT(*) FROM viewing")).scalar_one(), 1)
+            for table in (
+                "person",
+                "credit",
+                "credit_provenance",
+                "concept",
+                "concept_alias",
+                "film_title",
+                "film_country",
+                "film_country_provenance",
+                "structured_metadata_review",
+            ):
+                self.assertEqual(
+                    connection.execute(text(f"SELECT COUNT(*) FROM {table}")).scalar_one(),
+                    1,
+                    table,
+                )
 
         library_manager.add_movies([movie])
 
@@ -438,6 +455,7 @@ class CanonicalRuntimeTests(unittest.TestCase):
             favorite=True,
             fields_set={"watched", "favorite"},
         )
+        self._insert_structured_metadata(movie_id)
         with self.engine.connect() as connection:
             journal_before = connection.execute(
                 text("SELECT COUNT(*) FROM schema_migrations")
@@ -457,6 +475,15 @@ class CanonicalRuntimeTests(unittest.TestCase):
                 "legacy_movie_alias",
                 "library_item",
                 "external_identity",
+                "structured_metadata_review",
+                "credit_provenance",
+                "credit",
+                "film_country_provenance",
+                "film_country",
+                "film_title",
+                "concept_alias",
+                "person",
+                "concept",
                 "film",
                 "graph_entity",
                 "local_profile",
@@ -637,6 +664,113 @@ class CanonicalRuntimeTests(unittest.TestCase):
             "metadata_source": "nfo",
             "scrape_status": "matched",
         }
+
+    def _insert_structured_metadata(self, movie_id: str) -> None:
+        now = "2026-08-25T00:00:00Z"
+        person_id = "person_" + "d" * 32
+        concept_id = "concept_" + "e" * 32
+        with self.engine.begin() as connection:
+            owner = connection.execute(
+                text(
+                    "SELECT film_id, library_item_id FROM legacy_movie_alias "
+                    "WHERE legacy_movie_id=:movie_id"
+                ),
+                {"movie_id": movie_id},
+            ).mappings().one()
+            for entity_id, entity_type in ((person_id, "person"), (concept_id, "concept")):
+                connection.execute(
+                    text(
+                        "INSERT INTO graph_entity "
+                        "(id, entity_type, lifecycle_status, created_at, updated_at) "
+                        "VALUES (:id, :type, 'active', :now, :now)"
+                    ),
+                    {"id": entity_id, "type": entity_type, "now": now},
+                )
+            connection.execute(
+                text(
+                    "INSERT INTO person "
+                    "(id, canonical_name, normalized_name, resolution_status, lifecycle_status, "
+                    "created_at, updated_at) VALUES "
+                    "(:id, 'Runtime Director', 'runtime director', 'provisional', "
+                    "'active', :now, :now)"
+                ),
+                {"id": person_id, "now": now},
+            )
+            connection.execute(
+                text(
+                    "INSERT INTO credit "
+                    "(id, film_id, person_id, department, job, character, semantic_key, "
+                    "created_at, updated_at) VALUES "
+                    "('credit_runtime', :film, :person, 'Directing', 'Director', '', "
+                    "'runtime-credit-key', :now, :now)"
+                ),
+                {"film": owner["film_id"], "person": person_id, "now": now},
+            )
+            connection.execute(
+                text(
+                    "INSERT INTO credit_provenance "
+                    "(id, credit_id, origin_kind, origin_ref, observed_at) VALUES "
+                    "('credit_provenance_runtime', 'credit_runtime', 'nfo', :origin, :now)"
+                ),
+                {"origin": owner["library_item_id"], "now": now},
+            )
+            connection.execute(
+                text(
+                    "INSERT INTO concept "
+                    "(id, kind, canonical_key, canonical_name, lifecycle_status, created_at, updated_at) "
+                    "VALUES (:id, 'genre', 'drama', 'Drama', 'active', :now, :now)"
+                ),
+                {"id": concept_id, "now": now},
+            )
+            connection.execute(
+                text(
+                    "INSERT INTO concept_alias "
+                    "(id, concept_id, locale, alias, normalized_alias, provenance_ref, "
+                    "created_at, updated_at) VALUES "
+                    "('concept_alias_runtime', :concept, 'en', 'Drama', 'drama', "
+                    "'genre-v1', :now, :now)"
+                ),
+                {"concept": concept_id, "now": now},
+            )
+            connection.execute(
+                text(
+                    "INSERT INTO film_title "
+                    "(id, film_id, locale, title_type, title, normalized_title, origin_kind, "
+                    "origin_ref, observed_at) VALUES "
+                    "('film_title_runtime', :film, 'zh-CN', 'localized', '运行时电影', "
+                    "'运行时电影', 'nfo', :origin, :now)"
+                ),
+                {"film": owner["film_id"], "origin": owner["library_item_id"], "now": now},
+            )
+            connection.execute(
+                text(
+                    "INSERT INTO film_country "
+                    "(id, film_id, iso_3166_1, created_at, updated_at) VALUES "
+                    "('film_country_runtime', :film, 'CN', :now, :now)"
+                ),
+                {"film": owner["film_id"], "now": now},
+            )
+            connection.execute(
+                text(
+                    "INSERT INTO film_country_provenance "
+                    "(id, film_country_id, origin_kind, origin_ref, observed_at) VALUES "
+                    "('film_country_provenance_runtime', 'film_country_runtime', 'nfo', "
+                    ":origin, :now)"
+                ),
+                {"origin": owner["library_item_id"], "now": now},
+            )
+            connection.execute(
+                text(
+                    "INSERT INTO structured_metadata_review "
+                    "(id, film_id, library_item_id, field_kind, reason_code, raw_value, "
+                    "raw_value_hash, origin_kind, origin_ref, review_key, status, "
+                    "created_at, updated_at) VALUES "
+                    "('structured_review_runtime', :film, :item, 'country', 'unknown_name', "
+                    "'\"Unknownland\"', 'runtime-raw-hash', 'nfo', :item, "
+                    "'runtime-review-key', 'open', :now, :now)"
+                ),
+                {"film": owner["film_id"], "item": owner["library_item_id"], "now": now},
+            )
 
 
 if __name__ == "__main__":

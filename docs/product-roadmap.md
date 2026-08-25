@@ -167,7 +167,7 @@ W12 发布 Public Beta，W13–W14 继续观察第二周留存。12 周内不以
 Film
   ├── FilmIdentity (TMDB / IMDb / future providers)
   ├── Credit → Person
-  ├── FilmConcept → Concept
+  ├── factual Assertion → Concept
   ├── Assertion → Other Entity
   ├── LibraryItem
   │     └── MediaAsset
@@ -209,10 +209,12 @@ Graph API 可以把 Credit 投影为 `DIRECTED_BY`、`ACTED_IN` 或 `SHOT_BY`，
 Genre、Theme、Movement 可以使用带 `kind` 的 Concept 表，但必须维护不同来源和审核策略：
 
 ```text
-Concept.kind = genre | theme | movement | visual_style
+Concept.kind = genre | theme | movement | visual_style | micro_genre
 ```
 
 Country 使用 ISO 代码，Studio 和 Collection 使用稳定外部 ID；不要仅依靠本地化名称去重。
+W3 只建立 Concept 字典和别名解析基础，不增加临时 `FilmConcept` 表；Film 与 Genre 的正式
+关系在 W4 统一写为 factual Assertion。
 
 ### 6.5 Assertion、Evidence 与 Provenance 分离
 
@@ -479,6 +481,9 @@ POST   /restore/preview
 
 Gate A 只验收 Canonical Library、Media、Viewing 和旧 API 兼容层。Person、Credit、Concept
 仍属于 W3 的后续实现，不阻塞 Slice 5 的本地工具完成，但它们完成前 W3 本身不算结束。
+
+当前进度（2026-08-25）：Structured Metadata Slice 1 已完成 Schema v6、确定性 key、provenance
+和 review 基础；Legacy 回填、NFO/TMDB 运行时同步及 W3 一致性验收仍待后续 slices。
 
 #### 交付物
 

@@ -141,9 +141,16 @@ class EventRecord(SQLModel, table=True):
 # tables whenever the existing `app.models` module is imported.
 from app.canonical_models import (  # noqa: E402, F401
     CanonicalBackfillRun,
+    Concept,
+    ConceptAlias,
+    Credit,
+    CreditProvenance,
     ExternalIdentity,
     Film,
+    FilmCountry,
+    FilmCountryProvenance,
     FilmProfileState,
+    FilmTitle,
     GraphEntity,
     IdentityReview,
     LegacyMovieAlias,
@@ -151,5 +158,7 @@ from app.canonical_models import (  # noqa: E402, F401
     LibraryItemLocatorHistory,
     LocalProfile,
     MediaAsset,
+    Person,
+    StructuredMetadataReview,
     Viewing,
 )

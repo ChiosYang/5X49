@@ -212,7 +212,7 @@ def run_rehearsal(input_dir: Path, run_dir: Path) -> dict[str, Any]:
             engine.dispose()
         phases["upgrade"] = "passed"
         checks.append(_check(
-            "schema-upgraded-to-v5",
+            "schema-upgraded-to-v6",
             migration.current_version == MIGRATIONS[-1].version,
             {"version": migration.current_version},
         ))
@@ -752,6 +752,15 @@ def _deep_clear_check(working_database: Path, run_dir: Path) -> dict[str, Any]:
                     "legacy_movie_alias",
                     "viewing",
                     "identity_review",
+                    "person",
+                    "credit",
+                    "credit_provenance",
+                    "concept",
+                    "concept_alias",
+                    "film_title",
+                    "film_country",
+                    "film_country_provenance",
+                    "structured_metadata_review",
                     "job",
                     "events",
                 )
