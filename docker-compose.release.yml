@@ -11,6 +11,8 @@ services:
       - ${MEDIA_DIR:-./media}:/media
     environment:
       - TMDB_API_KEY=${TMDB_API_KEY:-}
+      - TMDB_SCRAPE_CONCURRENCY=${TMDB_SCRAPE_CONCURRENCY:-3}
+      - TMDB_API_REQUESTS_PER_SECOND=${TMDB_API_REQUESTS_PER_SECOND:-6}
       - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
       - MODEL_NAME=${MODEL_NAME:-openrouter/pony-alpha}
       - API_BASE_URL=${API_BASE_URL:-https://openrouter.ai/api/v1}

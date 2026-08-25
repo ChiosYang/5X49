@@ -118,6 +118,8 @@ Dockerfile 静态基线：
 | --- | --- | --- |
 | `MEDIA_DIR` | 宿主机 `${MEDIA_DIR:-./media}` 绑定到容器 `/media` | 使用仓库相对目录 `./media`；后端容器内仍固定为 `/media` |
 | `TMDB_API_KEY` | 传入 backend，默认空 | 基础 NFO 扫描代码不依赖；TMDB 搜索/刮削调用会缺少凭据 |
+| `TMDB_SCRAPE_CONCURRENCY` | 默认 `3`，允许 `1`～`8` | 整库 TMDB 刮削同时处理的电影数；非法值回退到 `3` |
+| `TMDB_API_REQUESTS_PER_SECOND` | 默认 `6`，允许 `1`～`30` | 单个 backend 进程共享的 TMDB API 请求速率；非法值回退到 `6` |
 | `OPENROUTER_API_KEY` | 传入 backend，默认空 | 设置服务回退到缓存/内置模型列表；实际 AI 调用不可用 |
 | `MODEL_NAME` | 默认 `openrouter/pony-alpha` | 仅模型名回退，不提供访问凭据 |
 | `API_BASE_URL` | 默认 `https://openrouter.ai/api/v1` | 仅 AI provider URL |

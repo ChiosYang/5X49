@@ -1,5 +1,7 @@
-import os
+from concurrent.futures import FIRST_COMPLETED, Future, ThreadPoolExecutor, wait
 from datetime import datetime, timezone
+import logging
+import os
 from pathlib import Path
 from typing import Callable
 
@@ -11,10 +13,11 @@ from app.services.library_sync import library_sync_service
 from app.services.metadata.models import BatchScrapeOptions, RootOrganizeOptions, ScrapeOptions
 from app.services.metadata.organizer import root_video_organizer
 from app.services.metadata.scraper import metadata_scraper
-from app.services.settings import get_media_dir
+from app.services.settings import get_media_dir, get_tmdb_scrape_concurrency
 
 
 DEFAULT_MEDIA_DIR = os.getenv("MEDIA_DIR", "/media")
+logger = logging.getLogger(__name__)
 
 
 def _media_dir(payload: dict) -> str:
@@ -74,9 +77,19 @@ def scrape_library(payload: dict, ctx) -> dict:
     ctx.progress(stage="scraping", current=0, total=total, message="Scraping metadata")
 
     try:
-        for movie in movies:
-            ctx.raise_if_cancelled()
-            scrape_result = metadata_scraper.scrape_movie(
+        ctx.raise_if_cancelled()
+        concurrency = min(get_tmdb_scrape_concurrency(), total) if total else 1
+        movie_iterator = iter(movies)
+        futures: dict[Future, dict] = {}
+        cancellation_seen = False
+
+        def submit_next(executor: ThreadPoolExecutor) -> bool:
+            try:
+                movie = next(movie_iterator)
+            except StopIteration:
+                return False
+            future = executor.submit(
+                metadata_scraper.scrape_movie,
                 movie["id"],
                 ScrapeOptions(
                     mode="auto",
@@ -87,22 +100,69 @@ def scrape_library(payload: dict, ctx) -> dict:
                     download_artwork=options.download_artwork,
                 ),
             )
-            result["processed"] += 1
-            if scrape_result.status == "success":
-                result["succeeded"] += 1
-            elif scrape_result.status == "needs_review":
-                result["needs_review"] += 1
-            elif scrape_result.status == "skipped":
-                result["skipped"] += 1
-            else:
-                result["failed"] += 1
-            ctx.progress(
-                stage="scraping",
-                current=result["processed"],
-                total=total,
-                message=f"Scraped {result['processed']} of {total}",
-                counts=result,
-            )
+            futures[future] = movie
+            return True
+
+        with ThreadPoolExecutor(max_workers=concurrency, thread_name_prefix="tmdb-scrape") as executor:
+            for _ in range(concurrency):
+                if not submit_next(executor):
+                    break
+
+            while futures:
+                if ctx.is_cancel_requested():
+                    cancellation_seen = True
+                    for future in futures:
+                        future.cancel()
+
+                completed, _ = wait(
+                    futures,
+                    timeout=0.1,
+                    return_when=FIRST_COMPLETED,
+                )
+                if not completed:
+                    continue
+
+                completed_count = 0
+                for future in completed:
+                    movie = futures.pop(future)
+                    if future.cancelled():
+                        continue
+                    completed_count += 1
+                    try:
+                        scrape_status = future.result().status
+                    except Exception as exc:
+                        logger.error(
+                            "Metadata scrape worker failed movie_id=%s error_type=%s",
+                            movie.get("id"),
+                            exc.__class__.__name__,
+                        )
+                        scrape_status = "failed"
+
+                    result["processed"] += 1
+                    if scrape_status == "success":
+                        result["succeeded"] += 1
+                    elif scrape_status == "needs_review":
+                        result["needs_review"] += 1
+                    elif scrape_status == "skipped":
+                        result["skipped"] += 1
+                    else:
+                        result["failed"] += 1
+                    ctx.progress(
+                        stage="scraping",
+                        current=result["processed"],
+                        total=total,
+                        message=f"Scraped {result['processed']} of {total}",
+                        counts=result,
+                    )
+                    if ctx.is_cancel_requested():
+                        cancellation_seen = True
+
+                if not cancellation_seen:
+                    for _ in range(completed_count):
+                        if not submit_next(executor):
+                            break
+
+        ctx.raise_if_cancelled()
 
         metadata_scraper._set_status(
             state="idle",
