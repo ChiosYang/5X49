@@ -493,6 +493,12 @@ class CanonicalRuntimeTests(unittest.TestCase):
                 "legacy_movie_alias",
                 "library_item",
                 "external_identity",
+                "analysis_resolution_review",
+                "assertion_evidence",
+                "assertion_provenance",
+                "assertion",
+                "evidence",
+                "analysis_run",
                 "structured_metadata_review",
                 "credit_provenance",
                 "credit",
@@ -514,6 +520,10 @@ class CanonicalRuntimeTests(unittest.TestCase):
                     0,
                     table,
                 )
+            self.assertEqual(
+                connection.execute(text("SELECT COUNT(*) FROM assertion_predicate")).scalar_one(),
+                9,
+            )
             self.assertEqual(
                 connection.execute(text("SELECT COUNT(*) FROM schema_migrations")).scalar_one(),
                 journal_before,

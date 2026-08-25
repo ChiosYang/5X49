@@ -150,9 +150,14 @@ def run_rehearsal(input_dir: Path, run_dir: Path) -> dict[str, Any]:
             phases["upgrade"] = "passed"
             checks.append(
                 _check(
-                    "schema-upgraded-to-v7",
-                    migration.current_version == 7 == MIGRATIONS[-1].version,
-                    {"version_equal": migration.current_version == 7 == MIGRATIONS[-1].version},
+                    "schema-includes-structured-metadata-v7",
+                    migration.current_version == MIGRATIONS[-1].version
+                    and _migration_is_applied(engine, 7),
+                    {
+                        "current_version_equal": migration.current_version
+                        == MIGRATIONS[-1].version,
+                        "structured_v7_applied": _migration_is_applied(engine, 7),
+                    },
                 )
             )
 
@@ -760,6 +765,21 @@ def _schema_version(database_path: Path) -> int:
             "SELECT COALESCE(MAX(version), 0) FROM schema_migrations WHERE status='applied'"
         ).fetchone()
         return int(row[0] or 0)
+
+
+def _migration_is_applied(engine, version: int) -> bool:
+    from sqlalchemy import text
+
+    with engine.connect() as connection:
+        return bool(
+            connection.execute(
+                text(
+                    "SELECT 1 FROM schema_migrations "
+                    "WHERE version = :version AND status = 'applied'"
+                ),
+                {"version": version},
+            ).first()
+        )
 
 
 def _check(check_id: str, passed: bool, details: dict[str, Any]) -> dict[str, Any]:

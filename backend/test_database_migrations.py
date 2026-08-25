@@ -339,6 +339,83 @@ class DatabaseMigrationTests(unittest.TestCase):
         finally:
             engine.dispose()
 
+    def test_schema_v7_upgrades_to_v8_without_changing_existing_domain_rows(self):
+        database_path, _ = self._materialize("current-unversioned")
+        engine = self._engine(database_path)
+        backup_dir = self.tmp_path / "v8-backups"
+        preserved_tables = (
+            "movie",
+            "film",
+            "library_item",
+            "legacy_movie_alias",
+            "viewing",
+            "person",
+            "credit",
+            "concept",
+            "structured_metadata_review",
+        )
+        try:
+            initial = run_migrations(
+                engine,
+                database_path,
+                migrations=MIGRATIONS[:7],
+                app_version="test-v7",
+                backup_required=False,
+            )
+            self.assertEqual(initial.current_version, 7)
+            with engine.connect() as connection:
+                before = {
+                    table: connection.execute(text(f"SELECT COUNT(*) FROM {table}")).scalar_one()
+                    for table in preserved_tables
+                }
+
+            upgraded = run_migrations(
+                engine,
+                database_path,
+                migrations=MIGRATIONS[:8],
+                app_version="test-v8",
+                backup_dir=backup_dir,
+            )
+
+            self.assertEqual(upgraded.applied_versions, (8,))
+            self.assertEqual(upgraded.current_version, 8)
+            self.assertIsNotNone(upgraded.backup)
+            with engine.connect() as connection:
+                after = {
+                    table: connection.execute(text(f"SELECT COUNT(*) FROM {table}")).scalar_one()
+                    for table in preserved_tables
+                }
+                self.assertEqual(
+                    connection.execute(text("SELECT COUNT(*) FROM assertion_predicate")).scalar_one(),
+                    9,
+                )
+                for table in (
+                    "analysis_run",
+                    "assertion",
+                    "evidence",
+                    "assertion_evidence",
+                    "assertion_provenance",
+                    "analysis_resolution_review",
+                ):
+                    self.assertEqual(
+                        connection.execute(text(f"SELECT COUNT(*) FROM {table}")).scalar_one(),
+                        0,
+                    )
+            self.assertEqual(after, before)
+
+            second = run_migrations(
+                engine,
+                database_path,
+                migrations=MIGRATIONS[:8],
+                app_version="test-v8",
+                backup_dir=backup_dir,
+            )
+            self.assertEqual(second.applied_versions, ())
+            self.assertIsNone(second.backup)
+            self.assertEqual(len(list(backup_dir.glob("*.db"))), 1)
+        finally:
+            engine.dispose()
+
     def test_backup_includes_committed_rows_from_an_open_wal(self):
         database_path, expected = self._materialize("current-unversioned")
         wal_path = Path(f"{database_path}-wal")

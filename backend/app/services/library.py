@@ -9,6 +9,11 @@ from sqlalchemy import or_
 from sqlmodel import Session, select, delete
 from app.database import engine, create_db_and_tables, get_session
 from app.models import (
+    AnalysisResolutionReview,
+    AnalysisRun,
+    Assertion,
+    AssertionEvidence,
+    AssertionProvenance,
     CanonicalBackfillRun,
     Concept,
     ConceptAlias,
@@ -16,6 +21,7 @@ from app.models import (
     CreditProvenance,
     EventRecord,
     ExternalIdentity,
+    Evidence,
     Film,
     FilmCountry,
     FilmCountryProvenance,
@@ -666,6 +672,12 @@ class LibraryManager:
             session.exec(delete(EventRecord))
             session.exec(delete(Viewing))
             session.exec(delete(FilmProfileState))
+            session.exec(delete(AnalysisResolutionReview))
+            session.exec(delete(AssertionEvidence))
+            session.exec(delete(AssertionProvenance))
+            session.exec(delete(Assertion))
+            session.exec(delete(Evidence))
+            session.exec(delete(AnalysisRun))
             session.exec(delete(StructuredMetadataReview))
             session.exec(delete(CreditProvenance))
             session.exec(delete(Credit))

@@ -761,10 +761,19 @@ def _deep_clear_check(working_database: Path, run_dir: Path) -> dict[str, Any]:
                     "film_country",
                     "film_country_provenance",
                     "structured_metadata_review",
+                    "analysis_run",
+                    "assertion",
+                    "evidence",
+                    "assertion_evidence",
+                    "assertion_provenance",
+                    "analysis_resolution_review",
                     "job",
                     "events",
                 )
             )
+            predicate_registry_preserved = int(
+                connection.execute(text("SELECT COUNT(*) FROM assertion_predicate")).scalar_one()
+            ) == 9
             journal_preserved = int(connection.execute(
                 text("SELECT COUNT(*) FROM schema_migrations WHERE status='applied'")
             ).scalar_one()) > 0
@@ -772,8 +781,12 @@ def _deep_clear_check(working_database: Path, run_dir: Path) -> dict[str, Any]:
         engine.dispose()
     return _check(
         "destructive-clear-is-confined-to-extra-copy",
-        domain_empty and journal_preserved,
-        {"domain_empty": domain_empty, "migration_journal_preserved": journal_preserved},
+        domain_empty and predicate_registry_preserved and journal_preserved,
+        {
+            "domain_empty": domain_empty,
+            "predicate_registry_preserved": predicate_registry_preserved,
+            "migration_journal_preserved": journal_preserved,
+        },
     )
 
 

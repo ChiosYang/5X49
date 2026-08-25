@@ -6,6 +6,15 @@ from typing import Any
 from sqlalchemy import CheckConstraint, Column, Index, UniqueConstraint, text
 from sqlmodel import Field, JSON, SQLModel
 
+from app.contracts.analysis_persistence import (
+    analysis_resolution_review_id,
+    analysis_run_id,
+    assertion_evidence_id,
+    assertion_id,
+    assertion_provenance_id,
+    evidence_id,
+)
+
 
 def canonical_utc_now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
@@ -422,6 +431,467 @@ class StructuredMetadataReview(SQLModel, table=True):
     origin_ref: str
     review_key: str
     status: str = Field(default="open", index=True)
+    created_at: str = Field(default_factory=canonical_utc_now_iso)
+    updated_at: str = Field(default_factory=canonical_utc_now_iso)
+    resolved_at: str | None = None
+
+
+class AssertionPredicate(SQLModel, table=True):
+    __tablename__ = "assertion_predicate"
+    __table_args__ = (
+        CheckConstraint(
+            "subject_entity_type IN ('film', 'person', 'concept')",
+            name="ck_assertion_predicate_subject_type",
+        ),
+        CheckConstraint(
+            "object_entity_type IN ('film', 'person', 'concept')",
+            name="ck_assertion_predicate_object_type",
+        ),
+        CheckConstraint(
+            "object_concept_kind IS NULL OR object_concept_kind IN "
+            "('genre', 'theme', 'movement', 'visual_style', 'micro_genre')",
+            name="ck_assertion_predicate_concept_kind",
+        ),
+        CheckConstraint(
+            "evidence_policy IN ('provenance_only', 'preferred', 'optional')",
+            name="ck_assertion_predicate_evidence_policy",
+        ),
+        Index("ix_assertion_predicate_vocabulary", "vocabulary_version"),
+    )
+
+    key: str = Field(primary_key=True)
+    vocabulary_version: str
+    subject_entity_type: str
+    object_entity_type: str
+    object_concept_kind: str | None = None
+    evidence_policy: str
+    created_at: str = Field(default_factory=canonical_utc_now_iso)
+    updated_at: str = Field(default_factory=canonical_utc_now_iso)
+
+
+class AnalysisRun(SQLModel, table=True):
+    __tablename__ = "analysis_run"
+    __table_args__ = (
+        UniqueConstraint("idempotency_key", name="uq_analysis_run_idempotency_key"),
+        CheckConstraint(
+            "analysis_kind IN ('genealogy_v2')",
+            name="ck_analysis_run_kind",
+        ),
+        CheckConstraint(
+            "status IN ('queued', 'running', 'succeeded', 'failed', 'cancelled')",
+            name="ck_analysis_run_status",
+        ),
+        CheckConstraint(
+            "length(trim(analysis_kind)) > 0 AND length(trim(provider)) > 0 "
+            "AND length(trim(model)) > 0 AND length(trim(prompt_version)) > 0 "
+            "AND length(trim(schema_version)) > 0 AND length(trim(resolver_version)) > 0 "
+            "AND length(trim(policy_version)) > 0 AND length(trim(app_version)) > 0 "
+            "AND length(analysis_kind) <= 80 AND length(provider) <= 80 "
+            "AND length(model) <= 160 AND length(prompt_version) <= 80 "
+            "AND length(schema_version) <= 80 AND length(resolver_version) <= 80 "
+            "AND length(policy_version) <= 80 AND length(app_version) <= 80",
+            name="ck_analysis_run_required_text",
+        ),
+        CheckConstraint(
+            "length(input_hash) = 64 AND input_hash NOT GLOB '*[^0-9a-f]*' "
+            "AND (output_hash IS NULL OR "
+            "(length(output_hash) = 64 AND output_hash NOT GLOB '*[^0-9a-f]*')) "
+            "AND length(idempotency_key) = 64 "
+            "AND idempotency_key NOT GLOB '*[^0-9a-f]*'",
+            name="ck_analysis_run_hashes",
+        ),
+        CheckConstraint(
+            "input_tokens IS NULL OR input_tokens >= 0",
+            name="ck_analysis_run_input_tokens",
+        ),
+        CheckConstraint(
+            "output_tokens IS NULL OR output_tokens >= 0",
+            name="ck_analysis_run_output_tokens",
+        ),
+        CheckConstraint(
+            "(estimated_cost IS NULL AND currency IS NULL) OR "
+            "(estimated_cost IS NOT NULL AND currency IS NOT NULL "
+            "AND estimated_cost >= 0 AND length(currency) = 3 "
+            "AND currency = upper(currency) AND currency GLOB '[A-Z][A-Z][A-Z]')",
+            name="ck_analysis_run_cost_currency",
+        ),
+        CheckConstraint(
+            "result_summary IS NULL OR length(result_summary) <= 1200",
+            name="ck_analysis_run_summary",
+        ),
+        CheckConstraint(
+            "error_message IS NULL OR length(error_message) <= 500",
+            name="ck_analysis_run_error_message",
+        ),
+        CheckConstraint(
+            "(error_category IS NULL OR length(error_category) <= 80) "
+            "AND (error_code IS NULL OR length(error_code) <= 80) "
+            "AND (correlation_id IS NULL OR length(correlation_id) <= 160) "
+            "AND (job_id IS NULL OR length(job_id) <= 160)",
+            name="ck_analysis_run_bounded_diagnostics",
+        ),
+        CheckConstraint(
+            "(status = 'queued' AND attempt_count = 0 AND started_at IS NULL "
+            "AND finished_at IS NULL AND output_hash IS NULL AND result_summary IS NULL) OR "
+            "(status = 'running' AND attempt_count >= 1 AND started_at IS NOT NULL "
+            "AND finished_at IS NULL) OR "
+            "(status = 'succeeded' AND attempt_count >= 1 AND started_at IS NOT NULL "
+            "AND finished_at IS NOT NULL AND output_hash IS NOT NULL "
+            "AND result_summary IS NOT NULL AND length(trim(result_summary)) > 0) OR "
+            "(status IN ('failed', 'cancelled') AND attempt_count >= 1 "
+            "AND started_at IS NOT NULL AND finished_at IS NOT NULL)",
+            name="ck_analysis_run_lifecycle",
+        ),
+        Index(
+            "ix_analysis_run_film_kind_status_created",
+            "film_id",
+            "analysis_kind",
+            "status",
+            "created_at",
+        ),
+        Index("ix_analysis_run_correlation_id", "correlation_id"),
+        Index("ix_analysis_run_job_id", "job_id"),
+    )
+
+    id: str = Field(default_factory=analysis_run_id, primary_key=True)
+    film_id: str = Field(foreign_key="film.id", ondelete="RESTRICT", index=True)
+    analysis_kind: str
+    provider: str
+    model: str
+    prompt_version: str
+    schema_version: str
+    resolver_version: str
+    policy_version: str
+    app_version: str
+    input_hash: str
+    output_hash: str | None = None
+    idempotency_key: str
+    status: str = "queued"
+    attempt_count: int = 0
+    input_tokens: int | None = None
+    output_tokens: int | None = None
+    estimated_cost: float | None = None
+    currency: str | None = None
+    correlation_id: str | None = None
+    job_id: str | None = None
+    result_summary: str | None = None
+    started_at: str | None = None
+    finished_at: str | None = None
+    error_category: str | None = None
+    error_code: str | None = None
+    error_message: str | None = None
+    created_at: str = Field(default_factory=canonical_utc_now_iso)
+    updated_at: str = Field(default_factory=canonical_utc_now_iso)
+
+
+class Assertion(SQLModel, table=True):
+    __tablename__ = "assertion"
+    __table_args__ = (
+        UniqueConstraint("assertion_key", name="uq_assertion_key"),
+        CheckConstraint(
+            "subject_entity_id <> object_entity_id",
+            name="ck_assertion_not_self_referential",
+        ),
+        CheckConstraint(
+            "length(qualifier_hash) = 64 AND qualifier_hash NOT GLOB '*[^0-9a-f]*' "
+            "AND length(assertion_key) = 64 AND assertion_key NOT GLOB '*[^0-9a-f]*'",
+            name="ck_assertion_hashes",
+        ),
+        CheckConstraint(
+            "source_scope IN ('factual', 'curated', 'inferred')",
+            name="ck_assertion_source_scope",
+        ),
+        CheckConstraint(
+            "review_status IN ('proposed', 'accepted', 'rejected')",
+            name="ck_assertion_review_status",
+        ),
+        CheckConstraint(
+            "review_method IN ('none', 'import_policy', 'user')",
+            name="ck_assertion_review_method",
+        ),
+        CheckConstraint(
+            "(confidence IS NULL AND confidence_method IS NULL) OR "
+            "(confidence IS NOT NULL AND confidence_method IS NOT NULL "
+            "AND confidence >= 0 AND confidence <= 1 "
+            "AND length(trim(confidence_method)) > 0)",
+            name="ck_assertion_confidence",
+        ),
+        CheckConstraint(
+            "rationale IS NULL OR length(rationale) <= 600",
+            name="ck_assertion_rationale",
+        ),
+        CheckConstraint(
+            "(confidence_method IS NULL OR length(confidence_method) <= 80) "
+            "AND (review_policy_version IS NULL OR length(review_policy_version) <= 80)",
+            name="ck_assertion_bounded_methods",
+        ),
+        CheckConstraint(
+            "(review_status = 'proposed' AND review_method = 'none' "
+            "AND reviewed_by_profile_id IS NULL AND reviewed_at IS NULL "
+            "AND review_policy_version IS NULL) OR "
+            "(review_status = 'accepted' AND review_method = 'import_policy' "
+            "AND reviewed_by_profile_id IS NULL AND reviewed_at IS NOT NULL "
+            "AND review_policy_version IS NOT NULL "
+            "AND length(trim(review_policy_version)) > 0) OR "
+            "(review_status IN ('accepted', 'rejected') AND review_method = 'user' "
+            "AND reviewed_by_profile_id IS NOT NULL AND reviewed_at IS NOT NULL "
+            "AND review_policy_version IS NULL)",
+            name="ck_assertion_review_decision",
+        ),
+        Index(
+            "ix_assertion_subject_predicate_review",
+            "subject_entity_id",
+            "predicate",
+            "review_status",
+        ),
+        Index(
+            "ix_assertion_object_predicate_review",
+            "object_entity_id",
+            "predicate",
+            "review_status",
+        ),
+        Index("ix_assertion_scope_review", "source_scope", "review_status"),
+    )
+
+    id: str = Field(default_factory=assertion_id, primary_key=True)
+    subject_entity_id: str = Field(
+        foreign_key="graph_entity.id",
+        ondelete="RESTRICT",
+        index=True,
+    )
+    object_entity_id: str = Field(
+        foreign_key="graph_entity.id",
+        ondelete="RESTRICT",
+        index=True,
+    )
+    predicate: str = Field(foreign_key="assertion_predicate.key", ondelete="RESTRICT")
+    qualifiers: dict[str, Any] = Field(default_factory=dict, sa_column=Column(JSON, nullable=False))
+    qualifier_hash: str
+    assertion_key: str
+    source_scope: str
+    review_status: str = "proposed"
+    review_method: str = "none"
+    review_policy_version: str | None = None
+    confidence: float | None = None
+    confidence_method: str | None = None
+    rationale: str | None = None
+    reviewed_by_profile_id: str | None = Field(
+        default=None,
+        foreign_key="local_profile.id",
+        ondelete="RESTRICT",
+    )
+    reviewed_at: str | None = None
+    first_seen_at: str
+    last_seen_at: str
+    superseded_at: str | None = None
+    created_at: str = Field(default_factory=canonical_utc_now_iso)
+    updated_at: str = Field(default_factory=canonical_utc_now_iso)
+
+
+class Evidence(SQLModel, table=True):
+    __tablename__ = "evidence"
+    __table_args__ = (
+        UniqueConstraint("evidence_key", name="uq_evidence_key"),
+        CheckConstraint(
+            "evidence_type IN ('catalog', 'web', 'dataset')",
+            name="ck_evidence_type",
+        ),
+        CheckConstraint(
+            "length(evidence_key) = 64 AND evidence_key NOT GLOB '*[^0-9a-f]*' "
+            "AND length(content_hash) = 64 AND content_hash NOT GLOB '*[^0-9a-f]*'",
+            name="ck_evidence_hashes",
+        ),
+        CheckConstraint(
+            "length(source_uri) <= 2048 AND "
+            "(lower(source_uri) LIKE 'http://%' OR lower(source_uri) LIKE 'https://%')",
+            name="ck_evidence_http_uri",
+        ),
+        CheckConstraint(
+            "length(trim(source_title)) > 0 AND length(source_title) <= 300 "
+            "AND length(trim(claim)) > 0 AND length(claim) <= 400 "
+            "AND (publisher IS NULL OR length(publisher) <= 160) "
+            "AND length(trim(verification_policy_version)) > 0 "
+            "AND length(verification_policy_version) <= 80",
+            name="ck_evidence_bounded_text",
+        ),
+        Index("ix_evidence_content_hash", "content_hash"),
+        Index("ix_evidence_source_uri", "source_uri"),
+    )
+
+    id: str = Field(default_factory=evidence_id, primary_key=True)
+    evidence_key: str
+    evidence_type: str
+    source_title: str
+    source_uri: str
+    publisher: str | None = None
+    claim: str
+    published_at: str | None = None
+    retrieved_at: str
+    content_hash: str
+    verification_policy_version: str
+    created_at: str = Field(default_factory=canonical_utc_now_iso)
+    updated_at: str = Field(default_factory=canonical_utc_now_iso)
+
+
+class AssertionEvidence(SQLModel, table=True):
+    __tablename__ = "assertion_evidence"
+    __table_args__ = (
+        UniqueConstraint(
+            "assertion_id",
+            "evidence_id",
+            "stance",
+            name="uq_assertion_evidence_stance",
+        ),
+        CheckConstraint(
+            "stance IN ('supports', 'contradicts', 'context')",
+            name="ck_assertion_evidence_stance",
+        ),
+        CheckConstraint(
+            "link_status IN ('active', 'revoked')",
+            name="ck_assertion_evidence_status",
+        ),
+        CheckConstraint(
+            "(link_status = 'active' AND revoked_at IS NULL) OR "
+            "(link_status = 'revoked' AND revoked_at IS NOT NULL)",
+            name="ck_assertion_evidence_revocation",
+        ),
+        Index("ix_assertion_evidence_evidence_id", "evidence_id"),
+    )
+
+    id: str = Field(default_factory=assertion_evidence_id, primary_key=True)
+    assertion_id: str = Field(
+        foreign_key="assertion.id",
+        ondelete="RESTRICT",
+        index=True,
+    )
+    evidence_id: str = Field(foreign_key="evidence.id", ondelete="RESTRICT")
+    stance: str = "supports"
+    link_status: str = "active"
+    created_at: str = Field(default_factory=canonical_utc_now_iso)
+    revoked_at: str | None = None
+
+
+class AssertionProvenance(SQLModel, table=True):
+    __tablename__ = "assertion_provenance"
+    __table_args__ = (
+        UniqueConstraint(
+            "assertion_id",
+            "origin_kind",
+            "origin_ref",
+            name="uq_assertion_provenance_origin",
+        ),
+        CheckConstraint(
+            "origin_kind IN ('nfo', 'tmdb', 'migration', 'user', 'analysis_run', 'rule')",
+            name="ck_assertion_provenance_origin_kind",
+        ),
+        CheckConstraint(
+            "origin_scope IN ('factual', 'curated', 'inferred')",
+            name="ck_assertion_provenance_origin_scope",
+        ),
+        CheckConstraint(
+            "(origin_kind = 'analysis_run' AND analysis_run_id IS NOT NULL) OR "
+            "(origin_kind <> 'analysis_run' AND analysis_run_id IS NULL)",
+            name="ck_assertion_provenance_analysis_run",
+        ),
+        CheckConstraint(
+            "source_payload_hash IS NULL OR (length(source_payload_hash) = 64 "
+            "AND source_payload_hash NOT GLOB '*[^0-9a-f]*')",
+            name="ck_assertion_provenance_payload_hash",
+        ),
+        CheckConstraint(
+            "length(trim(origin_ref)) > 0 AND length(origin_ref) <= 300 "
+            "AND (source_field IS NULL OR length(source_field) <= 80)",
+            name="ck_assertion_provenance_origin_ref",
+        ),
+        Index("ix_assertion_provenance_analysis_run_id", "analysis_run_id"),
+        Index("ix_assertion_provenance_origin_ref", "origin_ref"),
+        Index("ix_assertion_provenance_assertion_active", "assertion_id", "superseded_at"),
+    )
+
+    id: str = Field(default_factory=assertion_provenance_id, primary_key=True)
+    assertion_id: str = Field(
+        foreign_key="assertion.id",
+        ondelete="RESTRICT",
+        index=True,
+    )
+    origin_kind: str
+    origin_scope: str
+    origin_ref: str
+    analysis_run_id: str | None = Field(
+        default=None,
+        foreign_key="analysis_run.id",
+        ondelete="RESTRICT",
+    )
+    source_field: str | None = None
+    source_payload_hash: str | None = None
+    first_observed_at: str
+    last_observed_at: str
+    superseded_at: str | None = None
+
+
+class AnalysisResolutionReview(SQLModel, table=True):
+    __tablename__ = "analysis_resolution_review"
+    __table_args__ = (
+        UniqueConstraint("review_key", name="uq_analysis_resolution_review_key"),
+        CheckConstraint(
+            "candidate_kind IN ('entity_reference', 'evidence', 'assertion', 'output')",
+            name="ck_analysis_resolution_review_candidate_kind",
+        ),
+        CheckConstraint(
+            "reason_code IN ('unresolved_reference', 'ambiguous_reference', "
+            "'identity_conflict', 'predicate_type_mismatch', 'evidence_uri_blocked', "
+            "'evidence_retrieval_failed', 'evidence_policy_rejected', 'invalid_candidate')",
+            name="ck_analysis_resolution_review_reason",
+        ),
+        CheckConstraint(
+            "status IN ('open', 'resolved', 'dismissed')",
+            name="ck_analysis_resolution_review_status",
+        ),
+        CheckConstraint(
+            "length(CAST(candidate_summary AS TEXT)) <= 4096",
+            name="ck_analysis_resolution_review_candidate_size",
+        ),
+        CheckConstraint(
+            "length(candidate_hash) = 64 AND candidate_hash NOT GLOB '*[^0-9a-f]*' "
+            "AND length(review_key) = 64 AND review_key NOT GLOB '*[^0-9a-f]*'",
+            name="ck_analysis_resolution_review_hashes",
+        ),
+        CheckConstraint(
+            "(status = 'open' AND resolved_at IS NULL AND resolved_entity_id IS NULL) OR "
+            "(status IN ('resolved', 'dismissed') AND resolved_at IS NOT NULL)",
+            name="ck_analysis_resolution_review_lifecycle",
+        ),
+        Index("ix_analysis_resolution_review_run_status", "analysis_run_id", "status"),
+        Index("ix_analysis_resolution_review_film_status", "film_id", "status"),
+        Index("ix_analysis_resolution_review_reason_status", "reason_code", "status"),
+    )
+
+    id: str = Field(default_factory=analysis_resolution_review_id, primary_key=True)
+    analysis_run_id: str = Field(
+        foreign_key="analysis_run.id",
+        ondelete="RESTRICT",
+        index=True,
+    )
+    film_id: str = Field(foreign_key="film.id", ondelete="RESTRICT", index=True)
+    predicate: str | None = Field(
+        default=None,
+        foreign_key="assertion_predicate.key",
+        ondelete="RESTRICT",
+    )
+    candidate_kind: str
+    reason_code: str
+    candidate_summary: dict[str, Any] = Field(
+        default_factory=dict,
+        sa_column=Column(JSON, nullable=False),
+    )
+    candidate_hash: str
+    review_key: str
+    status: str = "open"
+    resolved_entity_id: str | None = Field(
+        default=None,
+        foreign_key="graph_entity.id",
+        ondelete="RESTRICT",
+    )
     created_at: str = Field(default_factory=canonical_utc_now_iso)
     updated_at: str = Field(default_factory=canonical_utc_now_iso)
     resolved_at: str | None = None

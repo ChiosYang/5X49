@@ -140,12 +140,19 @@ class EventRecord(SQLModel, table=True):
 # Import canonical models after legacy definitions so SQLModel registers their
 # tables whenever the existing `app.models` module is imported.
 from app.canonical_models import (  # noqa: E402, F401
+    AnalysisResolutionReview,
+    AnalysisRun,
+    Assertion,
+    AssertionEvidence,
+    AssertionPredicate,
+    AssertionProvenance,
     CanonicalBackfillRun,
     Concept,
     ConceptAlias,
     Credit,
     CreditProvenance,
     ExternalIdentity,
+    Evidence,
     Film,
     FilmCountry,
     FilmCountryProvenance,

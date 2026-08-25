@@ -33,7 +33,8 @@ Docker upgrade/read-source/restore/browser matrix required to pass Gate A.
 It therefore does not authorize Graph UI or replace W4 Assertion design.
 
 The final backend regression discovered every `test_*.py` module except the
-credential-dependent `test_agent.py`; all 160 tests passed after integration
-with the TMDB safe-concurrency changes. The focused W3, migration, metadata,
-TMDB concurrency, and rehearsal run also passed, and Python bytecode
-compilation completed successfully.
+credential-dependent `test_agent.py`; the post-v8 regression passed all 169
+tests. W3 rehearsal `w4-v8-20260825-02` also passed after confirming migration
+v7 remained applied while its isolated work copy reached current schema v8.
+The focused W3, migration, metadata, TMDB concurrency, and rehearsal runs
+passed, and Python bytecode compilation completed successfully.

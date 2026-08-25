@@ -160,7 +160,7 @@ curl -s http://127.0.0.1:11548/watch-history
 curl -s -X DELETE http://127.0.0.1:11548/library/data
 ```
 `MovieUserState` 是兼容响应形状；收藏和 Viewing 实际按 Film 共享，同一 Film 的多个可见 alias 会得到一致投影。字段包括 `movie_id`、`watched`、`watched_at`、`rating`、`favorite`、`notes`、`updated_at`，`rating` 只允许 `1-5` 或 `null`。`watched=false` 只软删除 compatibility Viewing，不删除 Diary 等其他来源；若仍有 confirmed Viewing，派生 `watched` 仍为 `true`。只有评分/笔记而没有 confirmed Viewing 时会以 `needs_review` 保存，不进入 watch history。`GET /watch-history` 每个 Film 只返回一项，并使用最小的非 retired alias 作为兼容 Movie ID。
-`DELETE /library` 只清空当前 Legacy Movie 集合并退休 LibraryItem/本地资产，保留 Film、外部身份、Viewing 和收藏；再次扫描会恢复原 alias 和个人状态投影。`DELETE /library/data` 才会彻底清空 Legacy 与 Canonical 资料库领域数据、后台任务、审计事件和 backfill report，返回原有四项计数形状；migration journal、媒体/NFO/图片、保存设置和环境变量配置仍保留。
+`DELETE /library` 只清空当前 Legacy Movie 集合并退休 LibraryItem/本地资产，保留 Film、外部身份、Viewing、收藏以及 Film 级 Graph/Analysis 数据；再次扫描会恢复原 alias 和个人状态投影。`DELETE /library/data` 才会彻底清空 Legacy 与 Canonical 资料库领域数据（包括 Assertion、Evidence、AnalysisRun 和 analysis review）、后台任务、审计事件和 backfill report，返回原有四项计数形状；版本化 Assertion 谓词表、migration journal、媒体/NFO/图片、保存设置和环境变量配置仍保留。
 
 ### 获取单部电影详情
 ```bash

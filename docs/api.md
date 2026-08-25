@@ -937,7 +937,7 @@ Root video organization accepts the same `language` and `artwork_language` scrap
 ### Clear All Library Data
 - **URL**: `/library/data`
 - **Method**: `DELETE`
-- **Description**: Irreversibly deletes all Legacy and Canonical library-domain data, including movies, aliases, Films, identities, assets, locator history, personal state/Viewings, background jobs, persisted events, identity reviews, and Canonical backfill reports. It preserves the migration journal, media files, generated NFO/artwork files, saved settings, and environment configuration.
+- **Description**: Irreversibly deletes all Legacy and Canonical library-domain data, including movies, aliases, Films, identities, assets, locator history, personal state/Viewings, Assertion/Evidence/AnalysisRun records and analysis reviews, background jobs, persisted events, identity reviews, and Canonical backfill reports. It preserves the versioned Assertion predicate registry, migration journal, media files, generated NFO/artwork files, saved settings, and environment configuration.
 - **Response**:
   ```json
   {

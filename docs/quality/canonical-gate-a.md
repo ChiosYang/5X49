@@ -3,7 +3,7 @@
 - Evidence date: 2026-08-25
 - Report schema: 1
 - Gate implementation commit: `70f525a`
-- Current migration target: schema/data v7
+- Current migration target: schema/data v8
 - Development-copy source fingerprint: `b7a2da987e309d52`
 - Curated-acceptance source fingerprint: `978d1a20ee62b4ac`
 - Gate conclusion: **Blocked**
@@ -21,7 +21,7 @@ Git-ignored `backend/data/gate-a/` review area.
 | Runtime reconcile, clear/restore, relink, and hashing | Passed | Generated normal-profile plus isolated mini-library |
 | Canonical/Legacy consistency and privacy canaries | Passed | Fixtures and generated mini-library |
 | Development database copy rehearsal | Passed locally, blocked as evidence | Byte-identical clone; non-gating only |
-| Curated acceptance database and media-root rehearsal | Passed locally through v7, non-gating | Normal product scan, scrape, structured metadata, personal-state, restore, and privacy paths |
+| Curated acceptance database and media-root rehearsal | Passed locally through v8, non-gating | Normal product scan, scrape, structured metadata, personal-state, restore, privacy, and predicate-registry preservation paths |
 | Naturally aged real-library rehearsal | Blocked | Private real-world input not supplied |
 | Docker config/build/upgrade/read-source/restore/browser matrix | Blocked | Docker CLI unavailable |
 
@@ -72,13 +72,21 @@ reached v7 with every local phase passed, restored its verified backup, kept
 Canonical/Legacy shadow differences at zero, and left the source unchanged.
 Its overall result remains `Blocked` because Docker evidence is still absent.
 
-The post-v7 backend regression discovered every test module except
-credential-dependent `test_agent.py`; all 160 tests passed after integration
-with the TMDB safe-concurrency changes. This is regression
+The post-Schema-v8 Gate A regression `w4-v8-20260825-02` upgraded only its
+isolated work copy to v8 and passed every local phase. Deep clear removed all W4
+domain rows while retaining exactly the nine versioned predicate reference
+rows and the migration journal. Restore/remigration, Shadow equality, runtime
+reconcile, relink, privacy canaries, and source immutability remained green.
+The overall result is still `Blocked` because Docker evidence is absent and the
+curated input does not replace a naturally aged private library.
+
+The post-v8 backend regression discovered every test module except
+credential-dependent `test_agent.py`; all 169 tests passed after the Analysis
+persistence schema was added. This is regression
 evidence only and does not replace either missing strict Gate input class.
 
 Person/Credit/Concept schema, deterministic backfill, and runtime synchronization
-are complete in W3 through version 7.
-Assertion/Evidence/AnalysisRun persistence, deduplication, rejected-state
-protection, and evaluation are W4/Gate B evidence, not Gate A implementation
-checks.
+are complete in W3 through version 7. Assertion/Evidence/AnalysisRun schema and
+contracts are present in version 8; runtime persistence, deduplication,
+rejected-state protection, and evaluation remain W4/Gate B evidence rather than
+Gate A implementation checks.
