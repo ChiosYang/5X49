@@ -62,6 +62,38 @@ class ProductContractTests(unittest.TestCase):
                 "assertions": [assertion, assertion],
             })
 
+    def test_analysis_v2_direction_is_backward_compatible_and_concepts_are_forward_only(self):
+        output = AnalysisV2Output.model_validate({
+            "subject_film_id": FILM_ID,
+            "summary": "Summary",
+            "assertions": [{
+                "predicate": "INFLUENCED_BY",
+                "target": {
+                    "entity_type": "film",
+                    "display_name": "Later Film",
+                    "release_year": 2001,
+                },
+                "rationale": "The target follows the subject.",
+            }],
+        })
+        self.assertEqual(output.assertions[0].direction, "subject_to_target")
+
+        reverse = output.model_dump(mode="json")
+        reverse["assertions"][0]["direction"] = "target_to_subject"
+        self.assertEqual(
+            AnalysisV2Output.model_validate(reverse).assertions[0].direction,
+            "target_to_subject",
+        )
+
+        reverse["assertions"][0] = {
+            "predicate": "HAS_THEME",
+            "direction": "target_to_subject",
+            "target": {"entity_type": "concept", "display_name": "Memory"},
+            "rationale": "The film explores memory.",
+        }
+        with self.assertRaisesRegex(ValidationError, "subject to target"):
+            AnalysisV2Output.model_validate(reverse)
+
     def test_evaluation_dataset_requires_30_to_50_cases_and_identity_coverage(self):
         tags = ["same_title", "cold_title", "non_latin_title", "cross_decade"]
         cases = [self._evaluation_case(index, tags[index] if index < 4 else "influence") for index in range(30)]

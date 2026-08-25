@@ -987,6 +987,15 @@ Root video organization accepts the same `language` and `artwork_language` scrap
 - **Path Parameters**:
   - `movie_id` (string): The ID of the movie.
 - **Response**: Accepted-job envelope.
+- **Runtime behavior**: The worker builds a path-free canonical input, validates
+  Analysis V2 output, persists inferred proposed relationships and verified
+  public Evidence, and writes the existing `analysis_status`, `micro_genre`,
+  and `analysis_data` compatibility fields transactionally. Repeating an
+  already successful run with the same input/model/version reuses the stored
+  AnalysisRun. Invalid or unresolved references become bounded reviews rather
+  than new Graph entities.
+- The older synchronous `/analyze/{movie_name}` route remains a compatibility
+  operation and does not persist AnalysisRun or Assertion data.
 
 ---
 
@@ -1281,7 +1290,10 @@ The core database payload associated with movies.
 - `actors` (Array of Dicts, Optional): Detailed cast
 - `analysis_status` (String): Status code (default `'pending'`)
 - `micro_genre` / `micro_genre_definition` (String, Optional): Analysis outputs
-- `analysis_data` (JSON/Dictionary, Optional): Dense parsed metadata result
+- `analysis_data` (JSON/Dictionary, Optional): Compatibility genealogy result
+  generated from the latest normalized AnalysisRun; includes `micro_genre`,
+  `influence_impact`, `ancestors`, `descendants`, and bounded TMDB metadata,
+  without hidden reasoning or Evidence response bodies
 - `folder_name` / `video_file` (String, Optional): Physical system locators
 - `nfo_source` (String, Optional): Indicator of metadata origin file
 - `media_path` (String, Optional): Absolute path to the primary video file

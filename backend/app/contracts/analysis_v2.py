@@ -70,10 +70,17 @@ class AnalysisEvidenceCandidate(StrictContract):
 class AnalysisAssertionCandidate(StrictContract):
     predicate: AnalysisPredicate
     target: AnalysisEntityReference
+    direction: Literal["subject_to_target", "target_to_subject"] = "subject_to_target"
     source_scope: Literal["inferred"] = "inferred"
     rationale: str = Field(min_length=1, max_length=600)
     qualifiers: AnalysisQualifier | None = None
     evidence_candidates: list[AnalysisEvidenceCandidate] = Field(default_factory=list, max_length=5)
+
+    @model_validator(mode="after")
+    def validate_direction(self):
+        if self.target.entity_type != "film" and self.direction != "subject_to_target":
+            raise ValueError("Concept and Person assertions must point from subject to target")
+        return self
 
 
 class AnalysisV2Input(StrictContract):
@@ -99,7 +106,7 @@ class AnalysisV2Output(StrictContract):
 
     @model_validator(mode="after")
     def reject_exact_duplicate_candidates(self):
-        keys: set[tuple[str, str, str, str]] = set()
+        keys: set[tuple[str, str, str, str, str]] = set()
         for assertion in self.assertions:
             target = assertion.target
             target_key = target.entity_id or (
@@ -108,7 +115,13 @@ class AnalysisV2Output(StrictContract):
                 else f"{target.display_name}:{target.release_year or ''}"
             )
             qualifier_key = assertion.qualifiers.model_dump_json() if assertion.qualifiers else ""
-            key = (assertion.predicate.value, target.entity_type, target_key, qualifier_key)
+            key = (
+                assertion.predicate.value,
+                assertion.direction,
+                target.entity_type,
+                target_key,
+                qualifier_key,
+            )
             if key in keys:
                 raise ValueError("analysis output contains duplicate assertion candidates")
             keys.add(key)

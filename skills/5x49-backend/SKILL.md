@@ -206,7 +206,12 @@ curl -s http://127.0.0.1:11548/library/external-scores/status
 ```bash
 curl -s -X POST http://127.0.0.1:11548/library/analyze/96721_2013
 ```
-返回 queued job；分析结果写回电影详情的 `analysis_status` 和 `analysis_data`。
+返回 queued job；worker 使用 Canonical Film 输入和严格 Analysis V2 输出，在同一事务写入
+AnalysisRun、可解析的 inferred/proposed Assertion、通过公网安全验证的 Evidence、review，
+以及电影详情现有的 `analysis_status`、`micro_genre` 和 `analysis_data` 兼容字段。同一
+input/model/version 的成功任务会复用已有 Run；无法解析的引用不会自动创建 Graph 节点。
+此流程需要 OpenRouter/OpenAI-compatible 模型密钥；TMDB Key 仅用于验证尚不存在的精确
+`tmdb.movie` 目标。`GET /analyze/{movie_name}` 仍是非持久化的旧兼容入口。
 
 ### 刷新单部电影
 ```bash

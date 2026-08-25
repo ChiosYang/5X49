@@ -67,36 +67,69 @@ class EventStore:
     ) -> tuple[dict, Optional[dict]]:
         """Append one event and synchronously update supported projections."""
         with Session(engine) as session:
-            event = EventRecord(
-                aggregate_type=aggregate_type,
-                aggregate_id=aggregate_id,
-                type=event_type,
+            event, projected = self.append_and_project_in_session(
+                session,
+                event_type,
+                aggregate_type,
+                aggregate_id,
+                payload,
                 actor_type=actor_type,
                 actor_id=actor_id,
                 command_id=command_id,
                 correlation_id=correlation_id,
                 causation_id=causation_id,
-                payload=payload or {},
-                context=context or {},
+                context=context,
+                structured_metadata=structured_metadata,
             )
-            session.add(event)
-            session.flush()
-
-            from app.services.projections.movie_projection import movie_projector
-
-            projected = movie_projector.apply(event, session)
-            if projected is not None:
-                from app.services.canonical_runtime import canonical_runtime_writer
-
-                canonical_runtime_writer.sync_movie(
-                    session,
-                    projected,
-                    preserve_id=aggregate_id,
-                    structured_metadata=structured_metadata,
-                )
             session.commit()
             session.refresh(event)
             return event.model_dump(), projected
+
+    def append_and_project_in_session(
+        self,
+        session: Session,
+        event_type: str,
+        aggregate_type: str,
+        aggregate_id: Optional[str] = None,
+        payload: Optional[dict] = None,
+        *,
+        actor_type: str = "system",
+        actor_id: Optional[str] = None,
+        command_id: Optional[str] = None,
+        correlation_id: Optional[str] = None,
+        causation_id: Optional[str] = None,
+        context: Optional[dict] = None,
+        structured_metadata: StructuredMetadataObservation | None = None,
+    ) -> tuple[EventRecord, Optional[dict]]:
+        """Append and project inside a caller-owned transaction."""
+        event = EventRecord(
+            aggregate_type=aggregate_type,
+            aggregate_id=aggregate_id,
+            type=event_type,
+            actor_type=actor_type,
+            actor_id=actor_id,
+            command_id=command_id,
+            correlation_id=correlation_id,
+            causation_id=causation_id,
+            payload=payload or {},
+            context=context or {},
+        )
+        session.add(event)
+        session.flush()
+
+        from app.services.projections.movie_projection import movie_projector
+
+        projected = movie_projector.apply(event, session)
+        if projected is not None:
+            from app.services.canonical_runtime import canonical_runtime_writer
+
+            canonical_runtime_writer.sync_movie(
+                session,
+                projected,
+                preserve_id=aggregate_id,
+                structured_metadata=structured_metadata,
+            )
+        return event, projected
 
     def safe_append(self, *args, **kwargs) -> Optional[dict]:
         try:

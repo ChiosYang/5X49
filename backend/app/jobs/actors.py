@@ -276,8 +276,7 @@ def confirm_root_video(payload: dict, ctx) -> dict:
 
 def analyze_movie(payload: dict, ctx) -> dict:
     ctx.progress(stage="analyzing", message="Running film analysis")
-    analysis_service.analyze_movie(payload["movie_id"])
-    return {"status": "success", "movie_id": payload["movie_id"]}
+    return analysis_service.analyze_movie(payload["movie_id"], ctx=ctx)
 
 
 def refresh_movie_external_scores(payload: dict, ctx) -> dict:

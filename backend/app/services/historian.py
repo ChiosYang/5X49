@@ -4,6 +4,9 @@ import time
 import requests
 from openai import OpenAI
 from dotenv import load_dotenv
+from dataclasses import dataclass
+
+from app.contracts.analysis_v2 import AnalysisV2Input, AnalysisV2Output
 
 # 加载环境变量
 # Fix: Running from 'backend/' directory via uvicorn
@@ -22,6 +25,24 @@ def get_client():
         api_key=os.getenv("OPENROUTER_API_KEY"),
         base_url=get_base_url()
     )
+
+
+ANALYSIS_PROMPT_VERSION = "genealogy-v2.v1"
+
+
+@dataclass(frozen=True)
+class AnalysisModelConfiguration:
+    provider: str
+    model: str
+
+
+@dataclass(frozen=True)
+class AnalysisGenerationResult:
+    output: AnalysisV2Output
+    input_tokens: int | None = None
+    output_tokens: int | None = None
+    estimated_cost: float | None = None
+    currency: str | None = None
 
 # ==========================================
 # 1. 基础工具 (The Tools)
@@ -94,6 +115,63 @@ class FilmHistorian:
     def __init__(self):
         # Model will be fetched dynamically on each analysis
         pass
+
+    def analysis_configuration(self) -> AnalysisModelConfiguration:
+        base_url = get_base_url().casefold()
+        if "openrouter.ai" in base_url:
+            provider = "openrouter"
+        elif "api.openai.com" in base_url:
+            provider = "openai"
+        else:
+            provider = "openai_compatible"
+        return AnalysisModelConfiguration(provider=provider, model=get_current_model())
+
+    def analyze_v2(
+        self,
+        analysis_input: AnalysisV2Input,
+        *,
+        configuration: AnalysisModelConfiguration | None = None,
+    ) -> AnalysisGenerationResult:
+        configuration = configuration or self.analysis_configuration()
+        schema = AnalysisV2Output.model_json_schema()
+        prompt = (
+            "You are a film historian. Return only one JSON object that validates against the "
+            "provided Analysis V2 schema. Do not include hidden reasoning. Use concise, user-visible "
+            "rationales. Use direction=subject_to_target for influences on the subject film and "
+            "direction=target_to_subject for later films influenced by the subject. Concept targets "
+            "must always use subject_to_target. Prefer tmdb.movie identifiers for film targets when "
+            "you are certain; otherwise include display_name and release_year so the reference can "
+            "enter review. Evidence URLs must be public HTTP(S) sources.\n\n"
+            f"INPUT:\n{analysis_input.model_dump_json()}\n\n"
+            f"OUTPUT JSON SCHEMA:\n{json.dumps(schema, ensure_ascii=False, sort_keys=True)}"
+        )
+        client = get_client()
+        response = client.chat.completions.create(
+            model=configuration.model,
+            messages=[{"role": "user", "content": prompt}],
+            response_format={"type": "json_object"},
+        )
+        raw_content = response.choices[0].message.content
+        if not raw_content:
+            raise ValueError("Analysis provider returned an empty response")
+        output = AnalysisV2Output.model_validate_json(raw_content)
+        usage = getattr(response, "usage", None)
+        input_tokens = getattr(usage, "prompt_tokens", None)
+        output_tokens = getattr(usage, "completion_tokens", None)
+        raw_cost = getattr(usage, "cost", None)
+        try:
+            estimated_cost = float(raw_cost) if raw_cost is not None else None
+        except (TypeError, ValueError):
+            estimated_cost = None
+        if estimated_cost is not None and estimated_cost < 0:
+            estimated_cost = None
+        return AnalysisGenerationResult(
+            output=output,
+            input_tokens=input_tokens if isinstance(input_tokens, int) and input_tokens >= 0 else None,
+            output_tokens=output_tokens if isinstance(output_tokens, int) and output_tokens >= 0 else None,
+            estimated_cost=estimated_cost,
+            currency="USD" if estimated_cost is not None else None,
+        )
 
     def analyze_genealogy(self, movie_name, tmdb_id=None):
         # Get current model dynamically on each analysis
@@ -169,10 +247,6 @@ class FilmHistorian:
         except json.JSONDecodeError as e:
             print(f"  ❌ LLM 输出格式错误，无法解析 JSON")
             print(f"  ❌ 错误详情: {e}")
-            print(f"  ❌ LLM 原始响应内容:")
-            print("  " + "-" * 60)
-            print(raw_content)
-            print("  " + "-" * 60)
             return None
         except Exception as e:
             print(f"  ❌ 未知错误: {e}")

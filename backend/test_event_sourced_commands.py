@@ -9,8 +9,13 @@ import app.database as database
 import app.services.analysis as analysis_module
 import app.services.event_store as event_store_module
 import app.services.library as library_module
+from app.canonical_models import AssertionPredicate, LegacyMovieAlias
+from app.contracts.analysis_persistence import predicate_seed_rows
+from app.contracts.analysis_v2 import AnalysisV2Output
 from app.models import EventRecord, Job, MovieUserState
+from app.services.analysis_evidence import EvidenceBatchResult
 from app.services.analysis import analysis_service
+from app.services.historian import AnalysisGenerationResult, AnalysisModelConfiguration
 from app.services.library import library_manager
 
 
@@ -28,6 +33,9 @@ class EventSourcedCommandTests(unittest.TestCase):
         event_store_module.engine = self.engine
         library_module.engine = self.engine
         SQLModel.metadata.create_all(self.engine)
+        with Session(self.engine) as session:
+            session.add_all([AssertionPredicate(**row) for row in predicate_seed_rows()])
+            session.commit()
 
     def tearDown(self):
         analysis_module.engine = self._original_analysis_engine
@@ -66,11 +74,34 @@ class EventSourcedCommandTests(unittest.TestCase):
 
     def test_analysis_updates_state_through_events(self):
         library_manager.add_movies([self._movie("local_analysis")])
+        with Session(self.engine) as session:
+            film_id = session.get(LegacyMovieAlias, "local_analysis").film_id
 
-        with patch.object(
-            analysis_service.historian,
-            "analyze_genealogy",
-            return_value={"micro_genre": "Digital noir - Reality-bending cyber thriller"},
+        output = AnalysisV2Output.model_validate({
+            "subject_film_id": film_id,
+            "summary": "A concise influence summary.",
+            "assertions": [{
+                "predicate": "HAS_MICRO_GENRE",
+                "target": {"entity_type": "concept", "display_name": "Digital noir"},
+                "rationale": "Reality-bending cyber thriller",
+            }],
+        })
+        with (
+            patch.object(
+                analysis_service.historian,
+                "analysis_configuration",
+                return_value=AnalysisModelConfiguration("openrouter", "test-model"),
+            ),
+            patch.object(
+                analysis_service.historian,
+                "analyze_v2",
+                return_value=AnalysisGenerationResult(output),
+            ),
+            patch.object(
+                analysis_service.evidence,
+                "verify",
+                return_value=EvidenceBatchResult((), ()),
+            ),
         ):
             analysis_service.analyze_movie("local_analysis")
 
