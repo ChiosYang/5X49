@@ -1,6 +1,6 @@
 # Structured Metadata Migration
 
-Status: In Progress
+Status: Done
 Last updated: 2026-08-25
 Related: W3 in `docs/product-roadmap.md`, `docs/domain-model.md`,
 `docs/analysis-v2-contract.md`
@@ -15,9 +15,10 @@ factual metadata needed before W4 persists Graph Assertions.
 
 - Add FilmTitle, FilmCountry, Person, Credit, Concept, provenance, and review
   schema through additive migration version 6.
-- Backfill supported legacy metadata deterministically in a later slice.
-- Keep NFO and TMDB observations synchronized with Canonical metadata in a
-  later slice without widening legacy response shapes.
+- Backfill supported legacy metadata deterministically through data migration
+  version 7 and the versioned Genre/Country vocabulary.
+- Keep NFO and TMDB observations synchronized with Canonical metadata without
+  widening legacy response shapes.
 - Preserve raw field-local values for unresolved metadata while keeping paths,
   credentials, and whole source documents out of review records and reports.
 
@@ -32,17 +33,20 @@ factual metadata needed before W4 persists Graph Assertions.
 ## Existing behavior
 
 Canonical Film, LibraryItem, MediaAsset, Viewing, and the legacy compatibility
-layer are implemented through schema version 5; Slice 1 adds the schema-only
-structured metadata foundation in version 6. Legacy Movie still owns
-localized title, country names, director text, actor name/role dictionaries,
-and genre strings. TMDB person and genre identifiers are currently discarded
-when the legacy projection is assembled. Gate A remains blocked on naturally
-aged private-library and Docker evidence; this W3 work is not part of that
-Gate's pass criteria and does not authorize Graph UI.
+layer are implemented through schema version 7. Version 6 introduced the
+schema-only structured metadata foundation; version 7 deterministically
+backfills legacy titles, countries, people, credits, the controlled Genre
+dictionary, provenance, and bounded review records. NFO and TMDB refreshes now
+write the same structures transactionally while Legacy Movie remains the
+unchanged compatibility projection. Gate A remains blocked on naturally aged
+private-library and Docker evidence; W3 completion is not part of that Gate's
+pass criteria and does not authorize Graph UI.
 
 ## Acceptance criteria
 
 - [x] Existing and fresh databases reach schema version 6 idempotently.
+- [x] Existing and fresh databases reach data migration version 7; rerunning
+  the structured backfill creates no additional records.
 - [x] Person names are not unique; exact external identities remain unique.
 - [x] Source-scoped provisional identities never expose the source name or a
   person name in their stable identifier.
@@ -51,6 +55,12 @@ Gate's pass criteria and does not authorize Graph UI.
 - [x] Full data clear removes structured metadata in dependency order while
   ordinary Library clear preserves Film-level metadata.
 - [x] Legacy API routes and payload fields remain unchanged.
+- [x] NFO and TMDB observations update Canonical structured metadata in the
+  same transaction as Event and Legacy projections.
+- [x] Source refreshes supersede only their own provenance; selected values use
+  `curated > NFO > TMDB > Legacy/filename`.
+- [x] The isolated W3 rehearsal passes consistency, idempotence, lifecycle, and
+  privacy checks without changing its source database or media root.
 - [x] Gate A remains Blocked until its independent strict evidence is complete.
 
 ## Decisions
@@ -77,11 +87,19 @@ Gate's pass criteria and does not authorize Graph UI.
   identifiers. Absolute paths are forbidden.
 - Migration version 6 is schema-only: it performs no network access, file
   access, dictionary seeding, or legacy data backfill.
+- Migration version 7 is data-only. It seeds `tmdb-movie-genres:v1` with the 19
+  TMDB Movie Genre concepts and aliases, uses the bundled ISO 3166-1 alpha-2
+  vocabulary, and backfills legacy rows in stable Movie ID order without
+  network or media access.
+- Unknown Genre values never create ad-hoc Concept rows. Unknown countries,
+  invalid credits, and unmapped genres create source-owned review records.
+- Runtime source precedence is `curated > NFO > TMDB > legacy_movie >
+  filename`. A refresh supersedes only records owned by the same source and
+  source reference.
 
 ## Open questions
 
-- None for Slice 1. Genre vocabulary contents and source precedence are locked
-  before Slice 2 starts.
+- None for W3. Film-to-Genre edges remain a W4 factual Assertion decision.
 
 ## Slices
 
@@ -100,7 +118,7 @@ Status: Complete
 
 ### Slice 2 — Deterministic legacy backfill
 
-Status: Pending
+Status: Complete
 
 - Intended behavior: backfill FilmTitle, FilmCountry, source-scoped Person,
   Credit, the controlled Genre dictionary, aliases, provenance, and review
@@ -113,7 +131,7 @@ Status: Pending
 
 ### Slice 3 — NFO and TMDB runtime synchronization
 
-Status: Pending
+Status: Complete
 
 - Intended behavior: retain raw provider person/genre/country identifiers in an
   internal observation contract and synchronize structured metadata in the same
@@ -127,7 +145,7 @@ Status: Pending
 
 ### Slice 4 — W3 consistency and handoff
 
-Status: Pending
+Status: Complete
 
 - Intended behavior: produce a privacy-safe consistency report and make the
   structured metadata foundation ready for W4 Assertion persistence.
@@ -139,22 +157,30 @@ Status: Pending
 
 ## Verification evidence
 
-- `.\.venv\Scripts\python.exe -m unittest test_structured_metadata_schema.py test_database_migrations.py test_database_restore.py test_canonical_schema.py test_canonical_runtime.py test_gate_a.py`
-  — 53 focused tests passed on 2026-08-25.
-- Complete backend unittest set except credential-dependent `test_agent.py` —
-  135 tests passed on 2026-08-25 in 58.698 seconds.
-- `.\.venv\Scripts\python.exe -m compileall -q app scripts test_structured_metadata_schema.py test_database_migrations.py test_canonical_runtime.py test_gate_a.py`
-  — passed.
-- `.\.venv\Scripts\python.exe -m app.migrations.gate_a rehearse --input-dir data/gate-a/input --run-dir data/gate-a/runs/structured-metadata-v6-20260825`
-  upgraded to schema v6 and
-  passed every local phase with the source unchanged. Docker and overall status
-  remain Blocked.
+- The ignored raw rehearsal `w3-20260825-02` upgraded the fixed offline input
+  to v7 and passed every W3 upgrade, backfill, consistency, runtime, lifecycle,
+  privacy, and source-immutability check. The Git-safe summary is
+  `docs/quality/structured-metadata-w3.md`.
+- The versioned TMDB fixture and synthetic tests cover exact Person identity,
+  source precedence, same-observation no-op behavior, source-owned
+  supersession, NFO compatibility output, review lifecycle, and transactional
+  rollback without network access.
+- Complete backend unittest discovery excluding credential-dependent
+  `test_agent.py` passed 160 tests on 2026-08-25 in 83.456 seconds after
+  integration with the TMDB safe-concurrency changes.
+- The final 55-test W3/migration/metadata/TMDB-concurrency focused run passed.
+  The earlier 30-test W3-focused run also passed with `ResourceWarning`
+  promoted to an error, and `compileall` passed for the app, scripts, and
+  affected test modules.
+- Gate A remains Blocked independently; its local regression is recorded in
+  `docs/quality/canonical-gate-a.md`.
 
 ## Remaining risks
 
-- Existing NFO parsing retains only one director and a bounded actor list;
-  Slice 3 must introduce an internal observation shape without changing the
-  legacy API.
+- Legacy responses intentionally retain one director and five actors while the
+  internal NFO observation retains all directors and the first ten actors.
+- Versioned runtime observations intentionally stop at ten actors; full
+  cast/crew ingestion remains outside W3.
 - Source-instance reuse can still conflate two people with the same normalized
   name inside one source. They remain provisional and reviewable until an exact
   identity or manual merge decision exists.

@@ -1,6 +1,6 @@
 # Film / LibraryItem 领域模型 RFC
 
-> 状态：Adopted；Canonical v1–v5 与 W3 Structured Metadata Schema v6 已实现
+> 状态：Adopted；Canonical v1–v5 与 W3 Structured Metadata v6–v7 已实现
 > 目标阶段：Gate A / W2 Schema Ready
 > 基线：`origin/main` at `4426a6a`
 > 范围：领域边界、逻辑 Schema、约束、兼容与迁移策略
@@ -645,9 +645,10 @@ MovieUserState 当前行 + verified backup 为基线，事件只用于审计核�
    记录 review。无外部身份时每旧 Movie 单独创建 Film。
 6. **回填收藏与资产**：每旧 Movie 创建 LibraryItem、LegacyMovieAlias、视频/NFO/artwork
    MediaAsset；保留 status 和时间。
-7. **后续 W3 结构化 metadata**：Schema v6 已建立 title/country、Person/Credit、Genre Concept
-   字典与 review/provenance 基础；回填与运行时同步由独立 Feature 的后续 slices 完成。保留
-   字段级 raw source 和无法解析项，不作为 Gate A 通过条件。
+7. **W3 结构化 metadata（已完成）**：Schema v6 建立 title/country、Person/Credit、Genre
+   Concept 与 review/provenance 基础；data migration v7 完成确定性 Legacy 回填，NFO/TMDB
+   runtime observation 在同一事务同步 Canonical 与兼容投影。保留字段级 bounded raw review，
+   Film→Concept 关系仍等待 W4 factual Assertion；W3 不作为 Gate A 通过条件。
 8. **回填个人数据**：先 FilmProfileState，再按第 5.2 节创建 legacy Viewing；对每个旧状态记录
    输出迁移结果。
 9. **后续 W4 分析迁移**：每个 legacy analysis payload 创建 migration AnalysisRun/artifact；
@@ -718,8 +719,8 @@ RFC/决策：
 
 实现 Gate（本 RFC 不声称已经通过）：
 
-- [x] 版本化 migration runner 和 v1–v6 additive schema migration 已实现并 review；v6 不扩大
-  Gate A 的验收边界。
+- [x] 版本化 migration runner、v1–v6 additive schema migration 与 v7 确定性 data migration
+  已实现并 review；v6–v7 不扩大 Gate A 的验收边界。
 - [x] 九套旧库 fixture 与 fresh `create_all` 向前迁移和重复执行通过。
 - [x] 隔离 fixture 的迁移前备份、失败恢复和离线恢复/重迁移测试通过。
 - [ ] 真实资料库副本的 Film/LibraryItem/Viewing/alias 数量与字段一致性报告通过。

@@ -95,6 +95,32 @@ use ExternalIdentity; provisional local identities are hashed from one source
 instance and a normalized name by the runtime contract. Film-to-Concept edges
 remain W4 factual Assertions and are not part of version 6.
 
+Migration version 7 is a deterministic data migration and does not change the
+physical schema. It seeds the versioned 19-item TMDB Movie Genre dictionary and
+its English, simplified-Chinese, and common legacy aliases; validates countries
+against the bundled ISO 3166-1 alpha-2 dictionary; and backfills FilmTitle,
+FilmCountry, Person, Credit, provenance, and bounded review records from Legacy
+Movie rows in stable ID order. It does not access the network or media files.
+Unknown genres do not create dynamic Concept rows, and unmappable countries or
+invalid people/credits remain reviewable. The run summary is stored under the
+`legacy_structured_metadata.v1` backfill key without titles or paths.
+
+W3 can be rehearsed against the same isolated input contract as Gate A while
+keeping its evidence and conclusion independent:
+
+```powershell
+python -m app.migrations.structured_metadata rehearse `
+  --input-dir data/gate-a/input `
+  --run-dir data/structured-metadata/runs/<run-id>
+```
+
+The command creates a verified backup and working database under the ignored
+run directory, upgrades only the copy, repeats backfill/NFO/TMDB observations,
+checks source priority and lifecycle behavior, scans public surfaces for
+privacy canaries, and verifies that the input hash, size, and sidecars remain
+unchanged. Exit code `0` means W3 passed, `2` means a W3 check failed, and `3`
+means the input or isolation contract was not satisfied.
+
 ## Startup Sequence
 
 Database initialization runs before the job runtime and filesystem watcher:

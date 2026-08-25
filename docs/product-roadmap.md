@@ -480,10 +480,13 @@ POST   /restore/preview
 - 设计孤立 Film、缺失媒体和多 LibraryItem 指向同一 Film 的行为。
 
 Gate A 只验收 Canonical Library、Media、Viewing 和旧 API 兼容层。Person、Credit、Concept
-仍属于 W3 的后续实现，不阻塞 Slice 5 的本地工具完成，但它们完成前 W3 本身不算结束。
+属于独立 W3 验收，不改变 Slice 5 的严格 Gate A 证据要求。
 
-当前进度（2026-08-25）：Structured Metadata Slice 1 已完成 Schema v6、确定性 key、provenance
-和 review 基础；Legacy 回填、NFO/TMDB 运行时同步及 W3 一致性验收仍待后续 slices。
+当前进度（2026-08-25）：Structured Metadata Slices 1–4 已完成。Schema v6 建立边界与物理
+结构，data migration v7 完成确定性 Legacy 回填，NFO/TMDB runtime observation 已事务化
+同步，隔离 W3 演练的迁移、幂等、一致性、来源优先级、生命周期和隐私检查全部通过。
+Film→Concept 关系仍等待 W4 factual Assertion；Gate A 继续因真实自然库和 Docker 证据缺失
+而保持 Blocked。
 
 #### 交付物
 

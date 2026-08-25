@@ -1,0 +1,42 @@
+{
+  "id": 549999,
+  "title": "Recorded Localized Title",
+  "original_title": "Recorded Original Title",
+  "original_language": "en",
+  "production_countries": [
+    {
+      "iso_3166_1": "US",
+      "name": "United States of America"
+    }
+  ],
+  "genres": [
+    {
+      "id": 18,
+      "name": "Drama"
+    },
+    {
+      "id": 878,
+      "name": "Science Fiction"
+    }
+  ],
+  "credits": {
+    "crew": [
+      {
+        "id": 549001,
+        "name": "Recorded Director",
+        "department": "Directing",
+        "job": "Director"
+      }
+    ],
+    "cast": [
+      {
+        "id": 549002,
+        "name": "Recorded Actor",
+        "character": "Archivist",
+        "order": 0
+      }
+    ]
+  },
+  "api_key": "sk-w3-synthetic-secret-canary",
+  "source_path": "C:\\W3Private\\recorded-response.json"
+}

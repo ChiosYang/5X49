@@ -212,7 +212,7 @@ def run_rehearsal(input_dir: Path, run_dir: Path) -> dict[str, Any]:
             engine.dispose()
         phases["upgrade"] = "passed"
         checks.append(_check(
-            "schema-upgraded-to-v6",
+            "schema-upgraded-to-current",
             migration.current_version == MIGRATIONS[-1].version,
             {"version": migration.current_version},
         ))

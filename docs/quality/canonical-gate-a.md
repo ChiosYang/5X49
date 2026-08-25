@@ -3,7 +3,7 @@
 - Evidence date: 2026-08-25
 - Report schema: 1
 - Gate implementation commit: `70f525a`
-- Current migration target: schema v6
+- Current migration target: schema/data v7
 - Development-copy source fingerprint: `b7a2da987e309d52`
 - Curated-acceptance source fingerprint: `978d1a20ee62b4ac`
 - Gate conclusion: **Blocked**
@@ -21,7 +21,7 @@ Git-ignored `backend/data/gate-a/` review area.
 | Runtime reconcile, clear/restore, relink, and hashing | Passed | Generated normal-profile plus isolated mini-library |
 | Canonical/Legacy consistency and privacy canaries | Passed | Fixtures and generated mini-library |
 | Development database copy rehearsal | Passed locally, blocked as evidence | Byte-identical clone; non-gating only |
-| Curated acceptance database and media-root rehearsal | Passed locally on v6, non-gating | Normal product scan, scrape, organizer, personal-state, restore, and privacy paths |
+| Curated acceptance database and media-root rehearsal | Passed locally through v7, non-gating | Normal product scan, scrape, structured metadata, personal-state, restore, and privacy paths |
 | Naturally aged real-library rehearsal | Blocked | Private real-world input not supplied |
 | Docker config/build/upgrade/read-source/restore/browser matrix | Blocked | Docker CLI unavailable |
 
@@ -59,15 +59,26 @@ error, and dedupe fields are now sanitized while stored worker data remains
 available for execution and retry. This evidence remains curated and does not
 replace a naturally aged private library copy.
 
-The schema v6 regression run `structured-metadata-v6-20260825` upgraded the
-same fixed offline input without modifying it and passed every local upgrade,
-idempotence, consistency, restore, runtime, destructive-clear, and privacy
-check. The new structured-metadata tables remained schema-only, fresh/create-all
-and v5-to-v6 paths were equivalent, and deep clear covered the new FK order.
-This regression does not change the input's curated/non-gating classification.
+The W3 regression run `w3-20260825-02` upgraded the same fixed offline input to
+v7 without modifying it and passed every structured-metadata upgrade, backfill,
+consistency, runtime, lifecycle, and privacy check. Backfill, second NFO
+reconcile, and recorded TMDB refresh were count-idempotent; source precedence
+and provenance preservation passed. This evidence is tracked in
+`docs/quality/structured-metadata-w3.md` and does not change the input's
+curated/non-gating Gate A classification.
 
-Person/Credit/Concept schema is implemented in W3 version 6; deterministic
-backfill and runtime synchronization remain later W3 work.
+The independent Gate A regression `structured-metadata-v7-20260825` also
+reached v7 with every local phase passed, restored its verified backup, kept
+Canonical/Legacy shadow differences at zero, and left the source unchanged.
+Its overall result remains `Blocked` because Docker evidence is still absent.
+
+The post-v7 backend regression discovered every test module except
+credential-dependent `test_agent.py`; all 160 tests passed after integration
+with the TMDB safe-concurrency changes. This is regression
+evidence only and does not replace either missing strict Gate input class.
+
+Person/Credit/Concept schema, deterministic backfill, and runtime synchronization
+are complete in W3 through version 7.
 Assertion/Evidence/AnalysisRun persistence, deduplication, rejected-state
 protection, and evaluation are W4/Gate B evidence, not Gate A implementation
 checks.
