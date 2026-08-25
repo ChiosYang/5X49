@@ -1,6 +1,7 @@
 # Analysis V2 and Evaluation Contract
 
-Status: Adopted contract; generation and persistence remain W4 work.
+Status: Adopted contract; persistence schema is implemented in version 8,
+while generation, resolution, and Gate B remain W4 work.
 
 The executable schemas live in `backend/app/contracts/analysis_v2.py`. Runtime
 producers and evaluation tooling must validate against those Pydantic models;
@@ -44,7 +45,31 @@ opaque score.
 
 ## Persistence boundary
 
-This contract does not make model output durable by itself. W4 must resolve
-references, deduplicate by Assertion key, preserve accepted/rejected review
-state, and write Evidence and provenance separately. Invalid or unresolved
-output is a review item, not a reason to invent an entity.
+Schema version 8 implements the durable boundary without connecting model
+generation. The persisted `assertion-predicate.v1` registry contains the eight
+model predicates plus factual `HAS_GENRE`; the model schema remains unchanged
+and cannot output `HAS_GENRE`. Assertion identity is the canonical hash of
+subject, predicate, object, and qualifier hash. Run, scope, provenance, and
+review state are intentionally excluded.
+
+An automated model result may only create an inferred, proposed Assertion.
+Accepted and rejected decisions survive refresh and re-analysis. A Genre that
+the fixed W3 vocabulary resolves uniquely from NFO, TMDB, or Legacy metadata
+may instead be accepted under `structured-genre-import.v1`; the policy version
+and factual provenance remain explicit.
+
+Evidence v1 stores only a bounded claim and metadata for `catalog`, `web`, or
+`dataset` material that was successfully retrieved over HTTP(S) and passed the
+network/content policy. Candidate URLs with credentials, sensitive query
+parameters, non-public literal addresses, file schemes, or unsafe redirects
+cannot become Evidence. DNS results and every redirect must be revalidated by
+the future retriever. NFO is provenance and user explanation is curated
+rationale, not external Evidence.
+
+AnalysisRun stores version dimensions, canonical input/output hashes, status,
+attempt count, token/cost data, trace IDs, redacted errors, and the validated
+user-facing summary. No AnalysisArtifact exists: raw prompts, raw responses,
+web-page bodies, hidden reasoning, paths, credentials, and whole source
+documents are not persisted. Invalid, unresolved, ambiguous, or unsafe
+candidates enter a bounded `AnalysisResolutionReview`; they never cause an
+entity to be invented.

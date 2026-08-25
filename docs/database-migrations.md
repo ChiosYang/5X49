@@ -105,6 +105,16 @@ Unknown genres do not create dynamic Concept rows, and unmappable countries or
 invalid people/credits remain reviewable. The run summary is stored under the
 `legacy_structured_metadata.v1` backfill key without titles or paths.
 
+Migration version 8 adds the W4 Analysis persistence foundation:
+`AssertionPredicate`, `AnalysisRun`, `Assertion`, `Evidence`,
+`AssertionEvidence`, `AssertionProvenance`, and `AnalysisResolutionReview`.
+It seeds only the nine immutable `assertion-predicate.v1` reference rows. It
+does not inspect legacy analysis, invoke a model, retrieve Evidence, access
+media, or create user-domain Assertions. Raw model input/output and page bodies
+are deliberately absent from the schema. Full data clear removes W4 domain
+rows in restrictive-FK order while retaining the predicate registry, migration
+journal, settings, and media.
+
 W3 can be rehearsed against the same isolated input contract as Gate A while
 keeping its evidence and conclusion independent:
 

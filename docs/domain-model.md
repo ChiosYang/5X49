@@ -1,6 +1,6 @@
 # Film / LibraryItem 领域模型 RFC
 
-> 状态：Adopted；Canonical v1–v5 与 W3 Structured Metadata v6–v7 已实现
+> 状态：Adopted；Canonical v1–v5、W3 v6–v7 与 W4 Persistence Schema v8 已实现
 > 目标阶段：Gate A / W2 Schema Ready
 > 基线：`origin/main` at `4426a6a`
 > 范围：领域边界、逻辑 Schema、约束、兼容与迁移策略
@@ -335,6 +335,10 @@ file URI、credential 字段、API key 或整个 NFO/TMDB 文档。review key �
 `Assertion` 表达 Graph 中的语义主张，如 `HAS_GENRE`、`HAS_THEME`、`REMAKE_OF`、
 `ADAPTED_FROM`、`INFLUENCED_BY`、`VISUALLY_SIMILAR_TO`。
 
+Schema v8 的 `assertion-predicate.v1` 注册表固定九项：上述关系加 `HAS_MOVEMENT`、
+`HAS_VISUAL_STYLE` 和 `HAS_MICRO_GENRE`。它记录 subject/object 类型、可空 Concept kind 与
+Evidence policy。Analysis V2 模型仍只能输出原有八项；`HAS_GENRE` 只供结构化或 curated 来源。
+
 | 字段 | 含义 |
 | --- | --- |
 | `id` | PK |
@@ -344,6 +348,7 @@ file URI、credential 字段、API key 或整个 NFO/TMDB 文档。review key �
 | `assertion_key` | subject + predicate + object + qualifier hash 的稳定 hash |
 | `source_scope` | `factual/curated/inferred` |
 | `review_status` | `proposed/accepted/rejected` |
+| `review_method` / `review_policy_version` | `none/import_policy/user` 与可审计导入政策 |
 | `confidence` | 可空的 0–1 评估值；必须有 `confidence_method` |
 | `rationale` | 面向用户的简短解释，不保存 hidden chain-of-thought |
 | `reviewed_by_profile_id` / `reviewed_at` | 用户审核信息 |
@@ -357,11 +362,13 @@ file URI、credential 字段、API key 或整个 NFO/TMDB 文档。review key �
 - `factual` 表示来自结构化、可核对的事实来源；`curated` 表示编辑/专家来源；`inferred`
   表示模型或规则推断。它们不代表审核结论。
 - `proposed/accepted/rejected` 是审核状态。结构化 provider 事实可按导入政策直接 accepted，
-  但仍保留 factual scope 和 provenance。
+  但必须记录 `review_method=import_policy`、政策版本、factual scope 和 provenance；用户决定
+  使用 `review_method=user`、LocalProfile reviewer 和审核时间。
 - LLM 自报的“high confidence”不能转换为 factual，也不能直接作为 confidence；
   `confidence_method` 必须说明是规则分数、来源等级、评测校准或人工值。
-- 自动流程只可创建/更新 proposed Assertion 的 `last_seen_at`、provenance 和 Evidence。
-  accepted/rejected 只能由显式用户审核改变。
+- 自动模型流程只可创建 proposed Assertion，并更新 `last_seen_at`、provenance 和 Evidence。
+  accepted/rejected 不能被自动刷新重置；唯一自动 accepted 入口是版本化 trusted import policy，
+  当前仅为 NFO/TMDB/Legacy 唯一解析 Genre 的 `structured-genre-import.v1`。
 - `assertion_key` 不包含 source_scope 或 AnalysisRun。相同语义边被更强来源再次观察时，
   Assertion 可按 `inferred → curated → factual` 单向提升汇总 scope，但每个来源的原始 scope
   仍保存在 provenance，且 review_status 不变。
@@ -370,19 +377,21 @@ file URI、credential 字段、API key 或整个 NFO/TMDB 文档。review key �
 
 ### 4.10 Evidence 与 AssertionProvenance
 
-Evidence 是外部支持材料，不是生成记录：
+Evidence 是外部支持材料，不是生成记录。v1 只保存已经通过安全检索与内容政策的 HTTP(S)
+`catalog/web/dataset` 来源；NFO 是 provenance，用户说明是 curated rationale：
 
 | 字段 | 含义 |
 | --- | --- |
 | `Evidence.id` | PK |
-| `evidence_type` | `catalog/web/dataset/nfo/user_note/...` |
+| `evidence_type` | `catalog/web/dataset` |
 | `source_title` / `source_uri` / `publisher` | 来源描述；URI 视为不可信输入 |
 | `claim` | 与 Assertion 相关的短摘要或可核查 claim |
 | `published_at` / `retrieved_at` | 来源时间 |
 | `content_hash` | 去重与变更检测 |
+| `verification_policy_version` | 完成安全检索和内容校验的政策版本 |
 | `created_at` / `updated_at` | 审计时间 |
 
-`AssertionEvidence(assertion_id, evidence_id, stance, created_at)` 支持一个 Evidence 关联多个
+`AssertionEvidence(assertion_id, evidence_id, stance, link_status, created_at, revoked_at)` 支持一个 Evidence 关联多个
 Assertion，`stance` 为 `supports/contradicts/context`。唯一约束 `(assertion_id, evidence_id,
 stance)`；删除两端均 `RESTRICT`，显式撤销使用关联状态而不是级联清除。
 
@@ -392,7 +401,7 @@ Provenance 单独保存：
 AssertionProvenance(
   id, assertion_id, origin_kind, origin_scope, origin_ref,
   analysis_run_id NULL, source_field NULL, source_payload_hash NULL,
-  first_observed_at, last_observed_at
+  first_observed_at, last_observed_at, superseded_at
 )
 ```
 
@@ -423,6 +432,7 @@ AssertionProvenance(
 | `correlation_id` / `job_id` | Job/Event 追踪 |
 | `started_at` / `finished_at` | 运行时间 |
 | `error_category` / `error_code` / `error_message` | 脱敏错误 |
+| `result_summary` | 通过 Analysis V2 验证的用户可见短摘要，最多 1200 字符 |
 | `created_at` / `updated_at` | 审计时间 |
 
 幂等键定义：
@@ -431,7 +441,7 @@ AssertionProvenance(
 sha256(
   film_id + analysis_kind + provider + model +
   prompt_version + schema_version + resolver_version + policy_version +
-  input_hash
+  app_version + input_hash
 )
 ```
 
@@ -441,8 +451,17 @@ sha256(
 - 同键成功运行直接复用；失败/取消的重试复用同一 AnalysisRun，增加 `attempt_count`。
   每次尝试的细节继续由 Job/Event 审计；若未来需要不可变尝试历史，再加 `AnalysisAttempt`。
 - version 任一变化都会产生新键和新逻辑运行。写入 Assertion 时仍按 `assertion_key` 去重。
-- raw output 的保留期是第 12 节待确认项；无论是否保留，结构化结果、版本、hash、成本、
-  错误和审核状态都必须持久化。
+- Schema v8 不建立 AnalysisArtifact，也不保存 raw input/output。结构化 Assertion/Evidence、
+  版本、hash、成本、脱敏错误、审核状态和验证后的用户可见摘要持久化；raw prompt/response、
+  hidden reasoning、网页正文、绝对路径和密钥不落库。
+
+### 4.12 AnalysisResolutionReview
+
+无解析结果、身份歧义、谓词类型不匹配或未通过 Evidence 安全/内容政策的候选进入独立
+`AnalysisResolutionReview`。记录只包含 AnalysisRun、Film、可空 predicate、候选类型、原因码、
+不超过 4 KiB 的 allowlist candidate summary、candidate/review hash、状态和可空 resolved entity。
+同一运行和候选重放必须命中唯一 review key；review 不保存整个模型输出、网页正文、路径或凭据，
+也不能直接创建 GraphEntity。
 
 ## 5. 现有字段迁移映射
 
@@ -638,8 +657,8 @@ MovieUserState 当前行 + verified backup 为基线，事件只用于审计核�
    校验 `PRAGMA integrity_check`、可打开性、文件大小和 backup hash。
 3. **Gate A Additive Schema**：只新增 GraphEntity、Film、ExternalIdentity、LibraryItem、
    MediaAsset、LocalProfile、Viewing、FilmProfileState、alias/review/migration 表；旧表不改名、
-   不删除。Person/Credit/Concept 属于后续 W3；Assertion/Evidence/AnalysisRun 持久化属于
-   W4/Gate B。
+   不删除。Person/Credit/Concept 已由 W3 v6–v7 实现；Assertion/Evidence/AnalysisRun 的
+   additive Schema 已由 W4 v8 实现，但它们的 runtime 和质量仍属于 Gate B，不扩大 Gate A。
 4. **创建单例 profile**：幂等创建 `profile_key=local`。
 5. **回填 Film 身份**：按 TMDB 精确 ID、IMDb 精确 ID 顺序复用 Film；两者冲突时停止自动合并并
    记录 review。无外部身份时每旧 Movie 单独创建 Film。
@@ -651,9 +670,10 @@ MovieUserState 当前行 + verified backup 为基线，事件只用于审计核�
    Film→Concept 关系仍等待 W4 factual Assertion；W3 不作为 Gate A 通过条件。
 8. **回填个人数据**：先 FilmProfileState，再按第 5.2 节创建 legacy Viewing；对每个旧状态记录
    输出迁移结果。
-9. **后续 W4 分析迁移**：每个 legacy analysis payload 创建 migration AnalysisRun/artifact；
-   可解析边按 assertion_key 去重，未解析边进入 review。legacy LLM reason 不生成 Evidence。
-   此步骤由 Gate B 验收。
+9. **W4 分析持久化**：Schema v8 已建立谓词注册表、Assertion、Evidence、AnalysisRun、
+   provenance/link 和 analysis review，不保存 raw artifact。后续切片为每个兼容 legacy analysis
+   payload 建立版本化 AnalysisRun，可解析边按 assertion_key 去重，未解析边进入 review；legacy
+   LLM reason 只作 rationale，不生成 Evidence。运行时、回填和质量仍由 Gate B 验收。
 10. **一致性检查**：核对旧 Movie → alias/item 一一覆盖、身份冲突、UserState 字段、状态分布、
     引用完整性和可重跑结果；migration 重跑不得增加记录。
 11. **双读/影子校验**：旧 API 仍读旧表，同时生成新兼容 payload 做 diff；路径字段允许规范化
@@ -719,8 +739,8 @@ RFC/决策：
 
 实现 Gate（本 RFC 不声称已经通过）：
 
-- [x] 版本化 migration runner、v1–v6 additive schema migration 与 v7 确定性 data migration
-  已实现并 review；v6–v7 不扩大 Gate A 的验收边界。
+- [x] 版本化 migration runner、v1–v6 additive schema、v7 确定性 data migration 与 W4
+  additive Schema v8 已实现并 review；v6–v8 不扩大 Gate A 的验收边界。
 - [x] 九套旧库 fixture 与 fresh `create_all` 向前迁移和重复执行通过。
 - [x] 隔离 fixture 的迁移前备份、失败恢复和离线恢复/重迁移测试通过。
 - [ ] 真实资料库副本的 Film/LibraryItem/Viewing/alias 数量与字段一致性报告通过。
@@ -765,13 +785,16 @@ Gate 阶段，但它仍是生成媒体，不替代自然积累的真实资料库
 
 4. **兼容 PUT `watched=false`**：本 RFC 默认只删除 compatibility Viewing，不删除 Diary
    Viewing；需要在 API 文档实施阶段明确告知旧客户端。
-5. **Analysis raw input/output 保留期**：需在可诊断性、隐私、成本复核和数据库体积之间确定
-   默认期限；密钥、绝对路径和 hidden reasoning 无论如何都不保存。
+5. **Analysis raw input/output（已确认）**：Schema v8 不保存 raw input/output 或网页正文，也不
+   建立 AnalysisArtifact。只保存 canonical hash、版本、成本、脱敏错误、结构化结果和验证后的
+   用户可见摘要；密钥、绝对路径和 hidden reasoning 不保存。
 6. **Concept 受控词表治理**：Schema 与 W3/W4 持久化边界已确认；Genre canonical key、初始
    别名集和来源优先级必须在 Structured Metadata Slice 2 开始前形成版本化字典。micro-genre、
    theme 和 movement 的治理仍留给 Analysis/Graph RFC。
-7. **Evidence 抓取边界**：允许保存的 claim 长度、URI allow/deny 规则、失效链接和版权处理
-   需要在 Analysis V2 RFC 中确定。
+7. **Evidence 抓取边界（v1 已确认）**：只保存已通过公共 HTTP(S) 网络和内容政策验证的
+   catalog/web/dataset 元数据与不超过 400 字符的 claim，不保存正文。URI 禁止 userinfo、敏感
+   query、非公共 literal IP、file scheme；运行时还必须对 DNS 结果和每次 redirect 重新校验。
+   失效链接的刷新频率和重试调度留给 W4 runtime Slice。
 8. **Film merge/unmerge 操作面**：本 RFC 定义 redirect 与 RESTRICT，但批量合并、撤销和冲突
    UI 属于后续 entity-resolution 设计。
 9. **ExternalScore、Studio、Collection 的完整规范表**：本 RFC 只定义当前字段去向，不把它们

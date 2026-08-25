@@ -509,6 +509,11 @@ Film→Concept 关系仍等待 W4 factual Assertion；Gate A 继续因真实自�
 
 把 AI 文章升级为可以进入知识图谱、可以验证和可以重建的数据。
 
+当前进度（2026-08-25）：Slice 1 已完成。Schema v8 已新增版本化谓词注册表、Assertion、
+Evidence、AnalysisRun、provenance/link 与独立 analysis review，并锁定确定性 hash、可信 Genre
+导入、Evidence 公共 HTTP(S) 边界和不保留 raw Analysis payload 的政策。当前仍未接入模型
+runtime、Genre factual Assertion 回填、Legacy analysis 迁移或评测集；Gate B 保持 Pending。
+
 #### 任务
 
 - 使用严格的 Pydantic/JSON Schema 定义 Analysis V2 输出。
@@ -989,8 +994,8 @@ Started Install
 - Film 与 LibraryItem 已分离。
 - Viewing 为多记录模型。
 - Canonical Library、Media、Viewing 与旧 API 兼容读取/双写经过真实库副本演练。
-- Assertion、Evidence、AnalysisRun 的边界明确，但其持久化、去重和拒绝保护由 W4/Gate B
-  验收。
+- Assertion、Evidence、AnalysisRun 的边界和 additive Schema v8 已实现，但运行时去重、拒绝
+  保护、Legacy 转换和质量评测仍由 W4/Gate B 验收。
 - 旧数据迁移和恢复方案可执行。
 - Docker 首装、旧库升级、canonical/shadow/legacy 回退、恢复和中英文 smoke 有脱敏证据。
 
@@ -1005,6 +1010,9 @@ Started Install
 - 实体解析和边质量达到目标。
 - 事实、证据和推断可区分。
 - 分析重试幂等。
+
+当前状态（2026-08-25）：**Pending**。Persistence Slice 1 已完成 Schema 和契约；Genre
+factual Assertion、Analysis V2 runtime、Legacy 迁移、固定评测集和严格 Gate B rehearsal 尚未完成。
 
 未通过：减少关系类型或调整数据来源，不扩大 Graph。
 
