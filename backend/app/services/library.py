@@ -48,6 +48,10 @@ from app.services.compatibility_reads import (
     log_shadow_report,
 )
 from app.services.file_identity import FileIdentityObservation, full_content_hash
+from app.contracts.structured_metadata import (
+    StructuredMetadataObservation,
+    StructuredMetadataObservationDraft,
+)
 
 # Configuration via environment variables
 SEED_DATA_FILE = Path(__file__).parent.parent / "data" / "seed_movies.json"
@@ -145,16 +149,26 @@ class LibraryManager:
         # We handle DB creation in main.py, but good to ensure tables exist
         pass
 
-    def add_movies(self, movies_data: list[dict]) -> int:
+    def add_movies(
+        self,
+        movies_data: list[dict],
+        *,
+        structured_observations: list[
+            StructuredMetadataObservation | StructuredMetadataObservationDraft | None
+        ] | None = None,
+    ) -> int:
         """Add multiple movies to the library (upsert)."""
         added = 0
         scan_events: list[dict] = []
+        metadata_observations = structured_observations or [None] * len(movies_data)
+        if len(metadata_observations) != len(movies_data):
+            raise ValueError("structured observations must align with movies")
         prepared = [
-            (movie_dict, canonical_runtime_writer.observe_movie(movie_dict))
-            for movie_dict in movies_data
+            (movie_dict, canonical_runtime_writer.observe_movie(movie_dict), metadata_observation)
+            for movie_dict, metadata_observation in zip(movies_data, metadata_observations, strict=True)
         ]
         with Session(engine) as session:
-            for movie_dict, observation in prepared:
+            for movie_dict, observation, metadata_observation in prepared:
                 if not movie_dict.get("id"):
                     continue
                 try:
@@ -162,6 +176,7 @@ class LibraryManager:
                         session,
                         movie_dict,
                         file_observation=observation,
+                        structured_metadata=metadata_observation,
                     )
                 except AmbiguousRelink as ambiguity:
                     self._queue_relink_job(session, movie_dict, ambiguity)
@@ -235,6 +250,9 @@ class LibraryManager:
         _review_context: Optional[dict] = None,
         _file_observation: Optional[FileIdentityObservation] = None,
         _candidate_hashes: Optional[dict[str, str]] = None,
+        _structured_metadata: (
+            StructuredMetadataObservation | StructuredMetadataObservationDraft | None
+        ) = None,
         _emit_scan_events: bool = True,
     ) -> Optional[dict]:
         """Insert or update one movie and return the stored record plus emitted scan event types."""
@@ -261,6 +279,7 @@ class LibraryManager:
                     force_library_item_id=_force_library_item_id,
                     review_reason=_review_reason,
                     review_context=_review_context,
+                    structured_metadata=_structured_metadata,
                 )
             except AmbiguousRelink as ambiguity:
                 job_id = self._queue_relink_job(session, movie_data, ambiguity)

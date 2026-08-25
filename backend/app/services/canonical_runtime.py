@@ -9,6 +9,10 @@ from uuid import uuid4
 
 from sqlmodel import Session, select
 
+from app.contracts.structured_metadata import (
+    StructuredMetadataObservation,
+    StructuredMetadataObservationDraft,
+)
 from app.models import (
     ExternalIdentity,
     EventRecord,
@@ -27,6 +31,7 @@ from app.models import (
     utc_now_iso,
 )
 from app.services.file_identity import FileIdentityObservation, observe_file
+from app.services.structured_metadata_sync import structured_metadata_synchronizer
 
 
 SOURCE_INSTANCE_ID = "legacy.local"
@@ -67,6 +72,9 @@ class CanonicalRuntimeWriter:
         force_library_item_id: str | None = None,
         review_reason: str | None = None,
         review_context: dict[str, Any] | None = None,
+        structured_metadata: (
+            StructuredMetadataObservation | StructuredMetadataObservationDraft | None
+        ) = None,
     ) -> RuntimeMovieResolution:
         now = utc_now_iso()
         requested_id = preserve_id or movie_data.get("id")
@@ -188,6 +196,18 @@ class CanonicalRuntimeWriter:
 
         self._sync_identities(session, resolution.film_id, movie_data, now)
         self._sync_assets(session, resolution, movie_data, now, file_observation)
+        if structured_metadata is not None:
+            bound_observation = (
+                structured_metadata.bind(resolution.library_item_id)
+                if isinstance(structured_metadata, StructuredMetadataObservationDraft)
+                else structured_metadata
+            )
+            structured_metadata_synchronizer.sync(
+                session,
+                film_id=resolution.film_id,
+                library_item_id=resolution.library_item_id,
+                observation=bound_observation,
+            )
         alias = session.get(LegacyMovieAlias, resolution.compatibility_id)
         if alias:
             alias.legacy_library_status = movie_data.get("library_status")

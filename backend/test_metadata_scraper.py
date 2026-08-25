@@ -1,5 +1,6 @@
 import tempfile
 import unittest
+import xml.etree.ElementTree as ET
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
@@ -74,17 +75,27 @@ class MetadataScraperIntegrationTests(unittest.TestCase):
                 "id": 603,
                 "title": "The Matrix",
                 "original_title": "The Matrix",
+                "original_language": "en",
                 "release_date": "1999-03-31",
                 "overview": "A computer hacker learns about the true nature of reality.",
                 "runtime": 136,
                 "poster_path": "/matrix-poster.jpg",
                 "backdrop_path": "/matrix-backdrop.jpg",
                 "external_ids": {"imdb_id": "tt0133093"},
-                "genres": [{"name": "Action"}, {"name": "Science Fiction"}],
-                "production_countries": [{"name": "United States of America"}],
+                "genres": [
+                    {"id": 28, "name": "Action"},
+                    {"id": 878, "name": "Science Fiction"},
+                ],
+                "production_countries": [
+                    {"iso_3166_1": "US", "name": "United States of America"}
+                ],
                 "credits": {
-                    "crew": [{"job": "Director", "name": "Lana Wachowski"}],
-                    "cast": [{"name": "Keanu Reeves", "character": "Neo"}],
+                    "crew": [
+                        {"id": 9340, "job": "Director", "name": "Lana Wachowski"}
+                    ],
+                    "cast": [
+                        {"id": 6384, "name": "Keanu Reeves", "character": "Neo", "order": 0}
+                    ],
                 },
             }
 
@@ -106,7 +117,9 @@ class MetadataScraperIntegrationTests(unittest.TestCase):
         self.assertIn("<title>The Matrix</title>", nfo_text)
         self.assertIn("<tmdbid>603</tmdbid>", nfo_text)
         self.assertIn("<id>tt0133093</id>", nfo_text)
-        self.assertIn("<director>Lana Wachowski</director>", nfo_text)
+        nfo_root = ET.parse(nfo_path).getroot()
+        self.assertEqual(nfo_root.findtext("director"), "Lana Wachowski")
+        self.assertEqual(nfo_root.find("director").get("tmdbid"), "9340")
 
         stored = library_manager.get_movie(movie["id"])
         self.assertIsNotNone(stored)
@@ -130,6 +143,20 @@ class MetadataScraperIntegrationTests(unittest.TestCase):
         self.assertEqual(event.payload["current"]["tmdb_id"], "603")
         self.assertEqual(event.payload["current"]["runtime"], 136)
         self.assertIsNone(event.payload["current"]["scrape_error"])
+        self.assertNotIn("structured_metadata", event.payload)
+        with self.engine.connect() as connection:
+            self.assertGreaterEqual(
+                connection.exec_driver_sql("SELECT COUNT(*) FROM film_title").scalar_one(),
+                2,
+            )
+            self.assertEqual(connection.exec_driver_sql("SELECT COUNT(*) FROM film_country").scalar_one(), 1)
+            self.assertEqual(connection.exec_driver_sql("SELECT COUNT(*) FROM credit").scalar_one(), 2)
+            self.assertEqual(
+                connection.exec_driver_sql(
+                    "SELECT COUNT(*) FROM external_identity WHERE provider='tmdb.person'"
+                ).scalar_one(),
+                2,
+            )
 
     def test_scrape_movie_requires_confirmation_when_enabled(self):
         movie_dir = self.tmp_path / "The.Matrix.1999"

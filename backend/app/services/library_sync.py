@@ -38,8 +38,12 @@ class LibrarySyncService:
                 raise FileNotFoundError(f"Directory not found: {target_dir}")
 
             scanner = NFOScanner(str(target_dir), video_probe_cache=self._video_probe_cache())
-            movies = scanner.scan()
-            added = library_manager.add_movies(movies)
+            observed_movies = scanner.scan_observed()
+            movies = [item.movie for item in observed_movies]
+            added = library_manager.add_movies(
+                movies,
+                structured_observations=[item.structured_metadata for item in observed_movies],
+            )
             missing = library_manager.mark_missing_not_seen_since(started_at)
 
             result = {
@@ -107,15 +111,17 @@ class LibrarySyncService:
             return None
 
         scanner = NFOScanner(str(folder.parent), video_probe_cache=self._video_probe_cache())
-        movie_data = scanner.scan_folder(folder)
-        if not movie_data:
+        observed_movie = scanner.scan_folder_observed(folder)
+        if not observed_movie:
             return None
+        movie_data = observed_movie.movie
 
         upsert_result = library_manager.upsert_movie_with_events(
             movie_data,
             preserve_id=preserve_id,
             command_id=command_id,
             correlation_id=correlation_id,
+            _structured_metadata=observed_movie.structured_metadata,
         )
         if upsert_result and upsert_result.get("pending_relink_job_id"):
             return {

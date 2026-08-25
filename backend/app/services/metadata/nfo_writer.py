@@ -28,6 +28,7 @@ class NFOWriter:
         self._text(root, "plot", metadata.get("overview"))
         self._text(root, "outline", metadata.get("overview"))
         self._text(root, "runtime", str(metadata.get("runtime")) if metadata.get("runtime") else None)
+        self._text(root, "originallanguage", metadata.get("original_language"))
 
         if metadata.get("id"):
             uniqueid = ET.SubElement(root, "uniqueid", {"type": "tmdb", "default": "true"})
@@ -39,19 +40,31 @@ class NFOWriter:
             uniqueid.text = imdb_id
 
         for genre in metadata.get("genres", []):
-            self._text(root, "genre", genre.get("name"))
+            self._text(
+                root,
+                "genre",
+                genre.get("name"),
+                {"tmdbid": str(genre["id"])} if genre.get("id") else None,
+            )
 
         for country in metadata.get("production_countries", []):
             self._text(root, "country", country.get("name"))
 
         for person in metadata.get("credits", {}).get("crew", []):
             if person.get("job") == "Director":
-                self._text(root, "director", person.get("name"))
+                self._text(
+                    root,
+                    "director",
+                    person.get("name"),
+                    {"tmdbid": str(person["id"])} if person.get("id") else None,
+                )
 
-        for actor in metadata.get("credits", {}).get("cast", [])[:10]:
-            actor_elem = ET.SubElement(root, "actor")
+        for index, actor in enumerate(metadata.get("credits", {}).get("cast", [])[:10]):
+            attributes = {"tmdbid": str(actor["id"])} if actor.get("id") else {}
+            actor_elem = ET.SubElement(root, "actor", attributes)
             self._text(actor_elem, "name", actor.get("name"))
             self._text(actor_elem, "role", actor.get("character"))
+            self._text(actor_elem, "order", actor.get("order", index))
 
         if poster_url:
             thumb = ET.SubElement(root, "thumb", {"aspect": "poster"})
@@ -108,10 +121,10 @@ class NFOWriter:
         temp_path.replace(nfo_path)
         return nfo_path
 
-    def _text(self, root: ET.Element, tag: str, value):
+    def _text(self, root: ET.Element, tag: str, value, attributes: Optional[dict[str, str]] = None):
         if value is None or value == "":
             return
-        child = ET.SubElement(root, tag)
+        child = ET.SubElement(root, tag, attributes or {})
         child.text = str(value)
 
     def _year(self, release_date: Optional[str]) -> Optional[str]:

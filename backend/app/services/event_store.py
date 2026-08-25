@@ -4,6 +4,7 @@ from typing import Optional
 from sqlmodel import Session, select
 
 from app.database import engine
+from app.contracts.structured_metadata import StructuredMetadataObservation
 from app.models import EventRecord
 
 
@@ -62,6 +63,7 @@ class EventStore:
         correlation_id: Optional[str] = None,
         causation_id: Optional[str] = None,
         context: Optional[dict] = None,
+        structured_metadata: StructuredMetadataObservation | None = None,
     ) -> tuple[dict, Optional[dict]]:
         """Append one event and synchronously update supported projections."""
         with Session(engine) as session:
@@ -90,6 +92,7 @@ class EventStore:
                     session,
                     projected,
                     preserve_id=aggregate_id,
+                    structured_metadata=structured_metadata,
                 )
             session.commit()
             session.refresh(event)

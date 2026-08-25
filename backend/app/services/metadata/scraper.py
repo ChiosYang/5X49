@@ -23,6 +23,7 @@ from app.services.metadata.models import (
 from app.services.metadata.nfo_writer import NFOWriter
 from app.services.metadata.tmdb import TMDBClient
 from app.services.settings import get_artwork_language, get_language, get_media_dir, get_scrape_require_confirmation
+from app.services.structured_metadata_observations import tmdb_structured_metadata_observation
 
 
 REVIEW_CANDIDATE_LIMIT = 20
@@ -429,6 +430,11 @@ class MetadataScraper:
 
             artwork_language = self._artwork_language(options.artwork_language)
             details = self.tmdb.movie_details(selected_id, language=language, artwork_language=artwork_language)
+            structured_observation = tmdb_structured_metadata_observation(
+                details,
+                selected_id,
+                language=language,
+            )
             poster_path = self._select_image_path(details, "posters", details.get("poster_path"), artwork_language, language)
             backdrop_path = self._select_image_path(details, "backdrops", details.get("backdrop_path"), artwork_language, language)
             poster_url = self.tmdb.image_url(poster_path, "original")
@@ -534,6 +540,7 @@ class MetadataScraper:
                     command_id=operation_command_id,
                     correlation_id=operation_correlation_id,
                     context={"operation": "scrape_movie"},
+                    structured_metadata=structured_observation,
                 )
             if not projected:
                 raise RuntimeError("Metadata matched event could not be projected")

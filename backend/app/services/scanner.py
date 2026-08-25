@@ -5,12 +5,27 @@ Parses .nfo XML files to extract rich metadata.
 import hashlib
 import re
 import xml.etree.ElementTree as ET
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 
 from app.services.artwork_cache import artwork_cache
 from app.services.video_probe import video_probe_service
+from app.contracts.structured_metadata import (
+    CountryObservation,
+    CreditObservation,
+    GenreObservation,
+    ObservationIssue,
+    StructuredMetadataObservationDraft,
+    TitleObservation,
+)
+
+
+@dataclass(frozen=True)
+class ScannedMovie:
+    movie: dict
+    structured_metadata: StructuredMetadataObservationDraft | None = None
 
 
 class NFOScanner:
@@ -40,26 +55,35 @@ class NFOScanner:
 
     def scan(self) -> list[dict]:
         """Scan all subdirectories for movies and parse metadata when available."""
+        return [item.movie for item in self.scan_observed()]
+
+    def scan_observed(self) -> list[ScannedMovie]:
+        """Scan movies while retaining the internal structured metadata observation."""
         movies = []
         
         if not self.media_dir.exists():
-            print(f"❌ Media directory not found: {self.media_dir}")
+            print("Media directory not found")
             return movies
         
         for folder in self.media_dir.iterdir():
             if not folder.is_dir() or folder.name.startswith('.'):
                 continue
             
-            movie_data = self.scan_folder(folder)
-            if movie_data:
-                movies.append(movie_data)
-                print(f"  ✅ Parsed: {movie_data['title']} ({movie_data['year']})")
+            observed = self.scan_folder_observed(folder)
+            if observed:
+                movies.append(observed)
+                print("  Parsed movie")
         
-        print(f"\n📚 Total movies scanned: {len(movies)}")
+        print(f"\nTotal movies scanned: {len(movies)}")
         return movies
 
     def scan_folder(self, folder: Path | str) -> Optional[dict]:
         """Scan a single movie folder, using NFO when present and filename fallback otherwise."""
+        observed = self.scan_folder_observed(folder)
+        return observed.movie if observed else None
+
+    def scan_folder_observed(self, folder: Path | str) -> Optional[ScannedMovie]:
+        """Scan one folder and return compatibility data plus an internal observation."""
         folder = Path(folder)
         if not folder.exists() or not folder.is_dir():
             return None
@@ -68,7 +92,7 @@ class NFOScanner:
 
         nfo_file = self._find_nfo_file(folder, video_file)
         if nfo_file:
-            return self.parse_nfo(nfo_file, folder)
+            return self._parse_nfo_observed(nfo_file, folder)
 
         if not video_file:
             return None
@@ -92,10 +116,28 @@ class NFOScanner:
             "poster_path": None,
             "backdrop_path": None,
         }
-        return self._with_file_info(movie_data, folder, video_file)
+        movie_data = self._with_file_info(movie_data, folder, video_file)
+        return ScannedMovie(
+            movie=movie_data,
+            structured_metadata=StructuredMetadataObservationDraft(
+                origin_kind="filename",
+                source_instance_id="legacy.local",
+                observed_at=movie_data["metadata_updated_at"],
+                complete_fields=frozenset({"titles"}),
+                titles=(
+                    TitleObservation(file_title, "canonical", "und"),
+                    TitleObservation(file_title, "original", "und"),
+                ),
+            ),
+        )
 
     def parse_nfo(self, nfo_path: Path, folder: Path) -> Optional[dict]:
         """Parse a single .nfo XML file and return standardized movie dict."""
+        observed = self._parse_nfo_observed(nfo_path, folder)
+        return observed.movie if observed else None
+
+    def _parse_nfo_observed(self, nfo_path: Path, folder: Path) -> Optional[ScannedMovie]:
+        """Parse one NFO into the compatibility projection and structured observation."""
         try:
             tree = ET.parse(nfo_path)
             root = tree.getroot()
@@ -114,8 +156,9 @@ class NFOScanner:
             countries = [c.text for c in root.findall('country') if c.text]
             audio_tracks = self._parse_audio_tracks(root)
             
-            # Director
-            director = root.findtext('director') or ""
+            # Directors can be flat Kodi elements or nested tinyMediaManager elements.
+            director_observations = self._director_observations(root)
+            director = director_observations[0].name if director_observations else ""
             
             # Ratings
             imdb_rating = None
@@ -127,12 +170,11 @@ class NFOScanner:
                         break
             
             # Actors (top 5)
-            actors = []
-            for actor in root.findall('actor')[:5]:
-                name = actor.findtext('name')
-                role = actor.findtext('role')
-                if name:
-                    actors.append({"name": name, "role": role or ""})
+            structured_actors, actor_issues = self._actor_observations(root)
+            actors = [
+                {"name": actor.name, "role": actor.character}
+                for actor in structured_actors[:5]
+            ]
             
             # Image paths (local files)
             folder_name = folder.name
@@ -189,14 +231,107 @@ class NFOScanner:
                 "scrape_status": "matched",
                 **self.nfo_signature(nfo_path),
             }
-            return self._with_file_info(movie_data, folder, video_file)
+            movie_data = self._with_file_info(movie_data, folder, video_file)
+            title_value = (root.findtext("title") or title).strip()
+            original_value = (root.findtext("originaltitle") or title).strip()
+            title_locale = self._title_locale(root.findtext("language"))
+            original_locale = self._title_locale(root.findtext("originallanguage"))
+            titles = [
+                TitleObservation(title_value, "canonical", title_locale),
+                TitleObservation(original_value, "original", original_locale),
+            ]
+            if title_value != original_value:
+                titles.append(TitleObservation(title_value, "localized", title_locale))
+            genre_observations = []
+            for element in root.findall("genre"):
+                value = (element.text or "").strip()
+                if not value:
+                    continue
+                raw_id = element.get("tmdbid") or element.get("tmdb_id")
+                tmdb_genre_id = int(raw_id) if raw_id and raw_id.isdigit() else None
+                genre_observations.append(
+                    GenreObservation(value=value, tmdb_id=tmdb_genre_id, locale="und")
+                )
+            observation = StructuredMetadataObservationDraft(
+                origin_kind="nfo",
+                source_instance_id="legacy.local",
+                observed_at=movie_data["metadata_updated_at"],
+                titles=tuple(titles),
+                countries=tuple(CountryObservation(value) for value in countries),
+                credits=tuple((*director_observations, *structured_actors)),
+                genres=tuple(genre_observations),
+                issues=tuple(actor_issues),
+            )
+            return ScannedMovie(movie=movie_data, structured_metadata=observation)
 
         except ET.ParseError as e:
-            print(f"  ❌ XML Parse Error in {nfo_path}: {e}")
+            print(f"  NFO XML parse error: {e}")
             return None
         except Exception as e:
-            print(f"  ❌ Error parsing {nfo_path}: {e}")
+            print(f"  NFO parse error: {type(e).__name__}")
             return None
+
+    def _director_observations(self, root: ET.Element) -> list[CreditObservation]:
+        directors: list[CreditObservation] = []
+        for index, element in enumerate(root.findall("director")):
+            name = (element.findtext("name") or element.text or "").strip()
+            if not name:
+                continue
+            external_id = element.get("tmdbid") or element.findtext("tmdbid")
+            directors.append(
+                CreditObservation(
+                    name=name,
+                    department="Directing",
+                    job="Director",
+                    billing_order=index,
+                    provider="tmdb.person" if external_id else None,
+                    external_id=external_id.strip() if external_id else None,
+                )
+            )
+        return directors
+
+    def _actor_observations(
+        self,
+        root: ET.Element,
+    ) -> tuple[list[CreditObservation], list[ObservationIssue]]:
+        actors: list[CreditObservation] = []
+        issues: list[ObservationIssue] = []
+        for index, element in enumerate(root.findall("actor")[:10]):
+            name = (element.findtext("name") or "").strip()
+            if not name:
+                issues.append(
+                    ObservationIssue(
+                        "credit",
+                        "credit_invalid",
+                        {"index": index, "has_name": False},
+                    )
+                )
+                continue
+            role = (element.findtext("role") or "").strip()
+            raw_order = (element.findtext("order") or "").strip()
+            billing_order = int(raw_order) if raw_order.isdigit() else index
+            external_id = element.get("tmdbid") or element.findtext("tmdbid")
+            actors.append(
+                CreditObservation(
+                    name=name,
+                    department="Acting",
+                    job="Actor",
+                    character=role,
+                    billing_order=billing_order,
+                    provider="tmdb.person" if external_id else None,
+                    external_id=external_id.strip() if external_id else None,
+                )
+            )
+        return actors, issues
+
+    @staticmethod
+    def _title_locale(value: Optional[str]) -> str:
+        if not value or not value.strip():
+            return "und"
+        normalized = value.strip().replace("_", "-")
+        if normalized.casefold() in {"zh", "zh-cn", "zh-hans"}:
+            return "zh-CN"
+        return normalized
 
     def _find_image(self, folder: Path, suffix: str) -> Optional[str]:
         """Find an image file with the given suffix (-poster, -fanart, etc.)."""
