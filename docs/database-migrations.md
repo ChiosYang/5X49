@@ -124,6 +124,17 @@ LibraryItem IDs. Unknown or conflicting values remain reviewable. The run
 summary uses `factual_genre_assertions.v1`; the migration does not access media,
 the network, model providers, or raw analysis data.
 
+Migration version 10 is also a deterministic data migration with no physical
+schema change. It selects one stable Legacy alias per Film, parses only bounded
+genealogy summary, micro-genre, ancestor, and descendant fields, and creates a
+versioned Legacy AnalysisRun. Uniquely resolved Film references become inferred
+proposed Assertions with directional provenance; unresolved references and
+incompatible payloads become bounded analysis reviews. It does not call a
+model, retrieve Evidence, access media, modify historical EventRecord rows, or
+copy complete Legacy `analysis_data` into W4 storage. The run summary is stored
+under `legacy_analysis_v2.v1`; existing Movie JSON remains a rollback-compatible
+projection until a successful V2 analysis replaces it.
+
 W3 can be rehearsed against the same isolated input contract as Gate A while
 keeping its evidence and conclusion independent:
 

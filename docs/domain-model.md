@@ -1,6 +1,6 @@
 # Film / LibraryItem 领域模型 RFC
 
-> 状态：Adopted；Canonical v1–v5、W3 v6–v7 与 W4 Persistence v8–v9 已实现
+> 状态：Adopted；Canonical v1–v5、W3 v6–v7 与 W4 Persistence v8–v10 已实现
 > 目标阶段：Gate A / W2 Schema Ready
 > 基线：`origin/main` at `4426a6a`
 > 范围：领域边界、逻辑 Schema、约束、兼容与迁移策略
@@ -502,7 +502,7 @@ sha256(
 | `scrape_status/error/scraped_at/tmdb_confidence` | `LibraryItem` resolution/scrape 兼容状态 | 未来可由 MetadataRun 投影，但 W3 先保形状 |
 | `analysis_status` | 最新 `AnalysisRun` projection | 不作为新系统事实源 |
 | `micro_genre` / `micro_genre_definition` | Concept + inferred `HAS_MICRO_GENRE` Assertion | 定义进入 Concept.description，保留 legacy provenance |
-| `analysis_data` | legacy AnalysisRun output + normalized Assertions/Evidence | 原 JSON 先原样归档；解析失败不能阻塞 Movie 基线迁移 |
+| `analysis_data` | Legacy compatibility projection + normalized Assertions/Evidence | v10 只迁移有界摘要与可解析关系，不建立 raw artifact；原 Movie JSON 暂留作回退投影 |
 
 旧 `analysis_data` 的细分映射：
 
@@ -511,8 +511,8 @@ sha256(
 - `ancestors` → 解析引用 Film 后写入当前 Film `INFLUENCED_BY` 方向的 proposed Assertion；
 - `descendants` → 解析引用 Film 后写入目标 Film `INFLUENCED_BY` 当前 Film 的 proposed Assertion；
 - `type` 进入 predicate/qualifier，`reason` 进入 rationale；两者都不是 Evidence；
-- `influence_impact` 保存在 AnalysisRun 的 legacy artifact/用户可见摘要，不能伪装成结构化边；
-- 未解析 title/year 进入 review queue/raw artifact，不创建无稳定 ID 的正式 Graph 节点。
+- `influence_impact` 只作为 AnalysisRun 的有界用户可见摘要，不能伪装成结构化边；
+- 未解析 title/year 进入 bounded review，不创建无稳定 ID 的正式 Graph 节点。
 
 ### 5.2 MovieUserState
 
@@ -671,9 +671,9 @@ MovieUserState 当前行 + verified backup 为基线，事件只用于审计核�
 8. **回填个人数据**：先 FilmProfileState，再按第 5.2 节创建 legacy Viewing；对每个旧状态记录
    输出迁移结果。
 9. **W4 分析持久化**：Schema v8 已建立谓词注册表、Assertion、Evidence、AnalysisRun、
-   provenance/link 和 analysis review；data migration v9 与 W3 runtime 已同步 factual Genre
-   Assertion。后续切片为每个兼容 legacy analysis payload 建立版本化 AnalysisRun，可解析边按
-   assertion_key 去重，未解析边进入 review；legacy LLM reason 只作 rationale，不生成 Evidence。
+   provenance/link 和 analysis review；v9 同步 factual Genre Assertion；v10 已为兼容 Legacy
+   analysis 建立版本化 AnalysisRun，并由 runtime 在同一事务写入 proposed Assertion、验证后的
+   Evidence、review 和 Movie 兼容投影。Legacy reason 只作 rationale，不生成 Evidence。
 10. **一致性检查**：核对旧 Movie → alias/item 一一覆盖、身份冲突、UserState 字段、状态分布、
     引用完整性和可重跑结果；migration 重跑不得增加记录。
 11. **双读/影子校验**：旧 API 仍读旧表，同时生成新兼容 payload 做 diff；路径字段允许规范化
@@ -739,8 +739,8 @@ RFC/决策：
 
 实现 Gate（本 RFC 不声称已经通过）：
 
-- [x] 版本化 migration runner、v1–v6 additive schema、v7/v9 确定性 data migration 与 W4
-  additive Schema v8 已实现并 review；v6–v9 不扩大 Gate A 的验收边界。
+- [x] 版本化 migration runner、v1–v6 additive schema、v7/v9/v10 确定性 data migration 与 W4
+  additive Schema v8 已实现并 review；v6–v10 不扩大 Gate A 的验收边界。
 - [x] 九套旧库 fixture 与 fresh `create_all` 向前迁移和重复执行通过。
 - [x] 隔离 fixture 的迁移前备份、失败恢复和离线恢复/重迁移测试通过。
 - [ ] 真实资料库副本的 Film/LibraryItem/Viewing/alias 数量与字段一致性报告通过。

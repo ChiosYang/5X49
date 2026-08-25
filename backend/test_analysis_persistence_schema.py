@@ -215,7 +215,7 @@ class AnalysisPersistenceSchemaTests(unittest.TestCase):
         self._tmp.cleanup()
 
     def test_schema_v8_and_fresh_migrated_shapes_are_equivalent(self):
-        self.assertEqual(MIGRATIONS[-1].version, 9)
+        self.assertEqual(MIGRATIONS[-1].version, 10)
         inspector = inspect(self.engine)
         self.assertTrue(set(ANALYSIS_TABLES).issubset(inspector.get_table_names()))
         with self.engine.connect() as connection:
