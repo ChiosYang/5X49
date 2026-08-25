@@ -7,8 +7,19 @@ from app.migrations.versions.v0005_canonical_runtime_fields import MIGRATION as 
 from app.migrations.versions.v0006_structured_metadata_schema import MIGRATION as V0006
 from app.migrations.versions.v0007_structured_metadata_backfill import MIGRATION as V0007
 from app.migrations.versions.v0008_analysis_persistence_schema import MIGRATION as V0008
+from app.migrations.versions.v0009_factual_genre_assertion_backfill import MIGRATION as V0009
 
 
-MIGRATIONS: tuple[Migration, ...] = (V0001, V0002, V0003, V0004, V0005, V0006, V0007, V0008)
+MIGRATIONS: tuple[Migration, ...] = (
+    V0001,
+    V0002,
+    V0003,
+    V0004,
+    V0005,
+    V0006,
+    V0007,
+    V0008,
+    V0009,
+)
 
 __all__ = ["MIGRATIONS"]

@@ -1,7 +1,8 @@
 # Analysis V2 and Evaluation Contract
 
-Status: Adopted contract; persistence schema is implemented in version 8,
-while generation, resolution, and Gate B remain W4 work.
+Status: Adopted contract; persistence schema is implemented in version 8 and
+factual Genre Assertions in version 9, while generation, resolution, and Gate B
+remain W4 work.
 
 The executable schemas live in `backend/app/contracts/analysis_v2.py`. Runtime
 producers and evaluation tooling must validate against those Pydantic models;

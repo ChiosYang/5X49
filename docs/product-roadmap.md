@@ -509,10 +509,10 @@ Film→Concept 关系仍等待 W4 factual Assertion；Gate A 继续因真实自�
 
 把 AI 文章升级为可以进入知识图谱、可以验证和可以重建的数据。
 
-当前进度（2026-08-25）：Slice 1 已完成。Schema v8 已新增版本化谓词注册表、Assertion、
-Evidence、AnalysisRun、provenance/link 与独立 analysis review，并锁定确定性 hash、可信 Genre
-导入、Evidence 公共 HTTP(S) 边界和不保留 raw Analysis payload 的政策。当前仍未接入模型
-runtime、Genre factual Assertion 回填、Legacy analysis 迁移或评测集；Gate B 保持 Pending。
+当前进度（2026-08-25）：Slices 1–2 已完成。Schema v8 已新增版本化谓词注册表、Assertion、
+Evidence、AnalysisRun、provenance/link 与独立 analysis review；data migration v9 和 W3 runtime
+已把唯一解析的 Legacy/NFO/TMDB Genre 同步为 factual `HAS_GENRE` Assertion，并保护人工审核
+决定。当前仍未接入模型 runtime、Legacy analysis 迁移或评测集；Gate B 保持 Pending。
 
 #### 任务
 
@@ -1011,8 +1011,9 @@ Started Install
 - 事实、证据和推断可区分。
 - 分析重试幂等。
 
-当前状态（2026-08-25）：**Pending**。Persistence Slice 1 已完成 Schema 和契约；Genre
-factual Assertion、Analysis V2 runtime、Legacy 迁移、固定评测集和严格 Gate B rehearsal 尚未完成。
+当前状态（2026-08-25）：**Pending**。Persistence Slices 1–2 已完成 Schema、契约和 Genre
+factual Assertion；Analysis V2 runtime、Legacy analysis 迁移、固定评测集和严格 Gate B
+rehearsal 尚未完成。
 
 未通过：减少关系类型或调整数据来源，不扩大 Graph。
 

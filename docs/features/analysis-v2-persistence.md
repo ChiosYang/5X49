@@ -17,8 +17,9 @@ unbounded raw-data archive.
   Assertion, Evidence, AnalysisRun, provenance, links, and resolution review.
 - Establish deterministic hashes, review rules, Evidence URI policy, and
   privacy-safe persistence boundaries.
-- Later slices will materialize factual Genre Assertions, connect Analysis V2
-  runtime writes, migrate compatible legacy analysis, and complete Gate B.
+- Data migration version 9 and runtime metadata synchronization materialize
+  factual Genre Assertions. Later slices connect Analysis V2 runtime writes,
+  migrate compatible legacy analysis, and complete Gate B.
 
 ## Non-goals
 
@@ -32,10 +33,11 @@ unbounded raw-data archive.
 ## Existing behavior
 
 W3 schema version 7 supplies canonical Film, Person, Credit, Concept, Genre
-vocabulary, provenance, and runtime metadata observations. Analysis V2 already
-has strict Pydantic input/output contracts, but the legacy analysis service
-still writes only Movie projection fields and events. Schema version 8 adds the
-durable W4 boundary without connecting that legacy runtime.
+vocabulary, provenance, and runtime metadata observations. Schema version 8
+adds the durable W4 boundary. Data migration version 9 now materializes trusted
+Legacy Genre facts, while NFO and TMDB refresh the same Assertions in the
+existing metadata transaction. The legacy analysis service still writes only
+Movie projection fields and events.
 
 ## Acceptance criteria
 
@@ -53,8 +55,10 @@ durable W4 boundary without connecting that legacy runtime.
 - [x] Ordinary Library clear preserves W4 durable data; full data clear removes
   it in FK order while preserving predicate reference rows and migration state.
 - [x] HTTP routes and legacy response shapes remain unchanged.
-- [ ] Runtime persistence, legacy backfill, evaluation, and Gate B evidence are
-  complete.
+- [x] Trusted Legacy, NFO, and TMDB Genre facts synchronize source-scoped,
+  policy-accepted `HAS_GENRE` Assertions without overwriting user decisions.
+- [ ] Analysis runtime persistence, legacy analysis transition, evaluation, and
+  Gate B evidence are complete.
 
 ## Decisions
 
@@ -100,7 +104,7 @@ Status: Complete
 
 ### Slice 2 — Factual Genre Assertions
 
-Status: Pending
+Status: Complete
 
 - Intended behavior: deterministically materialize W3 Genre observations as
   factual `HAS_GENRE` Assertions and keep their provenance synchronized.
@@ -143,11 +147,20 @@ Status: Pending
   because Docker evidence is absent.
 - `python -m compileall -q app` and `git diff --check` — passed; Git reported
   only the repository's existing LF-to-CRLF checkout warnings.
+- Slice 2 focused Genre Assertion, Analysis persistence, migration, Canonical,
+  W3, TMDB, and Gate run — 82 tests passed.
+- Complete backend discovery excluding credential-dependent `test_agent.py` —
+  176 tests passed in 110.096 seconds after Slice 2.
+- W3 rehearsal `w4-s2-v9-20260825-01` — passed at current schema v9.
+- Gate A rehearsal `w4-s2-v9-20260825-01` — every local check passed at v9 and
+  the source remained unchanged; strict status remains Blocked without Docker.
+- Git-safe Slice 2 evidence is recorded in
+  `docs/quality/analysis-v2-persistence-slice2.md`.
 
 ## Remaining risks
 
 - Schema constraints cannot perform DNS resolution; Slice 3 must revalidate the
   resolved address and every redirect before Evidence is persisted.
-- Runtime persistence and accepted/rejected mutation protection are not yet
-  connected to the legacy analysis service.
+- Genre import protects user accepted/rejected decisions, but Analysis V2
+  runtime persistence and its broader rejected-state protection remain Slice 3.
 - Gate A remains independently Blocked, and Gate B is Pending.

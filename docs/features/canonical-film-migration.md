@@ -227,9 +227,9 @@ Person/Credit/Concept schema, deterministic Legacy backfill, and transactional
 NFO/TMDB runtime synchronization are complete in the independent W3
 structured-metadata feature through migration v7. Assertion, Evidence, and
 AnalysisRun belong to W4 and Gate B. Their additive persistence schema now
-exists in version 8, while runtime deduplication, rejected-state protection,
-legacy transition, and quality evaluation remain pending; none of these are
-Gate A implementation requirements.
+exists in version 8 and factual Genre import in version 9, while Analysis
+runtime deduplication, rejected-state protection, legacy transition, and quality
+evaluation remain pending; none of these are Gate A implementation requirements.
 
 The completed W3 work is tracked independently in
 `docs/features/structured-metadata-migration.md`. Its v7 W3 rehearsal passed
@@ -330,7 +330,7 @@ conclusion.
   naturally aged real-library-copy rehearsal and the Docker evidence matrix both
   pass. The curated acceptance rehearsal passes locally but Gate A has not
   passed.
-- The nine migration fixtures and generated runtime fixtures now extend through schema v8,
+- The nine migration fixtures and generated runtime fixtures now extend through schema v9,
   identity conflicts, multiple editions, aliases, relink fingerprints, dual
   writes, and compatibility switching. They are not a substitute for exercising
   a private real-world library copy with large media files.

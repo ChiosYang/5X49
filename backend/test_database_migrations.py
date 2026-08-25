@@ -416,6 +416,150 @@ class DatabaseMigrationTests(unittest.TestCase):
         finally:
             engine.dispose()
 
+    def test_schema_v8_upgrades_to_v9_with_deterministic_genre_assertions(self):
+        database_path, _ = self._materialize("current-unversioned")
+        engine = self._engine(database_path)
+        backup_dir = self.tmp_path / "v9-backups"
+        preserved_tables = (
+            "movie",
+            "film",
+            "library_item",
+            "legacy_movie_alias",
+            "viewing",
+            "person",
+            "credit",
+            "concept",
+            "structured_metadata_review",
+        )
+        try:
+            initial = run_migrations(
+                engine,
+                database_path,
+                migrations=MIGRATIONS[:8],
+                app_version="test-v8",
+                backup_required=False,
+            )
+            self.assertEqual(initial.current_version, 8)
+            with engine.connect() as connection:
+                before = {
+                    table: connection.execute(text(f"SELECT COUNT(*) FROM {table}")).scalar_one()
+                    for table in preserved_tables
+                }
+                self.assertEqual(connection.execute(text("SELECT COUNT(*) FROM assertion")).scalar_one(), 0)
+
+            upgraded = run_migrations(
+                engine,
+                database_path,
+                migrations=MIGRATIONS[:9],
+                app_version="test-v9",
+                backup_dir=backup_dir,
+            )
+            self.assertEqual(upgraded.applied_versions, (9,))
+            self.assertEqual(upgraded.current_version, 9)
+            self.assertIsNotNone(upgraded.backup)
+            with engine.connect() as connection:
+                after = {
+                    table: connection.execute(text(f"SELECT COUNT(*) FROM {table}")).scalar_one()
+                    for table in preserved_tables
+                }
+                self.assertEqual(connection.execute(text("SELECT COUNT(*) FROM assertion")).scalar_one(), 1)
+                self.assertEqual(
+                    connection.execute(text("SELECT COUNT(*) FROM assertion_provenance")).scalar_one(),
+                    1,
+                )
+                assertion = connection.execute(
+                    text(
+                        "SELECT a.predicate, a.source_scope, a.review_status, a.review_method, "
+                        "a.review_policy_version, p.origin_kind, p.origin_ref, p.source_field "
+                        "FROM assertion a JOIN assertion_provenance p ON p.assertion_id=a.id"
+                    )
+                ).mappings().one()
+                self.assertEqual(assertion["predicate"], "HAS_GENRE")
+                self.assertEqual(assertion["source_scope"], "factual")
+                self.assertEqual(assertion["review_status"], "accepted")
+                self.assertEqual(assertion["review_method"], "import_policy")
+                self.assertEqual(assertion["review_policy_version"], "structured-genre-import.v1")
+                self.assertEqual(assertion["origin_kind"], "migration")
+                self.assertTrue(assertion["origin_ref"].startswith("lib_"))
+                self.assertEqual(assertion["source_field"], "genres")
+                self.assertEqual(
+                    connection.execute(
+                        text(
+                            "SELECT COUNT(*) FROM canonical_backfill_run "
+                            "WHERE run_key='factual_genre_assertions.v1'"
+                        )
+                    ).scalar_one(),
+                    1,
+                )
+            self.assertEqual(after, before)
+
+            second = run_migrations(
+                engine,
+                database_path,
+                migrations=MIGRATIONS[:9],
+                app_version="test-v9",
+                backup_dir=backup_dir,
+            )
+            self.assertEqual(second.applied_versions, ())
+            self.assertIsNone(second.backup)
+            self.assertEqual(len(list(backup_dir.glob("*.db"))), 1)
+        finally:
+            engine.dispose()
+
+    def test_schema_v9_backfill_failure_rolls_back_and_retries(self):
+        database_path, _ = self._materialize("current-unversioned")
+        engine = self._engine(database_path)
+        try:
+            run_migrations(
+                engine,
+                database_path,
+                migrations=MIGRATIONS[:8],
+                app_version="test-v8",
+                backup_required=False,
+            )
+            with patch(
+                "app.migrations.versions.v0009_factual_genre_assertion_backfill."
+                "backfill_factual_genre_assertions",
+                side_effect=RuntimeError("synthetic Genre assertion backfill failure"),
+            ):
+                with self.assertRaises(MigrationError):
+                    run_migrations(
+                        engine,
+                        database_path,
+                        migrations=MIGRATIONS[:9],
+                        app_version="test-v9-failure",
+                        backup_required=False,
+                    )
+
+            with engine.connect() as connection:
+                self.assertEqual(self._journal_status(engine, 9), "failed")
+                self.assertEqual(connection.execute(text("SELECT COUNT(*) FROM assertion")).scalar_one(), 0)
+                self.assertEqual(
+                    connection.execute(text("SELECT COUNT(*) FROM assertion_provenance")).scalar_one(),
+                    0,
+                )
+                self.assertEqual(
+                    connection.execute(
+                        text(
+                            "SELECT COUNT(*) FROM canonical_backfill_run "
+                            "WHERE run_key='factual_genre_assertions.v1'"
+                        )
+                    ).scalar_one(),
+                    0,
+                )
+
+            retried = run_migrations(
+                engine,
+                database_path,
+                migrations=MIGRATIONS[:9],
+                app_version="test-v9-retry",
+                backup_required=False,
+            )
+            self.assertEqual(retried.applied_versions, (9,))
+            self.assertEqual(self._journal_status(engine, 9), "applied")
+        finally:
+            engine.dispose()
+
     def test_backup_includes_committed_rows_from_an_open_wal(self):
         database_path, expected = self._materialize("current-unversioned")
         wal_path = Path(f"{database_path}-wal")

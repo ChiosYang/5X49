@@ -78,6 +78,7 @@ def backfill_legacy_structured_metadata(
                 film_id=alias.film_id,
                 library_item_id=alias.library_item_id,
                 observation=observation,
+                materialize_genre_assertions=False,
             )
             movies_scanned += 1
         session.flush()

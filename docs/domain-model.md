@@ -1,6 +1,6 @@
 # Film / LibraryItem 领域模型 RFC
 
-> 状态：Adopted；Canonical v1–v5、W3 v6–v7 与 W4 Persistence Schema v8 已实现
+> 状态：Adopted；Canonical v1–v5、W3 v6–v7 与 W4 Persistence v8–v9 已实现
 > 目标阶段：Gate A / W2 Schema Ready
 > 基线：`origin/main` at `4426a6a`
 > 范围：领域边界、逻辑 Schema、约束、兼容与迁移策略
@@ -666,14 +666,14 @@ MovieUserState 当前行 + verified backup 为基线，事件只用于审计核�
    MediaAsset；保留 status 和时间。
 7. **W3 结构化 metadata（已完成）**：Schema v6 建立 title/country、Person/Credit、Genre
    Concept 与 review/provenance 基础；data migration v7 完成确定性 Legacy 回填，NFO/TMDB
-   runtime observation 在同一事务同步 Canonical 与兼容投影。保留字段级 bounded raw review，
-   Film→Concept 关系仍等待 W4 factual Assertion；W3 不作为 Gate A 通过条件。
+   runtime observation 在同一事务同步 Canonical 与兼容投影。W4 v9 已消费这些 observation
+   建立 factual `HAS_GENRE`，但 W3 本身仍不作为 Gate A 通过条件。
 8. **回填个人数据**：先 FilmProfileState，再按第 5.2 节创建 legacy Viewing；对每个旧状态记录
    输出迁移结果。
 9. **W4 分析持久化**：Schema v8 已建立谓词注册表、Assertion、Evidence、AnalysisRun、
-   provenance/link 和 analysis review，不保存 raw artifact。后续切片为每个兼容 legacy analysis
-   payload 建立版本化 AnalysisRun，可解析边按 assertion_key 去重，未解析边进入 review；legacy
-   LLM reason 只作 rationale，不生成 Evidence。运行时、回填和质量仍由 Gate B 验收。
+   provenance/link 和 analysis review；data migration v9 与 W3 runtime 已同步 factual Genre
+   Assertion。后续切片为每个兼容 legacy analysis payload 建立版本化 AnalysisRun，可解析边按
+   assertion_key 去重，未解析边进入 review；legacy LLM reason 只作 rationale，不生成 Evidence。
 10. **一致性检查**：核对旧 Movie → alias/item 一一覆盖、身份冲突、UserState 字段、状态分布、
     引用完整性和可重跑结果；migration 重跑不得增加记录。
 11. **双读/影子校验**：旧 API 仍读旧表，同时生成新兼容 payload 做 diff；路径字段允许规范化
@@ -739,8 +739,8 @@ RFC/决策：
 
 实现 Gate（本 RFC 不声称已经通过）：
 
-- [x] 版本化 migration runner、v1–v6 additive schema、v7 确定性 data migration 与 W4
-  additive Schema v8 已实现并 review；v6–v8 不扩大 Gate A 的验收边界。
+- [x] 版本化 migration runner、v1–v6 additive schema、v7/v9 确定性 data migration 与 W4
+  additive Schema v8 已实现并 review；v6–v9 不扩大 Gate A 的验收边界。
 - [x] 九套旧库 fixture 与 fresh `create_all` 向前迁移和重复执行通过。
 - [x] 隔离 fixture 的迁移前备份、失败恢复和离线恢复/重迁移测试通过。
 - [ ] 真实资料库副本的 Film/LibraryItem/Viewing/alias 数量与字段一致性报告通过。

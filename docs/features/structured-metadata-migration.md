@@ -21,6 +21,8 @@ factual metadata needed before W4 persists Graph Assertions.
   widening legacy response shapes.
 - Preserve raw field-local values for unresolved metadata while keeping paths,
   credentials, and whole source documents out of review records and reports.
+- W4 version 9 now consumes the completed Genre observations to materialize
+  factual Assertions without changing the W3 contract or conclusion.
 
 ## Non-goals
 
@@ -41,6 +43,10 @@ write the same structures transactionally while Legacy Movie remains the
 unchanged compatibility projection. Gate A remains blocked on naturally aged
 private-library and Docker evidence; W3 completion is not part of that Gate's
 pass criteria and does not authorize Graph UI.
+
+W4 data migration version 9 and the runtime synchronizer now consume the W3
+Genre observations as factual `HAS_GENRE` Assertions. This is a downstream W4
+capability and does not retroactively expand W3 or Gate A acceptance criteria.
 
 ## Acceptance criteria
 

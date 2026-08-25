@@ -115,6 +115,15 @@ are deliberately absent from the schema. Full data clear removes W4 domain
 rows in restrictive-FK order while retaining the predicate registry, migration
 journal, settings, and media.
 
+Migration version 9 is a deterministic data migration with no physical schema
+change. It resolves Legacy Movie genres through `tmdb-movie-genres:v1` and
+materializes Film-to-Concept `HAS_GENRE` Assertions accepted under
+`structured-genre-import.v1`. One Assertion is shared across sources while
+Legacy aliases retain source-scoped `migration` provenance keyed by stable
+LibraryItem IDs. Unknown or conflicting values remain reviewable. The run
+summary uses `factual_genre_assertions.v1`; the migration does not access media,
+the network, model providers, or raw analysis data.
+
 W3 can be rehearsed against the same isolated input contract as Gate A while
 keeping its evidence and conclusion independent:
 
