@@ -157,6 +157,20 @@ class MetadataScraperIntegrationTests(unittest.TestCase):
                 ).scalar_one(),
                 2,
             )
+            self.assertEqual(
+                connection.exec_driver_sql(
+                    "SELECT COUNT(*) FROM assertion WHERE predicate='HAS_GENRE'"
+                ).scalar_one(),
+                2,
+            )
+            self.assertEqual(
+                connection.exec_driver_sql(
+                    "SELECT COUNT(*) FROM assertion_provenance "
+                    "WHERE origin_kind='tmdb' AND origin_ref='tmdb.movie:603' "
+                    "AND source_field='genres'"
+                ).scalar_one(),
+                2,
+            )
 
     def test_scrape_movie_requires_confirmation_when_enabled(self):
         movie_dir = self.tmp_path / "The.Matrix.1999"

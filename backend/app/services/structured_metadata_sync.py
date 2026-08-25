@@ -31,6 +31,10 @@ from app.contracts.structured_metadata import (
     provisional_person_external_id,
     structured_metadata_review_key,
 )
+from app.services.genre_assertion_sync import (
+    ResolvedGenreAssertion,
+    genre_assertion_synchronizer,
+)
 from app.services.structured_metadata_vocab import (
     GENRE_VOCABULARY_VERSION,
     STRUCTURED_METADATA_VOCABULARY,
@@ -59,6 +63,7 @@ class StructuredMetadataSyncResult:
     titles_active: int
     countries_active: int
     credits_active: int
+    genre_assertions_active: int
     reviews_open: int
 
 
@@ -115,6 +120,7 @@ class StructuredMetadataSynchronizer:
         film_id: str,
         library_item_id: str | None,
         observation: StructuredMetadataObservation,
+        materialize_genre_assertions: bool = True,
     ) -> StructuredMetadataSyncResult:
         if session.get(Film, film_id) is None:
             raise ValueError("structured metadata Film does not exist")
@@ -139,13 +145,15 @@ class StructuredMetadataSynchronizer:
                 observation,
                 current_review_keys,
             )
+        genre_assertions_active = 0
         if "genres" in observation.complete_fields:
-            self._sync_genres(
+            genre_assertions_active = self._sync_genres(
                 session,
                 film_id,
                 library_item_id,
                 observation,
                 current_review_keys,
+                materialize_genre_assertions=materialize_genre_assertions,
             )
         for issue in observation.issues:
             current_review_keys.add(
@@ -170,6 +178,7 @@ class StructuredMetadataSynchronizer:
             titles_active=self._active_title_count(session, film_id),
             countries_active=len(self.selected_country_codes(session, film_id)),
             credits_active=len(self.selected_credit_ids(session, film_id)),
+            genre_assertions_active=genre_assertions_active,
             reviews_open=len(
                 session.exec(
                     select(StructuredMetadataReview)
@@ -428,7 +437,10 @@ class StructuredMetadataSynchronizer:
         library_item_id: str | None,
         observation: StructuredMetadataObservation,
         current_review_keys: set[str],
-    ) -> None:
+        *,
+        materialize_genre_assertions: bool,
+    ) -> int:
+        resolved_assertions: list[ResolvedGenreAssertion] = []
         for item in observation.genres:
             resolved = STRUCTURED_METADATA_VOCABULARY.resolve_genre(
                 item.tmdb_id if item.tmdb_id is not None else item.value
@@ -448,6 +460,76 @@ class StructuredMetadataSynchronizer:
                         issue=ObservationIssue("concept", "genre_unmapped", raw_value),
                     )
                 )
+                continue
+
+            concept = session.exec(
+                select(Concept)
+                .where(Concept.kind == "genre")
+                .where(Concept.canonical_key == resolved.canonical_key)
+            ).first()
+            graph = session.get(GraphEntity, concept.id) if concept is not None else None
+            if (
+                concept is None
+                or graph is None
+                or graph.entity_type != "concept"
+                or graph.lifecycle_status != "active"
+                or concept.lifecycle_status != "active"
+            ):
+                current_review_keys.add(
+                    self._upsert_review(
+                        session,
+                        film_id=film_id,
+                        library_item_id=library_item_id,
+                        observation=observation,
+                        issue=ObservationIssue(
+                            "concept",
+                            "genre_concept_conflict",
+                            {"canonical_key": resolved.canonical_key},
+                        ),
+                    )
+                )
+                continue
+
+            if not genre_assertion_synchronizer.supports_origin(observation.origin_kind):
+                current_review_keys.add(
+                    self._upsert_review(
+                        session,
+                        film_id=film_id,
+                        library_item_id=library_item_id,
+                        observation=observation,
+                        issue=ObservationIssue(
+                            "concept",
+                            "genre_assertion_requires_user_review",
+                            {
+                                "canonical_key": resolved.canonical_key,
+                                "origin_kind": observation.origin_kind,
+                            },
+                        ),
+                    )
+                )
+                continue
+
+            resolved_assertions.append(
+                ResolvedGenreAssertion(
+                    concept_id=concept.id,
+                    canonical_key=resolved.canonical_key,
+                    observed_value=item.value,
+                    provider_id=item.tmdb_id,
+                )
+            )
+
+        if not materialize_genre_assertions:
+            return 0
+        if not genre_assertion_synchronizer.supports_origin(observation.origin_kind):
+            return genre_assertion_synchronizer.active_count(session, film_id)
+        return genre_assertion_synchronizer.sync(
+            session,
+            film_id=film_id,
+            origin_kind=observation.origin_kind,
+            origin_ref=observation.origin_ref,
+            observed_at=observation.observed_at,
+            genres=tuple(resolved_assertions),
+        ).active_assertions
 
     def _resolve_person(
         self,
