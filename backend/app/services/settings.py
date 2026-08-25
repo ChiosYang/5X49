@@ -1,15 +1,78 @@
 """
 Settings management for user preferences.
 """
-import os
 import json
-import requests
+import logging
+import math
+import os
 from datetime import datetime, timedelta
+
+import requests
 
 SETTINGS_FILE = "data/settings.json"
 MODELS_CACHE_FILE = "data/models_cache.json"
 CACHE_DURATION = timedelta(hours=24)  # Cache models for 24 hours
 ARTWORK_LANGUAGES = {"metadata", "zh", "en", "none"}
+TMDB_SCRAPE_CONCURRENCY_DEFAULT = 3
+TMDB_SCRAPE_CONCURRENCY_MIN = 1
+TMDB_SCRAPE_CONCURRENCY_MAX = 8
+TMDB_API_REQUESTS_PER_SECOND_DEFAULT = 6.0
+TMDB_API_REQUESTS_PER_SECOND_MIN = 1.0
+TMDB_API_REQUESTS_PER_SECOND_MAX = 30.0
+
+
+logger = logging.getLogger(__name__)
+
+
+def _bounded_environment_number(
+    name: str,
+    default: int | float,
+    minimum: int | float,
+    maximum: int | float,
+    parser,
+) -> int | float:
+    raw_value = os.getenv(name)
+    if raw_value is None or not raw_value.strip():
+        return default
+    try:
+        value = parser(raw_value)
+    except (TypeError, ValueError):
+        logger.warning("Invalid %s value; using default %s", name, default)
+        return default
+    if (isinstance(value, float) and not math.isfinite(value)) or value < minimum or value > maximum:
+        logger.warning(
+            "%s must be between %s and %s; using default %s",
+            name,
+            minimum,
+            maximum,
+            default,
+        )
+        return default
+    return value
+
+
+def get_tmdb_scrape_concurrency() -> int:
+    return int(
+        _bounded_environment_number(
+            "TMDB_SCRAPE_CONCURRENCY",
+            TMDB_SCRAPE_CONCURRENCY_DEFAULT,
+            TMDB_SCRAPE_CONCURRENCY_MIN,
+            TMDB_SCRAPE_CONCURRENCY_MAX,
+            int,
+        )
+    )
+
+
+def get_tmdb_api_requests_per_second() -> float:
+    return float(
+        _bounded_environment_number(
+            "TMDB_API_REQUESTS_PER_SECOND",
+            TMDB_API_REQUESTS_PER_SECOND_DEFAULT,
+            TMDB_API_REQUESTS_PER_SECOND_MIN,
+            TMDB_API_REQUESTS_PER_SECOND_MAX,
+            float,
+        )
+    )
 
 def fetch_openrouter_models():
     """Fetch available models from OpenRouter API"""

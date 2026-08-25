@@ -1,7 +1,8 @@
+from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
 import shutil
-from threading import Lock
+from threading import Lock, RLock
 from typing import Optional
 from uuid import uuid4
 
@@ -72,6 +73,9 @@ class MetadataScraper:
         self.artwork = ArtworkDownloader()
         self.nfo_writer = NFOWriter()
         self._lock = Lock()
+        self._persistence_lock = RLock()
+        self._movie_locks_guard = Lock()
+        self._movie_locks: dict[str, tuple[Lock, int]] = {}
         self._status = {
             "state": "idle",
             "last_started_at": None,
@@ -220,12 +224,13 @@ class MetadataScraper:
 
         from app.services.library_sync import library_sync_service
 
-        updated_movie = library_sync_service.scan_folder(
-            folder,
-            preserve_id=movie_id,
-            command_id=operation_command_id,
-            correlation_id=operation_command_id,
-        )
+        with self._persistence_lock:
+            updated_movie = library_sync_service.scan_folder(
+                folder,
+                preserve_id=movie_id,
+                command_id=operation_command_id,
+                correlation_id=operation_command_id,
+            )
         if not updated_movie:
             raise ValueError("Artwork saved but folder rescan failed")
 
@@ -267,23 +272,24 @@ class MetadataScraper:
             }
         )
         artwork_changes = self._field_changes(movie, enriched, ARTWORK_SELECTION_FIELDS)
-        _, projected = event_store.append_and_project(
-            "ArtworkSelected",
-            "movie",
-            movie_id,
-            {
-                "movie_id": movie_id,
-                "tmdb_id": tmdb_id,
-                "poster_path": selection.poster_path,
-                "backdrop_path": selection.backdrop_path,
-                "poster_local": enriched["poster_local"],
-                "backdrop_local": enriched["backdrop_local"],
-                **artwork_changes,
-            },
-            command_id=operation_command_id,
-            correlation_id=operation_command_id,
-            context={"operation": "apply_artwork"},
-        )
+        with self._persistence_lock:
+            _, projected = event_store.append_and_project(
+                "ArtworkSelected",
+                "movie",
+                movie_id,
+                {
+                    "movie_id": movie_id,
+                    "tmdb_id": tmdb_id,
+                    "poster_path": selection.poster_path,
+                    "backdrop_path": selection.backdrop_path,
+                    "poster_local": enriched["poster_local"],
+                    "backdrop_local": enriched["backdrop_local"],
+                    **artwork_changes,
+                },
+                command_id=operation_command_id,
+                correlation_id=operation_command_id,
+                context={"operation": "apply_artwork"},
+            )
         if not projected:
             raise ValueError("Artwork selection event could not be projected")
         library_event_bus.publish_library_changed("artwork_updated", movie_id=movie_id)
@@ -296,6 +302,22 @@ class MetadataScraper:
         }
 
     def scrape_movie(
+        self,
+        movie_id: str,
+        options: ScrapeOptions,
+        *,
+        command_id: Optional[str] = None,
+        correlation_id: Optional[str] = None,
+    ) -> ScrapeResult:
+        with self._movie_operation(movie_id):
+            return self._scrape_movie_unlocked(
+                movie_id,
+                options,
+                command_id=command_id,
+                correlation_id=correlation_id,
+            )
+
+    def _scrape_movie_unlocked(
         self,
         movie_id: str,
         options: ScrapeOptions,
@@ -456,12 +478,13 @@ class MetadataScraper:
 
             from app.services.library_sync import library_sync_service
 
-            updated_movie = library_sync_service.scan_folder(
-                folder,
-                preserve_id=movie_id,
-                command_id=operation_command_id,
-                correlation_id=operation_correlation_id,
-            )
+            with self._persistence_lock:
+                updated_movie = library_sync_service.scan_folder(
+                    folder,
+                    preserve_id=movie_id,
+                    command_id=operation_command_id,
+                    correlation_id=operation_correlation_id,
+                )
             if not updated_movie:
                 return self._mark_failed(
                     movie_id,
@@ -487,30 +510,31 @@ class MetadataScraper:
                 "tmdb_confidence": candidates[0].score if candidates else 100,
             }
             metadata_changes = self._field_changes(movie, enriched, METADATA_MATCH_FIELDS)
-            _, projected = event_store.append_and_project(
-                "MetadataMatched",
-                "movie",
-                movie_id,
-                {
-                    "movie_id": movie_id,
-                    "tmdb_id": selected_id,
-                    "imdb_id": details.get("imdb_id") or details.get("external_ids", {}).get("imdb_id"),
-                    "title": details.get("title") or details.get("original_title"),
-                    "year": self._release_year(details.get("release_date")),
-                    "confidence": candidates[0].score if candidates else 100,
-                    "mode": options.mode,
-                    "language": language,
-                    "artwork_language": artwork_language,
-                    "write_nfo": options.write_nfo,
-                    "download_artwork": options.download_artwork,
-                    "poster_path": poster_path,
-                    "backdrop_path": backdrop_path,
-                    **metadata_changes,
-                },
-                command_id=operation_command_id,
-                correlation_id=operation_correlation_id,
-                context={"operation": "scrape_movie"},
-            )
+            with self._persistence_lock:
+                _, projected = event_store.append_and_project(
+                    "MetadataMatched",
+                    "movie",
+                    movie_id,
+                    {
+                        "movie_id": movie_id,
+                        "tmdb_id": selected_id,
+                        "imdb_id": details.get("imdb_id") or details.get("external_ids", {}).get("imdb_id"),
+                        "title": details.get("title") or details.get("original_title"),
+                        "year": self._release_year(details.get("release_date")),
+                        "confidence": candidates[0].score if candidates else 100,
+                        "mode": options.mode,
+                        "language": language,
+                        "artwork_language": artwork_language,
+                        "write_nfo": options.write_nfo,
+                        "download_artwork": options.download_artwork,
+                        "poster_path": poster_path,
+                        "backdrop_path": backdrop_path,
+                        **metadata_changes,
+                    },
+                    command_id=operation_command_id,
+                    correlation_id=operation_correlation_id,
+                    context={"operation": "scrape_movie"},
+                )
             if not projected:
                 raise RuntimeError("Metadata matched event could not be projected")
             library_event_bus.publish_library_changed("metadata_scraped", movie_id=movie_id)
@@ -692,27 +716,28 @@ class MetadataScraper:
         downloaded = self.artwork.download(url, destination, overwrite=overwrite)
         after = self._file_snapshot(destination)
         if downloaded and self._snapshot_changed(before, after):
-            event_store.safe_append(
-                "ArtworkDownloaded",
-                "movie",
-                movie_id,
-                {
-                    "movie_id": movie_id,
-                    "tmdb_id": tmdb_id,
-                    "asset_type": asset_type,
-                    "image_path": image_path,
-                    "url": url,
-                    "destination": str(destination),
-                    "overwrite": overwrite,
-                    "before": before,
-                    "after": after,
-                    "backup": backup,
-                    "backup_path": backup.get("path") if backup else None,
-                },
-                command_id=command_id,
-                correlation_id=correlation_id,
-                context={"operation": operation},
-            )
+            with self._persistence_lock:
+                event_store.safe_append(
+                    "ArtworkDownloaded",
+                    "movie",
+                    movie_id,
+                    {
+                        "movie_id": movie_id,
+                        "tmdb_id": tmdb_id,
+                        "asset_type": asset_type,
+                        "image_path": image_path,
+                        "url": url,
+                        "destination": str(destination),
+                        "overwrite": overwrite,
+                        "before": before,
+                        "after": after,
+                        "backup": backup,
+                        "backup_path": backup.get("path") if backup else None,
+                    },
+                    command_id=command_id,
+                    correlation_id=correlation_id,
+                    context={"operation": operation},
+                )
         return downloaded
 
     def _write_nfo_with_event(
@@ -820,27 +845,28 @@ class MetadataScraper:
     ):
         if not self._snapshot_changed(before, after):
             return
-        event_store.safe_append(
-            "NfoWritten",
-            "movie",
-            movie_id,
-            {
-                "movie_id": movie_id,
-                "tmdb_id": tmdb_id,
-                "action": action,
-                "path": str(path),
-                "overwrite": overwrite,
-                "poster_url": poster_url,
-                "backdrop_url": backdrop_url,
-                "before": before,
-                "after": after,
-                "backup": backup,
-                "backup_path": backup.get("path") if backup else None,
-            },
-            command_id=command_id,
-            correlation_id=correlation_id,
-            context={"operation": operation},
-        )
+        with self._persistence_lock:
+            event_store.safe_append(
+                "NfoWritten",
+                "movie",
+                movie_id,
+                {
+                    "movie_id": movie_id,
+                    "tmdb_id": tmdb_id,
+                    "action": action,
+                    "path": str(path),
+                    "overwrite": overwrite,
+                    "poster_url": poster_url,
+                    "backdrop_url": backdrop_url,
+                    "before": before,
+                    "after": after,
+                    "backup": backup,
+                    "backup_path": backup.get("path") if backup else None,
+                },
+                command_id=command_id,
+                correlation_id=correlation_id,
+                context={"operation": operation},
+            )
 
     def _backup_file(self, path: Path, operation: str, command_id: str) -> Optional[dict]:
         if not path.exists() or not path.is_file():
@@ -977,15 +1003,16 @@ class MetadataScraper:
         correlation_id: Optional[str] = None,
     ) -> ScrapeResult:
         self._update_scrape_state(movie_id, scrape_status="failed", scrape_error=message)
-        event_store.safe_append(
-            "MetadataScrapeFailed",
-            "movie",
-            movie_id,
-            {"movie_id": movie_id, "message": message},
-            command_id=command_id,
-            correlation_id=correlation_id,
-            context={"operation": "scrape_movie"},
-        )
+        with self._persistence_lock:
+            event_store.safe_append(
+                "MetadataScrapeFailed",
+                "movie",
+                movie_id,
+                {"movie_id": movie_id, "message": message},
+                command_id=command_id,
+                correlation_id=correlation_id,
+                context={"operation": "scrape_movie"},
+            )
         return ScrapeResult(
             status="failed",
             movie_id=movie_id,
@@ -994,10 +1021,11 @@ class MetadataScraper:
         )
 
     def _update_scrape_state(self, movie_id: str, **updates):
-        movie = library_manager.get_movie(movie_id)
-        if not movie:
-            return
-        library_manager.upsert_movie({**movie, **updates}, preserve_id=movie_id)
+        with self._persistence_lock:
+            movie = library_manager.get_movie(movie_id)
+            if not movie:
+                return
+            library_manager.upsert_movie({**movie, **updates}, preserve_id=movie_id)
         library_event_bus.publish_library_changed("metadata_scrape_status", movie_id=movie_id)
 
     def _record_match_suggested(
@@ -1009,22 +1037,46 @@ class MetadataScraper:
         command_id: Optional[str] = None,
         correlation_id: Optional[str] = None,
     ):
-        event_store.safe_append(
-            "MetadataMatchSuggested",
-            "movie",
-            movie_id,
-            {
-                "movie_id": movie_id,
-                "reason": reason,
-                "candidates": [candidate.model_dump() for candidate in candidates[:REVIEW_CANDIDATE_LIMIT]],
-            },
-            command_id=command_id,
-            correlation_id=correlation_id,
-            context={"operation": "scrape_movie"},
-        )
+        with self._persistence_lock:
+            event_store.safe_append(
+                "MetadataMatchSuggested",
+                "movie",
+                movie_id,
+                {
+                    "movie_id": movie_id,
+                    "reason": reason,
+                    "candidates": [candidate.model_dump() for candidate in candidates[:REVIEW_CANDIDATE_LIMIT]],
+                },
+                command_id=command_id,
+                correlation_id=correlation_id,
+                context={"operation": "scrape_movie"},
+            )
 
     def _new_command_id(self, operation: str) -> str:
         return f"{operation}_{uuid4().hex}"
+
+    @contextmanager
+    def _movie_operation(self, movie_id: str):
+        with self._movie_locks_guard:
+            entry = self._movie_locks.get(movie_id)
+            if entry:
+                movie_lock, users = entry
+                self._movie_locks[movie_id] = (movie_lock, users + 1)
+            else:
+                movie_lock = Lock()
+                self._movie_locks[movie_id] = (movie_lock, 1)
+
+        movie_lock.acquire()
+        try:
+            yield
+        finally:
+            movie_lock.release()
+            with self._movie_locks_guard:
+                current_lock, users = self._movie_locks[movie_id]
+                if users == 1:
+                    self._movie_locks.pop(movie_id, None)
+                else:
+                    self._movie_locks[movie_id] = (current_lock, users - 1)
 
     def _field_changes(self, previous: dict, current: dict, fields: tuple[str, ...]) -> dict:
         changed_fields = []
