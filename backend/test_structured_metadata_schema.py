@@ -120,17 +120,24 @@ class StructuredMetadataSchemaTests(unittest.TestCase):
         self.engine.dispose()
         self._tmp.cleanup()
 
-    def test_schema_version_tables_and_indexes_are_available_without_backfill(self):
+    def test_schema_version_tables_indexes_and_seeded_vocabulary_are_available(self):
         inspector = inspect(self.engine)
         tables = set(inspector.get_table_names())
-        self.assertEqual(MIGRATIONS[-1].version, 6)
+        self.assertEqual(MIGRATIONS[-1].version, 7)
         self.assertTrue(set(STRUCTURED_TABLES).issubset(tables))
-        for table in STRUCTURED_TABLES:
-            with self.engine.connect() as connection:
-                self.assertEqual(
-                    connection.execute(text(f"SELECT COUNT(*) FROM {table}")).scalar_one(),
-                    0,
-                )
+        with self.engine.connect() as connection:
+            self.assertEqual(connection.execute(text("SELECT COUNT(*) FROM concept")).scalar_one(), 19)
+            self.assertGreater(connection.execute(text("SELECT COUNT(*) FROM concept_alias")).scalar_one(), 19)
+            self.assertEqual(connection.execute(text("SELECT COUNT(*) FROM film_title")).scalar_one(), 2)
+            for table in (
+                "person",
+                "credit",
+                "credit_provenance",
+                "film_country",
+                "film_country_provenance",
+                "structured_metadata_review",
+            ):
+                self.assertEqual(connection.execute(text(f"SELECT COUNT(*) FROM {table}")).scalar_one(), 0)
         self.assertTrue(
             {
                 "ix_person_normalized_name",

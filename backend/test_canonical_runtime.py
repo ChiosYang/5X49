@@ -319,6 +319,24 @@ class CanonicalRuntimeTests(unittest.TestCase):
         )
         self._insert_structured_metadata(compatibility_id)
 
+        with self.engine.connect() as connection:
+            structured_counts_before_clear = {
+                table: connection.execute(
+                    text(f"SELECT COUNT(*) FROM {table}")
+                ).scalar_one()
+                for table in (
+                    "person",
+                    "credit",
+                    "credit_provenance",
+                    "concept",
+                    "concept_alias",
+                    "film_title",
+                    "film_country",
+                    "film_country_provenance",
+                    "structured_metadata_review",
+                )
+            }
+
         library_manager.clear_library()
 
         self.assertEqual(library_manager.get_movies(), [])
@@ -339,7 +357,7 @@ class CanonicalRuntimeTests(unittest.TestCase):
             ):
                 self.assertEqual(
                     connection.execute(text(f"SELECT COUNT(*) FROM {table}")).scalar_one(),
-                    1,
+                    structured_counts_before_clear[table],
                     table,
                 )
 
@@ -543,6 +561,11 @@ class CanonicalRuntimeTests(unittest.TestCase):
         self.assertNotIn("Runtime Film", str(review["payload"]))
 
     def test_canonical_failure_rolls_back_legacy_and_canonical_rows(self):
+        with self.engine.connect() as connection:
+            graph_entities_before = connection.execute(
+                text("SELECT COUNT(*) FROM graph_entity")
+            ).scalar_one()
+
         with patch.object(
             canonical_runtime_writer,
             "_sync_assets",
@@ -558,7 +581,7 @@ class CanonicalRuntimeTests(unittest.TestCase):
             self.assertEqual(connection.execute(text("SELECT COUNT(*) FROM film")).scalar_one(), 0)
             self.assertEqual(
                 connection.execute(text("SELECT COUNT(*) FROM graph_entity")).scalar_one(),
-                0,
+                graph_entities_before,
             )
 
     def test_ambiguous_fast_fingerprint_queues_deduped_relink_job_and_full_hash_relinks(self):

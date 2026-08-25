@@ -1,0 +1,1306 @@
+{
+  "version": "structured-metadata-vocab:v1",
+  "genre_version": "tmdb-movie-genres:v1",
+  "country_version": "iso-3166-1:v1",
+  "genres": [
+    {
+      "tmdb_id": 12,
+      "canonical_name": "Adventure",
+      "aliases": {
+        "en": [
+          "Adventure"
+        ],
+        "zh-CN": [
+          "冒险",
+          "冒险片"
+        ]
+      }
+    },
+    {
+      "tmdb_id": 14,
+      "canonical_name": "Fantasy",
+      "aliases": {
+        "en": [
+          "Fantasy"
+        ],
+        "zh-CN": [
+          "奇幻",
+          "奇幻片"
+        ]
+      }
+    },
+    {
+      "tmdb_id": 16,
+      "canonical_name": "Animation",
+      "aliases": {
+        "en": [
+          "Animation",
+          "Animated"
+        ],
+        "zh-CN": [
+          "动画",
+          "动画片"
+        ]
+      }
+    },
+    {
+      "tmdb_id": 18,
+      "canonical_name": "Drama",
+      "aliases": {
+        "en": [
+          "Drama"
+        ],
+        "zh-CN": [
+          "剧情",
+          "剧情片"
+        ]
+      }
+    },
+    {
+      "tmdb_id": 27,
+      "canonical_name": "Horror",
+      "aliases": {
+        "en": [
+          "Horror"
+        ],
+        "zh-CN": [
+          "恐怖",
+          "恐怖片"
+        ]
+      }
+    },
+    {
+      "tmdb_id": 28,
+      "canonical_name": "Action",
+      "aliases": {
+        "en": [
+          "Action"
+        ],
+        "zh-CN": [
+          "动作",
+          "动作片"
+        ]
+      }
+    },
+    {
+      "tmdb_id": 35,
+      "canonical_name": "Comedy",
+      "aliases": {
+        "en": [
+          "Comedy"
+        ],
+        "zh-CN": [
+          "喜剧",
+          "喜剧片"
+        ]
+      }
+    },
+    {
+      "tmdb_id": 36,
+      "canonical_name": "History",
+      "aliases": {
+        "en": [
+          "History",
+          "Historical"
+        ],
+        "zh-CN": [
+          "历史",
+          "历史片"
+        ]
+      }
+    },
+    {
+      "tmdb_id": 37,
+      "canonical_name": "Western",
+      "aliases": {
+        "en": [
+          "Western",
+          "Western Film"
+        ],
+        "zh-CN": [
+          "西部",
+          "西部片"
+        ]
+      }
+    },
+    {
+      "tmdb_id": 53,
+      "canonical_name": "Thriller",
+      "aliases": {
+        "en": [
+          "Thriller"
+        ],
+        "zh-CN": [
+          "惊悚",
+          "惊悚片"
+        ]
+      }
+    },
+    {
+      "tmdb_id": 80,
+      "canonical_name": "Crime",
+      "aliases": {
+        "en": [
+          "Crime"
+        ],
+        "zh-CN": [
+          "犯罪",
+          "犯罪片"
+        ]
+      }
+    },
+    {
+      "tmdb_id": 99,
+      "canonical_name": "Documentary",
+      "aliases": {
+        "en": [
+          "Documentary",
+          "Documentaries",
+          "Doc"
+        ],
+        "zh-CN": [
+          "纪录片",
+          "记录片",
+          "纪录"
+        ]
+      }
+    },
+    {
+      "tmdb_id": 878,
+      "canonical_name": "Science Fiction",
+      "aliases": {
+        "en": [
+          "Science Fiction",
+          "Science-Fiction",
+          "Sci-Fi",
+          "Sci Fi"
+        ],
+        "zh-CN": [
+          "科幻",
+          "科幻片"
+        ]
+      }
+    },
+    {
+      "tmdb_id": 9648,
+      "canonical_name": "Mystery",
+      "aliases": {
+        "en": [
+          "Mystery"
+        ],
+        "zh-CN": [
+          "悬疑",
+          "神秘",
+          "悬疑片"
+        ]
+      }
+    },
+    {
+      "tmdb_id": 10402,
+      "canonical_name": "Music",
+      "aliases": {
+        "en": [
+          "Music",
+          "Musical"
+        ],
+        "zh-CN": [
+          "音乐",
+          "音乐片"
+        ]
+      }
+    },
+    {
+      "tmdb_id": 10749,
+      "canonical_name": "Romance",
+      "aliases": {
+        "en": [
+          "Romance",
+          "Romantic"
+        ],
+        "zh-CN": [
+          "爱情",
+          "爱情片"
+        ]
+      }
+    },
+    {
+      "tmdb_id": 10751,
+      "canonical_name": "Family",
+      "aliases": {
+        "en": [
+          "Family"
+        ],
+        "zh-CN": [
+          "家庭",
+          "家庭片"
+        ]
+      }
+    },
+    {
+      "tmdb_id": 10752,
+      "canonical_name": "War",
+      "aliases": {
+        "en": [
+          "War"
+        ],
+        "zh-CN": [
+          "战争",
+          "战争片"
+        ]
+      }
+    },
+    {
+      "tmdb_id": 10770,
+      "canonical_name": "TV Movie",
+      "aliases": {
+        "en": [
+          "TV Movie",
+          "Television Movie"
+        ],
+        "zh-CN": [
+          "电视电影"
+        ]
+      }
+    }
+  ],
+  "countries": {
+    "AD": {
+      "en": "Andorra",
+      "zh-CN": "安道尔"
+    },
+    "AE": {
+      "en": "United Arab Emirates",
+      "zh-CN": "阿拉伯联合酋长国"
+    },
+    "AF": {
+      "en": "Afghanistan",
+      "zh-CN": "阿富汗"
+    },
+    "AG": {
+      "en": "Antigua & Barbuda",
+      "zh-CN": "安提瓜和巴布达"
+    },
+    "AI": {
+      "en": "Anguilla",
+      "zh-CN": "安圭拉"
+    },
+    "AL": {
+      "en": "Albania",
+      "zh-CN": "阿尔巴尼亚"
+    },
+    "AM": {
+      "en": "Armenia",
+      "zh-CN": "亚美尼亚"
+    },
+    "AO": {
+      "en": "Angola",
+      "zh-CN": "安哥拉"
+    },
+    "AQ": {
+      "en": "Antarctica",
+      "zh-CN": "南极洲"
+    },
+    "AR": {
+      "en": "Argentina",
+      "zh-CN": "阿根廷"
+    },
+    "AS": {
+      "en": "American Samoa",
+      "zh-CN": "美属萨摩亚"
+    },
+    "AT": {
+      "en": "Austria",
+      "zh-CN": "奥地利"
+    },
+    "AU": {
+      "en": "Australia",
+      "zh-CN": "澳大利亚"
+    },
+    "AW": {
+      "en": "Aruba",
+      "zh-CN": "阿鲁巴"
+    },
+    "AX": {
+      "en": "Åland Islands",
+      "zh-CN": "奥兰群岛"
+    },
+    "AZ": {
+      "en": "Azerbaijan",
+      "zh-CN": "阿塞拜疆"
+    },
+    "BA": {
+      "en": "Bosnia & Herzegovina",
+      "zh-CN": "波斯尼亚和黑塞哥维那"
+    },
+    "BB": {
+      "en": "Barbados",
+      "zh-CN": "巴巴多斯"
+    },
+    "BD": {
+      "en": "Bangladesh",
+      "zh-CN": "孟加拉国"
+    },
+    "BE": {
+      "en": "Belgium",
+      "zh-CN": "比利时"
+    },
+    "BF": {
+      "en": "Burkina Faso",
+      "zh-CN": "布基纳法索"
+    },
+    "BG": {
+      "en": "Bulgaria",
+      "zh-CN": "保加利亚"
+    },
+    "BH": {
+      "en": "Bahrain",
+      "zh-CN": "巴林"
+    },
+    "BI": {
+      "en": "Burundi",
+      "zh-CN": "布隆迪"
+    },
+    "BJ": {
+      "en": "Benin",
+      "zh-CN": "贝宁"
+    },
+    "BL": {
+      "en": "St. Barthélemy",
+      "zh-CN": "圣巴泰勒米"
+    },
+    "BM": {
+      "en": "Bermuda",
+      "zh-CN": "百慕大"
+    },
+    "BN": {
+      "en": "Brunei",
+      "zh-CN": "文莱"
+    },
+    "BO": {
+      "en": "Bolivia",
+      "zh-CN": "玻利维亚"
+    },
+    "BQ": {
+      "en": "Caribbean Netherlands",
+      "zh-CN": "荷属加勒比区"
+    },
+    "BR": {
+      "en": "Brazil",
+      "zh-CN": "巴西"
+    },
+    "BS": {
+      "en": "Bahamas",
+      "zh-CN": "巴哈马"
+    },
+    "BT": {
+      "en": "Bhutan",
+      "zh-CN": "不丹"
+    },
+    "BV": {
+      "en": "Bouvet Island",
+      "zh-CN": "布韦岛"
+    },
+    "BW": {
+      "en": "Botswana",
+      "zh-CN": "博茨瓦纳"
+    },
+    "BY": {
+      "en": "Belarus",
+      "zh-CN": "白俄罗斯"
+    },
+    "BZ": {
+      "en": "Belize",
+      "zh-CN": "伯利兹"
+    },
+    "CA": {
+      "en": "Canada",
+      "zh-CN": "加拿大"
+    },
+    "CC": {
+      "en": "Cocos (Keeling) Islands",
+      "zh-CN": "科科斯（基林）群岛"
+    },
+    "CD": {
+      "en": "Congo - Kinshasa",
+      "zh-CN": "刚果（金）"
+    },
+    "CF": {
+      "en": "Central African Republic",
+      "zh-CN": "中非共和国"
+    },
+    "CG": {
+      "en": "Congo - Brazzaville",
+      "zh-CN": "刚果（布）"
+    },
+    "CH": {
+      "en": "Switzerland",
+      "zh-CN": "瑞士"
+    },
+    "CI": {
+      "en": "Côte d’Ivoire",
+      "zh-CN": "科特迪瓦"
+    },
+    "CK": {
+      "en": "Cook Islands",
+      "zh-CN": "库克群岛"
+    },
+    "CL": {
+      "en": "Chile",
+      "zh-CN": "智利"
+    },
+    "CM": {
+      "en": "Cameroon",
+      "zh-CN": "喀麦隆"
+    },
+    "CN": {
+      "en": "China",
+      "zh-CN": "中国"
+    },
+    "CO": {
+      "en": "Colombia",
+      "zh-CN": "哥伦比亚"
+    },
+    "CR": {
+      "en": "Costa Rica",
+      "zh-CN": "哥斯达黎加"
+    },
+    "CU": {
+      "en": "Cuba",
+      "zh-CN": "古巴"
+    },
+    "CV": {
+      "en": "Cape Verde",
+      "zh-CN": "佛得角"
+    },
+    "CW": {
+      "en": "Curaçao",
+      "zh-CN": "库拉索"
+    },
+    "CX": {
+      "en": "Christmas Island",
+      "zh-CN": "圣诞岛"
+    },
+    "CY": {
+      "en": "Cyprus",
+      "zh-CN": "塞浦路斯"
+    },
+    "CZ": {
+      "en": "Czechia",
+      "zh-CN": "捷克"
+    },
+    "DE": {
+      "en": "Germany",
+      "zh-CN": "德国"
+    },
+    "DJ": {
+      "en": "Djibouti",
+      "zh-CN": "吉布提"
+    },
+    "DK": {
+      "en": "Denmark",
+      "zh-CN": "丹麦"
+    },
+    "DM": {
+      "en": "Dominica",
+      "zh-CN": "多米尼克"
+    },
+    "DO": {
+      "en": "Dominican Republic",
+      "zh-CN": "多米尼加共和国"
+    },
+    "DZ": {
+      "en": "Algeria",
+      "zh-CN": "阿尔及利亚"
+    },
+    "EC": {
+      "en": "Ecuador",
+      "zh-CN": "厄瓜多尔"
+    },
+    "EE": {
+      "en": "Estonia",
+      "zh-CN": "爱沙尼亚"
+    },
+    "EG": {
+      "en": "Egypt",
+      "zh-CN": "埃及"
+    },
+    "EH": {
+      "en": "Western Sahara",
+      "zh-CN": "西撒哈拉"
+    },
+    "ER": {
+      "en": "Eritrea",
+      "zh-CN": "厄立特里亚"
+    },
+    "ES": {
+      "en": "Spain",
+      "zh-CN": "西班牙"
+    },
+    "ET": {
+      "en": "Ethiopia",
+      "zh-CN": "埃塞俄比亚"
+    },
+    "FI": {
+      "en": "Finland",
+      "zh-CN": "芬兰"
+    },
+    "FJ": {
+      "en": "Fiji",
+      "zh-CN": "斐济"
+    },
+    "FK": {
+      "en": "Falkland Islands (Islas Malvinas)",
+      "zh-CN": "福克兰群岛（马尔维纳斯群岛）"
+    },
+    "FM": {
+      "en": "Micronesia",
+      "zh-CN": "密克罗尼西亚"
+    },
+    "FO": {
+      "en": "Faroe Islands",
+      "zh-CN": "法罗群岛"
+    },
+    "FR": {
+      "en": "France",
+      "zh-CN": "法国"
+    },
+    "GA": {
+      "en": "Gabon",
+      "zh-CN": "加蓬"
+    },
+    "GB": {
+      "en": "United Kingdom",
+      "zh-CN": "英国"
+    },
+    "GD": {
+      "en": "Grenada",
+      "zh-CN": "格林纳达"
+    },
+    "GE": {
+      "en": "Georgia",
+      "zh-CN": "格鲁吉亚"
+    },
+    "GF": {
+      "en": "French Guiana",
+      "zh-CN": "法属圭亚那"
+    },
+    "GG": {
+      "en": "Guernsey",
+      "zh-CN": "根西岛"
+    },
+    "GH": {
+      "en": "Ghana",
+      "zh-CN": "加纳"
+    },
+    "GI": {
+      "en": "Gibraltar",
+      "zh-CN": "直布罗陀"
+    },
+    "GL": {
+      "en": "Greenland",
+      "zh-CN": "格陵兰"
+    },
+    "GM": {
+      "en": "Gambia",
+      "zh-CN": "冈比亚"
+    },
+    "GN": {
+      "en": "Guinea",
+      "zh-CN": "几内亚"
+    },
+    "GP": {
+      "en": "Guadeloupe",
+      "zh-CN": "瓜德罗普"
+    },
+    "GQ": {
+      "en": "Equatorial Guinea",
+      "zh-CN": "赤道几内亚"
+    },
+    "GR": {
+      "en": "Greece",
+      "zh-CN": "希腊"
+    },
+    "GS": {
+      "en": "South Georgia & South Sandwich Islands",
+      "zh-CN": "南乔治亚和南桑威奇群岛"
+    },
+    "GT": {
+      "en": "Guatemala",
+      "zh-CN": "危地马拉"
+    },
+    "GU": {
+      "en": "Guam",
+      "zh-CN": "关岛"
+    },
+    "GW": {
+      "en": "Guinea-Bissau",
+      "zh-CN": "几内亚比绍"
+    },
+    "GY": {
+      "en": "Guyana",
+      "zh-CN": "圭亚那"
+    },
+    "HK": {
+      "en": "Hong Kong",
+      "zh-CN": "香港"
+    },
+    "HM": {
+      "en": "Heard & McDonald Islands",
+      "zh-CN": "赫德岛和麦克唐纳群岛"
+    },
+    "HN": {
+      "en": "Honduras",
+      "zh-CN": "洪都拉斯"
+    },
+    "HR": {
+      "en": "Croatia",
+      "zh-CN": "克罗地亚"
+    },
+    "HT": {
+      "en": "Haiti",
+      "zh-CN": "海地"
+    },
+    "HU": {
+      "en": "Hungary",
+      "zh-CN": "匈牙利"
+    },
+    "ID": {
+      "en": "Indonesia",
+      "zh-CN": "印度尼西亚"
+    },
+    "IE": {
+      "en": "Ireland",
+      "zh-CN": "爱尔兰"
+    },
+    "IL": {
+      "en": "Israel",
+      "zh-CN": "以色列"
+    },
+    "IM": {
+      "en": "Isle of Man",
+      "zh-CN": "马恩岛"
+    },
+    "IN": {
+      "en": "India",
+      "zh-CN": "印度"
+    },
+    "IO": {
+      "en": "British Indian Ocean Territory",
+      "zh-CN": "英属印度洋领地"
+    },
+    "IQ": {
+      "en": "Iraq",
+      "zh-CN": "伊拉克"
+    },
+    "IR": {
+      "en": "Iran",
+      "zh-CN": "伊朗"
+    },
+    "IS": {
+      "en": "Iceland",
+      "zh-CN": "冰岛"
+    },
+    "IT": {
+      "en": "Italy",
+      "zh-CN": "意大利"
+    },
+    "JE": {
+      "en": "Jersey",
+      "zh-CN": "泽西岛"
+    },
+    "JM": {
+      "en": "Jamaica",
+      "zh-CN": "牙买加"
+    },
+    "JO": {
+      "en": "Jordan",
+      "zh-CN": "约旦"
+    },
+    "JP": {
+      "en": "Japan",
+      "zh-CN": "日本"
+    },
+    "KE": {
+      "en": "Kenya",
+      "zh-CN": "肯尼亚"
+    },
+    "KG": {
+      "en": "Kyrgyzstan",
+      "zh-CN": "吉尔吉斯斯坦"
+    },
+    "KH": {
+      "en": "Cambodia",
+      "zh-CN": "柬埔寨"
+    },
+    "KI": {
+      "en": "Kiribati",
+      "zh-CN": "基里巴斯"
+    },
+    "KM": {
+      "en": "Comoros",
+      "zh-CN": "科摩罗"
+    },
+    "KN": {
+      "en": "St. Kitts & Nevis",
+      "zh-CN": "圣基茨和尼维斯"
+    },
+    "KP": {
+      "en": "North Korea",
+      "zh-CN": "朝鲜"
+    },
+    "KR": {
+      "en": "South Korea",
+      "zh-CN": "韩国"
+    },
+    "KW": {
+      "en": "Kuwait",
+      "zh-CN": "科威特"
+    },
+    "KY": {
+      "en": "Cayman Islands",
+      "zh-CN": "开曼群岛"
+    },
+    "KZ": {
+      "en": "Kazakhstan",
+      "zh-CN": "哈萨克斯坦"
+    },
+    "LA": {
+      "en": "Laos",
+      "zh-CN": "老挝"
+    },
+    "LB": {
+      "en": "Lebanon",
+      "zh-CN": "黎巴嫩"
+    },
+    "LC": {
+      "en": "St. Lucia",
+      "zh-CN": "圣卢西亚"
+    },
+    "LI": {
+      "en": "Liechtenstein",
+      "zh-CN": "列支敦士登"
+    },
+    "LK": {
+      "en": "Sri Lanka",
+      "zh-CN": "斯里兰卡"
+    },
+    "LR": {
+      "en": "Liberia",
+      "zh-CN": "利比里亚"
+    },
+    "LS": {
+      "en": "Lesotho",
+      "zh-CN": "莱索托"
+    },
+    "LT": {
+      "en": "Lithuania",
+      "zh-CN": "立陶宛"
+    },
+    "LU": {
+      "en": "Luxembourg",
+      "zh-CN": "卢森堡"
+    },
+    "LV": {
+      "en": "Latvia",
+      "zh-CN": "拉脱维亚"
+    },
+    "LY": {
+      "en": "Libya",
+      "zh-CN": "利比亚"
+    },
+    "MA": {
+      "en": "Morocco",
+      "zh-CN": "摩洛哥"
+    },
+    "MC": {
+      "en": "Monaco",
+      "zh-CN": "摩纳哥"
+    },
+    "MD": {
+      "en": "Moldova",
+      "zh-CN": "摩尔多瓦"
+    },
+    "ME": {
+      "en": "Montenegro",
+      "zh-CN": "黑山"
+    },
+    "MF": {
+      "en": "St. Martin",
+      "zh-CN": "法属圣马丁"
+    },
+    "MG": {
+      "en": "Madagascar",
+      "zh-CN": "马达加斯加"
+    },
+    "MH": {
+      "en": "Marshall Islands",
+      "zh-CN": "马绍尔群岛"
+    },
+    "MK": {
+      "en": "North Macedonia",
+      "zh-CN": "北马其顿"
+    },
+    "ML": {
+      "en": "Mali",
+      "zh-CN": "马里"
+    },
+    "MM": {
+      "en": "Myanmar (Burma)",
+      "zh-CN": "缅甸"
+    },
+    "MN": {
+      "en": "Mongolia",
+      "zh-CN": "蒙古"
+    },
+    "MO": {
+      "en": "Macao",
+      "zh-CN": "澳门"
+    },
+    "MP": {
+      "en": "Northern Mariana Islands",
+      "zh-CN": "北马里亚纳群岛"
+    },
+    "MQ": {
+      "en": "Martinique",
+      "zh-CN": "马提尼克"
+    },
+    "MR": {
+      "en": "Mauritania",
+      "zh-CN": "毛里塔尼亚"
+    },
+    "MS": {
+      "en": "Montserrat",
+      "zh-CN": "蒙特塞拉特"
+    },
+    "MT": {
+      "en": "Malta",
+      "zh-CN": "马耳他"
+    },
+    "MU": {
+      "en": "Mauritius",
+      "zh-CN": "毛里求斯"
+    },
+    "MV": {
+      "en": "Maldives",
+      "zh-CN": "马尔代夫"
+    },
+    "MW": {
+      "en": "Malawi",
+      "zh-CN": "马拉维"
+    },
+    "MX": {
+      "en": "Mexico",
+      "zh-CN": "墨西哥"
+    },
+    "MY": {
+      "en": "Malaysia",
+      "zh-CN": "马来西亚"
+    },
+    "MZ": {
+      "en": "Mozambique",
+      "zh-CN": "莫桑比克"
+    },
+    "NA": {
+      "en": "Namibia",
+      "zh-CN": "纳米比亚"
+    },
+    "NC": {
+      "en": "New Caledonia",
+      "zh-CN": "新喀里多尼亚"
+    },
+    "NE": {
+      "en": "Niger",
+      "zh-CN": "尼日尔"
+    },
+    "NF": {
+      "en": "Norfolk Island",
+      "zh-CN": "诺福克岛"
+    },
+    "NG": {
+      "en": "Nigeria",
+      "zh-CN": "尼日利亚"
+    },
+    "NI": {
+      "en": "Nicaragua",
+      "zh-CN": "尼加拉瓜"
+    },
+    "NL": {
+      "en": "Netherlands",
+      "zh-CN": "荷兰"
+    },
+    "NO": {
+      "en": "Norway",
+      "zh-CN": "挪威"
+    },
+    "NP": {
+      "en": "Nepal",
+      "zh-CN": "尼泊尔"
+    },
+    "NR": {
+      "en": "Nauru",
+      "zh-CN": "瑙鲁"
+    },
+    "NU": {
+      "en": "Niue",
+      "zh-CN": "纽埃"
+    },
+    "NZ": {
+      "en": "New Zealand",
+      "zh-CN": "新西兰"
+    },
+    "OM": {
+      "en": "Oman",
+      "zh-CN": "阿曼"
+    },
+    "PA": {
+      "en": "Panama",
+      "zh-CN": "巴拿马"
+    },
+    "PE": {
+      "en": "Peru",
+      "zh-CN": "秘鲁"
+    },
+    "PF": {
+      "en": "French Polynesia",
+      "zh-CN": "法属波利尼西亚"
+    },
+    "PG": {
+      "en": "Papua New Guinea",
+      "zh-CN": "巴布亚新几内亚"
+    },
+    "PH": {
+      "en": "Philippines",
+      "zh-CN": "菲律宾"
+    },
+    "PK": {
+      "en": "Pakistan",
+      "zh-CN": "巴基斯坦"
+    },
+    "PL": {
+      "en": "Poland",
+      "zh-CN": "波兰"
+    },
+    "PM": {
+      "en": "St. Pierre & Miquelon",
+      "zh-CN": "圣皮埃尔和密克隆群岛"
+    },
+    "PN": {
+      "en": "Pitcairn Islands",
+      "zh-CN": "皮特凯恩群岛"
+    },
+    "PR": {
+      "en": "Puerto Rico",
+      "zh-CN": "波多黎各"
+    },
+    "PS": {
+      "en": "Palestine",
+      "zh-CN": "巴勒斯坦"
+    },
+    "PT": {
+      "en": "Portugal",
+      "zh-CN": "葡萄牙"
+    },
+    "PW": {
+      "en": "Palau",
+      "zh-CN": "帕劳"
+    },
+    "PY": {
+      "en": "Paraguay",
+      "zh-CN": "巴拉圭"
+    },
+    "QA": {
+      "en": "Qatar",
+      "zh-CN": "卡塔尔"
+    },
+    "RE": {
+      "en": "Réunion",
+      "zh-CN": "留尼汪"
+    },
+    "RO": {
+      "en": "Romania",
+      "zh-CN": "罗马尼亚"
+    },
+    "RS": {
+      "en": "Serbia",
+      "zh-CN": "塞尔维亚"
+    },
+    "RU": {
+      "en": "Russia",
+      "zh-CN": "俄罗斯"
+    },
+    "RW": {
+      "en": "Rwanda",
+      "zh-CN": "卢旺达"
+    },
+    "SA": {
+      "en": "Saudi Arabia",
+      "zh-CN": "沙特阿拉伯"
+    },
+    "SB": {
+      "en": "Solomon Islands",
+      "zh-CN": "所罗门群岛"
+    },
+    "SC": {
+      "en": "Seychelles",
+      "zh-CN": "塞舌尔"
+    },
+    "SD": {
+      "en": "Sudan",
+      "zh-CN": "苏丹"
+    },
+    "SE": {
+      "en": "Sweden",
+      "zh-CN": "瑞典"
+    },
+    "SG": {
+      "en": "Singapore",
+      "zh-CN": "新加坡"
+    },
+    "SH": {
+      "en": "St. Helena",
+      "zh-CN": "圣赫勒拿"
+    },
+    "SI": {
+      "en": "Slovenia",
+      "zh-CN": "斯洛文尼亚"
+    },
+    "SJ": {
+      "en": "Svalbard & Jan Mayen",
+      "zh-CN": "斯瓦尔巴和扬马延"
+    },
+    "SK": {
+      "en": "Slovakia",
+      "zh-CN": "斯洛伐克"
+    },
+    "SL": {
+      "en": "Sierra Leone",
+      "zh-CN": "塞拉利昂"
+    },
+    "SM": {
+      "en": "San Marino",
+      "zh-CN": "圣马力诺"
+    },
+    "SN": {
+      "en": "Senegal",
+      "zh-CN": "塞内加尔"
+    },
+    "SO": {
+      "en": "Somalia",
+      "zh-CN": "索马里"
+    },
+    "SR": {
+      "en": "Suriname",
+      "zh-CN": "苏里南"
+    },
+    "SS": {
+      "en": "South Sudan",
+      "zh-CN": "南苏丹"
+    },
+    "ST": {
+      "en": "São Tomé & Príncipe",
+      "zh-CN": "圣多美和普林西比"
+    },
+    "SV": {
+      "en": "El Salvador",
+      "zh-CN": "萨尔瓦多"
+    },
+    "SX": {
+      "en": "Sint Maarten",
+      "zh-CN": "荷属圣马丁"
+    },
+    "SY": {
+      "en": "Syria",
+      "zh-CN": "叙利亚"
+    },
+    "SZ": {
+      "en": "Eswatini",
+      "zh-CN": "斯威士兰"
+    },
+    "TC": {
+      "en": "Turks & Caicos Islands",
+      "zh-CN": "特克斯和凯科斯群岛"
+    },
+    "TD": {
+      "en": "Chad",
+      "zh-CN": "乍得"
+    },
+    "TF": {
+      "en": "French Southern Territories",
+      "zh-CN": "法属南部领地"
+    },
+    "TG": {
+      "en": "Togo",
+      "zh-CN": "多哥"
+    },
+    "TH": {
+      "en": "Thailand",
+      "zh-CN": "泰国"
+    },
+    "TJ": {
+      "en": "Tajikistan",
+      "zh-CN": "塔吉克斯坦"
+    },
+    "TK": {
+      "en": "Tokelau",
+      "zh-CN": "托克劳"
+    },
+    "TL": {
+      "en": "Timor-Leste",
+      "zh-CN": "东帝汶"
+    },
+    "TM": {
+      "en": "Turkmenistan",
+      "zh-CN": "土库曼斯坦"
+    },
+    "TN": {
+      "en": "Tunisia",
+      "zh-CN": "突尼斯"
+    },
+    "TO": {
+      "en": "Tonga",
+      "zh-CN": "汤加"
+    },
+    "TR": {
+      "en": "Türkiye",
+      "zh-CN": "土耳其"
+    },
+    "TT": {
+      "en": "Trinidad & Tobago",
+      "zh-CN": "特立尼达和多巴哥"
+    },
+    "TV": {
+      "en": "Tuvalu",
+      "zh-CN": "图瓦卢"
+    },
+    "TW": {
+      "en": "Taiwan",
+      "zh-CN": "台湾"
+    },
+    "TZ": {
+      "en": "Tanzania",
+      "zh-CN": "坦桑尼亚"
+    },
+    "UA": {
+      "en": "Ukraine",
+      "zh-CN": "乌克兰"
+    },
+    "UG": {
+      "en": "Uganda",
+      "zh-CN": "乌干达"
+    },
+    "UM": {
+      "en": "U.S. Outlying Islands",
+      "zh-CN": "美国本土外小岛屿"
+    },
+    "US": {
+      "en": "United States",
+      "zh-CN": "美国"
+    },
+    "UY": {
+      "en": "Uruguay",
+      "zh-CN": "乌拉圭"
+    },
+    "UZ": {
+      "en": "Uzbekistan",
+      "zh-CN": "乌兹别克斯坦"
+    },
+    "VA": {
+      "en": "Vatican City",
+      "zh-CN": "梵蒂冈"
+    },
+    "VC": {
+      "en": "St. Vincent & Grenadines",
+      "zh-CN": "圣文森特和格林纳丁斯"
+    },
+    "VE": {
+      "en": "Venezuela",
+      "zh-CN": "委内瑞拉"
+    },
+    "VG": {
+      "en": "British Virgin Islands",
+      "zh-CN": "英属维尔京群岛"
+    },
+    "VI": {
+      "en": "U.S. Virgin Islands",
+      "zh-CN": "美属维尔京群岛"
+    },
+    "VN": {
+      "en": "Vietnam",
+      "zh-CN": "越南"
+    },
+    "VU": {
+      "en": "Vanuatu",
+      "zh-CN": "瓦努阿图"
+    },
+    "WF": {
+      "en": "Wallis & Futuna",
+      "zh-CN": "瓦利斯和富图纳"
+    },
+    "WS": {
+      "en": "Samoa",
+      "zh-CN": "萨摩亚"
+    },
+    "YE": {
+      "en": "Yemen",
+      "zh-CN": "也门"
+    },
+    "YT": {
+      "en": "Mayotte",
+      "zh-CN": "马约特"
+    },
+    "ZA": {
+      "en": "South Africa",
+      "zh-CN": "南非"
+    },
+    "ZM": {
+      "en": "Zambia",
+      "zh-CN": "赞比亚"
+    },
+    "ZW": {
+      "en": "Zimbabwe",
+      "zh-CN": "津巴布韦"
+    }
+  },
+  "country_aliases": {
+    "USA": "US",
+    "U.S.A.": "US",
+    "United States of America": "US",
+    "美国": "US",
+    "美利坚合众国": "US",
+    "UK": "GB",
+    "U.K.": "GB",
+    "Great Britain": "GB",
+    "Britain": "GB",
+    "英国": "GB",
+    "PRC": "CN",
+    "China": "CN",
+    "中国": "CN",
+    "中国大陆": "CN",
+    "中华人民共和国": "CN",
+    "Mainland China": "CN",
+    "Hong Kong": "HK",
+    "香港": "HK",
+    "中国香港": "HK",
+    "Taiwan": "TW",
+    "台湾": "TW",
+    "中国台湾": "TW",
+    "Russia": "RU",
+    "Russian Federation": "RU",
+    "俄罗斯": "RU",
+    "South Korea": "KR",
+    "Republic of Korea": "KR",
+    "韩国": "KR",
+    "North Korea": "KP",
+    "DPRK": "KP",
+    "朝鲜": "KP",
+    "Vietnam": "VN",
+    "Viet Nam": "VN",
+    "越南": "VN",
+    "Czech Republic": "CZ",
+    "Czechia": "CZ",
+    "捷克": "CZ",
+    "Macedonia": "MK",
+    "North Macedonia": "MK",
+    "北马其顿": "MK"
+  }
+}

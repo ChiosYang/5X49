@@ -5,7 +5,14 @@ from app.contracts.analysis_v2 import (
 )
 from app.contracts.anonymous_events import AnonymousMetricsExport, LocalAnonymousEvent
 from app.contracts.structured_metadata import (
+    CountryObservation,
+    CreditObservation,
+    GenreObservation,
+    ObservationIssue,
     PROVISIONAL_PERSON_PROVIDER,
+    StructuredMetadataObservation,
+    StructuredMetadataObservationDraft,
+    TitleObservation,
     MAX_REVIEW_RAW_BYTES,
     canonical_json_hash,
     credit_semantic_key,
@@ -17,12 +24,19 @@ from app.contracts.structured_metadata import (
 )
 
 __all__ = [
+    "CountryObservation",
+    "CreditObservation",
+    "GenreObservation",
+    "ObservationIssue",
     "AnalysisEvaluationDataset",
     "AnalysisV2Input",
     "AnalysisV2Output",
     "AnonymousMetricsExport",
     "LocalAnonymousEvent",
     "PROVISIONAL_PERSON_PROVIDER",
+    "StructuredMetadataObservation",
+    "StructuredMetadataObservationDraft",
+    "TitleObservation",
     "MAX_REVIEW_RAW_BYTES",
     "canonical_json_hash",
     "credit_semantic_key",

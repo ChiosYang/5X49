@@ -4,6 +4,7 @@ import hashlib
 import json
 import re
 import unicodedata
+from dataclasses import dataclass, field
 from pathlib import PurePosixPath, PureWindowsPath
 from typing import Any
 
@@ -20,6 +21,145 @@ _SENSITIVE_REVIEW_KEYS = {
     "secret",
     "token",
 }
+
+STRUCTURED_METADATA_FIELDS = frozenset({"titles", "countries", "credits", "genres"})
+STRUCTURED_METADATA_ORIGINS = frozenset(
+    {"curated", "nfo", "tmdb", "legacy_movie", "filename"}
+)
+
+
+@dataclass(frozen=True)
+class TitleObservation:
+    title: str
+    title_type: str
+    locale: str = "und"
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.title, str) or not self.title.strip():
+            raise ValueError("observed title must not be empty")
+        if self.title_type not in {"canonical", "original", "localized", "alternative"}:
+            raise ValueError("observed title type is invalid")
+        if not isinstance(self.locale, str) or not self.locale.strip():
+            raise ValueError("observed title locale must not be empty")
+
+
+@dataclass(frozen=True)
+class CountryObservation:
+    value: str
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.value, str) or not self.value.strip():
+            raise ValueError("observed country must not be empty")
+
+
+@dataclass(frozen=True)
+class CreditObservation:
+    name: str
+    department: str
+    job: str
+    character: str = ""
+    billing_order: int | None = None
+    provider: str | None = None
+    external_id: str | None = None
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.name, str) or not self.name.strip():
+            raise ValueError("observed person name must not be empty")
+        if not isinstance(self.department, str) or not self.department.strip():
+            raise ValueError("observed credit department must not be empty")
+        if not isinstance(self.job, str) or not self.job.strip():
+            raise ValueError("observed credit job must not be empty")
+        if self.billing_order is not None and self.billing_order < 0:
+            raise ValueError("observed billing order must not be negative")
+        if bool(self.provider) != bool(self.external_id):
+            raise ValueError("observed person provider and external id must be supplied together")
+
+
+@dataclass(frozen=True)
+class GenreObservation:
+    value: str
+    tmdb_id: int | None = None
+    locale: str = "und"
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.value, str) or not self.value.strip():
+            raise ValueError("observed genre must not be empty")
+        if self.tmdb_id is not None and self.tmdb_id <= 0:
+            raise ValueError("observed TMDB genre id must be positive")
+
+
+@dataclass(frozen=True)
+class ObservationIssue:
+    field_kind: str
+    reason_code: str
+    raw_value: Any
+
+    def __post_init__(self) -> None:
+        if self.field_kind not in {"title", "country", "person", "credit", "concept"}:
+            raise ValueError("observation issue field is invalid")
+        if not isinstance(self.reason_code, str) or not self.reason_code.strip():
+            raise ValueError("observation issue reason must not be empty")
+        validate_review_raw_value(self.raw_value)
+
+
+@dataclass(frozen=True)
+class StructuredMetadataObservation:
+    origin_kind: str
+    origin_ref: str
+    source_instance_id: str
+    observed_at: str
+    complete_fields: frozenset[str] = field(default_factory=lambda: STRUCTURED_METADATA_FIELDS)
+    titles: tuple[TitleObservation, ...] = ()
+    countries: tuple[CountryObservation, ...] = ()
+    credits: tuple[CreditObservation, ...] = ()
+    genres: tuple[GenreObservation, ...] = ()
+    issues: tuple[ObservationIssue, ...] = ()
+
+    def __post_init__(self) -> None:
+        if self.origin_kind not in STRUCTURED_METADATA_ORIGINS:
+            raise ValueError("structured metadata origin is invalid")
+        validate_provenance_ref(self.origin_ref)
+        validate_provenance_ref(self.source_instance_id)
+        if not isinstance(self.observed_at, str) or not self.observed_at.strip():
+            raise ValueError("structured metadata observed_at must not be empty")
+        if not self.complete_fields.issubset(STRUCTURED_METADATA_FIELDS):
+            raise ValueError("structured metadata complete_fields contains an unknown field")
+
+
+@dataclass(frozen=True)
+class StructuredMetadataObservationDraft:
+    origin_kind: str
+    source_instance_id: str
+    observed_at: str
+    complete_fields: frozenset[str] = field(default_factory=lambda: STRUCTURED_METADATA_FIELDS)
+    titles: tuple[TitleObservation, ...] = ()
+    countries: tuple[CountryObservation, ...] = ()
+    credits: tuple[CreditObservation, ...] = ()
+    genres: tuple[GenreObservation, ...] = ()
+    issues: tuple[ObservationIssue, ...] = ()
+
+    def __post_init__(self) -> None:
+        if self.origin_kind not in STRUCTURED_METADATA_ORIGINS:
+            raise ValueError("structured metadata origin is invalid")
+        validate_provenance_ref(self.source_instance_id)
+        if not isinstance(self.observed_at, str) or not self.observed_at.strip():
+            raise ValueError("structured metadata observed_at must not be empty")
+        if not self.complete_fields.issubset(STRUCTURED_METADATA_FIELDS):
+            raise ValueError("structured metadata complete_fields contains an unknown field")
+
+    def bind(self, origin_ref: str) -> StructuredMetadataObservation:
+        return StructuredMetadataObservation(
+            origin_kind=self.origin_kind,
+            origin_ref=origin_ref,
+            source_instance_id=self.source_instance_id,
+            observed_at=self.observed_at,
+            complete_fields=self.complete_fields,
+            titles=self.titles,
+            countries=self.countries,
+            credits=self.credits,
+            genres=self.genres,
+            issues=self.issues,
+        )
 
 
 def normalize_metadata_text(value: str) -> str:

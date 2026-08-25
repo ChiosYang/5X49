@@ -5,6 +5,7 @@ import tempfile
 import unittest
 from contextlib import closing
 from pathlib import Path
+from unittest.mock import patch
 
 from sqlalchemy import inspect, text
 from sqlmodel import SQLModel, create_engine
@@ -169,6 +170,7 @@ class DatabaseMigrationTests(unittest.TestCase):
             upgraded = run_migrations(
                 engine,
                 database_path,
+                migrations=MIGRATIONS[:6],
                 app_version="test-v6",
                 backup_dir=self.tmp_path / "v6-backups",
             )
@@ -203,12 +205,137 @@ class DatabaseMigrationTests(unittest.TestCase):
             second = run_migrations(
                 engine,
                 database_path,
+                migrations=MIGRATIONS[:6],
                 app_version="test-v6",
                 backup_dir=self.tmp_path / "v6-backups",
             )
             self.assertEqual(second.applied_versions, ())
             self.assertIsNone(second.backup)
             self.assertEqual(len(list((self.tmp_path / "v6-backups").glob("*.db"))), 1)
+        finally:
+            engine.dispose()
+
+    def test_schema_v6_upgrades_to_v7_with_idempotent_structured_backfill(self):
+        database_path, expected = self._materialize("current-unversioned")
+        engine = self._engine(database_path)
+        try:
+            initial = run_migrations(
+                engine,
+                database_path,
+                migrations=MIGRATIONS[:6],
+                app_version="test-v6",
+                backup_required=False,
+            )
+            self.assertEqual(initial.current_version, 6)
+            with engine.connect() as connection:
+                canonical_counts_before = {
+                    table: connection.execute(text(f"SELECT COUNT(*) FROM {table}")).scalar_one()
+                    for table in ("movie", "film", "library_item", "legacy_movie_alias", "viewing")
+                }
+
+            upgraded = run_migrations(
+                engine,
+                database_path,
+                migrations=MIGRATIONS[:7],
+                app_version="test-v7",
+                backup_dir=self.tmp_path / "v7-backups",
+            )
+            self.assertEqual(upgraded.applied_versions, (7,))
+            self.assertEqual(upgraded.current_version, 7)
+            self.assertIsNotNone(upgraded.backup)
+            with engine.connect() as connection:
+                canonical_counts_after = {
+                    table: connection.execute(text(f"SELECT COUNT(*) FROM {table}")).scalar_one()
+                    for table in canonical_counts_before
+                }
+                self.assertEqual(
+                    connection.execute(
+                        text(
+                            "SELECT status FROM canonical_backfill_run "
+                            "WHERE run_key='legacy_structured_metadata.v1'"
+                        )
+                    ).scalar_one(),
+                    "succeeded",
+                )
+                self.assertEqual(connection.execute(text("SELECT COUNT(*) FROM concept")).scalar_one(), 19)
+                title_count = connection.execute(
+                    text("SELECT COUNT(*) FROM film_title")
+                ).scalar_one()
+                movie_count = expected["row_counts"].get("movie", 0)
+                self.assertGreaterEqual(title_count, movie_count * 2)
+                self.assertLessEqual(title_count, movie_count * 3)
+            self.assertEqual(canonical_counts_after, canonical_counts_before)
+
+            second = run_migrations(
+                engine,
+                database_path,
+                migrations=MIGRATIONS[:7],
+                app_version="test-v7",
+                backup_dir=self.tmp_path / "v7-backups",
+            )
+            self.assertEqual(second.applied_versions, ())
+            self.assertIsNone(second.backup)
+            self.assertEqual(len(list((self.tmp_path / "v7-backups").glob("*.db"))), 1)
+        finally:
+            engine.dispose()
+
+    def test_schema_v7_backfill_failure_rolls_back_and_retries(self):
+        database_path, expected = self._materialize("current-unversioned")
+        engine = self._engine(database_path)
+        try:
+            run_migrations(
+                engine,
+                database_path,
+                migrations=MIGRATIONS[:6],
+                app_version="test-v6",
+                backup_required=False,
+            )
+            with patch(
+                "app.services.structured_metadata_sync."
+                "structured_metadata_synchronizer.sync",
+                side_effect=RuntimeError("synthetic structured backfill failure"),
+            ):
+                with self.assertRaises(MigrationError):
+                    run_migrations(
+                        engine,
+                        database_path,
+                        migrations=MIGRATIONS[:7],
+                        app_version="test-v7-failure",
+                        backup_required=False,
+                    )
+
+            with engine.connect() as connection:
+                self.assertEqual(self._journal_status(engine, 7), "failed")
+                for table in (
+                    "person",
+                    "credit",
+                    "credit_provenance",
+                    "concept",
+                    "concept_alias",
+                    "film_title",
+                    "film_country",
+                    "film_country_provenance",
+                    "structured_metadata_review",
+                ):
+                    self.assertEqual(
+                        connection.execute(text(f"SELECT COUNT(*) FROM {table}")).scalar_one(),
+                        0,
+                        table,
+                    )
+                self.assertEqual(
+                    connection.execute(text("SELECT COUNT(*) FROM movie")).scalar_one(),
+                    expected["row_counts"]["movie"],
+                )
+
+            retried = run_migrations(
+                engine,
+                database_path,
+                migrations=MIGRATIONS[:7],
+                app_version="test-v7-retry",
+                backup_required=False,
+            )
+            self.assertEqual(retried.applied_versions, (7,))
+            self.assertEqual(self._journal_status(engine, 7), "applied")
         finally:
             engine.dispose()
 
