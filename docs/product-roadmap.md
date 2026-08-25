@@ -509,10 +509,10 @@ Film→Concept 关系仍等待 W4 factual Assertion；Gate A 继续因真实自�
 
 把 AI 文章升级为可以进入知识图谱、可以验证和可以重建的数据。
 
-当前进度（2026-08-25）：Slices 1–2 已完成。Schema v8 已新增版本化谓词注册表、Assertion、
-Evidence、AnalysisRun、provenance/link 与独立 analysis review；data migration v9 和 W3 runtime
-已把唯一解析的 Legacy/NFO/TMDB Genre 同步为 factual `HAS_GENRE` Assertion，并保护人工审核
-决定。当前仍未接入模型 runtime、Legacy analysis 迁移或评测集；Gate B 保持 Pending。
+当前进度（2026-08-25）：Slices 1–3 已完成。Schema v8 已新增版本化谓词注册表、Assertion、
+Evidence、AnalysisRun、provenance/link 与独立 analysis review；v9 同步 factual Genre；v10 与
+Library runtime 已接入严格 Analysis V2、方向解析、安全 Evidence、Legacy transition、幂等重试
+和人工审核保护。固定评测集与 Gate B 仍为 Pending。
 
 #### 任务
 
@@ -994,8 +994,8 @@ Started Install
 - Film 与 LibraryItem 已分离。
 - Viewing 为多记录模型。
 - Canonical Library、Media、Viewing 与旧 API 兼容读取/双写经过真实库副本演练。
-- Assertion、Evidence、AnalysisRun 的边界和 additive Schema v8 已实现，但运行时去重、拒绝
-  保护、Legacy 转换和质量评测仍由 W4/Gate B 验收。
+- Assertion、Evidence、AnalysisRun 的边界和 additive Schema v8 已实现；运行时去重、拒绝
+  保护和 Legacy 转换已在 W4 Slice 3 完成，质量评测仍由 W4 Slice 4/Gate B 验收。
 - 旧数据迁移和恢复方案可执行。
 - Docker 首装、旧库升级、canonical/shadow/legacy 回退、恢复和中英文 smoke 有脱敏证据。
 
@@ -1011,9 +1011,9 @@ Started Install
 - 事实、证据和推断可区分。
 - 分析重试幂等。
 
-当前状态（2026-08-25）：**Pending**。Persistence Slices 1–2 已完成 Schema、契约和 Genre
-factual Assertion；Analysis V2 runtime、Legacy analysis 迁移、固定评测集和严格 Gate B
-rehearsal 尚未完成。
+当前状态（2026-08-25）：**Pending**。Persistence Slices 1–3 已完成 Schema、Genre factual
+Assertion、Analysis V2 runtime 和 Legacy analysis 迁移；固定评测集和严格 Gate B rehearsal
+尚未完成。
 
 未通过：减少关系类型或调整数据来源，不扩大 Graph。
 

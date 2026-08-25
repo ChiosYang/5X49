@@ -18,8 +18,9 @@ unbounded raw-data archive.
 - Establish deterministic hashes, review rules, Evidence URI policy, and
   privacy-safe persistence boundaries.
 - Data migration version 9 and runtime metadata synchronization materialize
-  factual Genre Assertions. Later slices connect Analysis V2 runtime writes,
-  migrate compatible legacy analysis, and complete Gate B.
+  factual Genre Assertions. Version 10 and the Library worker persist validated
+  Analysis V2 runs, relationships, verified Evidence, reviews, and compatible
+  Legacy analysis. The remaining slice evaluates quality and concludes Gate B.
 
 ## Non-goals
 
@@ -36,8 +37,9 @@ W3 schema version 7 supplies canonical Film, Person, Credit, Concept, Genre
 vocabulary, provenance, and runtime metadata observations. Schema version 8
 adds the durable W4 boundary. Data migration version 9 now materializes trusted
 Legacy Genre facts, while NFO and TMDB refresh the same Assertions in the
-existing metadata transaction. The legacy analysis service still writes only
-Movie projection fields and events.
+existing metadata transaction. Version 10 transitions compatible Legacy
+analysis, and the Library analysis worker now treats W4 records as durable data
+while continuing to produce the existing Movie projection.
 
 ## Acceptance criteria
 
@@ -57,8 +59,9 @@ Movie projection fields and events.
 - [x] HTTP routes and legacy response shapes remain unchanged.
 - [x] Trusted Legacy, NFO, and TMDB Genre facts synchronize source-scoped,
   policy-accepted `HAS_GENRE` Assertions without overwriting user decisions.
-- [ ] Analysis runtime persistence, legacy analysis transition, evaluation, and
-  Gate B evidence are complete.
+- [x] Analysis runtime persistence and compatible Legacy transition are
+  complete without changing HTTP response shapes.
+- [ ] Evaluation and Gate B evidence are complete.
 
 ## Decisions
 
@@ -82,10 +85,8 @@ Movie projection fields and events.
 
 ## Open questions
 
-- Evidence redirect/DNS retrieval limits, retry scheduling, and stale-link
-  refresh frequency are implementation details for Slice 3, within the fixed
-  public-network-only policy.
-- Gate B quality thresholds still require the adjudicated evaluation dataset.
+- Gate B quality thresholds and Evidence freshness policy still require the
+  adjudicated evaluation dataset and Slice 4 decision record.
 
 ## Slices
 
@@ -114,7 +115,7 @@ Status: Complete
 
 ### Slice 3 — Analysis V2 runtime and legacy transition
 
-Status: Pending
+Status: Complete
 
 - Intended behavior: create/reuse AnalysisRun, resolve references, persist
   proposed Assertions and verified Evidence transactionally, and transition
@@ -156,11 +157,24 @@ Status: Pending
   the source remained unchanged; strict status remains Blocked without Docker.
 - Git-safe Slice 2 evidence is recorded in
   `docs/quality/analysis-v2-persistence-slice2.md`.
+- Slice 3 focused Analysis runtime, Evidence, Legacy transition, migration,
+  Canonical, W3, and Gate regression — 104 tests passed.
+- Complete backend discovery excluding credential-dependent `test_agent.py` —
+  190 tests passed in 123.781 seconds after Slice 3.
+- W3 rehearsal `w4-s3-v10-20260825-01` — passed after upgrading only its
+  isolated work copy to current schema v10.
+- Gate A rehearsal `w4-s3-v10-20260825-01` — every local phase passed at v10;
+  strict status remains Blocked because Docker evidence is absent.
+- `python -m compileall -q app` and `git diff --check` — passed before final
+  handoff; Git reported only checkout line-ending warnings.
+- Git-safe Slice 3 evidence is recorded in
+  `docs/quality/analysis-v2-persistence-slice3.md`.
 
 ## Remaining risks
 
-- Schema constraints cannot perform DNS resolution; Slice 3 must revalidate the
-  resolved address and every redirect before Evidence is persisted.
-- Genre import protects user accepted/rejected decisions, but Analysis V2
-  runtime persistence and its broader rejected-state protection remain Slice 3.
+- Automated tests use a fake DNS resolver and HTTP transport. The production
+  retriever pins a validated public address and revalidates every redirect, but
+  no live Evidence site is part of deterministic acceptance.
+- The fixed adjudicated evaluation set, quality thresholds, restore rehearsal,
+  and Gate B decision remain Slice 4.
 - Gate A remains independently Blocked, and Gate B is Pending.

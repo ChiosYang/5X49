@@ -39,3 +39,9 @@ v7 remained applied while its isolated work copy reached current schema v9 and
 the downstream factual Genre Assertion migration remained idempotent.
 The focused W3, migration, metadata, TMDB concurrency, and rehearsal runs
 passed, and Python bytecode compilation completed successfully.
+
+The post-v10 regression `w4-s3-v10-20260825-01` again passed every W3 check
+after upgrading only its isolated work copy. Legacy backfill, NFO reconcile,
+recorded TMDB refresh, lifecycle, provenance, privacy, and source immutability
+remained green. W3 remains complete; v10 Analysis transition data does not
+change its v7 contract boundary.
