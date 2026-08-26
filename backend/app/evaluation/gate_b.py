@@ -26,6 +26,7 @@ from app.canonical_models import (
     AssertionEvidence,
     AssertionProvenance,
     Concept,
+    ConceptAlias,
     Evidence,
     ExternalIdentity,
     Film,
@@ -119,6 +120,8 @@ def load_policy(path: Path) -> dict[str, Any]:
     for key in ("dataset", "thresholds", "priority_evidence_predicates"):
         if key not in payload:
             raise GateBValidationError(f"Gate B policy is missing {key}")
+    if "predicate_minimums" not in payload["dataset"]:
+        raise GateBValidationError("Gate B policy is missing dataset predicate_minimums")
     if payload.get("evidence_policy_version") != EVIDENCE_VERIFICATION_POLICY_VERSION:
         raise GateBValidationError("Gate B Evidence policy does not match the runtime")
     return payload
@@ -131,6 +134,12 @@ def validate_dataset(
     requirements = policy["dataset"]
     languages = Counter(case.language for case in dataset.cases)
     tags = Counter(tag for case in dataset.cases for tag in case.tags)
+    predicates = Counter(
+        expected.predicate.value
+        for case in dataset.cases
+        for expected in case.expected_assertions
+        if expected.label in {"required", "acceptable"}
+    )
     forbidden_cases = sum(
         any(item.label == "forbidden" for item in case.expected_assertions)
         for case in dataset.cases
@@ -153,6 +162,13 @@ def validate_dataset(
         _check(
             "dataset-tag-coverage",
             all(tags[tag] >= int(minimum) for tag, minimum in requirements["tag_minimums"].items()),
+        ),
+        _check(
+            "dataset-predicate-coverage",
+            all(
+                predicates[predicate] >= int(minimum)
+                for predicate, minimum in requirements["predicate_minimums"].items()
+            ),
         ),
         _check(
             "dataset-forbidden-traps",
@@ -180,8 +196,15 @@ def validate_dataset(
             all(
                 case.expected_assertions
                 and all(expected.note for expected in case.expected_assertions)
-                and len(case.expected_assertions)
-                == len({assertion_match_key(expected) for expected in case.expected_assertions})
+                and sum(
+                    len(assertion_match_keys(expected))
+                    for expected in case.expected_assertions
+                )
+                == len({
+                    key
+                    for expected in case.expected_assertions
+                    for key in assertion_match_keys(expected)
+                })
                 for case in dataset.cases
             ),
         ),
@@ -231,6 +254,26 @@ def assertion_match_key(value: Any) -> str:
     return canonical_json_hash(semantic)
 
 
+def assertion_match_keys(value: Any) -> frozenset[str]:
+    """Return the canonical expected key plus any adjudicated Concept aliases."""
+    payload = (
+        value.model_dump(mode="json", exclude_none=True)
+        if hasattr(value, "model_dump")
+        else dict(value)
+    )
+    keys = {assertion_match_key(payload)}
+    target = payload.get("target") or {}
+    aliases = payload.get("target_aliases") or []
+    if target.get("entity_type") != "concept":
+        return frozenset(keys)
+    for alias in aliases:
+        aliased_payload = dict(payload)
+        aliased_payload.pop("target_aliases", None)
+        aliased_payload["target"] = {**target, "display_name": alias}
+        keys.add(assertion_match_key(aliased_payload))
+    return frozenset(keys)
+
+
 def prediction_hash(value: Any) -> str:
     payload = value.model_dump(mode="json", exclude_none=True) if hasattr(value, "model_dump") else dict(value)
     return canonical_json_hash(payload)
@@ -274,16 +317,22 @@ def score_evaluation(
         if result.get("status") == "succeeded":
             completed += 1
         expected = result.get("expected_assertions") or []
-        expected_by_key: dict[str, str] = {}
-        for item in expected:
-            key = assertion_match_key(item)
-            expected_by_key[key] = str(item.get("label"))
-            if item.get("label") == "required":
+        expected_by_key: dict[str, tuple[str, str]] = {}
+        for index, item in enumerate(expected):
+            label = str(item.get("label"))
+            expected_id = f"{case_id}:{index}"
+            for key in assertion_match_keys(item):
+                expected_by_key[key] = (label, expected_id)
+            if label == "required":
                 required_total += 1
 
         predictions = result.get("predictions") or []
         prediction_keys = [assertion_match_key(item.get("candidate") or {}) for item in predictions]
-        semantic_duplicates += len(prediction_keys) - len(set(prediction_keys))
+        semantic_prediction_keys = [
+            expected_by_key.get(key, ("", key))[1]
+            for key in prediction_keys
+        ]
+        semantic_duplicates += len(semantic_prediction_keys) - len(set(semantic_prediction_keys))
         human_case = human_cases.get(case_id)
         human_novel = (
             {item.prediction_hash: item.label for item in human_case.novel_predictions}
@@ -298,7 +347,8 @@ def score_evaluation(
             candidate = item.get("candidate") or {}
             resolved = item.get("resolution_status") == "resolved"
             review = item.get("resolution_status") == "review"
-            label = expected_by_key.get(key)
+            expected_match = expected_by_key.get(key)
+            label = expected_match[0] if expected_match else None
             if label is None:
                 label = human_novel.get(str(item.get("prediction_hash") or ""))
                 if label is None:
@@ -313,8 +363,8 @@ def score_evaluation(
                     acceptable_display_predictions += 1
                 if label in {"forbidden", "harmful"}:
                     forbidden_or_harmful += 1
-                if label == "required":
-                    matched_required_keys.add(key)
+                if label == "required" and expected_match is not None:
+                    matched_required_keys.add(expected_match[1])
                 if (
                     label in {"required", "acceptable"}
                     and candidate.get("predicate") in priority_predicates
@@ -893,17 +943,33 @@ def _seed_dataset(engine, dataset: AnalysisEvaluationDataset) -> None:
             ))
             for expected in case.expected_assertions:
                 target_key = _target_reference_key(expected.target.model_dump(mode="json", exclude_none=True))
-                if target_key in target_entities:
-                    continue
-                if expected.target.entity_type == "film":
-                    if expected.target.provider and expected.target.external_id:
-                        existing = session.exec(
-                            select(ExternalIdentity)
-                            .where(ExternalIdentity.provider == expected.target.provider)
-                            .where(ExternalIdentity.external_id == expected.target.external_id)
-                        ).first()
-                        if existing is not None:
-                            target_id = existing.entity_id
+                target_id = target_entities.get(target_key)
+                if target_id is None:
+                    if expected.target.entity_type == "film":
+                        if expected.target.provider and expected.target.external_id:
+                            existing = session.exec(
+                                select(ExternalIdentity)
+                                .where(ExternalIdentity.provider == expected.target.provider)
+                                .where(ExternalIdentity.external_id == expected.target.external_id)
+                            ).first()
+                            if existing is not None:
+                                target_id = existing.entity_id
+                            else:
+                                target_id = _stable_id("film", target_key)
+                                _seed_film(
+                                    session,
+                                    target_id,
+                                    expected.target.display_name or "Evaluation Film",
+                                    expected.target.release_year,
+                                    now,
+                                )
+                                _seed_identity(
+                                    session,
+                                    target_id,
+                                    expected.target.provider,
+                                    expected.target.external_id,
+                                    now,
+                                )
                         else:
                             target_id = _stable_id("film", target_key)
                             _seed_film(
@@ -913,31 +979,17 @@ def _seed_dataset(engine, dataset: AnalysisEvaluationDataset) -> None:
                                 expected.target.release_year,
                                 now,
                             )
-                            _seed_identity(
-                                session,
-                                target_id,
-                                expected.target.provider,
-                                expected.target.external_id,
-                                now,
-                            )
                     else:
-                        target_id = _stable_id("film", target_key)
-                        _seed_film(
+                        kind = _concept_kind(expected.predicate.value)
+                        target_id = _seed_concept(
                             session,
-                            target_id,
-                            expected.target.display_name or "Evaluation Film",
-                            expected.target.release_year,
+                            kind,
+                            expected.target.display_name or "Evaluation Concept",
                             now,
                         )
-                else:
-                    kind = _concept_kind(expected.predicate.value)
-                    target_id = _seed_concept(
-                        session,
-                        kind,
-                        expected.target.display_name or "Evaluation Concept",
-                        now,
-                    )
-                target_entities[target_key] = target_id
+                    target_entities[target_key] = target_id
+                if expected.target.entity_type == "concept" and expected.target_aliases:
+                    _seed_concept_aliases(session, target_id, expected.target_aliases, now)
         session.commit()
 
 
@@ -948,7 +1000,11 @@ def _exercise_persistence(engine, dataset: AnalysisEvaluationDataset) -> dict[st
         "subject_film_id": case.input.film_id,
         "summary": "Synthetic public rehearsal summary.",
         "assertions": [{
-            **expected.model_dump(mode="json", exclude={"label", "note"}, exclude_none=True),
+            **expected.model_dump(
+                mode="json",
+                exclude={"label", "note", "target_aliases"},
+                exclude_none=True,
+            ),
             "rationale": "Synthetic bounded rationale for persistence rehearsal.",
             "evidence_candidates": [{
                 "source_title": "Synthetic public catalog",
@@ -1070,7 +1126,11 @@ def _synthetic_case_results(
             if expected.label != "required":
                 continue
             candidate = {
-                **expected.model_dump(mode="json", exclude={"label", "note"}, exclude_none=True),
+                **expected.model_dump(
+                    mode="json",
+                    exclude={"label", "note", "target_aliases"},
+                    exclude_none=True,
+                ),
                 "rationale": "Synthetic scorer rehearsal rationale.",
             }
             predictions.append({
@@ -1135,8 +1195,9 @@ def _collect_live_case_result(engine, case, historian, pricing, policy) -> dict[
             for review in reviews
         }
         expected_labels = {
-            assertion_match_key(item): item.label
+            key: item.label
             for item in case.expected_assertions
+            for key in assertion_match_keys(item)
         }
         predictions = []
         finished_at = _parse_datetime(run.finished_at) or datetime.now(timezone.utc)
@@ -1235,12 +1296,17 @@ def _assertion_target_matches(
             == normalize_metadata_text(str(target.get("display_name") or ""))
         )
     concept = session.get(Concept, target_entity_id)
-    return bool(
-        concept
-        and concept.kind == _concept_kind(str(candidate.get("predicate") or ""))
-        and normalize_metadata_text(concept.canonical_name)
-        == normalize_metadata_text(str(target.get("display_name") or ""))
-    )
+    if concept is None or concept.kind != _concept_kind(str(candidate.get("predicate") or "")):
+        return False
+    normalized_target = normalize_metadata_text(str(target.get("display_name") or ""))
+    if normalize_metadata_text(concept.canonical_name) == normalized_target:
+        return True
+    alias = session.exec(
+        select(ConceptAlias)
+        .where(ConceptAlias.concept_id == concept.id)
+        .where(ConceptAlias.normalized_alias == normalized_target)
+    ).first()
+    return alias is not None
 
 
 def _live_operational_checks(engine, dataset, service) -> dict[str, Any]:
@@ -1438,6 +1504,34 @@ def _seed_concept(session: Session, kind: str, name: str, now: str) -> str:
     ))
     session.flush()
     return concept_id
+
+
+def _seed_concept_aliases(
+    session: Session,
+    concept_id: str,
+    aliases: Sequence[str],
+    now: str,
+) -> None:
+    for alias in aliases:
+        normalized = normalize_metadata_text(alias)
+        existing = session.exec(
+            select(ConceptAlias)
+            .where(ConceptAlias.concept_id == concept_id)
+            .where(ConceptAlias.locale == "und")
+            .where(ConceptAlias.normalized_alias == normalized)
+        ).first()
+        if existing is not None:
+            continue
+        session.add(ConceptAlias(
+            id=_stable_id("conceptalias", f"{concept_id}:und:{normalized}"),
+            concept_id=concept_id,
+            locale="und",
+            alias=alias[:300],
+            normalized_alias=normalized,
+            provenance_ref="gate-b-dataset.v1",
+            created_at=now,
+            updated_at=now,
+        ))
 
 
 def _concept_kind(predicate: str) -> str:

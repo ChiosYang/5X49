@@ -13,6 +13,9 @@
       "visual_style": 8,
       "influence": 12
     },
+    "predicate_minimums": {
+      "INFLUENCED_BY": 12
+    },
     "forbidden_case_minimum": 12
   },
   "thresholds": {

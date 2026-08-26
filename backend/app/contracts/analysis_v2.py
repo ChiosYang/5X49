@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import unicodedata
 from datetime import datetime
 from enum import StrEnum
 from typing import Literal
@@ -132,6 +133,7 @@ class AnalysisV2Output(StrictContract):
 class EvaluationExpectedAssertion(StrictContract):
     predicate: AnalysisPredicate
     target: AnalysisEntityReference
+    target_aliases: list[str] = Field(default_factory=list, max_length=20)
     direction: Literal["subject_to_target", "target_to_subject"] = "subject_to_target"
     qualifiers: AnalysisQualifier | None = None
     label: Literal["required", "acceptable", "forbidden"]
@@ -141,6 +143,23 @@ class EvaluationExpectedAssertion(StrictContract):
     def validate_direction(self):
         if self.target.entity_type != "film" and self.direction != "subject_to_target":
             raise ValueError("Concept evaluation assertions must point from subject to target")
+        if self.target_aliases and self.target.entity_type != "concept":
+            raise ValueError("evaluation target aliases are only supported for Concept targets")
+        normalized_aliases = [
+            " ".join(unicodedata.normalize("NFKC", alias).split()).casefold()
+            for alias in self.target_aliases
+        ]
+        if any(not alias for alias in normalized_aliases):
+            raise ValueError("evaluation target aliases must not be empty")
+        if len(normalized_aliases) != len(set(normalized_aliases)):
+            raise ValueError("evaluation target aliases must be unique")
+        canonical_name = self.target.display_name
+        if canonical_name:
+            normalized_canonical = " ".join(
+                unicodedata.normalize("NFKC", canonical_name).split()
+            ).casefold()
+            if normalized_canonical in normalized_aliases:
+                raise ValueError("evaluation target aliases must not repeat the canonical name")
         return self
 
 

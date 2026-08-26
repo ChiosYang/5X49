@@ -54,9 +54,12 @@ The fixed `analysis-eval.v1` Gate B corpus contains 36 public cases: 12 Chinese,
 `adjudicated` cases require at least one annotator, and a live Gate B run refuses
 the entire corpus unless all 36 cases are adjudicated. Expected relationship
 matching includes predicate, direction, provider-qualified Film identity or
-Concept kind/name, and canonical qualifiers. Every same-title case includes a
-forbidden identity trap, and any prediction outside the frozen expected set
-requires a human disposition.
+Concept kind/name, and canonical qualifiers. An expected Concept may also carry
+up to 20 unique, human-adjudicated `target_aliases`; those aliases exist only in
+the evaluation contract, resolve to the same seeded Concept, and count as one
+gold target for recall and duplicate detection. They are not added to the model
+output schema. Every same-title case includes a forbidden identity trap, and
+any prediction outside the frozen expected set requires a human disposition.
 
 `analysis-eval-human-review.v1` references the run ID, dataset ID/hash, and each
 novel prediction hash. It stores only a 1–5 helpfulness score and a bounded

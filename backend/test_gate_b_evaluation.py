@@ -5,14 +5,17 @@ import sqlite3
 import unittest
 import uuid
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import patch
 
 from app.contracts.analysis_v2 import AnalysisEvaluationHumanReview
 from app.evaluation.gate_b import (
     GateBBlocked,
+    _assertion_target_matches,
     _exit_code,
     _synthetic_case_results,
     assertion_match_key,
+    assertion_match_keys,
     create_review_template,
     dataset_hash,
     load_dataset,
@@ -37,18 +40,33 @@ class GateBEvaluationTests(unittest.TestCase):
         cls.dataset = load_dataset(DATASET_PATH)
         cls.policy = load_policy(POLICY_PATH)
 
-    def test_fixed_dataset_meets_coverage_and_remains_draft(self):
+    def test_fixed_dataset_meets_coverage_and_is_frozen(self):
         validation = validate_dataset(self.dataset, self.policy)
 
         self.assertEqual(len(self.dataset.cases), 36)
         self.assertEqual(validation["validation_status"], "passed")
-        self.assertFalse(validation["adjudication_ready"])
+        self.assertTrue(validation["adjudication_ready"])
         self.assertEqual(
             dataset_hash(self.dataset),
-            "94eb0d52459a58a70e5df5b577aa038b35b54a89cfd3b0e915b090064587b51d",
+            "fbfc9a1a481aef302fdac048250fae3225e335c6c228a1ee051db223c71be684",
         )
-        self.assertTrue(all(case.adjudication_status == "draft" for case in self.dataset.cases))
-        self.assertTrue(all(case.annotator_count == 0 for case in self.dataset.cases))
+        self.assertTrue(all(case.adjudication_status == "adjudicated" for case in self.dataset.cases))
+        self.assertTrue(all(case.annotator_count == 1 for case in self.dataset.cases))
+        influence_gold = sum(
+            item.predicate.value == "INFLUENCED_BY"
+            and item.label in {"required", "acceptable"}
+            for case in self.dataset.cases
+            for item in case.expected_assertions
+        )
+        self.assertGreaterEqual(influence_gold, 12)
+        self.assertEqual(
+            next(
+                item["status"]
+                for item in validation["checks"]
+                if item["id"] == "dataset-predicate-coverage"
+            ),
+            "passed",
+        )
 
     def test_match_key_includes_direction_identity_and_qualifiers(self):
         base = {
@@ -65,6 +83,62 @@ class GateBEvaluationTests(unittest.TestCase):
         self.assertNotEqual(assertion_match_key(base), assertion_match_key(reverse))
         self.assertNotEqual(assertion_match_key(base), assertion_match_key(qualified))
         self.assertEqual(assertion_match_key(base), assertion_match_key(dict(reversed(list(base.items())))))
+
+    def test_concept_aliases_match_one_gold_target_and_remain_duplicates(self):
+        expected = next(
+            item
+            for case in self.dataset.cases
+            for item in case.expected_assertions
+            if item.label == "required" and item.target_aliases
+        )
+        alias_candidate = expected.model_dump(
+            mode="json",
+            exclude={"label", "note", "target_aliases"},
+            exclude_none=True,
+        )
+        alias_candidate["target"]["display_name"] = expected.target_aliases[0]
+        self.assertIn(assertion_match_key(alias_candidate), assertion_match_keys(expected))
+
+        concept = SimpleNamespace(
+            id="concept_alias_target",
+            kind="visual_style",
+            canonical_name=expected.target.display_name,
+        )
+        alias = SimpleNamespace(concept_id=concept.id)
+        session = SimpleNamespace(
+            get=lambda *_args: concept,
+            exec=lambda *_args: SimpleNamespace(first=lambda: alias),
+        )
+        assertion = SimpleNamespace(
+            subject_entity_id="film_subject",
+            object_entity_id=concept.id,
+        )
+        self.assertTrue(
+            _assertion_target_matches(
+                session,
+                assertion,
+                alias_candidate,
+                "film_subject",
+            )
+        )
+
+        results = _synthetic_case_results(self.dataset, self.policy)
+        result = next(item for item in results if item["case_id"] == "eval_hero_2002")
+        canonical_prediction = result["predictions"][0]
+        alias_prediction = {
+            **canonical_prediction,
+            "candidate": alias_candidate,
+            "prediction_hash": prediction_hash(alias_candidate),
+        }
+        result["predictions"].append(alias_prediction)
+        scored = score_evaluation(
+            results,
+            policy=self.policy,
+            human_review=self._human_review(results),
+            operational_metrics=self._passing_operational_metrics(),
+        )
+        self.assertEqual(scored["status"], "failed")
+        self.assertGreater(scored["metrics"]["semantic_duplicate_rate"], 0)
 
     def test_scorer_requires_human_labels_and_rejects_forbidden_edges(self):
         results = _synthetic_case_results(self.dataset, self.policy)
@@ -150,7 +224,7 @@ class GateBEvaluationTests(unittest.TestCase):
             self.assertEqual(report["live_status"], "blocked")
             self.assertFalse((run_dir / "work" / "gate-b.db").exists())
             check_ids = {item["id"] for item in report["checks"]}
-            self.assertIn("live-preflight-dataset-awaiting-human-adjudication", check_ids)
+            self.assertNotIn("live-preflight-dataset-awaiting-human-adjudication", check_ids)
             self.assertIn("live-preflight-openrouter-key-missing", check_ids)
             self.assertIn("live-preflight-public-network-not-authorized", check_ids)
         finally:
