@@ -1,7 +1,7 @@
 # Analysis V2 Persistence
 
-Status: In Progress
-Last updated: 2026-08-25
+Status: Blocked
+Last updated: 2026-08-26
 Related: W4 and Gate B in `docs/product-roadmap.md`, `docs/domain-model.md`,
 `docs/analysis-v2-contract.md`
 
@@ -37,9 +37,11 @@ W3 schema version 7 supplies canonical Film, Person, Credit, Concept, Genre
 vocabulary, provenance, and runtime metadata observations. Schema version 8
 adds the durable W4 boundary. Data migration version 9 now materializes trusted
 Legacy Genre facts, while NFO and TMDB refresh the same Assertions in the
-existing metadata transaction. Version 10 transitions compatible Legacy
+  existing metadata transaction. Version 10 transitions compatible Legacy
 analysis, and the Library analysis worker now treats W4 records as durable data
-while continuing to produce the existing Movie projection.
+while continuing to produce the existing Movie projection. Slice 4 tooling and
+the draft `analysis-eval.v1` corpus are complete, but strict Gate B evidence is
+blocked on human adjudication and a pinned live run.
 
 ## Acceptance criteria
 
@@ -61,7 +63,11 @@ while continuing to produce the existing Movie projection.
   policy-accepted `HAS_GENRE` Assertions without overwriting user decisions.
 - [x] Analysis runtime persistence and compatible Legacy transition are
   complete without changing HTTP response shapes.
-- [ ] Evaluation and Gate B evidence are complete.
+- [x] The 36-case draft corpus, balanced `gate-b-policy.v1`, deterministic
+  scorer, isolated rehearsal, restore/privacy checks, and strict CLI are
+  implemented.
+- [ ] All 36 cases are human-adjudicated and the pinned live run plus complete
+  helpfulness/novel-prediction review passes Gate B.
 
 ## Decisions
 
@@ -85,8 +91,9 @@ while continuing to produce the existing Movie projection.
 
 ## Open questions
 
-- Gate B quality thresholds and Evidence freshness policy still require the
-  adjudicated evaluation dataset and Slice 4 decision record.
+- A human must adjudicate the draft expectations before seeing live model
+  output. The exact OpenRouter model and pricing manifest must then be frozen
+  for the live run.
 
 ## Slices
 
@@ -126,11 +133,12 @@ Status: Complete
 
 ### Slice 4 — Evaluation and Gate B handoff
 
-Status: Pending
+Status: Blocked (tooling complete)
 
-- Intended behavior: run the fixed 30–50 film adjudicated evaluation set and
+- Intended behavior: run the fixed 36-film adjudicated evaluation set and
   produce a privacy-safe Graph quality report and Gate B conclusion.
-- Dependencies: Slices 1–3.
+- Dependencies: Slices 1–3 are complete. Human adjudication, OpenRouter Key,
+  exact model/pricing evidence, live output, and human review are still absent.
 - Verification: entity resolution, precision, duplicate rate, helpfulness,
   cost, restore, and a strict passed/failed/blocked Gate B matrix.
 
@@ -169,12 +177,30 @@ Status: Pending
   handoff; Git reported only checkout line-ending warnings.
 - Git-safe Slice 3 evidence is recorded in
   `docs/quality/analysis-v2-persistence-slice3.md`.
+- Gate B dataset validation passed for 36 draft cases with 12 Chinese, 12
+  English, and 12 mixed/other cases; the frozen draft hash prefix is
+  `94eb0d52459a58a7`.
+- Offline rehearsal `w4-s4-offline-20260826-07` passed tooling, persistence,
+  scoring, verified restore, and privacy checks at schema v10. Its strict
+  status is Blocked: live and human evidence were intentionally not fabricated.
+- Gate B focused tests passed 6 tests in 15.789 seconds. Git-safe status and
+  threshold evidence are recorded in `docs/quality/analysis-v2-gate-b.md`.
+- Complete backend discovery excluding credential-dependent `test_agent.py`
+  passed 198 tests in 143.480 seconds after Slice 4.
+- W3 rehearsal `w4-s4-gate-b-20260826-01` passed at schema v10; Gate A with
+  the same run ID passed every local phase and preserved its source fingerprint,
+  while the strict Gate A result remains Blocked because Docker is absent.
+- `python -m compileall -q app` and `git diff --check` passed; Git emitted only
+  the repository's checkout line-ending warnings.
 
 ## Remaining risks
 
 - Automated tests use a fake DNS resolver and HTTP transport. The production
   retriever pins a validated public address and revalidates every redirect, but
   no live Evidence site is part of deterministic acceptance.
-- The fixed adjudicated evaluation set, quality thresholds, restore rehearsal,
-  and Gate B decision remain Slice 4.
-- Gate A remains independently Blocked, and Gate B is Pending.
+- The corpus labels are AI drafts and must not be changed to `adjudicated`
+  without user review performed before live outputs are shown.
+- No OpenRouter Key, exact model/pricing evidence, live report, or human review
+  was available in this slice, so Gate B cannot pass.
+- Gate A remains independently Blocked. A future Gate B pass would still not
+  authorize Graph UI until Gate A also passes.

@@ -509,10 +509,11 @@ Film→Concept 关系仍等待 W4 factual Assertion；Gate A 继续因真实自�
 
 把 AI 文章升级为可以进入知识图谱、可以验证和可以重建的数据。
 
-当前进度（2026-08-25）：Slices 1–3 已完成。Schema v8 已新增版本化谓词注册表、Assertion、
+当前进度（2026-08-26）：Slices 1–3 已完成，Slice 4 工具完成但严格证据 Blocked。Schema v8 已新增版本化谓词注册表、Assertion、
 Evidence、AnalysisRun、provenance/link 与独立 analysis review；v9 同步 factual Genre；v10 与
 Library runtime 已接入严格 Analysis V2、方向解析、安全 Evidence、Legacy transition、幂等重试
-和人工审核保护。固定评测集与 Gate B 仍为 Pending。
+和人工审核保护。36-case 固定草稿集、质量策略、隔离评测 CLI、恢复和隐私 rehearsal 已完成；
+全部 case 的用户 adjudication、OpenRouter Key、精确 model/pricing、live run 和 human review 尚缺。
 
 #### 任务
 
@@ -1011,9 +1012,11 @@ Started Install
 - 事实、证据和推断可区分。
 - 分析重试幂等。
 
-当前状态（2026-08-25）：**Pending**。Persistence Slices 1–3 已完成 Schema、Genre factual
-Assertion、Analysis V2 runtime 和 Legacy analysis 迁移；固定评测集和严格 Gate B rehearsal
-尚未完成。
+当前状态（2026-08-26）：**Blocked**。Persistence Slices 1–3 已完成；36-case 草稿评测集、
+`gate-b-policy.v1`、严格 CLI 与离线 rehearsal 已完成，且 tooling、schema-v10 持久化、恢复、
+隐私检查通过。数据集仍等待用户在查看 live 输出前完成 adjudication；OpenRouter Key、精确
+model/pricing、live output 与完整 helpfulness/novel-prediction review 也尚未提供，因此不能记录
+Gate B Passed。
 
 未通过：减少关系类型或调整数据来源，不扩大 Graph。
 

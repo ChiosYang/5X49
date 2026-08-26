@@ -463,6 +463,24 @@ sha256(
 同一运行和候选重放必须命中唯一 review key；review 不保存整个模型输出、网页正文、路径或凭据，
 也不能直接创建 GraphEntity。
 
+### 4.13 Analysis evaluation and Gate B
+
+Gate B 不是领域表或 migration。它在忽略目录中的全新 schema-v10 SQLite 数据库运行相同的
+Library Analysis V2 service，并以版本化契约验证生成、解析、持久化、恢复、成本和人工质量：
+
+- `analysis-eval.v1`：36 个公共 Film case，稳定合成 Film ID，Film 目标使用 provider-qualified
+  identity，Concept 目标使用 kind 与规范化名称。AI 草拟的 case 保持 `draft/annotator_count=0`，
+  只有用户裁定后才能改为 `adjudicated`。
+- `gate-b-policy.v1`：冻结完成率、边可接受率、实体解析、required recall、Evidence、幂等、
+  rejected/revoked 保护、helpfulness、成本、恢复和隐私阈值。
+- `analysis-eval-human-review.v1`：以 run、dataset 和 prediction hash 关联 1–5 helpfulness 及
+  novel prediction 的 `acceptable/incorrect/harmful` 裁定，不保存 reviewer 姓名。
+
+Gate B 报告只保留通过 Analysis V2 契约的有界 summary、rationale、规范关系、Evidence 元数据、
+哈希和聚合指标；不保存 raw prompt/response、provider exception、网页正文、hidden reasoning、
+路径或密钥。缺 adjudication、精确模型/定价、live 结果或人工评分时必须 `blocked`；证据齐全但
+低于质量或安全阈值时为 `failed`。Gate B 与 Gate A 独立，二者都通过前不授权 Graph UI。
+
 ## 5. 现有字段迁移映射
 
 ### 5.1 Movie

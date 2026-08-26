@@ -2,7 +2,8 @@
 
 Status: Adopted contract; persistence schema is implemented in version 8,
 factual Genre Assertions in version 9, and Analysis V2 runtime plus compatible
-Legacy transition in version 10. Evaluation and Gate B remain W4 work.
+Legacy transition in version 10. Gate B tooling is implemented; its live and
+human evidence remain blocked.
 
 The executable schemas live in `backend/app/contracts/analysis_v2.py`. Runtime
 producers and evaluation tooling must validate against those Pydantic models;
@@ -47,6 +48,36 @@ private notes, API credentials, or hidden model reasoning. Baseline reports
 should publish relationship precision, entity-resolution accuracy, duplicate
 rate, and human helpfulness separately rather than collapsing them into one
 opaque score.
+
+The fixed `analysis-eval.v1` Gate B corpus contains 36 public cases: 12 Chinese,
+12 English, and 12 mixed/other. `draft` cases may have `annotator_count=0`;
+`adjudicated` cases require at least one annotator, and a live Gate B run refuses
+the entire corpus unless all 36 cases are adjudicated. Expected relationship
+matching includes predicate, direction, provider-qualified Film identity or
+Concept kind/name, and canonical qualifiers. Every same-title case includes a
+forbidden identity trap, and any prediction outside the frozen expected set
+requires a human disposition.
+
+`analysis-eval-human-review.v1` references the run ID, dataset ID/hash, and each
+novel prediction hash. It stores only a 1–5 helpfulness score and a bounded
+`acceptable/incorrect/harmful` decision; reviewer names are not retained. The
+review must cover every successful case and every novel prediction exactly.
+
+`gate-b-policy.v1` freezes the strict thresholds: 36/36 completion, at least
+85% acceptable displayed edges, at least 95% resolution-decision accuracy,
+at least 75% required recall, zero forbidden/harmful or invented entities, zero
+semantic/replay/rejected/revoked regressions, median helpfulness at least 4 with
+80% of cases at least 4, at least 70% fresh qualifying Evidence coverage, and a
+USD 5 total / USD 0.25 p95 per-case budget. Missing evidence blocks; evidence
+present but below a safety or quality threshold fails.
+
+The internal `app.evaluation.gate_b` CLI validates the corpus, rehearses the
+runtime in a fresh schema-v10 database, runs one explicitly pinned OpenRouter
+model with a versioned pricing manifest and explicit public-network consent,
+creates a bounded review template, and concludes the evidence. Exit codes are
+0 passed, 2 failed, and 3 blocked. Run databases, backups, reports, and reviews
+remain under the ignored `backend/data/analysis-v2/gate-b/` boundary. The tool
+never reads or modifies the application database, Gate A input, or media.
 
 ## Persistence boundary
 
