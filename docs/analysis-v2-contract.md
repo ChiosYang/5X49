@@ -13,9 +13,13 @@ this document explains the product and privacy decisions behind them.
 
 - `AnalysisV2Input` contains only canonical Film metadata. Local paths, media
   filenames, API keys, user reviews, Viewing history, and raw NFO content are
-  outside the contract.
+  outside the contract. It may also include a bounded, stable-sorted catalog of
+  up to 80 active non-Genre Concepts with IDs and aliases so generation can
+  reuse existing nodes instead of inventing near-duplicates.
 - `AnalysisV2Output` is strict: unknown fields are rejected, including hidden
-  reasoning fields. It retains a concise user-facing summary and rationale.
+  reasoning fields. It retains a concise user-facing summary and rationale,
+  allows at most eight Assertion candidates, and allows at most two Evidence
+  candidates per Assertion.
 - Every target is traceable by an internal entity ID, a provider-qualified
   external identity, or an unresolved display reference. Unresolved Film
   references require title and year and must enter resolution review; they
@@ -29,6 +33,9 @@ this document explains the product and privacy decisions behind them.
 - Evidence supplied by a model is an untrusted candidate with a bounded claim
   and HTTP(S) URI. It becomes Evidence only after retrieval and policy checks.
 - Exact duplicate relationship candidates are rejected before persistence.
+- Model-generated qualifiers are not materialized by the current policy. They
+  enter bounded review instead; explanatory labels and periods belong in the
+  rationale until a qualifier vocabulary is explicitly governed.
 
 Contract versions are `analysis-input.v2` and `analysis-output.v2`. Prompt,
 resolver, persistence policy, and app versions remain separate AnalysisRun
@@ -66,7 +73,10 @@ novel prediction hash. It stores only a 1–5 helpfulness score and a bounded
 `acceptable/incorrect/harmful` decision; reviewer names are not retained. The
 review must cover every successful case and every novel prediction exactly.
 
-`gate-b-policy.v1` freezes the strict thresholds: 36/36 completion, at least
+`gate-b-policy.v2` retains the v1 thresholds and additionally requires zero
+resolved identity/title/year contradictions, complete review capture for those
+contradictions, zero model qualifier-policy violations, and no more than eight
+Assertions at p95. The strict thresholds still require 36/36 completion, at least
 85% acceptable displayed edges, at least 95% resolution-decision accuracy,
 at least 75% required recall, zero forbidden/harmful or invented entities, zero
 semantic/replay/rejected/revoked regressions, median helpfulness at least 4 with
@@ -80,7 +90,12 @@ model with a versioned pricing manifest and explicit public-network consent,
 creates a bounded review template, and concludes the evidence. Exit codes are
 0 passed, 2 failed, and 3 blocked. Run databases, backups, reports, and reviews
 remain under the ignored `backend/data/analysis-v2/gate-b/` boundary. The tool
-never reads or modifies the application database, Gate A input, or media.
+never reads or modifies the application database, Gate A input, or media. A
+bounded `pilot` command is available for prompt tuning; its report always keeps
+strict live status blocked and cannot be used by `review-template` or Gate B
+conclusion. Strict `run` also performs an Evidence-network preflight before any
+model call and blocks when public DNS/pinned retrieval cannot satisfy the SSRF
+boundary.
 
 ## Persistence boundary
 
@@ -118,5 +133,9 @@ The Library analysis worker builds `AnalysisV2Input` exclusively from canonical
 Film data. Exact existing identities resolve locally; a missing `tmdb.movie`
 identity may create a non-owned Film only after the existing TMDB client
 verifies it. Name/year-only and unsupported-provider references remain review
-items. The synchronous title-only `/analyze/{movie_name}` compatibility route
+items. A supplied provider/ID is atomic: it must resolve to a Film whose known
+title and release year agree with the candidate and may never silently fall
+back to a same-name Film. The current prompt/resolver/persistence snapshots are
+`genealogy-v2.v2`, `analysis-resolver.v2`, and `analysis-persistence.v2`. The
+synchronous title-only `/analyze/{movie_name}` compatibility route
 is not a persistence producer and remains on its existing response contract.

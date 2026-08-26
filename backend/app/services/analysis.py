@@ -11,7 +11,7 @@ from app.services.analysis_runtime import (
     AnalysisSubjectMismatch,
     analysis_runtime_persistence,
 )
-from app.services.historian import ANALYSIS_PROMPT_VERSION, FilmHistorian
+from app.services.historian import FilmHistorian, analysis_prompt_snapshot
 from app.services.metadata.tmdb import TMDBClient
 from app.services.settings import get_language
 
@@ -54,7 +54,7 @@ class AnalysisService:
                     job_id=job_id,
                     provider=configuration.provider,
                     model=configuration.model,
-                    prompt_version=ANALYSIS_PROMPT_VERSION,
+                    prompt_version=analysis_prompt_snapshot(configuration),
                 )
                 session.commit()
         except Exception as exc:

@@ -513,8 +513,9 @@ Film→Concept 关系仍等待 W4 factual Assertion；Gate A 继续因真实自�
 Evidence、AnalysisRun、provenance/link 与独立 analysis review；v9 同步 factual Genre；v10 与
 Library runtime 已接入严格 Analysis V2、方向解析、安全 Evidence、Legacy transition、幂等重试
 和人工审核保护。36-case 固定集已在查看 live 输出前完成人工 adjudication，并为开放词汇
-Concept 冻结有限 alias；质量策略、隔离评测 CLI、恢复和隐私 rehearsal 已完成。OpenRouter
-Key、精确 model/pricing、live run 和输出后的 human review 尚缺。
+Concept 冻结有限 alias；`gate-b-policy.v2`、隔离评测 CLI、恢复和隐私 rehearsal 已完成。
+OpenRouter Key 与 `stealth/ox-alpha` 的匹配定价清单已可用，6-case 调参 pilot 已完成；严格
+36-case live run 仍因 Evidence 公网预检不可用而阻塞，输出后的完整 human review 也尚缺。
 
 #### 任务
 
@@ -1014,9 +1015,10 @@ Started Install
 - 分析重试幂等。
 
 当前状态（2026-08-26）：**Blocked**。Persistence Slices 1–3 已完成；36-case 评测集已人工
-裁定并冻结，`gate-b-policy.v1`、严格 CLI 与离线 rehearsal 已完成，且 tooling、schema-v10
-持久化、恢复、隐私检查通过。OpenRouter Key、精确 model/pricing、live output 与完整
-helpfulness/novel-prediction review 尚未提供，因此不能记录 Gate B Passed。
+裁定并冻结，`gate-b-policy.v2`、严格 CLI 与离线 rehearsal 已完成，且 tooling、schema-v10
+持久化、恢复、隐私检查通过。精确 model/pricing 和受限 pilot 已有证据，但当前 Evidence 公网
+预检阻止严格 live run；36-case live output 与完整 helpfulness/novel-prediction review 尚未
+提供，因此不能记录 Gate B Passed。
 
 未通过：减少关系类型或调整数据来源，不扩大 Graph。
 

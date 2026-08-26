@@ -61,6 +61,13 @@ class AnalysisQualifier(StrictContract):
         return self
 
 
+class AnalysisConceptOption(StrictContract):
+    entity_id: str = Field(pattern=r"^concept_[0-9a-f]{32}$")
+    kind: Literal["theme", "movement", "visual_style", "micro_genre"]
+    canonical_name: str = Field(min_length=1, max_length=300)
+    aliases: list[str] = Field(default_factory=list, max_length=8)
+
+
 class AnalysisEvidenceCandidate(StrictContract):
     source_title: str = Field(min_length=1, max_length=300)
     source_uri: HttpUrl
@@ -76,7 +83,7 @@ class AnalysisAssertionCandidate(StrictContract):
     source_scope: Literal["inferred"] = "inferred"
     rationale: str = Field(min_length=1, max_length=600)
     qualifiers: AnalysisQualifier | None = None
-    evidence_candidates: list[AnalysisEvidenceCandidate] = Field(default_factory=list, max_length=5)
+    evidence_candidates: list[AnalysisEvidenceCandidate] = Field(default_factory=list, max_length=2)
 
     @model_validator(mode="after")
     def validate_direction(self):
@@ -97,6 +104,14 @@ class AnalysisV2Input(StrictContract):
     genres: list[str] = Field(default_factory=list, max_length=50)
     countries: list[str] = Field(default_factory=list, max_length=50)
     external_identities: dict[str, str] = Field(default_factory=dict, max_length=20)
+    available_concepts: list[AnalysisConceptOption] = Field(default_factory=list, max_length=80)
+
+    @model_validator(mode="after")
+    def reject_duplicate_concept_options(self):
+        entity_ids = [item.entity_id for item in self.available_concepts]
+        if len(entity_ids) != len(set(entity_ids)):
+            raise ValueError("available concepts must use unique entity IDs")
+        return self
 
 
 class AnalysisV2Output(StrictContract):
@@ -128,6 +143,13 @@ class AnalysisV2Output(StrictContract):
                 raise ValueError("analysis output contains duplicate assertion candidates")
             keys.add(key)
         return self
+
+
+class GeneratedAnalysisV2Output(AnalysisV2Output):
+    """Stricter live-generation envelope; legacy v10 transition stays compatible."""
+
+    assertions: list[AnalysisAssertionCandidate] = Field(default_factory=list, max_length=8)
+    unresolved_references: list[AnalysisEntityReference] = Field(default_factory=list, max_length=8)
 
 
 class EvaluationExpectedAssertion(StrictContract):

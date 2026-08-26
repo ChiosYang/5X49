@@ -471,8 +471,9 @@ Library Analysis V2 service，并以版本化契约验证生成、解析、持�
 - `analysis-eval.v1`：36 个公共 Film case，稳定合成 Film ID，Film 目标使用 provider-qualified
   identity，Concept 目标使用 kind、规范化名称和经人工裁定的有限 alias。36 个 case 已在查看
   live 输出前冻结为 `adjudicated/annotator_count=1`；alias 只属于评测契约，不进入模型输出。
-- `gate-b-policy.v1`：冻结完成率、边可接受率、实体解析、required recall、Evidence、幂等、
-  rejected/revoked 保护、helpfulness、成本、恢复和隐私阈值。
+- `gate-b-policy.v2`：在 v1 的完成率、边可接受率、实体解析、required recall、Evidence、幂等、
+  rejected/revoked 保护、helpfulness、成本、恢复和隐私阈值上，增加外部 ID 与标题/年份矛盾、
+  qualifier policy 和每案 Assertion 数量的严格检查。
 - `analysis-eval-human-review.v1`：以 run、dataset 和 prediction hash 关联 1–5 helpfulness 及
   novel prediction 的 `acceptable/incorrect/harmful` 裁定，不保存 reviewer 姓名。
 

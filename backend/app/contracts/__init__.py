@@ -1,8 +1,10 @@
 from app.contracts.analysis_v2 import (
+    AnalysisConceptOption,
     AnalysisEvaluationDataset,
     AnalysisEvaluationHumanReview,
     AnalysisV2Input,
     AnalysisV2Output,
+    GeneratedAnalysisV2Output,
     GateBPricingManifest,
 )
 from app.contracts.anonymous_events import AnonymousMetricsExport, LocalAnonymousEvent
@@ -26,6 +28,7 @@ from app.contracts.structured_metadata import (
 )
 
 __all__ = [
+    "AnalysisConceptOption",
     "CountryObservation",
     "CreditObservation",
     "GenreObservation",
@@ -34,6 +37,7 @@ __all__ = [
     "AnalysisEvaluationHumanReview",
     "AnalysisV2Input",
     "AnalysisV2Output",
+    "GeneratedAnalysisV2Output",
     "GateBPricingManifest",
     "AnonymousMetricsExport",
     "LocalAnonymousEvent",

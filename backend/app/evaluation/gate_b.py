@@ -57,6 +57,7 @@ from app.services.analysis_evidence import (
     EVIDENCE_VERIFICATION_POLICY_VERSION,
     EvidenceBatchResult,
     VerifiedEvidenceCandidate,
+    evidence_retriever,
 )
 from app.services.historian import (
     AnalysisGenerationResult,
@@ -66,7 +67,8 @@ from app.services.historian import (
 
 
 REPORT_SCHEMA_VERSION = 1
-POLICY_VERSION = "gate-b-policy.v1"
+POLICY_VERSION = "gate-b-policy.v2"
+SUPPORTED_POLICY_VERSIONS = frozenset({"gate-b-policy.v1", POLICY_VERSION})
 HUMAN_REVIEW_VERSION = "analysis-eval-human-review.v1"
 VALID_STATUSES = frozenset({"passed", "failed", "blocked"})
 W4_TABLES = (
@@ -115,7 +117,7 @@ def load_policy(path: Path) -> dict[str, Any]:
         payload = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as exc:
         raise GateBValidationError("Gate B policy is invalid JSON") from exc
-    if not isinstance(payload, dict) or payload.get("format_version") != POLICY_VERSION:
+    if not isinstance(payload, dict) or payload.get("format_version") not in SUPPORTED_POLICY_VERSIONS:
         raise GateBValidationError("Gate B policy version is unsupported")
     for key in ("dataset", "thresholds", "priority_evidence_predicates"):
         if key not in payload:
@@ -230,7 +232,14 @@ def validate_dataset(
 
 
 def dataset_hash(dataset: AnalysisEvaluationDataset) -> str:
-    return canonical_json_hash(dataset.model_dump(mode="json"))
+    payload = dataset.model_dump(mode="json")
+    # Runtime-only prompt context must not alter the already frozen public
+    # evaluation corpus when older fixtures omit the new optional field.
+    for case in payload.get("cases") or []:
+        case_input = case.get("input") or {}
+        if not case_input.get("available_concepts"):
+            case_input.pop("available_concepts", None)
+    return canonical_json_hash(payload)
 
 
 def assertion_match_key(value: Any) -> str:
@@ -302,6 +311,11 @@ def score_evaluation(
     invented_entities = 0
     unresolved_total = 0
     unresolved_with_review = 0
+    resolved_identity_conflicts = 0
+    identity_conflicts = 0
+    identity_conflicts_with_review = 0
+    qualifier_policy_violations = 0
+    assertion_counts: list[float] = []
     semantic_duplicates = 0
     priority_evidence_total = 0
     priority_evidence_covered = 0
@@ -327,10 +341,14 @@ def score_evaluation(
                 required_total += 1
 
         predictions = result.get("predictions") or []
+        assertion_counts.append(float(len(predictions)))
         prediction_keys = [assertion_match_key(item.get("candidate") or {}) for item in predictions]
         semantic_prediction_keys = [
-            expected_by_key.get(key, ("", key))[1]
-            for key in prediction_keys
+            expected_by_key.get(
+                str(item.get("expected_match_key") or ""),
+                expected_by_key.get(key, ("", key)),
+            )[1]
+            for item, key in zip(predictions, prediction_keys, strict=True)
         ]
         semantic_duplicates += len(semantic_prediction_keys) - len(set(semantic_prediction_keys))
         human_case = human_cases.get(case_id)
@@ -347,7 +365,12 @@ def score_evaluation(
             candidate = item.get("candidate") or {}
             resolved = item.get("resolution_status") == "resolved"
             review = item.get("resolution_status") == "review"
-            expected_match = expected_by_key.get(key)
+            review_reason = item.get("review_reason")
+            qualifiers = candidate.get("qualifiers") or {}
+            qualifier_policy_violations += int(bool(qualifiers))
+            expected_match = expected_by_key.get(str(item.get("expected_match_key") or ""))
+            if expected_match is None:
+                expected_match = expected_by_key.get(key)
             label = expected_match[0] if expected_match else None
             if label is None:
                 label = human_novel.get(str(item.get("prediction_hash") or ""))
@@ -358,6 +381,9 @@ def score_evaluation(
             resolution_correct += int(item.get("resolution_correct") is True)
 
             if resolved:
+                if item.get("identity_consistent") is False:
+                    resolved_identity_conflicts += 1
+                    identity_conflicts += 1
                 display_predictions += 1
                 if label in {"required", "acceptable"}:
                     acceptable_display_predictions += 1
@@ -383,6 +409,9 @@ def score_evaluation(
             elif review:
                 unresolved_total += 1
                 unresolved_with_review += int(item.get("review_created") is True)
+                if review_reason == "identity_conflict":
+                    identity_conflicts += 1
+                    identity_conflicts_with_review += int(item.get("review_created") is True)
             invented_entities += int(item.get("invented_entity") is True)
         required_matched += len(matched_required_keys)
 
@@ -404,6 +433,13 @@ def score_evaluation(
         "forbidden_or_harmful_count": forbidden_or_harmful,
         "invented_entity_count": invented_entities,
         "unresolved_review_capture_rate": _ratio(unresolved_with_review, unresolved_total),
+        "resolved_identity_conflict_count": resolved_identity_conflicts,
+        "identity_conflict_review_capture_rate": _ratio(
+            identity_conflicts_with_review,
+            identity_conflicts,
+        ),
+        "qualifier_policy_violation_count": qualifier_policy_violations,
+        "assertions_per_case_p95": _percentile(assertion_counts, 0.95),
         "semantic_duplicate_rate": _ratio(semantic_duplicates, max(1, prediction_count)),
         "replay_new_row_count": int(operational_metrics.get("replay_new_row_count", 0)),
         "rejected_reactivation_count": int(operational_metrics.get("rejected_reactivation_count", 0)),
@@ -444,6 +480,17 @@ def score_evaluation(
         _check("restore-equal", metrics["restore_equal"]),
         _check("privacy-clean", metrics["privacy_leak_count"] == 0),
     ]
+    optional_thresholds = (
+        ("resolved-identity-conflicts", "resolved_identity_conflict_count", False),
+        ("identity-conflict-review-capture", "identity_conflict_review_capture_rate", True),
+        ("qualifier-policy", "qualifier_policy_violation_count", False),
+        ("assertion-count-p95", "assertions_per_case_p95", False),
+    )
+    checks.extend(
+        _threshold_check(check_id, metrics, thresholds, metric, minimum=minimum)
+        for check_id, metric, minimum in optional_thresholds
+        if metric in thresholds
+    )
     if human_review is None or len(helpfulness) != case_count or missing_human_labels:
         checks.append(_check("human-review-complete", False, blocked=True))
     else:
@@ -594,6 +641,10 @@ def run_live(
     pricing_path: Path,
     allow_public_network: bool,
     policy_path: Path | None = None,
+    reasoning_effort: str | None = None,
+    max_output_tokens: int | None = None,
+    case_limit: int | None = None,
+    diagnostic: bool = False,
 ) -> dict[str, Any]:
     dataset = load_dataset(dataset_path)
     policy = load_policy(policy_path or _default_policy_path(dataset_path))
@@ -608,12 +659,34 @@ def run_live(
         blockers.append("public_network_not_authorized")
     if not provider or not model:
         blockers.append("exact_model_snapshot_missing")
+    if max_output_tokens is not None and not 256 <= max_output_tokens <= 131072:
+        blockers.append("max_output_tokens_invalid")
+    if case_limit is not None and not 1 <= case_limit <= (12 if diagnostic else len(dataset.cases)):
+        blockers.append("case_limit_invalid")
     if not os.getenv("OPENROUTER_API_KEY"):
         blockers.append("openrouter_key_missing")
     pricing = _load_pricing(pricing_path, provider=provider, model=model, blockers=blockers)
+    evidence_preflight = None
+    if not blockers:
+        evidence_preflight = evidence_retriever.preflight()
+        if evidence_preflight and not diagnostic:
+            blockers.append(evidence_preflight)
     run_dir.mkdir(parents=True, exist_ok=False)
     if blockers:
-        report = _blocked_live_report(dataset, policy, run_dir, provider, model, pricing, blockers)
+        report = _blocked_live_report(
+            dataset,
+            policy,
+            run_dir,
+            provider,
+            model,
+            pricing,
+            blockers,
+            reasoning_effort=reasoning_effort,
+            max_output_tokens=max_output_tokens,
+        )
+        if diagnostic:
+            report["diagnostic_status"] = "blocked"
+            report["case_limit"] = case_limit
         _write_json(run_dir / "run-report.json", report)
         return report
 
@@ -622,11 +695,17 @@ def run_live(
     engine = _create_isolated_database(database_path)
     try:
         _seed_dataset(engine, dataset)
-        historian = _PinnedHistorian(provider, model)
+        historian = _PinnedHistorian(
+            provider,
+            model,
+            reasoning_effort=reasoning_effort,
+            max_output_tokens=max_output_tokens,
+        )
         service = AnalysisService(database_engine=engine, historian=historian)
         case_results: list[dict[str, Any]] = []
         total_cost = 0.0
-        for case in dataset.cases:
+        selected_cases = dataset.cases[:case_limit] if case_limit is not None else dataset.cases
+        for case in selected_cases:
             if total_cost >= float(policy["thresholds"]["total_cost_usd"]):
                 case_results.append(_failed_case_result(case, "budget_exceeded"))
                 continue
@@ -667,9 +746,14 @@ def run_live(
         "dataset_id": dataset.dataset_id,
         "dataset_hash": dataset_hash(dataset),
         "policy_version": str(policy["format_version"]),
-        "model_snapshot": {"provider": provider, "model": model},
+        "model_snapshot": {
+            "provider": provider,
+            "model": model,
+            "reasoning_effort": reasoning_effort,
+            "max_output_tokens": max_output_tokens,
+        },
         "pricing_hash": canonical_json_hash(pricing.model_dump(mode="json")),
-        "checks": validation["checks"],
+        "checks": list(validation["checks"]),
         "metrics": {},
         "phases": {"preflight": "passed", "live": "passed", "human": "blocked"},
         "cases": case_results,
@@ -682,12 +766,67 @@ def run_live(
     operational["privacy_leak_count"] = len(_privacy_leaks(provisional)) + _database_privacy_leak_count(database_path)
     scored = score_evaluation(case_results, policy=policy, human_review=None, operational_metrics=operational)
     provisional["metrics"] = scored["metrics"]
-    provisional["checks"].extend(scored["checks"])
-    if any(check["status"] == "failed" for check in provisional["checks"]):
-        provisional["live_status"] = "failed"
-        provisional["overall_status"] = "failed"
+    if diagnostic:
+        diagnostic_status = (
+            "passed"
+            if all(result.get("status") == "succeeded" for result in case_results)
+            and operational["privacy_leak_count"] == 0
+            and operational["restore_equal"]
+            else "failed"
+        )
+        provisional.update({
+            "case_limit": case_limit,
+            "diagnostic_status": diagnostic_status,
+            "live_status": "blocked",
+            "overall_status": "blocked" if diagnostic_status == "passed" else "failed",
+        })
+        provisional["phases"] = {
+            "preflight": "blocked" if evidence_preflight else "passed",
+            "pilot": diagnostic_status,
+            "live": "blocked",
+            "human": "blocked",
+        }
+        if evidence_preflight:
+            provisional["checks"].append(
+                _check(f"pilot-preflight-{evidence_preflight.replace('_', '-')}", False, blocked=True)
+            )
+    else:
+        provisional["checks"].extend(scored["checks"])
+        if any(check["status"] == "failed" for check in provisional["checks"]):
+            provisional["live_status"] = "failed"
+            provisional["overall_status"] = "failed"
     _write_json(run_dir / "run-report.json", provisional)
     return provisional
+
+
+def run_pilot(
+    dataset_path: Path,
+    run_dir: Path,
+    *,
+    provider: str,
+    model: str,
+    pricing_path: Path,
+    allow_public_network: bool,
+    case_limit: int = 6,
+    policy_path: Path | None = None,
+    reasoning_effort: str | None = None,
+    max_output_tokens: int | None = None,
+) -> dict[str, Any]:
+    """Run a bounded tuning diagnostic that can never count as Gate B evidence."""
+
+    return run_live(
+        dataset_path,
+        run_dir,
+        provider=provider,
+        model=model,
+        pricing_path=pricing_path,
+        allow_public_network=allow_public_network,
+        policy_path=policy_path,
+        reasoning_effort=reasoning_effort,
+        max_output_tokens=max_output_tokens,
+        case_limit=case_limit,
+        diagnostic=True,
+    )
 
 
 def create_review_template(run_report_path: Path, output_path: Path) -> dict[str, Any]:
@@ -1141,6 +1280,8 @@ def _synthetic_case_results(
                 "resolution_correct": True,
                 "review_created": False,
                 "invented_entity": False,
+                "identity_consistent": True,
+                "review_reason": None,
                 "evidence": ([{
                     "active": True,
                     "fresh": True,
@@ -1227,18 +1368,52 @@ def _collect_live_case_result(engine, case, historian, pricing, policy) -> dict[
                         "policy_version": evidence.verification_policy_version,
                     })
             key = assertion_match_key(candidate_payload)
+            expected_match_key = key if key in expected_labels else None
+            target = candidate_payload.get("target") or {}
+            if (
+                expected_match_key is None
+                and assertion is not None
+                and target.get("entity_type") == "concept"
+                and target.get("entity_id")
+            ):
+                direction = candidate_payload.get("direction") or "subject_to_target"
+                target_entity_id = (
+                    assertion.object_entity_id
+                    if direction == "subject_to_target"
+                    else assertion.subject_entity_id
+                )
+                concept = session.get(Concept, target_entity_id)
+                if concept is not None:
+                    named_candidate = {
+                        **candidate_payload,
+                        "target": {
+                            "entity_type": "concept",
+                            "display_name": concept.canonical_name,
+                        },
+                    }
+                    named_key = assertion_match_key(named_candidate)
+                    if named_key in expected_labels:
+                        expected_match_key = named_key
+            identity_consistent = (
+                _assertion_target_matches(session, assertion, candidate_payload, run.film_id)
+                if assertion is not None
+                else None
+            )
             predictions.append({
                 "prediction_hash": prediction_hash(candidate_payload),
                 "candidate": candidate_payload,
-                "expected_label": expected_labels.get(key),
+                "expected_label": expected_labels.get(expected_match_key or key),
+                "expected_match_key": expected_match_key,
                 "resolution_status": "resolved" if assertion is not None else "review",
                 "resolution_correct": (
-                    _assertion_target_matches(session, assertion, candidate_payload, run.film_id)
+                    identity_consistent
                     if assertion is not None
                     else key not in expected_labels
                 ),
                 "review_created": review is not None if assertion is None else False,
                 "invented_entity": False,
+                "identity_consistent": identity_consistent,
+                "review_reason": review.reason_code if review is not None else None,
                 "evidence": evidence_rows,
             })
         cost = run.estimated_cost
@@ -1277,8 +1452,8 @@ def _assertion_target_matches(
     if target_entity_id == subject_film_id:
         return False
     target = candidate.get("target") or {}
-    if target.get("entity_id"):
-        return target_entity_id == target["entity_id"]
+    if target.get("entity_id") and target_entity_id != target["entity_id"]:
+        return False
     if target.get("provider") and target.get("external_id"):
         identity = session.exec(
             select(ExternalIdentity)
@@ -1286,19 +1461,17 @@ def _assertion_target_matches(
             .where(ExternalIdentity.external_id == target["external_id"])
             .where(ExternalIdentity.identity_status == "active")
         ).first()
-        return identity is not None and identity.entity_id == target_entity_id
+        if identity is None or identity.entity_id != target_entity_id:
+            return False
     if target.get("entity_type") == "film":
-        film = session.get(Film, target_entity_id)
-        return bool(
-            film
-            and film.release_year == target.get("release_year")
-            and normalize_metadata_text(film.canonical_title)
-            == normalize_metadata_text(str(target.get("display_name") or ""))
-        )
+        return _film_target_metadata_matches(session, target_entity_id, target)
     concept = session.get(Concept, target_entity_id)
     if concept is None or concept.kind != _concept_kind(str(candidate.get("predicate") or "")):
         return False
-    normalized_target = normalize_metadata_text(str(target.get("display_name") or ""))
+    display_name = str(target.get("display_name") or "").strip()
+    if not display_name:
+        return bool(target.get("entity_id") == target_entity_id)
+    normalized_target = normalize_metadata_text(display_name)
     if normalize_metadata_text(concept.canonical_name) == normalized_target:
         return True
     alias = session.exec(
@@ -1307,6 +1480,36 @@ def _assertion_target_matches(
         .where(ConceptAlias.normalized_alias == normalized_target)
     ).first()
     return alias is not None
+
+
+def _film_target_metadata_matches(
+    session: Session,
+    target_entity_id: str,
+    target: Mapping[str, Any],
+) -> bool:
+    film = session.get(Film, target_entity_id)
+    if film is None:
+        return False
+    release_year = target.get("release_year")
+    if release_year is not None and film.release_year != release_year:
+        return False
+    display_name = str(target.get("display_name") or "").strip()
+    if not display_name:
+        return True
+    normalized = normalize_metadata_text(display_name)
+    known_titles = {
+        normalize_metadata_text(film.canonical_title),
+        normalize_metadata_text(film.original_title or ""),
+    }
+    known_titles.update(
+        item.normalized_title
+        for item in session.exec(
+            select(FilmTitle)
+            .where(FilmTitle.film_id == target_entity_id)
+            .where(FilmTitle.superseded_at.is_(None))
+        ).all()
+    )
+    return normalized in known_titles
 
 
 def _live_operational_checks(engine, dataset, service) -> dict[str, Any]:
@@ -1389,9 +1592,18 @@ def _live_operational_checks(engine, dataset, service) -> dict[str, Any]:
 
 
 class _PinnedHistorian:
-    def __init__(self, provider: str, model: str) -> None:
+    def __init__(
+        self,
+        provider: str,
+        model: str,
+        *,
+        reasoning_effort: str | None = None,
+        max_output_tokens: int | None = None,
+    ) -> None:
         self.provider = provider
         self.model = model
+        self.reasoning_effort = reasoning_effort
+        self.max_output_tokens = max_output_tokens
         self.delegate = FilmHistorian(
             client_factory=lambda: OpenAI(
                 api_key=os.environ["OPENROUTER_API_KEY"],
@@ -1401,12 +1613,17 @@ class _PinnedHistorian:
         self.generations: dict[str, AnalysisGenerationResult] = {}
 
     def analysis_configuration(self) -> AnalysisModelConfiguration:
-        return AnalysisModelConfiguration(self.provider, self.model)
+        return AnalysisModelConfiguration(
+            self.provider,
+            self.model,
+            reasoning_effort=self.reasoning_effort,
+            max_output_tokens=self.max_output_tokens,
+        )
 
     def analyze_v2(self, analysis_input, *, configuration=None):
         result = self.delegate.analyze_v2(
             analysis_input,
-            configuration=AnalysisModelConfiguration(self.provider, self.model),
+            configuration=self.analysis_configuration(),
         )
         self.generations[analysis_input.film_id] = result
         return result
@@ -1572,14 +1789,30 @@ def _load_pricing(path: Path, *, provider: str, model: str, blockers: list[str])
     return pricing
 
 
-def _blocked_live_report(dataset, policy, run_dir, provider, model, pricing, blockers):
+def _blocked_live_report(
+    dataset,
+    policy,
+    run_dir,
+    provider,
+    model,
+    pricing,
+    blockers,
+    *,
+    reasoning_effort=None,
+    max_output_tokens=None,
+):
     return {
         "schema_version": REPORT_SCHEMA_VERSION,
         "run_id": run_dir.name,
         "dataset_id": dataset.dataset_id,
         "dataset_hash": dataset_hash(dataset),
         "policy_version": policy["format_version"],
-        "model_snapshot": {"provider": provider or None, "model": model or None},
+        "model_snapshot": {
+            "provider": provider or None,
+            "model": model or None,
+            "reasoning_effort": reasoning_effort,
+            "max_output_tokens": max_output_tokens,
+        },
         "pricing_hash": canonical_json_hash(pricing.model_dump(mode="json")) if pricing else None,
         "checks": [
             _check(f"live-preflight-{reason.replace('_', '-')}", False, blocked=True)
@@ -1623,11 +1856,17 @@ def _validate_run_dir(run_dir: Path) -> Path:
 
 
 def _default_policy_path(dataset_path: Path) -> Path:
-    return dataset_path.resolve().parent / "gate-b-policy-v1.json"
+    return dataset_path.resolve().parent / "gate-b-policy-v2.json"
 
 
 def _default_policy_path_from_report(report_path: Path) -> Path:
-    return _backend_root() / "fixtures" / "analysis_v2" / "gate-b-policy-v1.json"
+    try:
+        payload = json.loads(report_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        payload = {}
+    version = payload.get("policy_version")
+    filename = "gate-b-policy-v1.json" if version == "gate-b-policy.v1" else "gate-b-policy-v2.json"
+    return _backend_root() / "fixtures" / "analysis_v2" / filename
 
 
 def _backend_root() -> Path:
@@ -1783,9 +2022,11 @@ def _cli_summary(payload: Mapping[str, Any]) -> dict[str, Any]:
         "tool_status",
         "live_status",
         "human_status",
+        "diagnostic_status",
         "overall_status",
         "output",
         "case_count",
+        "case_limit",
     )
     return {field: payload[field] for field in fields if field in payload}
 
@@ -1807,7 +2048,29 @@ def main(argv: Sequence[str] | None = None) -> int:
     live.add_argument("--model", required=True)
     live.add_argument("--pricing-file", required=True, type=Path)
     live.add_argument("--allow-public-network", action="store_true")
+    live.add_argument(
+        "--reasoning-effort",
+        choices=("low", "medium", "high", "max"),
+    )
+    live.add_argument("--max-output-tokens", type=int)
     live.add_argument("--policy", type=Path)
+    pilot = subparsers.add_parser(
+        "pilot",
+        help="Run a bounded tuning diagnostic that is never valid Gate B evidence",
+    )
+    pilot.add_argument("--dataset", required=True, type=Path)
+    pilot.add_argument("--run-dir", required=True, type=Path)
+    pilot.add_argument("--provider", required=True, choices=("openrouter",))
+    pilot.add_argument("--model", required=True)
+    pilot.add_argument("--pricing-file", required=True, type=Path)
+    pilot.add_argument("--allow-public-network", action="store_true")
+    pilot.add_argument("--case-limit", type=int, default=6)
+    pilot.add_argument(
+        "--reasoning-effort",
+        choices=("low", "medium", "high", "max"),
+    )
+    pilot.add_argument("--max-output-tokens", type=int)
+    pilot.add_argument("--policy", type=Path)
     review = subparsers.add_parser("review-template", help="Create the bounded human review template")
     review.add_argument("--run-report", required=True, type=Path)
     review.add_argument("--output", required=True, type=Path)
@@ -1832,6 +2095,21 @@ def main(argv: Sequence[str] | None = None) -> int:
                 pricing_path=args.pricing_file,
                 allow_public_network=args.allow_public_network,
                 policy_path=args.policy,
+                reasoning_effort=args.reasoning_effort,
+                max_output_tokens=args.max_output_tokens,
+            )
+        elif args.command == "pilot":
+            payload = run_pilot(
+                args.dataset,
+                args.run_dir,
+                provider=args.provider,
+                model=args.model,
+                pricing_path=args.pricing_file,
+                allow_public_network=args.allow_public_network,
+                case_limit=args.case_limit,
+                policy_path=args.policy,
+                reasoning_effort=args.reasoning_effort,
+                max_output_tokens=args.max_output_tokens,
             )
         elif args.command == "review-template":
             payload = create_review_template(args.run_report, args.output)

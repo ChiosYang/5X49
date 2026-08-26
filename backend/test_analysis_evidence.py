@@ -95,6 +95,23 @@ class AnalysisEvidenceTests(unittest.TestCase):
         self.assertEqual(len(result.failures), 1)
         self.assertEqual(result.failures[0].reason_code, "evidence_policy_rejected")
 
+    def test_preflight_distinguishes_network_boundary_from_success(self):
+        blocked = EvidenceRetriever(
+            resolver=lambda _host, _port: ("198.18.0.1",),
+            fetcher=lambda *_args: self.fail("blocked preflight must not fetch"),
+        )
+        self.assertEqual(blocked.preflight(), "evidence_network_boundary_blocked")
+
+        available = EvidenceRetriever(
+            resolver=lambda _host, _port: ("93.184.216.34",),
+            fetcher=lambda *_args: EvidenceHttpResponse(
+                200,
+                {"content-type": "text/html"},
+                b"available",
+            ),
+        )
+        self.assertIsNone(available.preflight())
+
 
 if __name__ == "__main__":
     unittest.main()

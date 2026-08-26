@@ -8,7 +8,13 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
 
-from app.contracts.analysis_v2 import AnalysisEvaluationHumanReview
+from pydantic import ValidationError
+
+from app.contracts.analysis_v2 import (
+    AnalysisEvaluationHumanReview,
+    AnalysisV2Output,
+    GeneratedAnalysisV2Output,
+)
 from app.evaluation.gate_b import (
     GateBBlocked,
     _assertion_target_matches,
@@ -22,6 +28,7 @@ from app.evaluation.gate_b import (
     load_policy,
     prediction_hash,
     run_live,
+    run_pilot,
     run_rehearsal,
     score_evaluation,
     validate_dataset,
@@ -30,7 +37,7 @@ from app.evaluation.gate_b import (
 
 BACKEND_ROOT = Path(__file__).resolve().parent
 DATASET_PATH = BACKEND_ROOT / "fixtures" / "analysis_v2" / "gate-b-v1.json"
-POLICY_PATH = BACKEND_ROOT / "fixtures" / "analysis_v2" / "gate-b-policy-v1.json"
+POLICY_PATH = BACKEND_ROOT / "fixtures" / "analysis_v2" / "gate-b-policy-v2.json"
 RUNS_ROOT = BACKEND_ROOT / "data" / "analysis-v2" / "gate-b" / "runs"
 
 
@@ -84,6 +91,39 @@ class GateBEvaluationTests(unittest.TestCase):
         self.assertNotEqual(assertion_match_key(base), assertion_match_key(qualified))
         self.assertEqual(assertion_match_key(base), assertion_match_key(dict(reversed(list(base.items())))))
 
+    def test_analysis_output_caps_assertions_and_evidence_candidates(self):
+        base = {
+            "subject_film_id": "film_" + "a" * 32,
+            "summary": "Bounded summary.",
+            "assertions": [
+                {
+                    "predicate": "HAS_THEME",
+                    "target": {
+                        "entity_type": "concept",
+                        "display_name": f"Theme {index}",
+                    },
+                    "rationale": "Bounded rationale.",
+                }
+                for index in range(9)
+            ],
+        }
+        with self.assertRaises(ValidationError):
+            GeneratedAnalysisV2Output.model_validate(base)
+
+        base["assertions"] = [{
+            **base["assertions"][0],
+            "evidence_candidates": [
+                {
+                    "source_title": f"Source {index}",
+                    "source_uri": f"https://example.com/{index}",
+                    "claim": "Bounded claim.",
+                }
+                for index in range(3)
+            ],
+        }]
+        with self.assertRaises(ValidationError):
+            GeneratedAnalysisV2Output.model_validate(base)
+
     def test_concept_aliases_match_one_gold_target_and_remain_duplicates(self):
         expected = next(
             item
@@ -118,6 +158,17 @@ class GateBEvaluationTests(unittest.TestCase):
                 session,
                 assertion,
                 alias_candidate,
+                "film_subject",
+            )
+        )
+        self.assertTrue(
+            _assertion_target_matches(
+                session,
+                assertion,
+                {
+                    "predicate": "HAS_VISUAL_STYLE",
+                    "target": {"entity_type": "concept", "entity_id": concept.id},
+                },
                 "film_subject",
             )
         )
@@ -207,6 +258,37 @@ class GateBEvaluationTests(unittest.TestCase):
         )
         self.assertEqual(blocked["metrics"]["missing_human_prediction_labels"], 1)
 
+    def test_scorer_detects_identity_conflicts_and_qualifier_policy_violations(self):
+        results = _synthetic_case_results(self.dataset, self.policy)
+        review = self._human_review(results)
+        operational = self._passing_operational_metrics()
+        prediction = results[0]["predictions"][0]
+        prediction["identity_consistent"] = False
+        prediction["candidate"]["qualifiers"] = {"period_start_year": 2006}
+
+        scored = score_evaluation(
+            results,
+            policy=self.policy,
+            human_review=review,
+            operational_metrics=operational,
+        )
+        self.assertEqual(scored["metrics"]["resolved_identity_conflict_count"], 1)
+        self.assertEqual(scored["metrics"]["qualifier_policy_violation_count"], 1)
+        self.assertEqual(scored["status"], "failed")
+
+        prediction["resolution_status"] = "review"
+        prediction["identity_consistent"] = None
+        prediction["review_reason"] = "identity_conflict"
+        prediction["review_created"] = True
+        captured = score_evaluation(
+            results,
+            policy=self.policy,
+            human_review=review,
+            operational_metrics=operational,
+        )
+        self.assertEqual(captured["metrics"]["resolved_identity_conflict_count"], 0)
+        self.assertEqual(captured["metrics"]["identity_conflict_review_capture_rate"], 1.0)
+
     def test_live_preflight_blocks_without_strict_evidence(self):
         run_dir = self._new_run_dir("preflight")
         pricing_path = BACKEND_ROOT / "data" / "analysis-v2" / "gate-b" / "input" / "missing.json"
@@ -229,6 +311,52 @@ class GateBEvaluationTests(unittest.TestCase):
             self.assertIn("live-preflight-public-network-not-authorized", check_ids)
         finally:
             shutil.rmtree(run_dir, ignore_errors=True)
+
+    def test_live_preflight_blocks_when_evidence_network_is_unavailable(self):
+        run_dir = self._new_run_dir("evidence-preflight")
+        pricing_path = BACKEND_ROOT / "data" / "analysis-v2" / "gate-b" / "input" / "pricing.json"
+        try:
+            with (
+                patch.dict(os.environ, {"OPENROUTER_API_KEY": "test-only"}),
+                patch(
+                    "app.evaluation.gate_b.evidence_retriever.preflight",
+                    return_value="evidence_network_boundary_blocked",
+                ),
+            ):
+                report = run_live(
+                    DATASET_PATH,
+                    run_dir,
+                    provider="openrouter",
+                    model="stealth/ox-alpha",
+                    pricing_path=pricing_path,
+                    allow_public_network=True,
+                )
+            self.assertEqual(report["overall_status"], "blocked")
+            self.assertFalse((run_dir / "work" / "gate-b.db").exists())
+            self.assertIn(
+                "live-preflight-evidence-network-boundary-blocked",
+                {item["id"] for item in report["checks"]},
+            )
+        finally:
+            shutil.rmtree(run_dir, ignore_errors=True)
+
+    def test_pilot_is_always_marked_as_diagnostic(self):
+        expected = {"overall_status": "blocked", "diagnostic_status": "passed"}
+        with patch("app.evaluation.gate_b.run_live", return_value=expected) as live:
+            report = run_pilot(
+                DATASET_PATH,
+                RUNS_ROOT / "pilot-wrapper",
+                provider="openrouter",
+                model="stealth/ox-alpha",
+                pricing_path=BACKEND_ROOT / "data" / "analysis-v2" / "gate-b" / "input" / "pricing.json",
+                allow_public_network=True,
+                case_limit=6,
+                reasoning_effort="low",
+                max_output_tokens=8192,
+            )
+        self.assertEqual(report, expected)
+        self.assertTrue(live.call_args.kwargs["diagnostic"])
+        self.assertEqual(live.call_args.kwargs["case_limit"], 6)
 
     def test_offline_rehearsal_is_isolated_restorable_and_strictly_blocked(self):
         run_dir = self._new_run_dir("rehearsal")

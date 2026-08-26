@@ -40,8 +40,10 @@ Legacy Genre facts, while NFO and TMDB refresh the same Assertions in the
   existing metadata transaction. Version 10 transitions compatible Legacy
 analysis, and the Library analysis worker now treats W4 records as durable data
 while continuing to produce the existing Movie projection. Slice 4 tooling and
-the human-adjudicated `analysis-eval.v1` corpus are complete, but strict Gate B
-evidence is blocked on a pinned live run and its post-output human review.
+the human-adjudicated `analysis-eval.v1` corpus are complete. A bounded pinned
+pilot has exercised the corrected v2 prompt/resolver policy, but strict Gate B
+evidence is blocked on Evidence-network preflight, the full live run, and its
+post-output human review.
 
 ## Acceptance criteria
 
@@ -63,7 +65,7 @@ evidence is blocked on a pinned live run and its post-output human review.
   policy-accepted `HAS_GENRE` Assertions without overwriting user decisions.
 - [x] Analysis runtime persistence and compatible Legacy transition are
   complete without changing HTTP response shapes.
-- [x] The 36-case corpus, balanced `gate-b-policy.v1`, deterministic
+- [x] The 36-case corpus, balanced `gate-b-policy.v2`, deterministic
   scorer, isolated rehearsal, restore/privacy checks, and strict CLI are
   implemented.
 - [x] All 36 cases were human-adjudicated before any live output was viewed;
@@ -139,8 +141,9 @@ Status: Blocked (tooling complete)
 - Intended behavior: run the fixed 36-film adjudicated evaluation set and
   produce a privacy-safe Graph quality report and Gate B conclusion.
 - Dependencies: Slices 1–3 and dataset adjudication are complete. OpenRouter
-  Key, exact model/pricing evidence, live output, and post-output human review
-  are still absent.
+  Key and exact model/pricing evidence are available. Strict Evidence-network
+  preflight, the complete live output, and post-output human review are still
+  absent.
 - Verification: entity resolution, precision, duplicate rate, helpfulness,
   cost, restore, and a strict passed/failed/blocked Gate B matrix.
 
@@ -196,13 +199,32 @@ Status: Blocked (tooling complete)
   while the strict Gate A result remains Blocked because Docker is absent.
 - `python -m compileall -q app` and `git diff --check` passed; Git emitted only
   the repository's checkout line-ending warnings.
+- Corrective policy v2 plus Legacy compatibility tests passed 29 tests in
+  22.000 seconds. They
+  cover atomic provider identities, title/year consistency, bounded Concept
+  prompt context, qualifier rejection, Assertion/Evidence caps, strict Evidence
+  preflight, and diagnostic-only pilot behavior.
+- Offline policy-v2 rehearsal `w4-s4-policy-v2-rehearsal-20260826-01` passed
+  tooling, isolated persistence, verified restore, and privacy checks while
+  correctly retaining strict Blocked status.
+- Diagnostic pilot `w4-s4-pilot-v2-20260826-02` completed 6/6 cases with a
+  frozen dataset hash, zero resolved identity conflicts, complete conflict and
+  unresolved-review capture, zero qualifier/duplicate violations, required
+  recall above the v2 threshold, equal restore digest, and zero privacy leaks.
+  The raw output remains ignored and the pilot report cannot count as strict
+  live or human evidence.
+- Complete backend discovery excluding credential-dependent `test_agent.py`
+  passed 208 tests in 119.610 seconds after the corrective iteration.
 
 ## Remaining risks
 
 - Automated tests use a fake DNS resolver and HTTP transport. The production
-  retriever pins a validated public address and revalidates every redirect, but
-  no live Evidence site is part of deterministic acceptance.
-- No OpenRouter Key, exact model/pricing evidence, live report, or human review
-  of live output is available, so Gate B cannot pass.
+  retriever pins a validated public address and revalidates every redirect. In
+  the current execution environment public names resolve to a reserved address
+  range, so strict Evidence preflight fails closed; the SSRF boundary was not
+  weakened to manufacture evidence.
+- The OpenRouter Key and exact model/pricing evidence are available, but there
+  is no complete strict live report or human review of live output, so Gate B
+  cannot pass.
 - Gate A remains independently Blocked. A future Gate B pass would still not
   authorize Graph UI until Gate A also passes.

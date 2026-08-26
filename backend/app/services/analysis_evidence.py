@@ -147,6 +147,16 @@ class EvidenceRetriever:
             failures=tuple(sorted(failures, key=lambda item: item.candidate_key)),
         )
 
+    def preflight(self) -> str | None:
+        """Verify that strict public DNS, pinned HTTPS, and content checks are usable."""
+        try:
+            self._retrieve("https://example.com/")
+        except EvidenceUriBlocked:
+            return "evidence_network_boundary_blocked"
+        except EvidenceVerificationError:
+            return "evidence_network_unavailable"
+        return None
+
     def _retrieve(self, initial_uri: str) -> tuple[str, str]:
         current_uri = initial_uri
         for redirect_count in range(MAX_EVIDENCE_REDIRECTS + 1):

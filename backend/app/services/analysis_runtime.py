@@ -39,6 +39,7 @@ from app.contracts.analysis_persistence import (
 )
 from app.contracts.analysis_v2 import (
     AnalysisAssertionCandidate,
+    AnalysisConceptOption,
     AnalysisEntityReference,
     AnalysisV2Input,
     AnalysisV2Output,
@@ -53,8 +54,8 @@ from app.services.structured_metadata_sync import structured_metadata_synchroniz
 
 ANALYSIS_KIND = "genealogy_v2"
 ANALYSIS_SCHEMA_VERSION = "analysis-output.v2"
-ANALYSIS_RESOLVER_VERSION = "analysis-resolver.v1"
-ANALYSIS_POLICY_VERSION = "analysis-persistence.v1"
+ANALYSIS_RESOLVER_VERSION = "analysis-resolver.v2"
+ANALYSIS_POLICY_VERSION = "analysis-persistence.v2"
 ANALYSIS_APP_VERSION = "0.1.0"
 ACTIVE_JOB_STATUSES = frozenset({"queued", "running", "cancelling"})
 
@@ -251,6 +252,45 @@ class AnalysisRuntimePersistence:
             item.provider[:80]: item.external_id[:160]
             for item in sorted(identities, key=lambda value: (value.provider, value.external_id))[:20]
         }
+        supported_concept_kinds = frozenset({"theme", "movement", "visual_style", "micro_genre"})
+        concepts = sorted(
+            (
+                item
+                for item in session.exec(
+                    select(Concept).where(Concept.lifecycle_status == "active")
+                ).all()
+                if item.kind in supported_concept_kinds
+            ),
+            key=lambda item: (
+                item.kind,
+                normalize_metadata_text(item.canonical_name),
+                item.id,
+            ),
+        )[:80]
+        concept_ids = {item.id for item in concepts}
+        aliases_by_concept: dict[str, list[str]] = {item.id: [] for item in concepts}
+        if concept_ids:
+            for alias in session.exec(
+                select(ConceptAlias).where(ConceptAlias.concept_id.in_(sorted(concept_ids)))
+            ).all():
+                aliases_by_concept[alias.concept_id].append(alias.alias[:300])
+        available_concepts = [
+            AnalysisConceptOption(
+                entity_id=item.id,
+                kind=item.kind,
+                canonical_name=item.canonical_name[:300],
+                aliases=sorted(
+                    {
+                        alias
+                        for alias in aliases_by_concept[item.id]
+                        if normalize_metadata_text(alias)
+                        != normalize_metadata_text(item.canonical_name)
+                    },
+                    key=normalize_metadata_text,
+                )[:8],
+            )
+            for item in concepts
+        ]
         return AnalysisV2Input(
             film_id=film.id,
             canonical_title=film.canonical_title[:300],
@@ -262,6 +302,7 @@ class AnalysisRuntimePersistence:
             genres=sorted(set(genres), key=normalize_metadata_text)[:50],
             countries=sorted(set(countries))[:50],
             external_identities=external_identities,
+            available_concepts=available_concepts,
         )
 
     def missing_tmdb_targets(
@@ -332,6 +373,8 @@ class AnalysisRuntimePersistence:
         for index, candidate in enumerate(output.assertions):
             candidate_key = self.assertion_candidate_key(index)
             try:
+                if self._has_disallowed_model_qualifiers(candidate):
+                    raise ResolutionFailure("invalid_candidate")
                 target_id = self._resolve_target(
                     session,
                     candidate,
@@ -692,6 +735,11 @@ class AnalysisRuntimePersistence:
                 entity_id = self._materialize_tmdb_film(session, target, remote_details, now)
             elif remote_failure:
                 raise ResolutionFailure(remote_failure)
+            else:
+                # A claimed external identity is an atomic reference. Never
+                # discard a bad provider/ID pair and silently resolve its name
+                # to a different Film.
+                raise ResolutionFailure("identity_conflict")
         if entity_id is None and target.display_name:
             entity_id = self._resolve_by_name(session, target, candidate.predicate.value)
         if entity_id is None:
@@ -700,6 +748,8 @@ class AnalysisRuntimePersistence:
         graph = session.get(GraphEntity, entity_id)
         if graph is None or graph.entity_type != target.entity_type:
             raise ResolutionFailure("predicate_type_mismatch")
+        if graph.entity_type == "film":
+            self._validate_film_reference_consistency(session, target, entity_id)
         concept_kind = None
         if graph.entity_type == "concept":
             concept = session.get(Concept, entity_id)
@@ -722,6 +772,7 @@ class AnalysisRuntimePersistence:
         details: dict[str, Any],
         now: str,
     ) -> str:
+        self._validate_tmdb_reference_details(target, details)
         try:
             requested_id = int(target.external_id or "")
             returned_id = int(details.get("id"))
@@ -819,6 +870,52 @@ class AnalysisRuntimePersistence:
             observation=limited,
         )
         return film_id
+
+    def _validate_film_reference_consistency(
+        self,
+        session: Session,
+        target: AnalysisEntityReference,
+        film_id: str,
+    ) -> None:
+        film = session.get(Film, film_id)
+        if film is None:
+            raise ResolutionFailure("identity_conflict")
+        if target.release_year is not None and film.release_year != target.release_year:
+            raise ResolutionFailure("identity_conflict")
+        if target.display_name:
+            expected = normalize_metadata_text(target.display_name)
+            known_titles = {
+                normalize_metadata_text(film.canonical_title),
+                normalize_metadata_text(film.original_title or ""),
+            }
+            known_titles.update(
+                item.normalized_title
+                for item in session.exec(
+                    select(FilmTitle)
+                    .where(FilmTitle.film_id == film_id)
+                    .where(FilmTitle.superseded_at.is_(None))
+                ).all()
+            )
+            if expected not in known_titles:
+                raise ResolutionFailure("identity_conflict")
+
+    def _validate_tmdb_reference_details(
+        self,
+        target: AnalysisEntityReference,
+        details: dict[str, Any],
+    ) -> None:
+        if target.release_year is not None:
+            returned_year = self._release_year(details.get("release_date"))
+            if returned_year != target.release_year:
+                raise ResolutionFailure("identity_conflict")
+        if target.display_name:
+            expected = normalize_metadata_text(target.display_name)
+            returned_titles = {
+                normalize_metadata_text(str(details.get("title") or "")),
+                normalize_metadata_text(str(details.get("original_title") or "")),
+            }
+            if expected not in returned_titles:
+                raise ResolutionFailure("identity_conflict")
 
     def _resolve_by_name(
         self,
@@ -1091,19 +1188,50 @@ class AnalysisRuntimePersistence:
         candidate: AnalysisAssertionCandidate,
         remote_details: dict[str, Any] | None,
     ) -> bool:
-        if candidate.target.entity_id or remote_details is not None:
+        if self._has_disallowed_model_qualifiers(candidate):
+            return False
+        if remote_details is not None:
+            try:
+                self._validate_tmdb_reference_details(candidate.target, remote_details)
+            except ResolutionFailure:
+                return False
             return True
+        if candidate.target.entity_id:
+            try:
+                entity_id = self._follow_merge(session, candidate.target.entity_id)
+                graph = session.get(GraphEntity, entity_id)
+                if graph is None or graph.entity_type != candidate.target.entity_type:
+                    return False
+                if graph.entity_type == "film":
+                    self._validate_film_reference_consistency(session, candidate.target, entity_id)
+                return True
+            except ResolutionFailure:
+                return False
         if candidate.target.provider and candidate.target.external_id:
-            return session.exec(
+            identity = session.exec(
                 select(ExternalIdentity)
                 .where(ExternalIdentity.provider == candidate.target.provider)
                 .where(ExternalIdentity.external_id == candidate.target.external_id)
                 .where(ExternalIdentity.identity_status == "active")
-            ).first() is not None
+            ).first()
+            if identity is None:
+                return False
+            try:
+                self._validate_film_reference_consistency(session, candidate.target, identity.entity_id)
+                return True
+            except ResolutionFailure:
+                return False
         try:
             return self._resolve_by_name(session, candidate.target, candidate.predicate.value) is not None
         except ResolutionFailure:
             return False
+
+    @staticmethod
+    def _has_disallowed_model_qualifiers(candidate: AnalysisAssertionCandidate) -> bool:
+        return bool(
+            candidate.qualifiers
+            and candidate.qualifiers.model_dump(exclude_none=True)
+        )
 
     @staticmethod
     def _assertion_summary(candidate: AnalysisAssertionCandidate) -> dict[str, Any]:

@@ -16,9 +16,12 @@ from app.canonical_models import (
     AssertionEvidence,
     AssertionPredicate,
     AssertionProvenance,
+    Concept,
+    ConceptAlias,
     Evidence,
     ExternalIdentity,
     Film,
+    GraphEntity,
     LegacyMovieAlias,
     LibraryItem,
     LocalProfile,
@@ -27,6 +30,7 @@ from app.contracts.analysis_persistence import predicate_seed_rows
 from app.contracts.analysis_v2 import AnalysisV2Output
 from app.models import EventRecord, Movie
 from app.services.analysis import AnalysisExecutionError, analysis_service
+from app.services.analysis_runtime import analysis_runtime_persistence
 from app.services.analysis_evidence import (
     EvidenceBatchResult,
     VerifiedEvidenceCandidate,
@@ -421,6 +425,134 @@ class AnalysisRuntimeTests(unittest.TestCase):
         )
         self.assertEqual(result["reviews"], 2)
         self.assertEqual(movie.analysis_data["influence_impact"], output.summary)
+
+    def test_external_identity_title_and_year_conflict_enters_review(self):
+        library_manager.add_movies([
+            self._movie("subject_identity", "Subject", 2000, "160"),
+            self._movie("gattaca", "Gattaca", 1997, "782"),
+        ])
+        output = AnalysisV2Output.model_validate({
+            "subject_film_id": self._film_id("subject_identity"),
+            "summary": "Summary remains available when an identity conflicts.",
+            "assertions": [{
+                "predicate": "INFLUENCED_BY",
+                "target": {
+                    "entity_type": "film",
+                    "provider": "tmdb.movie",
+                    "external_id": "782",
+                    "display_name": "Rashomon",
+                    "release_year": 1950,
+                },
+                "rationale": "The candidate deliberately contradicts its provider identity.",
+            }],
+        })
+
+        self._run_with_output("subject_identity", output, model="identity-conflict-model")
+
+        with Session(self.engine) as session:
+            assertions = session.exec(select(Assertion)).all()
+            reviews = session.exec(
+                select(AnalysisResolutionReview)
+                .where(AnalysisResolutionReview.candidate_kind == "assertion")
+            ).all()
+        self.assertEqual(assertions, [])
+        self.assertEqual(len(reviews), 1)
+        self.assertEqual(reviews[0].reason_code, "identity_conflict")
+
+    def test_model_qualifiers_are_reviewed_instead_of_persisted(self):
+        library_manager.add_movies([
+            self._movie("subject_qualifier", "Subject", 2000, "170"),
+            self._movie("target_qualifier", "Target", 1980, "270"),
+        ])
+        output = AnalysisV2Output.model_validate({
+            "subject_film_id": self._film_id("subject_qualifier"),
+            "summary": "Summary.",
+            "assertions": [{
+                "predicate": "INFLUENCED_BY",
+                "target": {"entity_type": "film", "entity_id": self._film_id("target_qualifier")},
+                "rationale": "Rationale.",
+                "qualifiers": {"relationship_type": "visual"},
+            }],
+        })
+
+        self._run_with_output("subject_qualifier", output, model="qualifier-policy-model")
+
+        with Session(self.engine) as session:
+            self.assertEqual(session.exec(select(Assertion)).all(), [])
+            review = session.exec(
+                select(AnalysisResolutionReview)
+                .where(AnalysisResolutionReview.candidate_kind == "assertion")
+            ).one()
+        self.assertEqual(review.reason_code, "invalid_candidate")
+
+    def test_unknown_external_identity_cannot_fall_back_to_a_matching_name(self):
+        library_manager.add_movies([
+            self._movie("subject_atomic_identity", "Subject", 2000, "171"),
+            self._movie("target_atomic_identity", "Target", 1980, "271"),
+        ])
+        output = AnalysisV2Output.model_validate({
+            "subject_film_id": self._film_id("subject_atomic_identity"),
+            "summary": "Summary.",
+            "assertions": [{
+                "predicate": "INFLUENCED_BY",
+                "target": {
+                    "entity_type": "film",
+                    "provider": "tmdb",
+                    "external_id": "tmdb.movie:271",
+                    "display_name": "Target",
+                    "release_year": 1980,
+                },
+                "rationale": "A malformed identity must not be discarded during name fallback.",
+            }],
+        })
+
+        self._run_with_output(
+            "subject_atomic_identity",
+            output,
+            model="atomic-identity-model",
+        )
+
+        with Session(self.engine) as session:
+            self.assertEqual(session.exec(select(Assertion)).all(), [])
+            review = session.exec(
+                select(AnalysisResolutionReview)
+                .where(AnalysisResolutionReview.candidate_kind == "assertion")
+            ).one()
+        self.assertEqual(review.reason_code, "identity_conflict")
+
+    def test_input_includes_stably_sorted_active_concept_catalog(self):
+        library_manager.add_movies([self._movie("subject_concepts", "Subject", 2000, "180")])
+        with Session(self.engine) as session:
+            session.add(GraphEntity(id="concept_" + "a" * 32, entity_type="concept"))
+            session.flush()
+            session.add(Concept(
+                id="concept_" + "a" * 32,
+                kind="visual_style",
+                canonical_key="test:visual-style",
+                canonical_name="Saturated romantic modernism",
+                lifecycle_status="active",
+            ))
+            session.flush()
+            session.add(ConceptAlias(
+                id="conceptalias_" + "b" * 32,
+                concept_id="concept_" + "a" * 32,
+                locale="und",
+                alias="Saturated romanticism",
+                normalized_alias="saturated romanticism",
+                provenance_ref="test",
+            ))
+            session.commit()
+            analysis_input = analysis_runtime_persistence.build_input(
+                session,
+                self._film_id("subject_concepts"),
+            )
+
+        self.assertEqual(len(analysis_input.available_concepts), 1)
+        self.assertEqual(analysis_input.available_concepts[0].entity_id, "concept_" + "a" * 32)
+        self.assertEqual(
+            analysis_input.available_concepts[0].aliases,
+            ["Saturated romanticism"],
+        )
 
     def _run_with_output(self, movie_id, output, *, model):
         with (
