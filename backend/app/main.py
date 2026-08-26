@@ -1,4 +1,5 @@
 import os
+import logging
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -43,7 +44,7 @@ app.add_middleware(
 if os.path.exists(MEDIA_DIR):
     app.mount("/media", StaticFiles(directory=MEDIA_DIR), name="media")
 else:
-    print(f"⚠️ Warning: MEDIA_DIR does not exist: {MEDIA_DIR}")
+    logging.getLogger("app").warning("MEDIA_DIR does not exist: %s", MEDIA_DIR)
 
 ARTWORK_CACHE_DIR.mkdir(parents=True, exist_ok=True)
 app.mount("/artwork-cache", StaticFiles(directory=ARTWORK_CACHE_DIR), name="artwork-cache")

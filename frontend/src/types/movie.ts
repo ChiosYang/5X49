@@ -1,19 +1,3 @@
-export interface FilmReference {
-  title: string;
-  year: number;
-  type: string;
-  reason: string;
-}
-
-export interface AnalysisData {
-  thought_chain: string;
-  micro_genre: string;
-  influence_impact: string;
-  ancestors: FilmReference[];
-  descendants: FilmReference[];
-  tmdb_metadata?: Record<string, unknown>;
-}
-
 export interface AudioTrack {
   codec?: string;
   language?: string;
@@ -24,62 +8,22 @@ export interface ExternalScore {
   source: string;
   label: string;
   kind: "rating" | "rank";
-  value?: number;
-  scale?: number;
-  rank?: number;
+  value?: number | null;
+  scale?: number | null;
+  rank?: number | null;
   previous_rank?: number | null;
   votes?: number | null;
   list_name?: string;
   edition?: string;
-  url?: string;
-  fetched_at?: string;
-  expires_at?: string;
-  matched_by?: string;
-  confidence?: number;
+  source_uri?: string | null;
+  fetched_at: string;
+  expires_at?: string | null;
+  matched_by?: string | null;
+  confidence?: number | null;
 }
 
-export interface LibraryMovie {
-  id: string;
-  title: string;
-  title_cn?: string;
-  year: number;
-  backdrop_path?: string;
-  backdrop_local?: string;
-  poster_local?: string;
-  backdrop_thumb_local?: string | null;
-  poster_thumb_local?: string | null;
-  overview?: string;
-  plot?: string;
-  runtime?: number | null;
-  countries?: string[] | null;
-  audio_tracks?: AudioTrack[] | null;
-  video_width?: number | null;
-  video_height?: number | null;
-  video_codec?: string | null;
-  video_bitrate?: number | null;
-  video_duration?: number | null;
-  video_fps?: number | null;
-  video_dynamic_range?: string | null;
-  video_bit_depth?: number | null;
-  added_at?: string | null;
-  micro_genre?: string;
-  genres?: string[];
-  director?: string;
-  library_status?: "available" | "missing" | "ignored";
-  missing_since?: string | null;
-  metadata_source?: string | null;
-  metadata_updated_at?: string | null;
-  scrape_status?: "pending" | "matched" | "needs_review" | "failed";
-  scrape_error?: string | null;
-  scraped_at?: string | null;
-  tmdb_confidence?: number | null;
-  external_scores?: ExternalScore[] | null;
-  external_scores_updated_at?: string | null;
-  external_scores_error?: string | null;
-}
-
-export interface MovieUserState {
-  movie_id: string;
+export interface FilmProfileState {
+  film_id: string;
   watched: boolean;
   watched_at?: string | null;
   rating?: number | null;
@@ -88,12 +32,7 @@ export interface MovieUserState {
   updated_at?: string | null;
 }
 
-export interface WatchHistoryEntry {
-  movie: LibraryMovie;
-  user_state: MovieUserState;
-}
-
-export interface MovieUserStateUpdate {
+export interface FilmProfileStateUpdate {
   watched?: boolean | null;
   watched_at?: string | null;
   rating?: number | null;
@@ -101,52 +40,135 @@ export interface MovieUserStateUpdate {
   notes?: string | null;
 }
 
-export interface MovieDetail {
+export interface LibraryEdition {
   id: string;
-  title: string;
-  title_cn?: string;
-  year: number;
-  backdrop_path?: string;
-  backdrop_local?: string;
-  poster_path?: string;
-  poster_local?: string;
-  backdrop_thumb_local?: string | null;
-  poster_thumb_local?: string | null;
-  overview?: string;
-  plot?: string;
-  runtime?: number | null;
-  countries?: string[] | null;
-  audio_tracks?: AudioTrack[] | null;
-  video_width?: number | null;
-  video_height?: number | null;
-  video_codec?: string | null;
-  video_bitrate?: number | null;
-  video_duration?: number | null;
-  video_fps?: number | null;
-  video_dynamic_range?: string | null;
-  video_bit_depth?: number | null;
-  micro_genre: string;
-  micro_genre_definition?: string;
-  analysis_status: string;
-  analysis_data?: AnalysisData | null;
-  director?: string;
-  media_path?: string | null;
-  folder_path?: string | null;
-  file_size?: number | null;
-  file_mtime?: number | null;
+  film_id: string;
+  display_name?: string | null;
+  source_type: string;
+  status: "available" | "missing" | "ignored";
   added_at?: string | null;
   last_seen_at?: string | null;
   missing_since?: string | null;
-  library_status?: "available" | "missing" | "ignored";
-  metadata_updated_at?: string | null;
-  metadata_source?: string | null;
-  scrape_status?: "pending" | "matched" | "needs_review" | "failed";
-  scrape_error?: string | null;
-  scraped_at?: string | null;
-  tmdb_confidence?: number | null;
-  external_scores?: ExternalScore[] | null;
-  external_scores_updated_at?: string | null;
-  external_scores_error?: string | null;
+  metadata: {
+    source?: string | null;
+    updated_at?: string | null;
+    scrape_status: "pending" | "matched" | "needs_review" | "failed";
+    scrape_error?: string | null;
+    scraped_at?: string | null;
+    match_confidence?: number | null;
+  };
+  artwork: {
+    poster_local?: string | null;
+    backdrop_local?: string | null;
+    poster_thumb_local?: string | null;
+    backdrop_thumb_local?: string | null;
+    poster_provider?: string | null;
+    backdrop_provider?: string | null;
+  };
+  video?: {
+    locator: string;
+    file_size?: number | null;
+    file_mtime?: number | null;
+    width?: number | null;
+    height?: number | null;
+    codec?: string | null;
+    bitrate?: number | null;
+    duration_seconds?: number | null;
+    fps?: number | null;
+    dynamic_range?: string | null;
+    bit_depth?: number | null;
+    audio_tracks?: AudioTrack[] | null;
+  } | null;
+}
+
+export interface LibraryFilmSummary {
+  id: string;
+  title: string;
+  original_title?: string | null;
+  year?: number | null;
+  release_date?: string | null;
+  runtime_minutes?: number | null;
+  overview?: string | null;
+  identities: { tmdb?: string | null; imdb?: string | null };
+  countries: string[];
+  genres: string[];
+  directors: string[];
+  micro_genre?: string | null;
+  primary_item: LibraryEdition;
+  profile_state: FilmProfileState;
+  external_scores: ExternalScore[];
+  analysis: {
+    status: "pending" | "queued" | "running" | "succeeded" | "failed" | "cancelled";
+    latest_run_id?: string | null;
+    summary?: string | null;
+  };
+}
+
+export interface LibraryFilmDetail extends LibraryFilmSummary {
+  editions: LibraryEdition[];
+}
+
+export interface FilmAnalysisTarget {
+  entity_id: string;
+  entity_type?: "film" | "person" | "concept";
+  display_name?: string;
+  release_year?: number | null;
+  kind?: string;
+}
+
+export interface FilmAnalysisRelation {
+  id: string;
+  predicate: string;
+  direction: "subject_to_target" | "target_to_subject";
+  target: FilmAnalysisTarget;
+  qualifiers: Record<string, unknown>;
+  rationale?: string | null;
+  review_status: "proposed" | "accepted" | "rejected";
+  evidence_ids: string[];
+}
+
+export interface FilmAnalysisView {
+  film_id: string;
+  status: "queued" | "running" | "succeeded" | "failed" | "cancelled";
+  run: {
+    id: string;
+    provider: string;
+    model: string;
+    created_at: string;
+    finished_at?: string | null;
+    error_code?: string | null;
+  };
+  summary?: string | null;
+  relations: FilmAnalysisRelation[];
+  evidence: Array<{
+    id: string;
+    source_title: string;
+    source_uri: string;
+    publisher?: string | null;
+    claim: string;
+    retrieved_at: string;
+    stance: "supports" | "contradicts" | "context";
+  }>;
+  reviews: Array<{
+    id: string;
+    predicate?: string | null;
+    candidate_kind: string;
+    reason_code: string;
+    candidate_summary: Record<string, unknown>;
+    status: "open" | "resolved" | "dismissed";
+  }>;
+}
+
+export interface WatchHistoryEntry {
+  film: LibraryFilmSummary;
+  viewing: {
+    id: string;
+    film_id: string;
+    watched_at?: string | null;
+    watched_at_precision: "timestamp" | "date" | "year" | "unknown";
+    source: string;
+  };
+  profile_state: FilmProfileState;
 }
 
 export interface MetadataSearchResult {
@@ -173,8 +195,8 @@ export interface ArtworkImage {
   vote_count: number;
 }
 
-export interface MovieArtworkOptions {
-  movie_id: string;
+export interface FilmArtworkOptions {
+  film_id: string;
   tmdb_id: number;
   posters: ArtworkImage[];
   backdrops: ArtworkImage[];
@@ -187,26 +209,29 @@ export interface ArtworkSelection {
   backdrop_path?: string | null;
 }
 
-export interface MovieArtworkUpdateResponse {
+export interface FilmArtworkUpdateResponse {
   status: "success";
-  movie_id: string;
-  movie: MovieDetail;
+  film_id: string;
+  film: LibraryFilmDetail;
   poster_path?: string | null;
   backdrop_path?: string | null;
 }
 
 export interface ScrapeResult {
   status: "success" | "needs_review" | "failed" | "skipped";
-  movie_id: string;
+  film_id: string;
   message: string;
-  movie?: MovieDetail;
+  film?: LibraryFilmDetail;
   candidates: MetadataSearchResult[];
 }
 
 export interface EventRecord {
   id: string;
-  aggregate_type: "movie" | "library" | "file" | string;
+  aggregate_type: "film" | "library_item" | "viewing" | "assertion" | "analysis_run" | "job" | string;
   aggregate_id?: string | null;
+  film_id?: string | null;
+  display_title?: string | null;
+  operation_snapshot_id?: string | null;
   type: string;
   actor_type: string;
   actor_id?: string | null;
@@ -219,195 +244,23 @@ export interface EventRecord {
   occurred_at: string;
 }
 
-export interface OperationDryRunCheck {
-  status: "safe" | "partial" | "unsafe" | "unknown" | "not_applicable" | string;
-  can: boolean;
-  message: string;
-  event_id?: string | null;
-  details: Record<string, unknown>;
-  missing_payload: string[];
-  unsafe_actions: string[];
-}
-
-export interface OperationDryRunReport {
-  dry_run: boolean;
-  operation_id?: string | null;
-  correlation_id?: string | null;
-  command_id?: string | null;
-  status: "safe" | "partial" | "unsafe" | "unknown" | string;
-  events_analyzed: number;
-  event_types: Record<string, number>;
-  can_restore_poster: boolean;
-  can_restore_backdrop?: boolean;
-  can_trace_nfo_writer: boolean;
-  can_reverse_root_move: boolean;
-  can_list_scrape_side_effects: boolean;
-  checks: Record<string, OperationDryRunCheck>;
-  side_effects: Array<Record<string, unknown>>;
-  recoverable_fields: Array<Record<string, unknown>>;
-  missing_payload: Array<Record<string, unknown>>;
-  unsafe_actions: Array<Record<string, unknown>>;
-  events: Array<Record<string, unknown>>;
-}
-
-export type OperationRestoreAction =
-  | "restore_artwork_selection"
-  | "restore_backdrop"
-  | "restore_metadata"
-  | "restore_nfo"
-  | "restore_poster"
-  | "reverse_root_move";
-
-export interface OperationRestoreReport {
-  status: "restored" | "skipped" | string;
-  operation_id?: string | null;
-  correlation_id?: string | null;
-  command_id?: string | null;
-  restore_command_id?: string | null;
-  restore_correlation_id?: string | null;
-  actions_requested: OperationRestoreAction[];
-  restored: Array<Record<string, unknown>>;
-  skipped: Array<Record<string, unknown>>;
-  dry_run: OperationDryRunReport;
-}
-
-export interface MovieTimelineTarget {
-  selector_type: "before_event_id" | "at" | string;
-  before_event_id?: string | null;
-  at?: string | null;
-  cutoff_event?: Partial<EventRecord> | null;
-}
-
-export interface MovieTimelineFieldDiff {
-  field: string;
-  current: unknown;
-  target: unknown;
-  restorable: boolean;
-}
-
-export interface MovieTimelineFileRestoreItem {
-  event_id: string;
-  type: string;
-  file_type?: string | null;
-  path?: string | null;
-  backup_path?: string | null;
-  backup_file_exists?: boolean;
-  source_path?: string | null;
-  target_path?: string | null;
-  target_exists?: boolean;
-  source_available?: boolean;
-  can_reverse?: boolean;
-  reason?: string | null;
-}
-
-export interface MovieTimelineFileRestorePreview {
-  restorable_files: MovieTimelineFileRestoreItem[];
-  missing_file_backups: MovieTimelineFileRestoreItem[];
-  unsafe_files: MovieTimelineFileRestoreItem[];
-}
-
-export interface MovieTimelineStateReport {
-  dry_run: boolean;
-  movie_id: string;
-  target: MovieTimelineTarget;
-  current_state: Record<string, unknown>;
-  target_state: Record<string, unknown> | null;
-  field_diff: MovieTimelineFieldDiff[];
-  events_processed: number;
-  events_after_cutoff: number;
-  projectable_events: number;
-  skipped_projectable_events: number;
-  unsupported_events: number;
-  unsupported_event_types: Record<string, number>;
-  skipped_events: Array<Record<string, unknown>>;
-  missing_payload: Array<Record<string, unknown>>;
-}
-
-export interface MovieTimelineRestorePreviewReport extends MovieTimelineStateReport {
-  status: "safe" | "partial" | "unsafe" | "unknown" | string;
-  field_restore: MovieTimelineFieldDiff[];
-  file_restore: MovieTimelineFileRestorePreview;
-  restorable_files: MovieTimelineFileRestoreItem[];
-  missing_file_backups: MovieTimelineFileRestoreItem[];
-}
-
-export type MovieTimelineRestoreFileType = "poster" | "backdrop" | "nfo";
-
-export interface MovieTimelineRestoreRequest {
-  before_event_id?: string | null;
-  at?: string | null;
-  restore_fields?: string[] | null;
-  restore_files?: MovieTimelineRestoreFileType[] | null;
-  allow_partial?: boolean;
-}
-
-export interface MovieTimelineRestoreReport {
-  status: "restored" | "partial" | "skipped" | string;
-  movie_id: string;
-  restore_command_id?: string | null;
-  restore_correlation_id?: string | null;
-  target: MovieTimelineTarget;
-  actions_requested: {
-    restore_fields: string[];
-    restore_files: MovieTimelineRestoreFileType[];
-    allow_partial: boolean;
-  };
-  restored: Array<Record<string, unknown>>;
-  skipped: Array<Record<string, unknown>>;
-  conflicts: Array<Record<string, unknown>>;
-  dry_run: MovieTimelineRestorePreviewReport;
-}
-
-export interface MovieProjectionRebuildReport {
-  dry_run: boolean;
-  mode: string;
-  note: string;
-  base: "current" | "empty" | string;
-  movie_id?: string | null;
-  since?: string | null;
-  limit: number;
-  events_processed: number;
-  projectable_events: number;
-  skipped_projectable_events: number;
-  skipped_events: Array<Record<string, unknown>>;
-  unsupported_events: number;
-  unsupported_event_types: Record<string, number>;
-  movies_compared: number;
-  movies_with_differences: number;
-  differences: Array<Record<string, unknown>>;
-  confirmation_token?: string | null;
-  event_stream_truncated?: boolean;
-  last_event?: Partial<EventRecord> | null;
-  projected_state?: Record<string, unknown> | null;
-}
-
-export interface MovieProjectionRebuildExecutionReport {
-  status: "rebuilt" | "skipped" | "blocked" | string;
-  movie_id: string;
-  confirmation_token: string;
-  fields_replaced: string[];
+export interface OperationSnapshotPreview {
+  snapshot_id: string;
+  aggregate_type: "film" | "library_item";
+  aggregate_id: string;
+  operation_kind: string;
+  status: "available" | "restored" | "expired";
   before: Record<string, unknown>;
   after: Record<string, unknown>;
-  dry_run: MovieProjectionRebuildReport;
-  audit_event_id?: string | null;
+  current_matches_after: boolean;
+  confirmation_token?: string | null;
 }
 
-export interface MovieReplayBackfillReport {
-  dry_run: boolean;
-  movie_id?: string | null;
-  movies_checked: number;
-  events_checked: number;
-  events_to_create: number;
-  created_events: number;
-  created_event_ids: string[];
-  sample_events: Array<Partial<EventRecord> & {
-    payload?: Record<string, unknown>;
-    context?: Record<string, unknown>;
-  }>;
-  unsupported: Array<Record<string, unknown>>;
-  unavailable_file_snapshots: Array<Record<string, unknown>>;
-  coverage_before: Record<string, unknown>;
-  notes: string[];
+export interface OperationRestoreResult {
+  status: "restored";
+  snapshot_id: string;
+  aggregate_type: "film" | "library_item";
+  aggregate_id: string;
 }
 
 export interface RootVideo {

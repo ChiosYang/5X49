@@ -1,75 +1,35 @@
 import "server-only";
 
-import type { LibraryMovie, MovieDetail, MovieUserState, RootVideo, WatchHistoryEntry } from "@/types/movie";
+import type { LibraryFilmDetail, LibraryFilmSummary, RootVideo, WatchHistoryEntry } from "@/types/movie";
 
-const getBackendUrl = () => {
-  if (process.env.NODE_ENV === "development") {
-    return "http://127.0.0.1:8000";
-  }
+const backendUrl = () =>
+  process.env.NODE_ENV === "development"
+    ? "http://127.0.0.1:8000"
+    : process.env.BACKEND_URL || "http://backend:8000";
 
-  return process.env.BACKEND_URL || "http://backend:8000";
-};
-
-export async function getLibraryMovie(id: string): Promise<MovieDetail | null> {
-  const res = await fetch(`${getBackendUrl()}/library/${encodeURIComponent(id)}`, {
+export async function getLibraryFilm(filmId: string): Promise<LibraryFilmDetail | null> {
+  const response = await fetch(`${backendUrl()}/library/films/${encodeURIComponent(filmId)}`, {
     cache: "no-store",
   });
-
-  if (res.status === 404) {
-    return null;
-  }
-
-  if (!res.ok) {
-    throw new Error(`Failed to fetch movie detail: ${res.status}`);
-  }
-
-  return res.json();
+  if (response.status === 404) return null;
+  if (!response.ok) throw new Error(`Failed to fetch Film detail: ${response.status}`);
+  return response.json();
 }
 
-export async function getLibrary(): Promise<LibraryMovie[]> {
-  const res = await fetch(`${getBackendUrl()}/library`, {
-    cache: "no-store",
-  });
-
-  if (!res.ok) {
-    throw new Error(`Failed to fetch library: ${res.status}`);
-  }
-
-  return res.json();
-}
-
-export async function getLibraryUserStates(): Promise<MovieUserState[]> {
-  const res = await fetch(`${getBackendUrl()}/library/user-states`, {
-    cache: "no-store",
-  });
-
-  if (!res.ok) {
-    throw new Error(`Failed to fetch library user states: ${res.status}`);
-  }
-
-  return res.json();
+export async function getLibraryFilms(): Promise<LibraryFilmSummary[]> {
+  const response = await fetch(`${backendUrl()}/library/films`, { cache: "no-store" });
+  if (!response.ok) throw new Error(`Failed to fetch library: ${response.status}`);
+  return response.json();
 }
 
 export async function getWatchHistory(): Promise<WatchHistoryEntry[]> {
-  const res = await fetch(`${getBackendUrl()}/watch-history`, {
-    cache: "no-store",
-  });
-
-  if (!res.ok) {
-    throw new Error(`Failed to fetch watch history: ${res.status}`);
-  }
-
-  return res.json();
+  const response = await fetch(`${backendUrl()}/profile/watch-history`, { cache: "no-store" });
+  if (!response.ok) throw new Error(`Failed to fetch watch history: ${response.status}`);
+  return response.json();
 }
 
 export async function getRootVideos(): Promise<RootVideo[]> {
-  const res = await fetch(`${getBackendUrl()}/library/root-videos`, {
-    cache: "no-store",
-  });
-
-  if (!res.ok) {
-    throw new Error(`Failed to fetch root videos: ${res.status}`);
-  }
-
-  return res.json();
+  const response = await fetch(`${backendUrl()}/library/root-videos`, { cache: "no-store" });
+  if (!response.ok) throw new Error(`Failed to fetch root videos: ${response.status}`);
+  return response.json();
 }

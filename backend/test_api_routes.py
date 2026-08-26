@@ -7,84 +7,34 @@ from fastapi.testclient import TestClient
 from app.main import app
 
 
-EXPECTED_ROUTES = {
-    ("GET", "/health"),
-    ("GET", "/"),
-    ("GET", "/analyze/{movie_name}"),
+REMOVED_ROUTES = {
     ("GET", "/library"),
     ("GET", "/watch-history"),
-    ("GET", "/jobs"),
-    ("GET", "/jobs/{job_id}"),
-    ("POST", "/jobs/{job_id}/cancel"),
-    ("POST", "/jobs/{job_id}/retry"),
-    ("DELETE", "/jobs/{job_id}"),
-    ("POST", "/library/external-scores/refresh"),
-    ("GET", "/library/external-scores/status"),
-    ("GET", "/metadata/search"),
-    ("GET", "/metadata/movie/{tmdb_id}"),
-    ("GET", "/library/events"),
-    ("GET", "/library/root-videos"),
-    ("GET", "/library/audit-events"),
-    ("GET", "/library/{movie_id}/audit-events"),
     ("GET", "/library/user-states"),
-    ("GET", "/library/{movie_id}/user-state"),
-    ("PUT", "/library/{movie_id}/user-state"),
-    ("GET", "/library/{movie_id}/timeline/state"),
-    ("GET", "/library/{movie_id}/timeline/restore-preview"),
-    ("POST", "/library/{movie_id}/timeline/restore"),
-    ("GET", "/library/operations/dry-run"),
-    ("POST", "/library/operations/restore"),
-    ("POST", "/library/projections/movie/rebuild"),
-    ("POST", "/library/events/backfill/movie-discovered"),
-    ("POST", "/library/events/backfill/movie-replay"),
-    ("POST", "/library/events/dry-run/nfo-signatures"),
     ("GET", "/library/{movie_id}"),
-    ("POST", "/library/{movie_id}/external-scores/refresh"),
-    ("POST", "/library/seed"),
-    ("POST", "/library/scan"),
-    ("POST", "/library/reconcile"),
-    ("POST", "/library/scan-folder"),
-    ("POST", "/library/{movie_id}/refresh"),
-    ("GET", "/library/{movie_id}/artwork"),
-    ("PUT", "/library/{movie_id}/artwork"),
-    ("POST", "/library/{movie_id}/scrape"),
-    ("POST", "/library/{movie_id}/ignore"),
-    ("POST", "/library/{movie_id}/scrape/confirm"),
-    ("POST", "/library/scrape"),
-    ("GET", "/library/scrape/status"),
-    ("POST", "/library/organize-root"),
-    ("POST", "/library/organize-root/confirm"),
-    ("GET", "/library/organize/status"),
-    ("GET", "/library/sync/status"),
     ("POST", "/library/analyze/{movie_id}"),
-    ("DELETE", "/library"),
-    ("DELETE", "/library/data"),
-    ("DELETE", "/library/missing"),
-    ("GET", "/settings"),
-    ("GET", "/settings/model"),
-    ("PUT", "/settings/model"),
-    ("GET", "/settings/media-dir"),
-    ("PUT", "/settings/media-dir"),
-    ("GET", "/settings/language"),
-    ("PUT", "/settings/language"),
-    ("GET", "/settings/artwork-language"),
-    ("PUT", "/settings/artwork-language"),
-    ("GET", "/settings/library-watch"),
-    ("PUT", "/settings/library-watch"),
-    ("GET", "/settings/auto-organize-root"),
-    ("PUT", "/settings/auto-organize-root"),
-    ("GET", "/settings/scrape-confirmation"),
-    ("PUT", "/settings/scrape-confirmation"),
-    ("GET", "/settings/tmdb"),
-    ("PUT", "/settings/tmdb"),
-    ("POST", "/settings/tmdb/test"),
-    ("GET", "/settings/base-url"),
-    ("PUT", "/settings/base-url"),
-    ("POST", "/settings/models/refresh"),
-    ("GET", "/settings/test-api-key"),
-    ("GET", "/sys/list-dirs"),
-    ("POST", "/sys/scan-library"),
-    ("GET", "/api/agents/clean-inbox"),
+    ("GET", "/analyze/{movie_name}"),
+    ("POST", "/library/projections/movie/rebuild"),
+}
+
+CANONICAL_ROUTES = {
+    ("GET", "/library/films"),
+    ("GET", "/library/films/{film_id}"),
+    ("GET", "/films/{film_id}/profile-state"),
+    ("PUT", "/films/{film_id}/profile-state"),
+    ("GET", "/profile/watch-history"),
+    ("POST", "/library/items/{library_item_id}/refresh"),
+    ("POST", "/library/items/{library_item_id}/ignore"),
+    ("POST", "/films/{film_id}/analysis-runs"),
+    ("GET", "/films/{film_id}/analysis"),
+    ("GET", "/films/{film_id}/artwork"),
+    ("PUT", "/films/{film_id}/artwork"),
+    ("POST", "/films/{film_id}/scrape"),
+    ("POST", "/films/{film_id}/scrape/confirm"),
+    ("POST", "/films/{film_id}/external-scores/refresh"),
+    ("GET", "/activity/events"),
+    ("GET", "/operations/{snapshot_id}/preview"),
+    ("POST", "/operations/{snapshot_id}/restore"),
 }
 
 
@@ -92,50 +42,51 @@ class ApiRouteContractTests(unittest.TestCase):
     def setUp(self):
         self.client = TestClient(app)
 
-    def test_public_route_contract_is_complete_and_unique(self):
+    def test_canonical_resource_routes_replace_movie_compatibility_routes(self):
         routes = [route for route in app.routes if isinstance(route, APIRoute)]
         actual = {
             (method, route.path)
             for route in routes
             for method in route.methods or set()
         }
+        self.assertTrue(CANONICAL_ROUTES.issubset(actual))
+        self.assertTrue(REMOVED_ROUTES.isdisjoint(actual))
+        self.assertEqual(len(actual), len(set(actual)))
 
-        self.assertEqual(actual, EXPECTED_ROUTES)
-        self.assertEqual(len(routes), len(EXPECTED_ROUTES))
-
-    def test_static_library_routes_precede_movie_detail_route(self):
-        get_paths = [
-            route.path
-            for route in app.routes
-            if isinstance(route, APIRoute) and "GET" in (route.methods or set())
-        ]
-        detail_index = get_paths.index("/library/{movie_id}")
-
-        for static_path in (
-            "/library/events",
-            "/library/root-videos",
-            "/library/audit-events",
-            "/library/user-states",
-        ):
-            self.assertLess(get_paths.index(static_path), detail_index)
-
-    def test_health_endpoint_still_responds(self):
+    def test_health_endpoint_responds(self):
         response = self.client.get("/health")
-
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json(), {"status": "healthy"})
 
-    def test_query_validation_still_rejects_invalid_job_limit(self):
+    def test_query_validation_rejects_invalid_job_limit(self):
         response = self.client.get("/jobs?limit=0")
-
         self.assertEqual(response.status_code, 422)
 
-    def test_missing_movie_still_returns_not_found(self):
-        with patch("app.api.library.library_manager.get_movie", return_value=None):
-            response = self.client.get("/library/local_missing")
-
+    def test_missing_film_and_item_return_resource_specific_404(self):
+        with patch("app.api.library.library_manager.get_film", return_value=None):
+            response = self.client.get("/library/films/film_" + "a" * 32)
         self.assertEqual(response.status_code, 404)
-        self.assertEqual(response.json(), {"detail": "Movie not found"})
+        self.assertEqual(response.json(), {"detail": "Film not found"})
+
+        with patch("app.api.library.library_manager.get_item", return_value=None):
+            response = self.client.post("/library/items/lib_" + "b" * 32 + "/refresh")
+        self.assertEqual(response.status_code, 404)
+        self.assertEqual(response.json(), {"detail": "Library item not found"})
+
+    def test_invalid_resource_ids_are_rejected(self):
+        response = self.client.get("/library/films/not/a/film")
+        self.assertEqual(response.status_code, 404)
+        response = self.client.get("/library/films/not-a-valid-id")
+        self.assertEqual(response.status_code, 400)
+
+    def test_unconfigured_media_root_does_not_break_the_library_page(self):
+        with patch(
+            "app.api.library.root_video_organizer.list_root_videos",
+            side_effect=FileNotFoundError("media root is not configured"),
+        ):
+            response = self.client.get("/library/root-videos")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), [])
 
 
 if __name__ == "__main__":

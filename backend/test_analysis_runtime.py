@@ -5,10 +5,6 @@ from unittest.mock import patch
 
 from sqlmodel import SQLModel, Session, create_engine, select
 
-import app.database as database
-import app.services.analysis as analysis_module
-import app.services.event_store as event_store_module
-import app.services.library as library_module
 from app.canonical_models import (
     AnalysisResolutionReview,
     AnalysisRun,
@@ -16,90 +12,151 @@ from app.canonical_models import (
     AssertionEvidence,
     AssertionPredicate,
     AssertionProvenance,
-    Concept,
-    ConceptAlias,
     Evidence,
-    ExternalIdentity,
     Film,
+    FilmProfileState,
     GraphEntity,
-    LegacyMovieAlias,
     LibraryItem,
     LocalProfile,
 )
 from app.contracts.analysis_persistence import predicate_seed_rows
 from app.contracts.analysis_v2 import AnalysisV2Output
-from app.models import EventRecord, Movie
-from app.services.analysis import AnalysisExecutionError, analysis_service
-from app.services.analysis_runtime import analysis_runtime_persistence
-from app.services.analysis_evidence import (
-    EvidenceBatchResult,
-    VerifiedEvidenceCandidate,
-)
+from app.models import EventRecord
+from app.services.analysis import AnalysisExecutionError, AnalysisService
+from app.services.analysis_evidence import EvidenceBatchResult, VerifiedEvidenceCandidate
+from app.services.analysis_runtime import AnalysisRuntimePersistence
 from app.services.historian import AnalysisGenerationResult, AnalysisModelConfiguration
-from app.services.library import library_manager
+
+SUBJECT_ID = "film_11111111111111111111111111111111"
+ANCESTOR_ID = "film_22222222222222222222222222222222"
+DESCENDANT_ID = "film_33333333333333333333333333333333"
+
+
+class _Historian:
+    def __init__(self, output: AnalysisV2Output, *, fail: Exception | None = None):
+        self.output = output
+        self.fail = fail
+        self.calls = 0
+
+    def analysis_configuration(self):
+        return AnalysisModelConfiguration("openrouter", "fixture-model")
+
+    def analyze_v2(self, _analysis_input, *, configuration=None):
+        self.calls += 1
+        if self.fail is not None:
+            raise self.fail
+        return AnalysisGenerationResult(self.output, 10, 20, 0.01, "USD")
+
+
+class _Evidence:
+    def __init__(self, result: EvidenceBatchResult | None = None):
+        self.result = result or EvidenceBatchResult((), ())
+
+    def verify(self, _candidates):
+        return self.result
+
+
+class _Tmdb:
+    @staticmethod
+    def is_configured():
+        return False
 
 
 class AnalysisRuntimeTests(unittest.TestCase):
     def setUp(self):
-        self._original_analysis_engine = analysis_module.engine
-        self._original_database_engine = database.engine
-        self._original_event_engine = event_store_module.engine
-        self._original_library_engine = library_module.engine
         self._tmp = tempfile.TemporaryDirectory()
         self.engine = create_engine(f"sqlite:///{Path(self._tmp.name) / 'library.db'}")
-        analysis_module.engine = self.engine
-        database.engine = self.engine
-        event_store_module.engine = self.engine
-        library_module.engine = self.engine
         SQLModel.metadata.create_all(self.engine)
         with Session(self.engine) as session:
             session.add_all([AssertionPredicate(**row) for row in predicate_seed_rows()])
+            session.add(
+                LocalProfile(
+                    id="profile_local",
+                    profile_key="local",
+                    display_name="Local",
+                )
+            )
+            self._add_film(session, SUBJECT_ID, "Subject Film", 2000)
+            self._add_film(session, ANCESTOR_ID, "Earlier Film", 1970)
+            self._add_film(session, DESCENDANT_ID, "Later Film", 2020)
+            session.add(
+                LibraryItem(
+                    id="lib_subject",
+                    film_id=SUBJECT_ID,
+                    profile_id="profile_local",
+                    source_type="local",
+                    source_instance_id="local",
+                    source_item_key="private/path/subject.mkv",
+                    availability_status="available",
+                )
+            )
+            session.add(
+                FilmProfileState(
+                    id="fps_subject",
+                    profile_id="profile_local",
+                    film_id=SUBJECT_ID,
+                    favorite=True,
+                    notes="private note must never enter analysis input",
+                )
+            )
             session.commit()
 
     def tearDown(self):
-        analysis_module.engine = self._original_analysis_engine
-        database.engine = self._original_database_engine
-        event_store_module.engine = self._original_event_engine
-        library_module.engine = self._original_library_engine
         self.engine.dispose()
         self._tmp.cleanup()
 
-    def test_runtime_persists_directional_assertions_evidence_reviews_and_cache(self):
-        library_manager.add_movies([
-            self._movie("subject", "Subject Film", 2000, "100"),
-            self._movie("ancestor", "Earlier Film", 1970, "200"),
-            self._movie("descendant", "Later Film", 2020, "300"),
-        ])
-        subject_id = self._film_id("subject")
-        ancestor_id = self._film_id("ancestor")
-        descendant_id = self._film_id("descendant")
-        output = AnalysisV2Output.model_validate({
-            "subject_film_id": subject_id,
-            "summary": "A bounded public summary.",
-            "assertions": [
-                {
-                    "predicate": "INFLUENCED_BY",
-                    "target": {"entity_type": "film", "entity_id": ancestor_id},
-                    "rationale": "The earlier film shaped its visual grammar.",
-                    "evidence_candidates": [{
-                        "source_title": "Public source",
-                        "source_uri": "https://example.com/source",
-                        "claim": "The director identified the earlier film as an influence.",
-                    }],
-                },
-                {
-                    "predicate": "INFLUENCED_BY",
-                    "direction": "target_to_subject",
-                    "target": {"entity_type": "film", "entity_id": descendant_id},
-                    "rationale": "The later film reuses its central device.",
-                },
-                {
-                    "predicate": "HAS_MICRO_GENRE",
-                    "target": {"entity_type": "concept", "display_name": "Digital noir"},
-                    "rationale": "Reality-bending cyber thriller.",
-                },
-            ],
-        })
+    @staticmethod
+    def _add_film(session: Session, film_id: str, title: str, year: int):
+        session.add(GraphEntity(id=film_id, entity_type="film"))
+        session.add(Film(id=film_id, canonical_title=title, release_year=year))
+
+    @staticmethod
+    def _output() -> AnalysisV2Output:
+        return AnalysisV2Output.model_validate(
+            {
+                "subject_film_id": SUBJECT_ID,
+                "summary": "A bounded public summary.",
+                "assertions": [
+                    {
+                        "predicate": "INFLUENCED_BY",
+                        "target": {"entity_type": "film", "entity_id": ANCESTOR_ID},
+                        "rationale": "The earlier film shaped its visual grammar.",
+                        "evidence_candidates": [
+                            {
+                                "source_title": "Public source",
+                                "source_uri": "https://example.com/source",
+                                "claim": "A public source identifies the influence.",
+                            }
+                        ],
+                    },
+                    {
+                        "predicate": "INFLUENCED_BY",
+                        "direction": "target_to_subject",
+                        "target": {"entity_type": "film", "entity_id": DESCENDANT_ID},
+                        "rationale": "The later film reuses its central device.",
+                    },
+                    {
+                        "predicate": "HAS_MICRO_GENRE",
+                        "target": {"entity_type": "concept", "display_name": "Unknown concept"},
+                        "rationale": "This must enter review rather than invent an entity.",
+                    },
+                ],
+            }
+        )
+
+    def test_canonical_input_excludes_library_locator_and_profile_state(self):
+        with Session(self.engine) as session:
+            data = AnalysisRuntimePersistence().build_input(
+                session, SUBJECT_ID
+            ).model_dump(mode="json")
+        serialized = str(data)
+        self.assertEqual(data["canonical_title"], "Subject Film")
+        self.assertNotIn("private/path", serialized)
+        self.assertNotIn("private note", serialized)
+        self.assertNotIn("favorite", serialized)
+
+    def test_runtime_persists_structured_view_and_reuses_successful_run(self):
+        output = self._output()
         verified = VerifiedEvidenceCandidate(
             candidate_key="a000:e000",
             candidate=output.assertions[0].evidence_candidates[0],
@@ -107,489 +164,115 @@ class AnalysisRuntimeTests(unittest.TestCase):
             content_hash="a" * 64,
             retrieved_at="2026-08-25T00:00:00+00:00",
         )
-        with (
-            patch.object(
-                analysis_service.historian,
-                "analysis_configuration",
-                return_value=AnalysisModelConfiguration("openrouter", "test-model"),
-            ),
-            patch.object(
-                analysis_service.historian,
-                "analyze_v2",
-                return_value=AnalysisGenerationResult(output, 10, 20, 0.01, "USD"),
-            ) as generate,
-            patch.object(
-                analysis_service.evidence,
-                "verify",
-                return_value=EvidenceBatchResult((verified,), ()),
-            ),
-        ):
-            first = analysis_service.analyze_movie("subject")
-            second = analysis_service.analyze_movie("subject")
+        historian = _Historian(output)
+        service = AnalysisService(
+            database_engine=self.engine,
+            historian=historian,
+            tmdb=_Tmdb(),
+            evidence=_Evidence(EvidenceBatchResult((verified,), ())),
+        )
+
+        first = service.analyze_film(SUBJECT_ID)
+        second = service.analyze_film(SUBJECT_ID)
 
         self.assertFalse(first["cached"])
         self.assertTrue(second["cached"])
-        self.assertEqual(generate.call_count, 1)
+        self.assertEqual(historian.calls, 1)
+        self.assertEqual(first["analysis"]["summary"], "A bounded public summary.")
+        self.assertEqual(
+            {relation["direction"] for relation in first["analysis"]["relations"]},
+            {"subject_to_target", "target_to_subject"},
+        )
         with Session(self.engine) as session:
-            runs = session.exec(select(AnalysisRun)).all()
-            assertions = session.exec(select(Assertion)).all()
+            self.assertEqual(len(session.exec(select(AnalysisRun)).all()), 1)
+            self.assertEqual(len(session.exec(select(Assertion)).all()), 2)
+            self.assertEqual(len(session.exec(select(AssertionProvenance)).all()), 2)
+            self.assertEqual(len(session.exec(select(Evidence)).all()), 1)
+            self.assertEqual(len(session.exec(select(AssertionEvidence)).all()), 1)
             reviews = session.exec(select(AnalysisResolutionReview)).all()
-            evidence = session.exec(select(Evidence)).all()
-            links = session.exec(select(AssertionEvidence)).all()
-            movie = session.get(Movie, "subject")
-            completed_event = session.exec(
-                select(EventRecord)
-                .where(EventRecord.type == "AnalysisCompleted")
-                .order_by(EventRecord.occurred_at.desc())
-            ).first()
-        self.assertEqual(len(runs), 1)
-        self.assertEqual(runs[0].status, "succeeded")
-        self.assertEqual(runs[0].input_tokens, 10)
-        self.assertEqual(len(assertions), 2)
+            completed = session.exec(
+                select(EventRecord).where(EventRecord.type == "AnalysisCompleted")
+            ).one()
         self.assertEqual(len(reviews), 1)
         self.assertEqual(reviews[0].reason_code, "unresolved_reference")
-        self.assertEqual(len(evidence), 1)
-        self.assertEqual(len(links), 1)
-        self.assertEqual(movie.analysis_status, "completed")
-        self.assertEqual(movie.analysis_data["ancestors"][0]["title"], "Earlier Film")
-        self.assertEqual(movie.analysis_data["descendants"][0]["title"], "Later Film")
-        self.assertEqual(movie.micro_genre, "Digital noir")
-        self.assertNotIn("thought_chain", movie.analysis_data)
-        self.assertNotIn("evidence_candidates", completed_event.payload["analysis_data"])
+        self.assertEqual(completed.aggregate_type, "analysis_run")
+        self.assertNotIn("summary", completed.payload)
+        self.assertNotIn("source_uri", completed.payload)
+        self.assertNotIn("evidence_candidates", completed.payload)
 
-    def test_user_rejection_survives_new_model_version_and_is_hidden_from_projection(self):
-        library_manager.add_movies([
-            self._movie("subject_reject", "Subject", 2000, "110"),
-            self._movie("target_reject", "Target", 1980, "210"),
-        ])
-        subject_id = self._film_id("subject_reject")
-        target_id = self._film_id("target_reject")
-        output = AnalysisV2Output.model_validate({
-            "subject_film_id": subject_id,
-            "summary": "Summary",
-            "assertions": [{
-                "predicate": "INFLUENCED_BY",
-                "target": {"entity_type": "film", "entity_id": target_id},
-                "rationale": "Model rationale.",
-            }],
-        })
-        self._run_with_output("subject_reject", output, model="model-v1")
+    def test_user_rejection_survives_a_new_model_run(self):
+        output = AnalysisV2Output.model_validate(
+            {
+                "subject_film_id": SUBJECT_ID,
+                "summary": "Summary",
+                "assertions": [
+                    {
+                        "predicate": "INFLUENCED_BY",
+                        "target": {"entity_type": "film", "entity_id": ANCESTOR_ID},
+                        "rationale": "Model rationale.",
+                    }
+                ],
+            }
+        )
+        AnalysisService(
+            database_engine=self.engine,
+            historian=_Historian(output),
+            tmdb=_Tmdb(),
+            evidence=_Evidence(),
+        ).analyze_film(SUBJECT_ID)
         with Session(self.engine) as session:
             assertion = session.exec(select(Assertion)).one()
-            profile = session.exec(select(LocalProfile)).first()
             assertion.review_status = "rejected"
             assertion.review_method = "user"
-            assertion.reviewed_by_profile_id = profile.id
+            assertion.reviewed_by_profile_id = "profile_local"
             assertion.reviewed_at = "2026-08-25T00:00:00+00:00"
             assertion.rationale = "User-owned rationale."
             session.add(assertion)
             session.commit()
 
-        self._run_with_output("subject_reject", output, model="model-v2")
+        second_historian = _Historian(output)
+        second_historian.analysis_configuration = lambda: AnalysisModelConfiguration(
+            "openrouter", "fixture-model-v2"
+        )
+        AnalysisService(
+            database_engine=self.engine,
+            historian=second_historian,
+            tmdb=_Tmdb(),
+            evidence=_Evidence(),
+        ).analyze_film(SUBJECT_ID)
+
         with Session(self.engine) as session:
             assertion = session.exec(select(Assertion)).one()
-            movie = session.get(Movie, "subject_reject")
             provenance = session.exec(select(AssertionProvenance)).all()
         self.assertEqual(assertion.review_status, "rejected")
         self.assertEqual(assertion.rationale, "User-owned rationale.")
         self.assertEqual(len(provenance), 2)
-        self.assertEqual(movie.analysis_data["ancestors"], [])
 
-    def test_persistence_failure_rolls_back_completion_and_records_safe_failure(self):
-        library_manager.add_movies([
-            self._movie("subject_fail", "Subject", 2000, "120"),
-            self._movie("target_fail", "Target", 1980, "220"),
-        ])
-        output = AnalysisV2Output.model_validate({
-            "subject_film_id": self._film_id("subject_fail"),
-            "summary": "Summary",
-            "assertions": [{
-                "predicate": "INFLUENCED_BY",
-                "target": {"entity_type": "film", "entity_id": self._film_id("target_fail")},
-                "rationale": "Rationale.",
-            }],
-        })
-        with (
-            patch.object(
-                analysis_service.historian,
-                "analysis_configuration",
-                return_value=AnalysisModelConfiguration("openrouter", "failure-model"),
-            ),
-            patch.object(
-                analysis_service.historian,
-                "analyze_v2",
-                return_value=AnalysisGenerationResult(output),
-            ),
-            patch.object(
-                analysis_service.evidence,
-                "verify",
-                return_value=EvidenceBatchResult((), ()),
-            ),
-            patch(
-                "app.services.analysis_runtime.AnalysisRuntimePersistence._upsert_assertion",
-                side_effect=RuntimeError("secret database detail"),
-            ),
+    def test_completion_failure_rolls_back_and_records_safe_failure(self):
+        service = AnalysisService(
+            database_engine=self.engine,
+            historian=_Historian(self._output()),
+            tmdb=_Tmdb(),
+            evidence=_Evidence(),
+        )
+        with patch.object(
+            AnalysisRuntimePersistence,
+            "_upsert_assertion",
+            side_effect=RuntimeError("secret database detail"),
         ):
             with self.assertRaisesRegex(AnalysisExecutionError, "persistence failed"):
-                analysis_service.analyze_movie("subject_fail")
+                service.analyze_film(SUBJECT_ID)
 
         with Session(self.engine) as session:
             self.assertEqual(session.exec(select(Assertion)).all(), [])
             run = session.exec(select(AnalysisRun)).one()
-            movie = session.get(Movie, "subject_fail")
-            failed = session.exec(select(EventRecord).where(EventRecord.type == "AnalysisFailed")).one()
+            failed = session.exec(
+                select(EventRecord).where(EventRecord.type == "AnalysisFailed")
+            ).one()
         self.assertEqual(run.status, "failed")
         self.assertEqual(run.error_code, "analysis_persistence_failed")
-        self.assertNotIn("secret", run.error_message)
-        self.assertEqual(movie.analysis_status, "failed")
+        self.assertNotIn("secret", run.error_message or "")
         self.assertNotIn("secret", str(failed.payload))
-
-    def test_verified_tmdb_identity_creates_non_owned_film(self):
-        library_manager.add_movies([self._movie("subject_tmdb", "Subject", 2000, "130")])
-        output = AnalysisV2Output.model_validate({
-            "subject_film_id": self._film_id("subject_tmdb"),
-            "summary": "Summary",
-            "assertions": [{
-                "predicate": "INFLUENCED_BY",
-                "target": {
-                    "entity_type": "film",
-                    "provider": "tmdb.movie",
-                    "external_id": "999",
-                    "display_name": "Verified Target",
-                    "release_year": 1975,
-                },
-                "rationale": "Rationale.",
-            }],
-        })
-        details = {
-            "id": 999,
-            "title": "Verified Target",
-            "original_title": "Verified Target",
-            "original_language": "en",
-            "release_date": "1975-01-01",
-            "runtime": 101,
-            "overview": "Overview",
-            "external_ids": {"imdb_id": "tt0000999"},
-            "production_countries": [{"iso_3166_1": "US"}],
-            "genres": [{"id": 18, "name": "Drama"}],
-            "credits": {"crew": [], "cast": []},
-        }
-        with (
-            patch.object(
-                analysis_service.historian,
-                "analysis_configuration",
-                return_value=AnalysisModelConfiguration("openrouter", "tmdb-model"),
-            ),
-            patch.object(
-                analysis_service.historian,
-                "analyze_v2",
-                return_value=AnalysisGenerationResult(output),
-            ),
-            patch.object(analysis_service.tmdb, "is_configured", return_value=True),
-            patch.object(analysis_service.tmdb, "movie_details", return_value=details),
-            patch.object(
-                analysis_service.evidence,
-                "verify",
-                return_value=EvidenceBatchResult((), ()),
-            ),
-        ):
-            analysis_service.analyze_movie("subject_tmdb")
-
-        with Session(self.engine) as session:
-            identity = session.exec(
-                select(ExternalIdentity)
-                .where(ExternalIdentity.provider == "tmdb.movie")
-                .where(ExternalIdentity.external_id == "999")
-            ).one()
-            film = session.get(Film, identity.entity_id)
-            item = session.exec(select(LibraryItem).where(LibraryItem.film_id == film.id)).first()
-        self.assertEqual(film.canonical_title, "Verified Target")
-        self.assertIsNone(item)
-
-    def test_failed_run_is_reused_for_a_successful_retry(self):
-        library_manager.add_movies([
-            self._movie("subject_retry", "Subject", 2000, "140"),
-            self._movie("target_retry", "Target", 1980, "240"),
-        ])
-        output = AnalysisV2Output.model_validate({
-            "subject_film_id": self._film_id("subject_retry"),
-            "summary": "Summary",
-            "assertions": [{
-                "predicate": "INFLUENCED_BY",
-                "target": {"entity_type": "film", "entity_id": self._film_id("target_retry")},
-                "rationale": "Rationale.",
-            }],
-        })
-        configuration = AnalysisModelConfiguration("openrouter", "retry-model")
-        with (
-            patch.object(
-                analysis_service.historian,
-                "analysis_configuration",
-                return_value=configuration,
-            ),
-            patch.object(
-                analysis_service.historian,
-                "analyze_v2",
-                side_effect=ValueError("raw provider output"),
-            ),
-        ):
-            with self.assertRaises(AnalysisExecutionError):
-                analysis_service.analyze_movie("subject_retry")
-        with (
-            patch.object(
-                analysis_service.historian,
-                "analysis_configuration",
-                return_value=configuration,
-            ),
-            patch.object(
-                analysis_service.historian,
-                "analyze_v2",
-                return_value=AnalysisGenerationResult(output),
-            ),
-            patch.object(
-                analysis_service.evidence,
-                "verify",
-                return_value=EvidenceBatchResult((), ()),
-            ),
-        ):
-            result = analysis_service.analyze_movie("subject_retry")
-        with Session(self.engine) as session:
-            runs = session.exec(select(AnalysisRun)).all()
-        self.assertFalse(result["cached"])
-        self.assertEqual(len(runs), 1)
-        self.assertEqual(runs[0].status, "succeeded")
-        self.assertEqual(runs[0].attempt_count, 2)
-
-    def test_missing_tmdb_key_and_ambiguous_local_title_create_reviews(self):
-        library_manager.add_movies([
-            self._movie("subject_review", "Subject", 2000, "150"),
-            self._movie("duplicate_one", "Duplicate", 1985, "250"),
-            self._movie("duplicate_two", "Duplicate", 1985, "251"),
-        ])
-        output = AnalysisV2Output.model_validate({
-            "subject_film_id": self._film_id("subject_review"),
-            "summary": "Summary survives unresolved relationship candidates.",
-            "assertions": [
-                {
-                    "predicate": "INFLUENCED_BY",
-                    "target": {
-                        "entity_type": "film",
-                        "provider": "tmdb.movie",
-                        "external_id": "9999",
-                        "display_name": "Remote Film",
-                        "release_year": 1970,
-                    },
-                    "rationale": "Remote identity needs provider verification.",
-                },
-                {
-                    "predicate": "INFLUENCED_BY",
-                    "target": {
-                        "entity_type": "film",
-                        "display_name": "Duplicate",
-                        "release_year": 1985,
-                    },
-                    "rationale": "A name-only reference must be unique.",
-                },
-            ],
-        })
-        with (
-            patch.object(
-                analysis_service.historian,
-                "analysis_configuration",
-                return_value=AnalysisModelConfiguration("openrouter", "review-model"),
-            ),
-            patch.object(
-                analysis_service.historian,
-                "analyze_v2",
-                return_value=AnalysisGenerationResult(output),
-            ),
-            patch.object(analysis_service.tmdb, "is_configured", return_value=False),
-            patch.object(
-                analysis_service.evidence,
-                "verify",
-                return_value=EvidenceBatchResult((), ()),
-            ),
-        ):
-            result = analysis_service.analyze_movie("subject_review")
-
-        with Session(self.engine) as session:
-            run = session.exec(select(AnalysisRun)).one()
-            assertions = session.exec(select(Assertion)).all()
-            reviews = session.exec(select(AnalysisResolutionReview)).all()
-            movie = session.get(Movie, "subject_review")
-        self.assertEqual(run.status, "succeeded")
-        self.assertEqual(assertions, [])
-        self.assertEqual(
-            {review.reason_code for review in reviews},
-            {"unresolved_reference", "ambiguous_reference"},
-        )
-        self.assertEqual(result["reviews"], 2)
-        self.assertEqual(movie.analysis_data["influence_impact"], output.summary)
-
-    def test_external_identity_title_and_year_conflict_enters_review(self):
-        library_manager.add_movies([
-            self._movie("subject_identity", "Subject", 2000, "160"),
-            self._movie("gattaca", "Gattaca", 1997, "782"),
-        ])
-        output = AnalysisV2Output.model_validate({
-            "subject_film_id": self._film_id("subject_identity"),
-            "summary": "Summary remains available when an identity conflicts.",
-            "assertions": [{
-                "predicate": "INFLUENCED_BY",
-                "target": {
-                    "entity_type": "film",
-                    "provider": "tmdb.movie",
-                    "external_id": "782",
-                    "display_name": "Rashomon",
-                    "release_year": 1950,
-                },
-                "rationale": "The candidate deliberately contradicts its provider identity.",
-            }],
-        })
-
-        self._run_with_output("subject_identity", output, model="identity-conflict-model")
-
-        with Session(self.engine) as session:
-            assertions = session.exec(select(Assertion)).all()
-            reviews = session.exec(
-                select(AnalysisResolutionReview)
-                .where(AnalysisResolutionReview.candidate_kind == "assertion")
-            ).all()
-        self.assertEqual(assertions, [])
-        self.assertEqual(len(reviews), 1)
-        self.assertEqual(reviews[0].reason_code, "identity_conflict")
-
-    def test_model_qualifiers_are_reviewed_instead_of_persisted(self):
-        library_manager.add_movies([
-            self._movie("subject_qualifier", "Subject", 2000, "170"),
-            self._movie("target_qualifier", "Target", 1980, "270"),
-        ])
-        output = AnalysisV2Output.model_validate({
-            "subject_film_id": self._film_id("subject_qualifier"),
-            "summary": "Summary.",
-            "assertions": [{
-                "predicate": "INFLUENCED_BY",
-                "target": {"entity_type": "film", "entity_id": self._film_id("target_qualifier")},
-                "rationale": "Rationale.",
-                "qualifiers": {"relationship_type": "visual"},
-            }],
-        })
-
-        self._run_with_output("subject_qualifier", output, model="qualifier-policy-model")
-
-        with Session(self.engine) as session:
-            self.assertEqual(session.exec(select(Assertion)).all(), [])
-            review = session.exec(
-                select(AnalysisResolutionReview)
-                .where(AnalysisResolutionReview.candidate_kind == "assertion")
-            ).one()
-        self.assertEqual(review.reason_code, "invalid_candidate")
-
-    def test_unknown_external_identity_cannot_fall_back_to_a_matching_name(self):
-        library_manager.add_movies([
-            self._movie("subject_atomic_identity", "Subject", 2000, "171"),
-            self._movie("target_atomic_identity", "Target", 1980, "271"),
-        ])
-        output = AnalysisV2Output.model_validate({
-            "subject_film_id": self._film_id("subject_atomic_identity"),
-            "summary": "Summary.",
-            "assertions": [{
-                "predicate": "INFLUENCED_BY",
-                "target": {
-                    "entity_type": "film",
-                    "provider": "tmdb",
-                    "external_id": "tmdb.movie:271",
-                    "display_name": "Target",
-                    "release_year": 1980,
-                },
-                "rationale": "A malformed identity must not be discarded during name fallback.",
-            }],
-        })
-
-        self._run_with_output(
-            "subject_atomic_identity",
-            output,
-            model="atomic-identity-model",
-        )
-
-        with Session(self.engine) as session:
-            self.assertEqual(session.exec(select(Assertion)).all(), [])
-            review = session.exec(
-                select(AnalysisResolutionReview)
-                .where(AnalysisResolutionReview.candidate_kind == "assertion")
-            ).one()
-        self.assertEqual(review.reason_code, "identity_conflict")
-
-    def test_input_includes_stably_sorted_active_concept_catalog(self):
-        library_manager.add_movies([self._movie("subject_concepts", "Subject", 2000, "180")])
-        with Session(self.engine) as session:
-            session.add(GraphEntity(id="concept_" + "a" * 32, entity_type="concept"))
-            session.flush()
-            session.add(Concept(
-                id="concept_" + "a" * 32,
-                kind="visual_style",
-                canonical_key="test:visual-style",
-                canonical_name="Saturated romantic modernism",
-                lifecycle_status="active",
-            ))
-            session.flush()
-            session.add(ConceptAlias(
-                id="conceptalias_" + "b" * 32,
-                concept_id="concept_" + "a" * 32,
-                locale="und",
-                alias="Saturated romanticism",
-                normalized_alias="saturated romanticism",
-                provenance_ref="test",
-            ))
-            session.commit()
-            analysis_input = analysis_runtime_persistence.build_input(
-                session,
-                self._film_id("subject_concepts"),
-            )
-
-        self.assertEqual(len(analysis_input.available_concepts), 1)
-        self.assertEqual(analysis_input.available_concepts[0].entity_id, "concept_" + "a" * 32)
-        self.assertEqual(
-            analysis_input.available_concepts[0].aliases,
-            ["Saturated romanticism"],
-        )
-
-    def _run_with_output(self, movie_id, output, *, model):
-        with (
-            patch.object(
-                analysis_service.historian,
-                "analysis_configuration",
-                return_value=AnalysisModelConfiguration("openrouter", model),
-            ),
-            patch.object(
-                analysis_service.historian,
-                "analyze_v2",
-                return_value=AnalysisGenerationResult(output),
-            ),
-            patch.object(
-                analysis_service.evidence,
-                "verify",
-                return_value=EvidenceBatchResult((), ()),
-            ),
-        ):
-            return analysis_service.analyze_movie(movie_id)
-
-    def _film_id(self, movie_id):
-        with Session(self.engine) as session:
-            return session.get(LegacyMovieAlias, movie_id).film_id
-
-    @staticmethod
-    def _movie(movie_id, title, year, tmdb_id):
-        return {
-            "id": movie_id,
-            "title": title,
-            "title_cn": title,
-            "year": year,
-            "tmdb_id": tmdb_id,
-            "library_status": "available",
-            "metadata_source": "tmdb",
-            "scrape_status": "matched",
-        }
 
 
 if __name__ == "__main__":

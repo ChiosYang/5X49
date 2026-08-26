@@ -3,193 +3,153 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from sqlmodel import SQLModel, Session, create_engine, select
+from sqlmodel import Session, create_engine, select
 
 import app.database as database
-import app.services.analysis as analysis_module
 import app.services.event_store as event_store_module
 import app.services.library as library_module
-from app.canonical_models import AssertionPredicate, LegacyMovieAlias
-from app.contracts.analysis_persistence import predicate_seed_rows
-from app.contracts.analysis_v2 import AnalysisV2Output
-from app.models import EventRecord, Job, MovieUserState
-from app.services.analysis_evidence import EvidenceBatchResult
-from app.services.analysis import analysis_service
-from app.services.historian import AnalysisGenerationResult, AnalysisModelConfiguration
+import app.services.operation_snapshots as snapshots_module
+import app.services.user_state as user_state_module
+from app.canonical_models import FilmProfileState, LibraryItem, MediaAsset, OperationSnapshot
+from app.database import configure_sqlite_engine
+from app.migrations.runner import run_migrations
+from app.models import EventRecord
 from app.services.library import library_manager
+from app.services.operation_snapshots import OperationConflict, operation_snapshot_service
+from app.services.operation_manifests import OperationManifestStore
+from app.services.user_state import film_profile_state_manager
 
 
-class EventSourcedCommandTests(unittest.TestCase):
+class CanonicalCommandEventTests(unittest.TestCase):
     def setUp(self):
-        self._original_analysis_engine = analysis_module.engine
-        self._original_database_engine = database.engine
-        self._original_event_store_engine = event_store_module.engine
-        self._original_library_engine = library_module.engine
         self._tmp = tempfile.TemporaryDirectory()
-        self.tmp_path = Path(self._tmp.name)
-        self.engine = create_engine(f"sqlite:///{self.tmp_path / 'library.db'}")
-        analysis_module.engine = self.engine
-        database.engine = self.engine
-        event_store_module.engine = self.engine
-        library_module.engine = self.engine
-        SQLModel.metadata.create_all(self.engine)
-        with Session(self.engine) as session:
-            session.add_all([AssertionPredicate(**row) for row in predicate_seed_rows()])
-            session.commit()
-
-    def tearDown(self):
-        analysis_module.engine = self._original_analysis_engine
-        database.engine = self._original_database_engine
-        event_store_module.engine = self._original_event_store_engine
-        library_module.engine = self._original_library_engine
-        self.engine.dispose()
-        self._tmp.cleanup()
-
-    def test_ignore_movie_updates_state_through_event_projection(self):
-        library_manager.add_movies([self._movie("local_ignore")])
-
-        projected = library_manager.ignore_movie("local_ignore")
-
-        self.assertIsNotNone(projected)
-        self.assertEqual(projected["library_status"], "ignored")
-        stored = library_manager.get_movie("local_ignore")
-        self.assertEqual(stored["library_status"], "ignored")
-        event = self._latest_event("MovieIgnored")
-        self.assertEqual(event.aggregate_id, "local_ignore")
-
-    def test_mark_missing_updates_state_through_event_projection(self):
-        library_manager.add_movies([{
-            **self._movie("local_missing"),
-            "last_seen_at": "2026-05-20T00:00:00+00:00",
-        }])
-
-        updated = library_manager.mark_missing_not_seen_since("2026-05-21T00:00:00+00:00")
-
-        self.assertEqual(updated, 1)
-        stored = library_manager.get_movie("local_missing")
-        self.assertEqual(stored["library_status"], "missing")
-        self.assertIsNotNone(stored["missing_since"])
-        event = self._latest_event("MovieMarkedMissing")
-        self.assertEqual(event.aggregate_id, "local_missing")
-
-    def test_analysis_updates_state_through_events(self):
-        library_manager.add_movies([self._movie("local_analysis")])
-        with Session(self.engine) as session:
-            film_id = session.get(LegacyMovieAlias, "local_analysis").film_id
-
-        output = AnalysisV2Output.model_validate({
-            "subject_film_id": film_id,
-            "summary": "A concise influence summary.",
-            "assertions": [{
-                "predicate": "HAS_MICRO_GENRE",
-                "target": {"entity_type": "concept", "display_name": "Digital noir"},
-                "rationale": "Reality-bending cyber thriller",
-            }],
-        })
-        with (
-            patch.object(
-                analysis_service.historian,
-                "analysis_configuration",
-                return_value=AnalysisModelConfiguration("openrouter", "test-model"),
-            ),
-            patch.object(
-                analysis_service.historian,
-                "analyze_v2",
-                return_value=AnalysisGenerationResult(output),
-            ),
-            patch.object(
-                analysis_service.evidence,
-                "verify",
-                return_value=EvidenceBatchResult((), ()),
-            ),
-        ):
-            analysis_service.analyze_movie("local_analysis")
-
-        stored = library_manager.get_movie("local_analysis")
-        self.assertEqual(stored["analysis_status"], "completed")
-        self.assertEqual(stored["micro_genre"], "Digital noir")
-        self.assertEqual(stored["micro_genre_definition"], "Reality-bending cyber thriller")
-        self.assertIsNotNone(self._latest_event("AnalysisStarted"))
-        self.assertIsNotNone(self._latest_event("AnalysisCompleted"))
-
-    def test_clear_all_data_removes_database_backed_library_data(self):
-        library_manager.add_movies([self._movie("local_clear")])
-        with Session(self.engine) as session:
-            session.add(MovieUserState(movie_id="local_clear", watched=True))
-            session.add(Job(id="job_clear", type="library.reconcile"))
-            session.add(
-                EventRecord(
-                    aggregate_type="library",
-                    aggregate_id=None,
-                    type="LibrarySeeded",
-                    payload={"count": 1},
-                )
-            )
-            session.commit()
-
-        counts = library_manager.clear_all_data()
-
-        self.assertEqual(counts, {
-            "user_states": 1,
-            "movies": 1,
-            "jobs": 1,
-            "events": 2,
-        })
-        with Session(self.engine) as session:
-            self.assertEqual(session.exec(select(MovieUserState)).all(), [])
-            self.assertEqual(session.exec(select(Job)).all(), [])
-            self.assertEqual(session.exec(select(EventRecord)).all(), [])
-            self.assertEqual(library_manager.get_movies(), [])
-
-    def test_clear_library_removes_legacy_user_state_before_movies(self):
-        library_manager.add_movies([self._movie("local_clear_library")])
-        with Session(self.engine) as session:
-            session.add(MovieUserState(movie_id="local_clear_library", watched=True))
-            session.commit()
-
-        library_manager.clear_library()
-
-        with Session(self.engine) as session:
-            self.assertEqual(session.exec(select(MovieUserState)).all(), [])
-        self.assertEqual(library_manager.get_movies(), [])
-
-    def test_cleanup_missing_removes_only_matching_legacy_user_state(self):
-        library_manager.add_movies([
-            {**self._movie("local_missing_cleanup"), "library_status": "missing"},
-            self._movie("local_available_keep"),
-        ])
-        with Session(self.engine) as session:
-            session.add_all([
-                MovieUserState(movie_id="local_missing_cleanup", watched=True),
-                MovieUserState(movie_id="local_available_keep", favorite=True),
-            ])
-            session.commit()
-
-        deleted = library_manager.cleanup_missing()
-
-        self.assertEqual(deleted, 1)
-        with Session(self.engine) as session:
-            states = session.exec(select(MovieUserState)).all()
-        self.assertEqual([state.movie_id for state in states], ["local_available_keep"])
-
-    def _latest_event(self, event_type: str) -> EventRecord:
-        with Session(self.engine) as session:
-            return session.exec(
-                select(EventRecord)
-                .where(EventRecord.type == event_type)
-                .order_by(EventRecord.occurred_at.desc(), EventRecord.id.desc())
-            ).first()
-
-    def _movie(self, movie_id: str) -> dict:
-        return {
-            "id": movie_id,
-            "title": movie_id,
-            "title_cn": movie_id,
+        self.root = Path(self._tmp.name)
+        self.path = self.root / "library.db"
+        self.engine = create_engine(f"sqlite:///{self.path}")
+        configure_sqlite_engine(self.engine)
+        run_migrations(self.engine, self.path, app_version="test", backup_required=False)
+        self.modules = (
+            database,
+            event_store_module,
+            library_module,
+            snapshots_module,
+            user_state_module,
+        )
+        self.original = {module: module.engine for module in self.modules}
+        for module in self.modules:
+            module.engine = self.engine
+        media = self.root / "event.mkv"
+        media.write_bytes(b"event")
+        self.media = media
+        library_manager.add_observations([{
+            "title": "Event Film",
             "year": 2026,
+            "media_path": str(media.resolve()),
+            "video_file": media.name,
+            "folder_path": str(self.root.resolve()),
+            "folder_name": self.root.name,
+            "file_size": media.stat().st_size,
+            "file_mtime": media.stat().st_mtime,
             "library_status": "available",
             "metadata_source": "filename",
             "scrape_status": "pending",
-        }
+        }])
+        film = library_manager.list_films()[0]
+        self.film_id = film["id"]
+        self.item_id = film["primary_item"]["id"]
+
+    def tearDown(self):
+        for module, engine in self.original.items():
+            module.engine = engine
+        self.engine.dispose()
+        self._tmp.cleanup()
+
+    def test_profile_state_and_event_commit_atomically(self):
+        with patch.object(event_store_module.event_store, "append_in_session", side_effect=RuntimeError("event failed")):
+            with self.assertRaises(RuntimeError):
+                film_profile_state_manager.upsert(self.film_id, favorite=True, fields_set={"favorite"})
+        with Session(self.engine) as session:
+            state = session.exec(select(FilmProfileState).where(FilmProfileState.film_id == self.film_id)).first()
+            self.assertTrue(state is None or not state.favorite)
+            self.assertEqual(
+                session.exec(select(EventRecord).where(EventRecord.type == "FilmProfileStateUpdated")).all(),
+                [],
+            )
+
+    def test_ignore_creates_bounded_event_and_snapshot_in_one_commit(self):
+        library_manager.ignore_item(self.item_id)
+        with Session(self.engine) as session:
+            event = session.exec(select(EventRecord).where(EventRecord.type == "LibraryItemIgnored")).one()
+            snapshot = session.exec(select(OperationSnapshot).where(OperationSnapshot.event_id == event.id)).one()
+        self.assertEqual(event.aggregate_type, "library_item")
+        self.assertEqual(event.aggregate_id, self.item_id)
+        self.assertEqual(event.payload, {"film_id": self.film_id})
+        self.assertEqual(snapshot.before_state, {"availability_status": "available"})
+        self.assertEqual(snapshot.after_state, {"availability_status": "ignored"})
+
+    def test_snapshot_restore_rejects_state_drift_and_is_single_use(self):
+        library_manager.ignore_item(self.item_id)
+        with Session(self.engine) as session:
+            snapshot = session.exec(select(OperationSnapshot)).one()
+            snapshot_id = snapshot.id
+            item = session.get(LibraryItem, self.item_id)
+            item.availability_status = "missing"
+            session.add(item)
+            session.commit()
+        preview = operation_snapshot_service.preview(snapshot_id)
+        self.assertFalse(preview["current_matches_after"])
+        with self.assertRaises(OperationConflict):
+            operation_snapshot_service.restore(snapshot_id, "stale")
+
+    def test_file_organization_restore_uses_only_a_controlled_manifest_reference(self):
+        store = OperationManifestStore(self.root / "manifests")
+        manifest_ref = store.create(self.root, self.media)
+        target_dir = self.root / "Event Film (2026)"
+        target_dir.mkdir()
+        target = target_dir / self.media.name
+        self.media.replace(target)
+        store.finalize(manifest_ref, target=target, sidecars=[])
+        with Session(self.engine) as session:
+            item = session.get(LibraryItem, self.item_id)
+            item.source_item_key = str(target).replace("\\", "/")
+            session.add(item)
+            asset = session.exec(
+                select(MediaAsset)
+                .where(MediaAsset.library_item_id == self.item_id)
+                .where(MediaAsset.asset_kind == "video")
+            ).one()
+            asset.locator = str(target.resolve())
+            session.add(asset)
+            session.commit()
+
+        snapshot_id = library_manager.record_file_organization(
+            self.film_id,
+            self.item_id,
+            manifest_ref,
+            command_id="job_fixture",
+            tmdb_id=42,
+            sidecar_count=0,
+            scrape_status="success",
+        )
+        with patch.object(snapshots_module, "operation_manifest_store", store):
+            preview = operation_snapshot_service.preview(snapshot_id)
+            self.assertTrue(preview["current_matches_after"])
+            operation_snapshot_service.restore(snapshot_id, preview["confirmation_token"])
+
+        self.assertTrue(self.media.is_file())
+        self.assertFalse(target.exists())
+        with Session(self.engine) as session:
+            event = session.exec(
+                select(EventRecord).where(EventRecord.type == "RootVideoOrganized")
+            ).one()
+            asset = session.exec(
+                select(MediaAsset)
+                .where(MediaAsset.library_item_id == self.item_id)
+                .where(MediaAsset.asset_kind == "video")
+            ).one()
+        self.assertEqual(event.aggregate_type, "library_item")
+        self.assertNotIn(str(self.root.resolve()), str(event.payload))
+        self.assertEqual(Path(asset.locator).resolve(), self.media.resolve())
 
 
 if __name__ == "__main__":

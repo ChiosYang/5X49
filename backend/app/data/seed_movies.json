@@ -1,47 +1,52 @@
 [
   {
-    "id": "Inception_2010",
+    "folder_name": "demo/inception-2010",
     "title": "Inception",
     "year": 2010,
+    "tmdb_id": "27205",
     "backdrop_path": "/s3TBrRGB1iav7gFOCNx3H31MoES.jpg",
-    "overview": "Cobb, a skilled thief who commits corporate espionage by infiltrating the subconscious of his targets...",
-    "analysis_status": "completed",
-    "micro_genre": "Metaphysical Heist Thriller"
+    "overview": "A skilled extractor is offered a chance to erase his past by planting an idea.",
+    "metadata_source": "seed",
+    "library_status": "available"
   },
   {
-    "id": "The_Godfather_1972",
+    "folder_name": "demo/the-godfather-1972",
     "title": "The Godfather",
     "year": 1972,
+    "tmdb_id": "238",
     "backdrop_path": "/tmU7GeKVybMWFButWEGl2M4GeiP.jpg",
-    "overview": "Spanning the years 1945 to 1955, a chronicle of the fictional Italian-American Corleone crime family...",
-    "analysis_status": "completed",
-    "micro_genre": "Operatic Gangster Tragedy"
+    "overview": "A crime-family patriarch transfers control of his clandestine empire to his reluctant son.",
+    "metadata_source": "seed",
+    "library_status": "available"
   },
   {
-    "id": "Parasite_2019",
+    "folder_name": "demo/parasite-2019",
     "title": "Parasite",
     "year": 2019,
+    "tmdb_id": "496243",
     "backdrop_path": "/TU9NIjwzjoKPwQHoHshkFcQUCG.jpg",
-    "overview": "All-unemployed Ki-taek's family takes peculiar interest in the wealthy and glamorous Parks...",
-    "analysis_status": "completed",
-    "micro_genre": "Social Satire Thriller"
+    "overview": "An unemployed family becomes entangled with a wealthy household.",
+    "metadata_source": "seed",
+    "library_status": "available"
   },
   {
-    "id": "2001_A_Space_Odyssey_1968",
+    "folder_name": "demo/2001-a-space-odyssey-1968",
     "title": "2001: A Space Odyssey",
     "year": 1968,
+    "tmdb_id": "62",
     "backdrop_path": "/w5IDXtifKntw0ajv2co7jFlTQDM.jpg",
-    "overview": "Humanity finds a mysterious object buried beneath the lunar surface...",
-    "analysis_status": "completed",
-    "micro_genre": "Cosmic Evolutionary Epic"
+    "overview": "Humanity follows a mysterious signal from prehistory into deep space.",
+    "metadata_source": "seed",
+    "library_status": "available"
   },
   {
-    "id": "Moonlight_2016",
+    "folder_name": "demo/moonlight-2016",
     "title": "Moonlight",
     "year": 2016,
+    "tmdb_id": "376867",
     "backdrop_path": "/v0qkC1c06zg2XsBmOb1S90JNiLg.jpg",
-    "overview": "The tender, heartbreaking story of a young man's struggle to find himself...",
-    "analysis_status": "completed",
-    "micro_genre": "Coming-of-Age Poetic Realism"
+    "overview": "A young man searches for identity and connection across three stages of life.",
+    "metadata_source": "seed",
+    "library_status": "available"
   }
 ]

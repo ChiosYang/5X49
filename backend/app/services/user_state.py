@@ -2,21 +2,18 @@ from typing import Optional
 
 from sqlmodel import Session, select
 
+from app.canonical_models import Film, FilmProfileState, Viewing
 from app.database import engine
-from app.models import Movie, MovieUserState, utc_now_iso
+from app.models import utc_now_iso
 from app.services.canonical_runtime import canonical_runtime_writer
-from app.services.canonical_shadow import CanonicalShadowReader
-from app.services.compatibility_reads import (
-    library_read_source,
-    log_orphan_fallback,
-    log_shadow_report,
-)
+from app.services.event_store import event_store
+from app.services.library import library_manager
 
 
-class MovieUserStateManager:
-    def default_state(self, movie_id: str) -> dict:
+class FilmProfileStateManager:
+    def default_state(self, film_id: str) -> dict:
         return {
-            "movie_id": movie_id,
+            "film_id": film_id,
             "watched": False,
             "watched_at": None,
             "rating": None,
@@ -25,61 +22,15 @@ class MovieUserStateManager:
             "updated_at": None,
         }
 
-    def get(self, movie_id: str) -> dict:
-        legacy = self._legacy_get(movie_id)
-        source = library_read_source()
-        if source == "legacy":
-            return legacy
-        reader = CanonicalShadowReader(engine)
-        canonical = reader.get_user_state(movie_id)
-        if source == "shadow":
-            log_shadow_report(reader.compare_user_states())
-            return legacy
-        if canonical is None:
-            log_orphan_fallback("user_state", record_id=movie_id)
-        return canonical or legacy
-
-    def _legacy_get(self, movie_id: str) -> dict:
+    def get(self, film_id: str) -> dict | None:
         with Session(engine) as session:
-            state = session.get(MovieUserState, movie_id)
-            return state.model_dump() if state else self.default_state(movie_id)
-
-    def list_all(self) -> list[dict]:
-        legacy = self._legacy_list_all()
-        source = library_read_source()
-        if source == "legacy":
-            return legacy
-        reader = CanonicalShadowReader(engine)
-        if source == "shadow":
-            log_shadow_report(reader.compare_user_states())
-            return legacy
-        canonical = reader.list_user_states()
-        canonical_ids = {state["movie_id"] for state in canonical}
-        orphans = [
-            state
-            for state in legacy
-            if state["movie_id"] not in canonical_ids
-            and (
-                state.get("watched")
-                or state.get("favorite")
-                or state.get("rating") is not None
-                or bool(state.get("notes"))
-                or state.get("watched_at") is not None
-            )
-        ]
-        if orphans:
-            log_orphan_fallback("user_state", count=len(orphans))
-            canonical.extend(orphans)
-        return sorted(canonical, key=lambda state: state.get("updated_at") or "", reverse=True)
-
-    def _legacy_list_all(self) -> list[dict]:
-        with Session(engine) as session:
-            states = session.exec(select(MovieUserState).order_by(MovieUserState.updated_at.desc())).all()
-            return [state.model_dump() for state in states]
+            if session.get(Film, film_id) is None:
+                return None
+            return self._view(session, film_id)
 
     def upsert(
         self,
-        movie_id: str,
+        film_id: str,
         *,
         watched: Optional[bool] = None,
         watched_at: Optional[str] = None,
@@ -87,14 +38,15 @@ class MovieUserStateManager:
         favorite: Optional[bool] = None,
         notes: Optional[str] = None,
         fields_set: set[str] | None = None,
-    ) -> dict:
+    ) -> dict | None:
         fields_set = fields_set or set()
-        now = utc_now_iso()
-
         with Session(engine) as session:
-            canonical = canonical_runtime_writer.sync_user_state(
+            if session.get(Film, film_id) is None:
+                return None
+            before = self._view(session, film_id)
+            canonical_runtime_writer.sync_user_state(
                 session,
-                movie_id,
+                film_id,
                 watched=watched,
                 watched_at=watched_at,
                 rating=rating,
@@ -102,89 +54,89 @@ class MovieUserStateManager:
                 notes=notes,
                 fields_set=fields_set,
             )
-            if canonical is not None:
-                session.commit()
-                return canonical
-            state = session.get(MovieUserState, movie_id)
-            if not state:
-                state = MovieUserState(movie_id=movie_id)
-
-            if "watched" in fields_set and watched is not None:
-                state.watched = watched
-            if "watched_at" in fields_set:
-                state.watched_at = watched_at
-            if "rating" in fields_set:
-                state.rating = rating
-            if "favorite" in fields_set and favorite is not None:
-                state.favorite = favorite
-            if "notes" in fields_set:
-                state.notes = notes
-
-            state.updated_at = now
-            session.add(state)
+            after = self._view(session, film_id)
+            event_store.append_in_session(
+                session,
+                "FilmProfileStateUpdated",
+                "film",
+                film_id,
+                {
+                    "changed_fields": sorted(fields_set),
+                    "before": before,
+                    "after": after,
+                },
+                actor_type="user",
+            )
             session.commit()
-            session.refresh(state)
-            return state.model_dump()
+            return after
 
     def watch_history(self) -> list[dict]:
-        source = library_read_source()
-        if source == "canonical":
-            reader = CanonicalShadowReader(engine)
-            canonical = reader.watch_history()
-            legacy_orphans = [
-                entry
-                for entry in self._legacy_watch_history()
-                if reader.get_movie(entry["movie"]["id"]) is None
-            ]
-            if legacy_orphans:
-                log_orphan_fallback("watch_history", count=len(legacy_orphans))
-                canonical.extend(legacy_orphans)
-                canonical.sort(
-                    key=lambda entry: (
-                        entry["user_state"].get("watched_at") or "",
-                        entry["user_state"].get("updated_at") or "",
-                    ),
-                    reverse=True,
-                )
-            return canonical
-        legacy = self._legacy_watch_history()
-        if source == "shadow":
-            canonical = CanonicalShadowReader(engine).watch_history()
-            # The detailed field comparison is covered by movie and state shadow reports.
-            if len(legacy) != len(canonical):
-                import logging
-
-                logging.getLogger("compatibility_reads").info(
-                    "Canonical shadow comparison scope=watch_history legacy_count=%s canonical_count=%s",
-                    len(legacy),
-                    len(canonical),
-                )
-        return legacy
-
-    def _legacy_watch_history(self) -> list[dict]:
         with Session(engine) as session:
-            statement = (
-                select(MovieUserState, Movie)
-                .join(Movie, Movie.id == MovieUserState.movie_id)
-                .where(MovieUserState.watched == True)  # noqa: E712
-            )
-            rows = session.exec(statement).all()
+            active = session.exec(
+                select(Viewing)
+                .where(Viewing.review_status == "confirmed")
+                .where(Viewing.deleted_at.is_(None))
+                .order_by(Viewing.watched_at.desc(), Viewing.updated_at.desc(), Viewing.id.desc())
+            ).all()
+            latest_by_film: dict[str, Viewing] = {}
+            for viewing in active:
+                latest_by_film.setdefault(viewing.film_id, viewing)
 
-        entries = [
-            {
-                "movie": movie.model_dump(),
-                "user_state": state.model_dump(),
-            }
-            for state, movie in rows
-        ]
+        entries = []
+        for viewing in latest_by_film.values():
+            film = library_manager.get_film(viewing.film_id)
+            if film is None:
+                continue
+            entries.append(
+                {
+                    "film": film,
+                    "viewing": {
+                        "id": viewing.id,
+                        "film_id": viewing.film_id,
+                        "watched_at": viewing.watched_at,
+                        "watched_at_precision": viewing.watched_at_precision,
+                        "source": viewing.source,
+                    },
+                    "profile_state": film["profile_state"],
+                }
+            )
         return sorted(
             entries,
             key=lambda entry: (
-                entry["user_state"].get("watched_at") or "",
-                entry["user_state"].get("updated_at") or "",
+                entry["viewing"].get("watched_at") or "",
+                entry["viewing"]["id"],
             ),
             reverse=True,
         )
 
+    def _view(self, session: Session, film_id: str) -> dict:
+        profile_id = canonical_runtime_writer.local_profile_id(session)
+        state = session.get(FilmProfileState, (profile_id, film_id))
+        viewing = session.exec(
+            select(Viewing)
+            .where(Viewing.profile_id == profile_id)
+            .where(Viewing.film_id == film_id)
+            .where(Viewing.review_status == "confirmed")
+            .where(Viewing.deleted_at.is_(None))
+            .order_by(Viewing.watched_at.desc(), Viewing.updated_at.desc(), Viewing.id.desc())
+        ).first()
+        updated_values = [
+            value
+            for value in (state.updated_at if state else None, viewing.updated_at if viewing else None)
+            if value
+        ]
+        return {
+            "film_id": film_id,
+            "watched": viewing is not None,
+            "watched_at": viewing.watched_at if viewing else None,
+            "rating": state.rating if state else None,
+            "favorite": bool(state.favorite) if state else False,
+            "notes": state.notes if state else None,
+            "updated_at": max(updated_values, default=None),
+        }
 
-movie_user_state_manager = MovieUserStateManager()
+
+film_profile_state_manager = FilmProfileStateManager()
+
+
+__all__ = ["FilmProfileStateManager", "film_profile_state_manager"]

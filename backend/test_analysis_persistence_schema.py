@@ -195,7 +195,6 @@ class AnalysisPersistenceSchemaTests(unittest.TestCase):
         self.database_path = self.tmp_path / "analysis.db"
         self.engine = create_engine(f"sqlite:///{self.database_path}")
         configure_sqlite_engine(self.engine)
-        SQLModel.metadata.create_all(self.engine)
         run_migrations(
             self.engine,
             self.database_path,
@@ -214,8 +213,8 @@ class AnalysisPersistenceSchemaTests(unittest.TestCase):
         self.engine.dispose()
         self._tmp.cleanup()
 
-    def test_schema_v8_and_fresh_migrated_shapes_are_equivalent(self):
-        self.assertEqual(MIGRATIONS[-1].version, 10)
+    def test_fresh_v1_analysis_schema_and_reference_rows_are_available(self):
+        self.assertEqual(MIGRATIONS[-1].version, 1)
         inspector = inspect(self.engine)
         self.assertTrue(set(ANALYSIS_TABLES).issubset(inspector.get_table_names()))
         with self.engine.connect() as connection:
@@ -425,7 +424,7 @@ class AnalysisPersistenceSchemaTests(unittest.TestCase):
             self.assertEqual(self._counts(("analysis_run", "assertion_predicate")), before)
 
             result = library_manager.clear_all_data()
-            self.assertEqual(set(result), {"user_states", "movies", "jobs", "events"})
+            self.assertEqual(set(result), {"films", "library_items", "jobs", "events"})
             self.assertEqual(self._counts(ANALYSIS_TABLES[1:]), {name: 0 for name in ANALYSIS_TABLES[1:]})
             self.assertEqual(self._counts(("assertion_predicate",))["assertion_predicate"], 9)
             with self.engine.connect() as connection:

@@ -5,12 +5,12 @@
 body {
   --font-sans: var(--font-inter);
   --font-serif: var(--font-playfair);
-  background-color: var(--color-background);
-  color: var(--color-foreground);
+  background-color: var(--color-canvas);
+  color: var(--color-ink);
   font-family: var(--font-sans);
 }
 
-/* Legacy aliases retained while existing pages migrate to semantic roles. */
+/* Stable editorial typography utilities. */
 @utility text-hero {
   font-family: var(--font-sans);
   font-weight: 800;

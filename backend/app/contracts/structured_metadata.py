@@ -9,7 +9,7 @@ from pathlib import PurePosixPath, PureWindowsPath
 from typing import Any
 
 
-PROVISIONAL_PERSON_PROVIDER = "legacy.local.person"
+PROVISIONAL_PERSON_PROVIDER = "local.person"
 MAX_REVIEW_RAW_BYTES = 4096
 _SENSITIVE_REVIEW_KEYS = {
     "absolute_path",
@@ -24,7 +24,7 @@ _SENSITIVE_REVIEW_KEYS = {
 
 STRUCTURED_METADATA_FIELDS = frozenset({"titles", "countries", "credits", "genres"})
 STRUCTURED_METADATA_ORIGINS = frozenset(
-    {"curated", "nfo", "tmdb", "legacy_movie", "filename"}
+    {"curated", "nfo", "tmdb", "filename"}
 )
 
 

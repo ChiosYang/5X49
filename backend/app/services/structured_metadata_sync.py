@@ -45,8 +45,7 @@ SOURCE_PRECEDENCE = {
     "curated": 0,
     "nfo": 1,
     "tmdb": 2,
-    "legacy_movie": 3,
-    "filename": 4,
+    "filename": 3,
 }
 
 _FIELD_TO_GROUP = {

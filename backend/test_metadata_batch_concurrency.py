@@ -10,8 +10,8 @@ from app.services.metadata.models import ScrapeOptions
 from app.services.metadata.scraper import MetadataScraper
 
 
-def movies(count: int) -> list[dict]:
-    return [{"id": f"movie-{index}"} for index in range(count)]
+def films(count: int) -> list[dict]:
+    return [{"id": f"film-{index}"} for index in range(count)]
 
 
 class FakeJobContext:
@@ -36,11 +36,11 @@ class FakeJobContext:
 
 
 class MetadataBatchConcurrencyTests(unittest.TestCase):
-    def _batch_patches(self, library_movies, scrape_side_effect, concurrency=3):
+    def _batch_patches(self, library_films, scrape_side_effect, concurrency=3):
         return (
-            patch.object(actors.library_manager, "get_movies", return_value=library_movies),
+            patch.object(actors.library_manager, "list_operation_contexts", return_value=library_films),
             patch.object(actors.metadata_scraper, "_in_scope", return_value=True),
-            patch.object(actors.metadata_scraper, "scrape_movie", side_effect=scrape_side_effect),
+            patch.object(actors.metadata_scraper, "scrape_film", side_effect=scrape_side_effect),
             patch.object(actors.metadata_scraper, "_set_status"),
             patch.object(actors.library_event_bus, "publish_library_changed"),
             patch.object(actors, "get_tmdb_scrape_concurrency", return_value=concurrency),
@@ -51,12 +51,12 @@ class MetadataBatchConcurrencyTests(unittest.TestCase):
         maximum_active = 0
         active_lock = Lock()
         statuses = {
-            "movie-0": "success",
-            "movie-1": "needs_review",
-            "movie-2": "failed",
-            "movie-3": "skipped",
-            "movie-4": "success",
-            "movie-5": "success",
+            "film-0": "success",
+            "film-1": "needs_review",
+            "film-2": "failed",
+            "film-3": "skipped",
+            "film-4": "success",
+            "film-5": "success",
         }
 
         def scrape(movie_id, _options):
@@ -71,7 +71,7 @@ class MetadataBatchConcurrencyTests(unittest.TestCase):
                 with active_lock:
                     active -= 1
 
-        patches = self._batch_patches(movies(6), scrape)
+        patches = self._batch_patches(films(6), scrape)
         with patches[0], patches[1], patches[2], patches[3], patches[4], patches[5]:
             ctx = FakeJobContext()
             result = actors.scrape_library({}, ctx)
@@ -93,11 +93,11 @@ class MetadataBatchConcurrencyTests(unittest.TestCase):
 
     def test_worker_exception_only_fails_that_movie(self):
         def scrape(movie_id, _options):
-            if movie_id == "movie-1":
+            if movie_id == "film-1":
                 raise RuntimeError("worker failed")
             return SimpleNamespace(status="success")
 
-        patches = self._batch_patches(movies(3), scrape)
+        patches = self._batch_patches(films(3), scrape)
         with patches[0], patches[1], patches[2], patches[3], patches[4], patches[5]:
             result = actors.scrape_library({}, FakeJobContext())
 
@@ -111,7 +111,7 @@ class MetadataBatchConcurrencyTests(unittest.TestCase):
             return SimpleNamespace(status="success")
 
         def run_batch(concurrency):
-            patches = self._batch_patches(movies(6), scrape, concurrency=concurrency)
+            patches = self._batch_patches(films(6), scrape, concurrency=concurrency)
             started_at = time.monotonic()
             with patches[0], patches[1], patches[2], patches[3], patches[4], patches[5]:
                 actors.scrape_library({}, FakeJobContext())
@@ -129,10 +129,10 @@ class MetadataBatchConcurrencyTests(unittest.TestCase):
         def scrape(movie_id, _options):
             with started_lock:
                 started.append(movie_id)
-            time.sleep(0.01 if movie_id == "movie-0" else 0.1)
+            time.sleep(0.01 if movie_id == "film-0" else 0.1)
             return SimpleNamespace(status="success")
 
-        patches = self._batch_patches(movies(6), scrape, concurrency=2)
+        patches = self._batch_patches(films(6), scrape, concurrency=2)
         with patches[0], patches[1], patches[2], patches[3], patches[4], patches[5]:
             with self.assertRaises(JobCancelled):
                 actors.scrape_library({}, FakeJobContext(cancel_after_processed=1))
@@ -140,8 +140,8 @@ class MetadataBatchConcurrencyTests(unittest.TestCase):
         self.assertLessEqual(len(started), 2)
 
 
-class MetadataMovieLockTests(unittest.TestCase):
-    def test_same_movie_is_serialized_and_lock_entry_is_cleaned_up(self):
+class MetadataFilmLockTests(unittest.TestCase):
+    def test_same_film_is_serialized_and_lock_entry_is_cleaned_up(self):
         scraper = MetadataScraper()
         active = 0
         maximum_active = 0
@@ -159,9 +159,9 @@ class MetadataMovieLockTests(unittest.TestCase):
                 with active_lock:
                     active -= 1
 
-        with patch.object(scraper, "_scrape_movie_unlocked", side_effect=scrape_unlocked):
+        with patch.object(scraper, "_scrape_film_unlocked", side_effect=scrape_unlocked):
             threads = [
-                Thread(target=scraper.scrape_movie, args=("same-movie", ScrapeOptions()))
+                Thread(target=scraper.scrape_film, args=("same-film", ScrapeOptions()))
                 for _ in range(2)
             ]
             for thread in threads:
@@ -170,7 +170,7 @@ class MetadataMovieLockTests(unittest.TestCase):
                 thread.join()
 
         self.assertEqual(maximum_active, 1)
-        self.assertEqual(scraper._movie_locks, {})
+        self.assertEqual(scraper._film_locks, {})
 
 
 if __name__ == "__main__":

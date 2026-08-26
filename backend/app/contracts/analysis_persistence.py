@@ -157,7 +157,7 @@ _REVIEW_ALLOWED_KEYS = {
     "stance",
     "target",
 }
-_GENRE_IMPORT_ORIGINS = frozenset({"nfo", "tmdb", "legacy_movie"})
+_GENRE_IMPORT_ORIGINS = frozenset({"nfo", "tmdb"})
 
 
 def assertion_id() -> str:

@@ -13,6 +13,7 @@ from app.services.library_sync import library_sync_service
 from app.services.metadata.models import BatchScrapeOptions, RootOrganizeOptions, ScrapeOptions
 from app.services.metadata.organizer import root_video_organizer
 from app.services.metadata.scraper import metadata_scraper
+from app.services.operation_manifests import operation_manifest_store
 from app.services.settings import get_media_dir, get_tmdb_scrape_concurrency
 
 
@@ -21,7 +22,10 @@ logger = logging.getLogger(__name__)
 
 
 def _media_dir(payload: dict) -> str:
-    return payload.get("media_dir") or get_media_dir() or DEFAULT_MEDIA_DIR
+    if payload.get("media_root_ref"):
+        media_root, _path = operation_manifest_store.resolve_path(payload["media_root_ref"])
+        return str(media_root)
+    return get_media_dir() or DEFAULT_MEDIA_DIR
 
 
 def reconcile_library(payload: dict, ctx) -> dict:
@@ -32,24 +36,34 @@ def reconcile_library(payload: dict, ctx) -> dict:
 
 def scan_folder(payload: dict, ctx) -> dict:
     ctx.progress(stage="scanning", message="Scanning folder")
-    folder_path = payload["folder_path"]
-    movie = library_sync_service.scan_folder(folder_path)
-    if not movie:
-        raise FileNotFoundError("Movie folder or video file not found")
-    if movie.get("status") == "pending_relink":
-        return movie
-    return {"status": "success", "movie": movie}
+    _media_root, folder_path = operation_manifest_store.resolve_path(payload["path_ref"])
+    film = library_sync_service.scan_folder(folder_path)
+    if not film:
+        raise FileNotFoundError("Film folder or video file not found")
+    if film.get("status") == "pending_relink":
+        return film
+    return {
+        "status": "success",
+        "film_id": film["id"],
+        "library_item_id": film["primary_item"]["id"],
+    }
 
 
 def mark_path_missing(payload: dict, ctx) -> dict:
     ctx.progress(stage="marking_missing", message="Marking path missing")
-    updated = library_sync_service.mark_path_missing(payload["path"])
-    return {"status": "success", "updated": updated, "path": payload["path"]}
+    _media_root, path = operation_manifest_store.resolve_path(payload["path_ref"])
+    updated = library_sync_service.mark_path_missing(str(path))
+    return {"status": "success", "updated": updated}
 
 
-def refresh_movie(payload: dict, ctx) -> dict:
-    ctx.progress(stage="refreshing", message="Refreshing movie")
-    return library_sync_service.refresh_movie(payload["movie_id"])
+def refresh_item(payload: dict, ctx) -> dict:
+    ctx.progress(stage="refreshing", message="Refreshing library item")
+    result = library_sync_service.refresh_item(payload["library_item_id"])
+    return {
+        "status": result.get("status", "success"),
+        "library_item_id": payload["library_item_id"],
+        "updated": bool(result.get("updated")),
+    }
 
 
 def resolve_relink(payload: dict, ctx) -> dict:
@@ -66,8 +80,12 @@ def resolve_relink(payload: dict, ctx) -> dict:
 
 def scrape_library(payload: dict, ctx) -> dict:
     options = BatchScrapeOptions(**payload.get("options", {}))
-    movies = [movie for movie in library_manager.get_movies() if metadata_scraper._in_scope(movie, options)]
-    total = len(movies)
+    films = [
+        film
+        for film in library_manager.list_operation_contexts()
+        if metadata_scraper._in_scope(film, options)
+    ]
+    total = len(films)
     result = {"processed": 0, "succeeded": 0, "needs_review": 0, "failed": 0, "skipped": 0}
     metadata_scraper._set_status(
         state="running",
@@ -79,18 +97,18 @@ def scrape_library(payload: dict, ctx) -> dict:
     try:
         ctx.raise_if_cancelled()
         concurrency = min(get_tmdb_scrape_concurrency(), total) if total else 1
-        movie_iterator = iter(movies)
+        film_iterator = iter(films)
         futures: dict[Future, dict] = {}
         cancellation_seen = False
 
         def submit_next(executor: ThreadPoolExecutor) -> bool:
             try:
-                movie = next(movie_iterator)
+                film = next(film_iterator)
             except StopIteration:
                 return False
             future = executor.submit(
-                metadata_scraper.scrape_movie,
-                movie["id"],
+                metadata_scraper.scrape_film,
+                film["id"],
                 ScrapeOptions(
                     mode="auto",
                     language=options.language,
@@ -100,7 +118,7 @@ def scrape_library(payload: dict, ctx) -> dict:
                     download_artwork=options.download_artwork,
                 ),
             )
-            futures[future] = movie
+            futures[future] = film
             return True
 
         with ThreadPoolExecutor(max_workers=concurrency, thread_name_prefix="tmdb-scrape") as executor:
@@ -124,7 +142,7 @@ def scrape_library(payload: dict, ctx) -> dict:
 
                 completed_count = 0
                 for future in completed:
-                    movie = futures.pop(future)
+                    film = futures.pop(future)
                     if future.cancelled():
                         continue
                     completed_count += 1
@@ -132,8 +150,8 @@ def scrape_library(payload: dict, ctx) -> dict:
                         scrape_status = future.result().status
                     except Exception as exc:
                         logger.error(
-                            "Metadata scrape worker failed movie_id=%s error_type=%s",
-                            movie.get("id"),
+                            "Metadata scrape worker failed film_id=%s error_type=%s",
+                            film.get("id"),
                             exc.__class__.__name__,
                         )
                         scrape_status = "failed"
@@ -182,7 +200,7 @@ def scrape_library(payload: dict, ctx) -> dict:
         metadata_scraper._set_status(
             state="error",
             last_finished_at=datetime.now(timezone.utc).isoformat(),
-            last_error=str(exc),
+            last_error=exc.__class__.__name__,
         )
         raise
 
@@ -202,7 +220,6 @@ def organize_root(payload: dict, ctx) -> dict:
         "needs_review": 0,
         "failed": 0,
         "skipped": 0,
-        "items": [],
     }
     root_video_organizer._set_status(
         state="running",
@@ -216,7 +233,6 @@ def organize_root(payload: dict, ctx) -> dict:
             ctx.raise_if_cancelled()
             item = root_video_organizer.organize_file(video_path, root, options)
             result["processed"] += 1
-            result["items"].append(item)
             status = item.get("status")
             if status == "success":
                 result["organized"] += 1
@@ -232,7 +248,7 @@ def organize_root(payload: dict, ctx) -> dict:
                 current=result["processed"],
                 total=total,
                 message=f"Processed {result['processed']} of {total}",
-                counts={key: value for key, value in result.items() if key != "items"},
+                counts=result,
             )
 
         root_video_organizer._set_status(
@@ -254,46 +270,68 @@ def organize_root(payload: dict, ctx) -> dict:
         root_video_organizer._set_status(
             state="error",
             last_finished_at=datetime.now(timezone.utc).isoformat(),
-            last_error=str(exc),
+            last_error=exc.__class__.__name__,
         )
         raise
 
 
 def confirm_root_video(payload: dict, ctx) -> dict:
     ctx.progress(stage="organizing", message="Organizing confirmed root video")
+    manifest_ref = payload["manifest_ref"]
+    manifest = operation_manifest_store.load(manifest_ref)
     result = root_video_organizer.organize_file_confirmed(
-        Path(payload["path"]),
-        Path(_media_dir(payload)).resolve(),
+        Path(manifest["source"]),
+        Path(manifest["media_root"]),
         payload["tmdb_id"],
         RootOrganizeOptions(**(payload.get("options") or {})),
+        manifest_ref=manifest_ref,
     )
     if result.get("status") == "failed":
         raise RuntimeError(result.get("message") or "Root video organization failed")
     if result.get("status") == "skipped":
         raise ValueError(result.get("message") or "Root video organization skipped")
-    return result
+    return {
+        key: value
+        for key, value in result.items()
+        if key in {"status", "film_id", "library_item_id", "tmdb_id", "sidecar_count", "snapshot_id"}
+    }
 
 
-def analyze_movie(payload: dict, ctx) -> dict:
+def analyze_film(payload: dict, ctx) -> dict:
     ctx.progress(stage="analyzing", message="Running film analysis")
-    return analysis_service.analyze_movie(payload["movie_id"], ctx=ctx)
+    result = analysis_service.analyze_film(payload["film_id"], ctx=ctx)
+    return {
+        "status": result["status"],
+        "film_id": result["film_id"],
+        "cached": result["cached"],
+        "assertions": result["assertions"],
+        "evidence": result["evidence"],
+        "reviews": result["reviews"],
+        "analysis_run_id": (result.get("analysis") or {}).get("run", {}).get("id"),
+    }
 
 
-def refresh_movie_external_scores(payload: dict, ctx) -> dict:
+def refresh_film_external_scores(payload: dict, ctx) -> dict:
     ctx.progress(stage="refreshing", message="Refreshing external scores")
-    return external_score_service.refresh_movie(
-        payload["movie_id"],
+    result = external_score_service.refresh_film(
+        payload["film_id"],
         force=payload.get("force", False),
     )
+    return {
+        "status": result["status"],
+        "film_id": result["film_id"],
+        "updated_sources": result["updated_sources"],
+        "skipped_sources": result["skipped_sources"],
+    }
 
 
 def refresh_library_external_scores(payload: dict, ctx) -> dict:
-    movies = [
-        movie
-        for movie in library_manager.get_movies()
-        if movie.get("library_status") not in {"missing", "ignored", "reverted"}
+    films = [
+        film
+        for film in library_manager.list_films()
+        if (film.get("primary_item") or {}).get("status") == "available"
     ]
-    total = len(movies)
+    total = len(films)
     result = {"processed": 0, "updated": 0, "skipped": 0, "failed": 0}
     external_score_service._set_status(
         state="running",
@@ -303,12 +341,12 @@ def refresh_library_external_scores(payload: dict, ctx) -> dict:
     ctx.progress(stage="refreshing", current=0, total=total, message="Refreshing external scores")
 
     try:
-        for movie in movies:
+        for film in films:
             ctx.raise_if_cancelled()
             result["processed"] += 1
             try:
-                refresh_result = external_score_service.refresh_movie(
-                    movie["id"],
+                refresh_result = external_score_service.refresh_film(
+                    film["id"],
                     force=payload.get("force", False),
                 )
                 if refresh_result["updated_sources"]:
@@ -343,7 +381,7 @@ def refresh_library_external_scores(payload: dict, ctx) -> dict:
         external_score_service._set_status(
             state="error",
             last_finished_at=datetime.now(timezone.utc).isoformat(),
-            last_error=str(exc),
+            last_error=exc.__class__.__name__,
         )
         raise
 
@@ -352,12 +390,12 @@ JOB_HANDLERS: dict[str, Callable[[dict, object], dict]] = {
     "library.reconcile": reconcile_library,
     "library.scan_folder": scan_folder,
     "library.mark_path_missing": mark_path_missing,
-    "library.refresh_movie": refresh_movie,
+    "library.refresh_item": refresh_item,
     "library.resolve_relink": resolve_relink,
     "metadata.scrape_library": scrape_library,
     "organizer.organize_root": organize_root,
     "organizer.confirm_root_video": confirm_root_video,
-    "analysis.analyze_movie": analyze_movie,
-    "external_scores.refresh_movie": refresh_movie_external_scores,
+    "analysis.analyze_film": analyze_film,
+    "external_scores.refresh_film": refresh_film_external_scores,
     "external_scores.refresh_library": refresh_library_external_scores,
 }

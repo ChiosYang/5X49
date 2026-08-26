@@ -8,10 +8,11 @@ from typing import Optional
 from uuid import uuid4
 
 from app.services.event_bus import library_event_bus
-from app.services.event_store import event_store
+from app.services.library import library_manager
 from app.services.metadata.matcher import parse_title_year
 from app.services.metadata.models import MetadataSearchResult, RootOrganizeOptions, ScrapeOptions
 from app.services.metadata.scraper import metadata_scraper
+from app.services.operation_manifests import operation_manifest_store
 from app.services.settings import (
     get_media_dir,
     get_media_file_stable_seconds,
@@ -120,70 +121,66 @@ class RootVideoOrganizer:
             )
             raise
 
-    def organize_file(self, video_path: Path, root: Path, options: RootOrganizeOptions) -> dict:
+    def organize_file(
+        self,
+        video_path: Path,
+        root: Path,
+        options: RootOrganizeOptions,
+        *,
+        manifest_ref: str | None = None,
+    ) -> dict:
         command_id = self._new_command_id("root_organize")
         video_path = video_path.resolve()
         if not self._is_usable_root_video(video_path, root):
-            return {"status": "skipped", "path": str(video_path), "message": "Not a stable root video"}
+            return {"status": "skipped", "source_name": video_path.name, "message": "Not a stable root video"}
 
         query, year = parse_title_year(video_path.name)
         candidates = metadata_scraper.search(query, year=year, language=options.language)
         if not candidates:
-            return {"status": "failed", "path": str(video_path), "message": "No TMDB matches found"}
+            return {"status": "failed", "source_name": video_path.name, "message": "No TMDB matches found"}
 
         best = candidates[0]
         min_confidence = options.min_confidence
         if min_confidence is None:
             min_confidence = get_organize_min_confidence()
         if best.score < min_confidence:
-            event_store.safe_append(
-                "RootVideoOrganizationNeedsReview",
-                "file",
-                str(video_path),
-                {
-                    "path": str(video_path),
-                    "reason": "Low confidence TMDB match",
-                    "candidate": best.model_dump(),
-                    "min_confidence": min_confidence,
-                },
-                command_id=command_id,
-                correlation_id=command_id,
-                context={"operation": "organize_root_video"},
-            )
             return {
                 "status": "needs_review",
-                "path": str(video_path),
+                "source_name": video_path.name,
                 "message": "Low confidence TMDB match",
                 "candidate": best.model_dump(),
             }
         if get_scrape_require_confirmation():
-            event_store.safe_append(
-                "RootVideoOrganizationNeedsReview",
-                "file",
-                str(video_path),
-                {
-                    "path": str(video_path),
-                    "reason": "Manual confirmation required",
-                    "candidate": best.model_dump(),
-                },
-                command_id=command_id,
-                correlation_id=command_id,
-                context={"operation": "organize_root_video"},
-            )
             return {
                 "status": "needs_review",
-                "path": str(video_path),
+                "source_name": video_path.name,
                 "message": "Manual confirmation required",
                 "candidate": best.model_dump(),
             }
 
-        return self._organize_matched_file(video_path, root, best, year, options, command_id=command_id)
+        return self._organize_matched_file(
+            video_path,
+            root,
+            best,
+            year,
+            options,
+            command_id=command_id,
+            manifest_ref=manifest_ref,
+        )
 
-    def organize_file_confirmed(self, video_path: Path, root: Path, tmdb_id: int, options: RootOrganizeOptions) -> dict:
+    def organize_file_confirmed(
+        self,
+        video_path: Path,
+        root: Path,
+        tmdb_id: int,
+        options: RootOrganizeOptions,
+        *,
+        manifest_ref: str | None = None,
+    ) -> dict:
         command_id = self._new_command_id("root_organize")
         video_path = video_path.resolve()
         if not self._is_usable_root_video(video_path, root):
-            return {"status": "skipped", "path": str(video_path), "message": "Not a stable root video"}
+            return {"status": "skipped", "source_name": video_path.name, "message": "Not a stable root video"}
 
         _, year = parse_title_year(video_path.name)
         details = metadata_scraper.tmdb.movie_details(
@@ -203,7 +200,15 @@ class RootVideoOrganizer:
             popularity=float(details.get("popularity") or 0),
             score=100,
         )
-        return self._organize_matched_file(video_path, root, candidate, year, options, command_id=command_id)
+        return self._organize_matched_file(
+            video_path,
+            root,
+            candidate,
+            year,
+            options,
+            command_id=command_id,
+            manifest_ref=manifest_ref,
+        )
 
     def _organize_matched_file(
         self,
@@ -214,6 +219,7 @@ class RootVideoOrganizer:
         options: RootOrganizeOptions,
         *,
         command_id: str,
+        manifest_ref: str | None = None,
     ) -> dict:
         target_dir = self._target_dir(root, candidate.title, candidate.year or parsed_year)
         target_dir.mkdir(parents=True, exist_ok=True)
@@ -226,53 +232,37 @@ class RootVideoOrganizer:
         if target_video.exists() and not options.overwrite:
             return {
                 "status": "failed",
-                "path": str(video_path),
-                "message": f"Target video already exists: {target_video}",
+                "source_name": video_path.name,
+                "message": "Target video already exists",
             }
 
-        source_snapshot = self._file_snapshot(video_path)
+        manifest_ref = manifest_ref or operation_manifest_store.create(root, video_path)
         moved_sidecars, sidecar_moves = self._move_sidecars(video_path, target_dir, options.overwrite)
         shutil.move(str(video_path), str(target_video))
-        target_snapshot = self._file_snapshot(target_video)
-        event_store.safe_append(
-            "RootVideoMoved",
-            "file",
-            str(target_video),
-            {
-                "source_path": str(video_path),
-                "target_path": str(target_video),
-                "target_dir": str(target_dir),
-                "source": source_snapshot,
-                "target": target_snapshot,
-                "tmdb_id": candidate.tmdb_id,
-                "candidate": candidate.model_dump(),
-                "rename_style": options.rename_style,
-                "overwrite": options.overwrite,
-                "sidecars": sidecar_moves,
-                "parsed_year": parsed_year,
-            },
-            command_id=command_id,
-            correlation_id=command_id,
-            context={"operation": "organize_root_video"},
+        operation_manifest_store.finalize(
+            manifest_ref,
+            target=target_video,
+            sidecars=sidecar_moves,
         )
 
         from app.services.library_sync import library_sync_service
 
-        movie = library_sync_service.scan_folder(
+        film = library_sync_service.scan_folder(
             target_dir,
             command_id=command_id,
             correlation_id=command_id,
         )
-        if not movie:
+        if not film:
+            operation_manifest_store.restore(manifest_ref)
             return {
                 "status": "failed",
-                "path": str(target_video),
+                "source_name": video_path.name,
                 "message": "Moved video but scan failed",
-                "sidecars": moved_sidecars,
+                "sidecar_count": len(moved_sidecars),
             }
 
-        scrape_result = metadata_scraper.scrape_movie(
-            movie["id"],
+        scrape_result = metadata_scraper.scrape_film(
+            film["id"],
             ScrapeOptions(
                 mode="manual",
                 tmdb_id=candidate.tmdb_id,
@@ -286,40 +276,27 @@ class RootVideoOrganizer:
             correlation_id=command_id,
         )
 
-        event_store.safe_append(
-            "RootVideoOrganized",
-            "movie",
-            movie["id"],
-            {
-                "movie_id": movie["id"],
-                "source_path": str(video_path),
-                "target_path": str(target_video),
-                "target_dir": str(target_dir),
-                "source": source_snapshot,
-                "target": target_snapshot,
-                "tmdb_id": candidate.tmdb_id,
-                "score": candidate.score,
-                "candidate": candidate.model_dump(),
-                "rename_style": options.rename_style,
-                "scrape_status": scrape_result.status,
-                "sidecars": moved_sidecars,
-                "sidecar_moves": sidecar_moves,
-                "parsed_year": parsed_year,
-            },
+        snapshot_id = library_manager.record_file_organization(
+            film["id"],
+            film["primary_item"]["id"],
+            manifest_ref,
             command_id=command_id,
-            correlation_id=command_id,
-            context={"operation": "organize_root_video"},
+            tmdb_id=candidate.tmdb_id,
+            sidecar_count=len(moved_sidecars),
+            scrape_status=scrape_result.status,
         )
         return {
             "status": "success",
-            "source_path": str(video_path),
-            "target_path": str(target_video),
-            "target_dir": str(target_dir),
-            "movie_id": movie["id"],
+            "source_name": video_path.name,
+            "target_name": target_video.name,
+            "film_id": film["id"],
+            "library_item_id": film["primary_item"]["id"],
             "tmdb_id": candidate.tmdb_id,
             "score": candidate.score,
             "scrape_status": scrape_result.status,
-            "sidecars": moved_sidecars,
+            "sidecar_count": len(moved_sidecars),
+            "manifest_ref": manifest_ref,
+            "snapshot_id": snapshot_id,
         }
 
     def _root_videos(self, root: Path) -> list[Path]:
@@ -372,29 +349,13 @@ class RootVideoOrganizer:
             target = target_dir / sidecar.name
             if target.exists() and not overwrite:
                 continue
-            before = self._file_snapshot(sidecar)
             shutil.move(str(sidecar), str(target))
-            moved.append(str(target))
+            moved.append(target.name)
             sidecar_moves.append({
-                "source_path": str(sidecar),
-                "target_path": str(target),
-                "source": before,
-                "target": self._file_snapshot(target),
+                "source": str(sidecar),
+                "target": str(target),
             })
         return moved, sidecar_moves
-
-    def _file_snapshot(self, path: Path) -> dict:
-        try:
-            stat = path.stat()
-        except OSError:
-            return {"path": str(path), "exists": False}
-        return {
-            "path": str(path),
-            "filename": path.name,
-            "exists": True,
-            "size": stat.st_size,
-            "mtime": stat.st_mtime,
-        }
 
     def _new_command_id(self, operation: str) -> str:
         return f"{operation}_{uuid4().hex}"

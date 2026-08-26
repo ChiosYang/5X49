@@ -146,7 +146,7 @@ class AnalysisV2Output(StrictContract):
 
 
 class GeneratedAnalysisV2Output(AnalysisV2Output):
-    """Stricter live-generation envelope; legacy v10 transition stays compatible."""
+    """Stricter live-generation envelope for the Fresh Canonical runtime."""
 
     assertions: list[AnalysisAssertionCandidate] = Field(default_factory=list, max_length=8)
     unresolved_references: list[AnalysisEntityReference] = Field(default_factory=list, max_length=8)

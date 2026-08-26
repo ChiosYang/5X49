@@ -7,7 +7,7 @@ import { CalendarDays, Heart, Loader2, NotebookText, Save, Star } from "lucide-r
 import { mutate } from "swr";
 import { Link } from "@/i18n/routing";
 import { API } from "@/lib/api";
-import { useUpdateMovieUserState, useWatchHistory } from "@/hooks/useMovie";
+import { useUpdateFilmProfileState, useWatchHistory } from "@/hooks/useFilm";
 import type { WatchHistoryEntry } from "@/types/movie";
 
 function dateKey(value?: string | null) {
@@ -35,7 +35,7 @@ function formatDate(value: string, locale: string, fallback: string) {
 function groupEntries(entries: WatchHistoryEntry[]) {
   const groups = new Map<string, WatchHistoryEntry[]>();
   entries.forEach((entry) => {
-    const key = dateKey(entry.user_state.watched_at);
+    const key = dateKey(entry.viewing.watched_at);
     groups.set(key, [...(groups.get(key) || []), entry]);
   });
   return Array.from(groups.entries());
@@ -44,21 +44,26 @@ function groupEntries(entries: WatchHistoryEntry[]) {
 function WatchHistoryEntryCard({ entry }: { entry: WatchHistoryEntry }) {
   const t = useTranslations("WatchHistory");
   const detailT = useTranslations("FilmDetail");
-  const { movie, user_state } = entry;
-  const { trigger, isMutating } = useUpdateMovieUserState(movie.id);
-  const [watchedAt, setWatchedAt] = useState(inputDateValue(user_state.watched_at));
-  const [rating, setRating] = useState<number | null>(user_state.rating ?? null);
-  const [notes, setNotes] = useState(user_state.notes || "");
+  const { film, profile_state: profileState, viewing } = entry;
+  const { trigger, isMutating } = useUpdateFilmProfileState(film.id);
+  const [watchedAt, setWatchedAt] = useState(inputDateValue(viewing.watched_at));
+  const [rating, setRating] = useState<number | null>(profileState.rating ?? null);
+  const [notes, setNotes] = useState(profileState.notes || "");
   const [message, setMessage] = useState<string | null>(null);
-  const backdropPath = movie.backdrop_thumb_local || movie.backdrop_local;
-  const artworkVersion = movie.metadata_updated_at ? `?v=${encodeURIComponent(movie.metadata_updated_at)}` : "";
-  const backdropSrc = backdropPath ? `${API.mediaUrl(backdropPath)}${artworkVersion}` : null;
-  const title = movie.title_cn || movie.title;
+  const artwork = film.primary_item.artwork;
+  const backdropPath = artwork.backdrop_thumb_local || artwork.backdrop_local;
+  const artworkVersion = film.primary_item.metadata.updated_at
+    ? `?v=${encodeURIComponent(film.primary_item.metadata.updated_at)}`
+    : "";
+  const backdropSrc = backdropPath
+    ? `${API.mediaUrl(backdropPath)}${artworkVersion}`
+    : artwork.backdrop_provider ? API.providerArtworkUrl(artwork.backdrop_provider) : null;
+  const title = film.title;
   const dirty = useMemo(() => (
-    watchedAt !== inputDateValue(user_state.watched_at) ||
-    rating !== (user_state.rating ?? null) ||
-    notes !== (user_state.notes || "")
-  ), [notes, rating, user_state, watchedAt]);
+    watchedAt !== inputDateValue(viewing.watched_at) ||
+    rating !== (profileState.rating ?? null) ||
+    notes !== (profileState.notes || "")
+  ), [notes, profileState, rating, viewing.watched_at, watchedAt]);
 
   const save = async () => {
     setMessage(null);
@@ -66,13 +71,14 @@ function WatchHistoryEntryCard({ entry }: { entry: WatchHistoryEntry }) {
       watched: true,
       watched_at: watchedAt || null,
       rating,
-      favorite: user_state.favorite,
+      favorite: profileState.favorite,
       notes: notes.trim() || null,
     });
     setMessage(detailT("watchStateSaved"));
     await Promise.all([
-      mutate(API.libraryMovieUserState(movie.id), saved, false),
-      mutate(API.libraryUserStates()),
+      mutate(API.filmProfileState(film.id), saved, false),
+      mutate(API.libraryFilm(film.id)),
+      mutate(API.libraryFilms()),
       mutate(API.watchHistory()),
     ]);
   };
@@ -80,11 +86,11 @@ function WatchHistoryEntryCard({ entry }: { entry: WatchHistoryEntry }) {
   return (
     <article className="rounded-md border border-neutral-900 bg-neutral-950/40 p-3 transition-colors hover:border-neutral-700">
       <div className="grid grid-cols-[112px_minmax(0,1fr)] gap-4">
-        <Link href={`/library/${movie.id}`} className="group relative aspect-video overflow-hidden rounded bg-neutral-900">
+        <Link href={`/library/${film.id}`} className="group relative aspect-video overflow-hidden rounded bg-neutral-900">
           {backdropSrc ? (
             <Image
               src={backdropSrc}
-              alt={movie.title}
+              alt={film.title}
               fill
               sizes="112px"
               className="object-cover transition-transform duration-200 group-hover:scale-105"
@@ -94,10 +100,10 @@ function WatchHistoryEntryCard({ entry }: { entry: WatchHistoryEntry }) {
           )}
         </Link>
         <div className="min-w-0 space-y-2">
-          <Link href={`/library/${movie.id}`} className="block">
+          <Link href={`/library/${film.id}`} className="block">
             <h2 className="truncate text-base font-black uppercase text-white">{title}</h2>
             <p className="text-xs font-bold uppercase tracking-widest text-neutral-500">
-              {movie.director || movie.title} {movie.year}
+              {film.directors?.[0] || film.title} {film.year}
             </p>
           </Link>
           <div className="flex items-center gap-2 text-neutral-300">
@@ -107,7 +113,7 @@ function WatchHistoryEntryCard({ entry }: { entry: WatchHistoryEntry }) {
                 {rating}/5
               </span>
             ) : null}
-            {user_state.favorite ? (
+            {profileState.favorite ? (
               <Heart className="h-3.5 w-3.5 fill-white text-white" aria-label={t("favorite")} />
             ) : null}
           </div>
@@ -216,7 +222,7 @@ export default function WatchHistoryClient() {
           </div>
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
             {group.map((entry) => (
-              <WatchHistoryEntryCard key={entry.movie.id} entry={entry} />
+              <WatchHistoryEntryCard key={entry.film.id} entry={entry} />
             ))}
           </div>
         </section>

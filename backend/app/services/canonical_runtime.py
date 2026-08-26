@@ -12,6 +12,7 @@ from sqlmodel import Session, select
 from app.contracts.structured_metadata import (
     StructuredMetadataObservation,
     StructuredMetadataObservationDraft,
+    canonical_json_hash,
 )
 from app.models import (
     ExternalIdentity,
@@ -20,13 +21,10 @@ from app.models import (
     FilmProfileState,
     GraphEntity,
     IdentityReview,
-    LegacyMovieAlias,
     LibraryItem,
     LibraryItemLocatorHistory,
     LocalProfile,
     MediaAsset,
-    Movie,
-    MovieUserState,
     Viewing,
     utc_now_iso,
 )
@@ -34,12 +32,11 @@ from app.services.file_identity import FileIdentityObservation, observe_file
 from app.services.structured_metadata_sync import structured_metadata_synchronizer
 
 
-SOURCE_INSTANCE_ID = "legacy.local"
+SOURCE_INSTANCE_ID = "local"
 
 
 @dataclass(frozen=True)
-class RuntimeMovieResolution:
-    compatibility_id: str
+class RuntimeLibraryResolution:
     film_id: str
     library_item_id: str
 
@@ -62,10 +59,10 @@ class RelinkCopyConflict(RuntimeError):
 class CanonicalRuntimeWriter:
     """Synchronize canonical library rows inside the caller's transaction."""
 
-    def sync_movie(
+    def sync_observation(
         self,
         session: Session,
-        movie_data: dict[str, Any],
+        observation: dict[str, Any],
         *,
         preserve_id: str | None = None,
         file_observation: FileIdentityObservation | None = None,
@@ -75,21 +72,21 @@ class CanonicalRuntimeWriter:
         structured_metadata: (
             StructuredMetadataObservation | StructuredMetadataObservationDraft | None
         ) = None,
-    ) -> RuntimeMovieResolution:
+    ) -> RuntimeLibraryResolution:
         now = utc_now_iso()
-        requested_id = preserve_id or movie_data.get("id")
+        requested_id = preserve_id or observation.get("library_item_id")
         existing = (
             self._resolution_for_item(session, force_library_item_id)
             if force_library_item_id
-            else (self._by_alias(session, requested_id) if requested_id else None)
+            else (self._resolution_for_item(session, requested_id) if requested_id else None)
         )
         if file_observation is None:
-            file_observation = self.observe_movie(movie_data)
+            file_observation = self.observe_item(observation)
         if existing is None:
-            existing = self._by_source_key(session, self.source_item_key(movie_data, requested_id))
+            existing = self._by_source_key(session, self.source_item_key(observation, requested_id))
         if existing is None and file_observation is not None and review_reason is None:
             try:
-                existing = self._by_file_identity(session, file_observation, movie_data)
+                existing = self._by_file_identity(session, file_observation, observation)
             except RelinkIdentityConflict:
                 review_reason = review_reason or "relink_identity_conflict"
             except RelinkCopyConflict:
@@ -97,52 +94,43 @@ class CanonicalRuntimeWriter:
 
         if existing is not None:
             resolution = existing
-            self._update_film(session, resolution.film_id, movie_data, now)
-            self._update_library_item(session, resolution.library_item_id, movie_data, now)
-            self._update_locator(session, resolution.library_item_id, movie_data, now)
+            self._update_film(session, resolution.film_id, observation, now)
+            self._update_library_item(session, resolution.library_item_id, observation, now)
+            self._update_locator(session, resolution.library_item_id, observation, now)
         else:
-            film_id, conflict = self._resolve_film(session, movie_data, now)
+            film_id, conflict = self._resolve_film(session, observation, now)
             library_item_id = f"lib_{uuid4().hex}"
-            compatibility_id = (
-                str(preserve_id)
-                if preserve_id
-                else str(requested_id)
-                if requested_id
-                and not movie_data.get("media_path")
-                and not movie_data.get("folder_path")
-                else library_item_id
-            )
-            resolution = RuntimeMovieResolution(compatibility_id, film_id, library_item_id)
-            source_key = self.source_item_key(movie_data, compatibility_id)
-            availability = self._availability(movie_data.get("library_status"))
-            identities = self._identities(movie_data)
+            resolution = RuntimeLibraryResolution(film_id, library_item_id)
+            source_key = self.source_item_key(observation, library_item_id)
+            availability = self._availability(observation.get("library_status"))
+            identities = self._identities(observation)
             session.add(
                 LibraryItem(
                     id=library_item_id,
-                    profile_id=self._profile_id(session),
+                    profile_id=self.local_profile_id(session),
                     film_id=film_id,
                     source_type=(
                         "local_nfo"
-                        if movie_data.get("nfo_path") or movie_data.get("nfo_file")
+                        if observation.get("nfo_path") or observation.get("nfo_file")
                         else "local_folder"
                     ),
                     source_instance_id=SOURCE_INSTANCE_ID,
                     source_item_key=source_key,
-                    display_name=movie_data.get("folder_name") or movie_data.get("title"),
+                    display_name=observation.get("folder_name") or observation.get("title"),
                     availability_status=availability,
                     resolution_status="review_required" if conflict or review_reason else (
                         "matched" if identities else "unresolved"
                     ),
-                    added_at=movie_data.get("added_at") or now,
-                    last_seen_at=movie_data.get("last_seen_at"),
-                    missing_since=movie_data.get("missing_since"),
+                    added_at=observation.get("added_at") or now,
+                    last_seen_at=observation.get("last_seen_at"),
+                    missing_since=observation.get("missing_since"),
                     retired_at=now if availability == "retired" else None,
-                    metadata_source=movie_data.get("metadata_source"),
-                    metadata_updated_at=movie_data.get("metadata_updated_at"),
-                    scrape_status=movie_data.get("scrape_status") or "pending",
-                    scrape_error=movie_data.get("scrape_error"),
-                    scraped_at=movie_data.get("scraped_at"),
-                    match_confidence=movie_data.get("tmdb_confidence"),
+                    metadata_source=observation.get("metadata_source"),
+                    metadata_updated_at=observation.get("metadata_updated_at"),
+                    scrape_status=observation.get("scrape_status") or "pending",
+                    scrape_error=observation.get("scrape_error"),
+                    scraped_at=observation.get("scraped_at"),
+                    match_confidence=observation.get("tmdb_confidence"),
                     created_at=now,
                     updated_at=now,
                 )
@@ -158,24 +146,25 @@ class CanonicalRuntimeWriter:
                     reason="runtime_discovery",
                 )
             )
-            session.add(
-                LegacyMovieAlias(
-                    legacy_movie_id=compatibility_id,
-                    film_id=film_id,
-                    library_item_id=library_item_id,
-                    legacy_library_status=movie_data.get("library_status"),
-                    created_at=now,
-                    updated_at=now,
-                )
-            )
             if conflict or review_reason:
+                review_payload = {
+                    "film_id": film_id,
+                    "library_item_id": library_item_id,
+                    "source_instance_id": SOURCE_INSTANCE_ID,
+                    "source_ref": library_item_id,
+                    "reason_code": review_reason or "identity_conflict",
+                    "candidates": conflict or {},
+                }
+                candidate_hash = canonical_json_hash(review_payload["candidates"])
                 session.add(
                     IdentityReview(
-                        id=f"review_{uuid4().hex}",
-                        legacy_movie_id=compatibility_id,
-                        tmdb_film_id=conflict.get("tmdb.movie") if conflict else None,
-                        imdb_film_id=conflict.get("imdb.title") if conflict else None,
-                        reason=review_reason or "identity_conflict",
+                        film_id=film_id,
+                        library_item_id=library_item_id,
+                        source_instance_id=SOURCE_INSTANCE_ID,
+                        source_ref=library_item_id,
+                        reason_code=review_reason or "identity_conflict",
+                        candidate_hash=candidate_hash,
+                        review_key=canonical_json_hash({**review_payload, "candidate_hash": candidate_hash}),
                         created_at=now,
                         updated_at=now,
                     )
@@ -194,8 +183,8 @@ class CanonicalRuntimeWriter:
                     )
                 )
 
-        self._sync_identities(session, resolution.film_id, movie_data, now)
-        self._sync_assets(session, resolution, movie_data, now, file_observation)
+        self._sync_identities(session, resolution.film_id, observation, now)
+        self._sync_assets(session, resolution, observation, now, file_observation)
         if structured_metadata is not None:
             bound_observation = (
                 structured_metadata.bind(resolution.library_item_id)
@@ -208,23 +197,18 @@ class CanonicalRuntimeWriter:
                 library_item_id=resolution.library_item_id,
                 observation=bound_observation,
             )
-        alias = session.get(LegacyMovieAlias, resolution.compatibility_id)
-        if alias:
-            alias.legacy_library_status = movie_data.get("library_status")
-            alias.updated_at = now
-            session.add(alias)
         session.flush()
         return resolution
 
     @staticmethod
-    def observe_movie(movie_data: dict[str, Any]) -> FileIdentityObservation | None:
-        locator = movie_data.get("media_path") or movie_data.get("video_file")
+    def observe_item(observation: dict[str, Any]) -> FileIdentityObservation | None:
+        locator = observation.get("media_path") or observation.get("video_file")
         return observe_file(locator) if locator else None
 
     def sync_user_state(
         self,
         session: Session,
-        movie_id: str,
+        film_id: str,
         *,
         watched: bool | None = None,
         watched_at: str | None = None,
@@ -234,152 +218,78 @@ class CanonicalRuntimeWriter:
         fields_set: set[str] | None = None,
     ) -> dict[str, Any] | None:
         fields_set = fields_set or set()
-        alias = session.get(LegacyMovieAlias, movie_id)
-        if alias is None:
+        if session.get(Film, film_id) is None:
             return None
-        profile_id = self._profile_id(session)
+        profile_id = self.local_profile_id(session)
         now = utc_now_iso()
 
-        profile_state = session.get(FilmProfileState, (profile_id, alias.film_id))
-        if profile_state is None and "favorite" in fields_set:
+        profile_state = session.get(FilmProfileState, (profile_id, film_id))
+        state_fields = fields_set.intersection({"favorite", "rating", "notes"})
+        if profile_state is None and state_fields:
             profile_state = FilmProfileState(
                 profile_id=profile_id,
-                film_id=alias.film_id,
+                film_id=film_id,
                 favorite=bool(favorite),
+                rating=rating if "rating" in fields_set else None,
+                notes=notes if "notes" in fields_set else None,
                 created_at=now,
                 updated_at=now,
             )
-        elif profile_state is not None and "favorite" in fields_set and favorite is not None:
-            profile_state.favorite = favorite
+        elif profile_state is not None and state_fields:
+            if "favorite" in fields_set and favorite is not None:
+                profile_state.favorite = favorite
+            if "rating" in fields_set:
+                profile_state.rating = rating
+            if "notes" in fields_set:
+                profile_state.notes = notes
             profile_state.updated_at = now
         if profile_state is not None:
             session.add(profile_state)
 
-        compatibility_sources = ("legacy_movie_user_state", "legacy_user_state_api")
-        compatibility_viewings = session.exec(
+        manual_viewing = session.exec(
             select(Viewing)
             .where(Viewing.profile_id == profile_id)
-            .where(Viewing.film_id == alias.film_id)
-            .where(Viewing.source.in_(compatibility_sources))
+            .where(Viewing.film_id == film_id)
+            .where(Viewing.source == "manual")
+            .where(Viewing.source_record_id == film_id)
             .order_by(Viewing.updated_at.desc(), Viewing.id.desc())
-        ).all()
+        ).first()
 
         if "watched" in fields_set and watched is False:
-            for viewing in compatibility_viewings:
-                if viewing.deleted_at is None:
-                    viewing.deleted_at = now
-                    viewing.updated_at = now
-                    session.add(viewing)
-            review_fields = fields_set.intersection({"watched_at", "rating", "notes"})
-            if review_fields:
-                api_viewing = next(
-                    (
-                        viewing
-                        for viewing in compatibility_viewings
-                        if viewing.source == "legacy_user_state_api"
-                    ),
-                    None,
-                )
-                if api_viewing is None:
-                    api_viewing = Viewing(
-                        id=f"view_{uuid4().hex}",
-                        profile_id=profile_id,
-                        film_id=alias.film_id,
-                        source="legacy_user_state_api",
-                        source_record_id=alias.film_id,
-                        watched_at_precision="unknown",
-                        review_status="needs_review",
-                        created_at=now,
-                        updated_at=now,
-                    )
-                api_viewing.deleted_at = None
-                if "watched_at" in review_fields:
-                    api_viewing.watched_at = watched_at
-                    api_viewing.watched_at_precision = self._watched_at_precision(watched_at)
-                if "rating" in review_fields:
-                    api_viewing.rating = rating
-                if "notes" in review_fields:
-                    api_viewing.review = notes
-                api_viewing.review_status = "needs_review"
-                api_viewing.updated_at = now
-                session.add(api_viewing)
-        elif fields_set.intersection({"watched", "watched_at", "rating", "notes"}):
-            api_viewing = next(
-                (viewing for viewing in compatibility_viewings if viewing.source == "legacy_user_state_api"),
-                None,
-            )
-            had_confirmed_compatibility = any(
-                viewing.review_status == "confirmed" and viewing.deleted_at is None
-                for viewing in compatibility_viewings
-            )
-            if api_viewing is None:
-                api_viewing = Viewing(
+            if manual_viewing is not None and manual_viewing.deleted_at is None:
+                manual_viewing.deleted_at = now
+                manual_viewing.updated_at = now
+                session.add(manual_viewing)
+        elif watched is True or ("watched_at" in fields_set and watched_at is not None):
+            if manual_viewing is None:
+                manual_viewing = Viewing(
                     id=f"view_{uuid4().hex}",
                     profile_id=profile_id,
-                    film_id=alias.film_id,
-                    source="legacy_user_state_api",
-                    source_record_id=alias.film_id,
-                    watched_at_precision="unknown",
-                    review_status="needs_review",
+                    film_id=film_id,
+                    source="manual",
+                    source_record_id=film_id,
+                    review_status="confirmed",
                     created_at=now,
                     updated_at=now,
                 )
-            api_viewing.deleted_at = None
+            manual_viewing.deleted_at = None
             if "watched_at" in fields_set:
-                api_viewing.watched_at = watched_at
-                api_viewing.watched_at_precision = self._watched_at_precision(watched_at)
-            if "rating" in fields_set:
-                api_viewing.rating = rating
-            if "notes" in fields_set:
-                api_viewing.review = notes
-            if watched is True or api_viewing.watched_at or had_confirmed_compatibility:
-                api_viewing.review_status = "confirmed"
-            else:
-                api_viewing.review_status = "needs_review"
-            api_viewing.updated_at = now
-            session.add(api_viewing)
+                manual_viewing.watched_at = watched_at
+            elif manual_viewing.watched_at is None:
+                manual_viewing.watched_at = now
+            manual_viewing.watched_at_precision = self._watched_at_precision(manual_viewing.watched_at)
+            manual_viewing.review_status = "confirmed"
+            manual_viewing.updated_at = now
+            session.add(manual_viewing)
 
         session.flush()
-        state = self._derived_user_state(session, profile_id, alias.film_id, movie_id)
-        active_viewings = session.exec(
-            select(Viewing)
-            .where(Viewing.profile_id == profile_id)
-            .where(Viewing.film_id == alias.film_id)
-            .where(Viewing.deleted_at.is_(None))
-        ).all()
-        has_non_default_state = bool(
-            (profile_state is not None and profile_state.favorite)
-            or active_viewings
-        )
-        aliases = session.exec(
-            select(LegacyMovieAlias).where(LegacyMovieAlias.film_id == alias.film_id)
-        ).all()
-        for compatibility_alias in aliases:
-            if session.get(Movie, compatibility_alias.legacy_movie_id) is None:
-                continue
-            projected = session.get(MovieUserState, compatibility_alias.legacy_movie_id)
-            if not has_non_default_state:
-                if projected is not None:
-                    session.delete(projected)
-                continue
-            if projected is None:
-                projected = MovieUserState(movie_id=compatibility_alias.legacy_movie_id)
-            projected.watched = state["watched"]
-            projected.watched_at = state["watched_at"]
-            projected.rating = state["rating"]
-            projected.favorite = state["favorite"]
-            projected.notes = state["notes"]
-            projected.updated_at = state["updated_at"] or now
-            session.add(projected)
-        session.flush()
-        return state
+        return self.derived_profile_state(session, profile_id, film_id)
 
-    def _derived_user_state(
+    def derived_profile_state(
         self,
         session: Session,
         profile_id: str,
         film_id: str,
-        movie_id: str,
     ) -> dict[str, Any]:
         profile_state = session.get(FilmProfileState, (profile_id, film_id))
         viewings = session.exec(
@@ -390,95 +300,36 @@ class CanonicalRuntimeWriter:
             .order_by(Viewing.watched_at.desc(), Viewing.updated_at.desc(), Viewing.id.desc())
         ).all()
         confirmed = next((item for item in viewings if item.review_status == "confirmed"), None)
-        needs_review = next((item for item in viewings if item.review_status == "needs_review"), None)
-        selected = confirmed or needs_review
         updated_values = [
             value
             for value in (
                 profile_state.updated_at if profile_state else None,
-                selected.updated_at if selected else None,
+                confirmed.updated_at if confirmed else None,
             )
             if value
         ]
         return {
-            "movie_id": movie_id,
+            "film_id": film_id,
             "watched": confirmed is not None,
             "watched_at": confirmed.watched_at if confirmed else None,
-            "rating": selected.rating if selected else None,
+            "rating": profile_state.rating if profile_state else None,
             "favorite": bool(profile_state.favorite) if profile_state else False,
-            "notes": selected.review if selected else None,
+            "notes": profile_state.notes if profile_state else None,
             "updated_at": max(updated_values) if updated_values else None,
         }
 
     @staticmethod
-    def source_item_key(movie_data: dict[str, Any], fallback: str | None = None) -> str:
+    def source_item_key(observation: dict[str, Any], fallback: str | None = None) -> str:
         raw = (
-            movie_data.get("folder_path")
-            or movie_data.get("media_path")
-            or movie_data.get("folder_name")
+            observation.get("folder_path")
+            or observation.get("media_path")
+            or observation.get("folder_name")
             or fallback
             or f"unknown-{uuid4().hex}"
         )
         return str(raw).replace("\\", "/").rstrip("/").strip()
 
-    def compatibility_projection_fields(
-        self,
-        session: Session,
-        resolution: RuntimeMovieResolution,
-    ) -> dict[str, Any]:
-        """Return Canonical-owned values for the legacy Movie projection."""
-        film = session.get(Film, resolution.film_id)
-        item = session.get(LibraryItem, resolution.library_item_id)
-        alias = session.get(LegacyMovieAlias, resolution.compatibility_id)
-        if film is None or item is None or alias is None:
-            return {}
-        identities = {
-            identity.provider: identity.external_id
-            for identity in session.exec(
-                select(ExternalIdentity)
-                .where(ExternalIdentity.entity_id == film.id)
-                .where(ExternalIdentity.identity_status == "active")
-            ).all()
-        }
-        return {
-            "title": film.original_title or film.canonical_title,
-            "title_cn": (
-                film.canonical_title
-                if film.canonical_title != film.original_title
-                else None
-            ),
-            "year": film.release_year or 0,
-            "runtime": film.runtime_minutes,
-            "overview": film.overview,
-            "tmdb_id": identities.get("tmdb.movie"),
-            "imdb_id": identities.get("imdb.title"),
-            "folder_name": item.display_name,
-            "folder_path": item.source_item_key,
-            "library_status": (
-                alias.legacy_library_status
-                if alias.legacy_library_status == "reverted"
-                else item.availability_status
-            ),
-            "added_at": item.added_at,
-            "last_seen_at": item.last_seen_at,
-            "missing_since": item.missing_since,
-            "metadata_source": item.metadata_source,
-            "metadata_updated_at": item.metadata_updated_at,
-            "scrape_status": item.scrape_status,
-            "scrape_error": item.scrape_error,
-            "scraped_at": item.scraped_at,
-            "tmdb_confidence": item.match_confidence,
-        }
-
-    def _by_alias(self, session: Session, movie_id: str | None) -> RuntimeMovieResolution | None:
-        if not movie_id:
-            return None
-        alias = session.get(LegacyMovieAlias, movie_id)
-        if alias is None:
-            return None
-        return RuntimeMovieResolution(alias.legacy_movie_id, alias.film_id, alias.library_item_id)
-
-    def _by_source_key(self, session: Session, source_key: str) -> RuntimeMovieResolution | None:
+    def _by_source_key(self, session: Session, source_key: str) -> RuntimeLibraryResolution | None:
         active_items = session.exec(
             select(LibraryItem)
             .where(LibraryItem.source_instance_id == SOURCE_INSTANCE_ID)
@@ -500,69 +351,64 @@ class CanonicalRuntimeWriter:
             )
         if item is None:
             return None
-        alias = session.exec(
-            select(LegacyMovieAlias).where(LegacyMovieAlias.library_item_id == item.id)
-        ).first()
-        if alias is None:
-            return None
-        return RuntimeMovieResolution(alias.legacy_movie_id, item.film_id, item.id)
+        return RuntimeLibraryResolution(item.film_id, item.id)
 
     def _by_file_identity(
         self,
         session: Session,
-        observation: FileIdentityObservation,
-        movie_data: dict[str, Any],
-    ) -> RuntimeMovieResolution | None:
+        file_identity: FileIdentityObservation,
+        observation: dict[str, Any],
+    ) -> RuntimeLibraryResolution | None:
         platform_candidates = session.exec(
             select(MediaAsset)
             .where(MediaAsset.asset_kind == "video")
             .where(MediaAsset.library_item_id.is_not(None))
-            .where(MediaAsset.platform_file_id == observation.platform_file_id)
+            .where(MediaAsset.platform_file_id == file_identity.platform_file_id)
         ).all()
         platform_ids = sorted(
             {asset.library_item_id for asset in platform_candidates if asset.library_item_id}
         )
         if platform_ids:
-            return self._unique_file_match(session, platform_ids, observation, movie_data)
+            return self._unique_file_match(session, platform_ids, file_identity, observation)
 
         fingerprint_candidates = session.exec(
             select(MediaAsset)
             .where(MediaAsset.asset_kind == "video")
             .where(MediaAsset.library_item_id.is_not(None))
-            .where(MediaAsset.content_fingerprint == observation.content_fingerprint)
+            .where(MediaAsset.content_fingerprint == file_identity.content_fingerprint)
         ).all()
         item_ids = sorted(
             {asset.library_item_id for asset in fingerprint_candidates if asset.library_item_id}
         )
         if not item_ids:
             return None
-        if observation.content_hash:
+        if file_identity.content_hash:
             complete_ids = sorted(
                 {
                     asset.library_item_id
                     for asset in fingerprint_candidates
-                    if asset.library_item_id and asset.content_hash == observation.content_hash
+                    if asset.library_item_id and asset.content_hash == file_identity.content_hash
                 }
             )
             if complete_ids:
-                return self._unique_file_match(session, complete_ids, observation, movie_data)
-        return self._unique_file_match(session, item_ids, observation, movie_data)
+                return self._unique_file_match(session, complete_ids, file_identity, observation)
+        return self._unique_file_match(session, item_ids, file_identity, observation)
 
     def _unique_file_match(
         self,
         session: Session,
         item_ids: list[str],
-        observation: FileIdentityObservation,
-        movie_data: dict[str, Any],
-    ) -> RuntimeMovieResolution:
+        file_identity: FileIdentityObservation,
+        observation: dict[str, Any],
+    ) -> RuntimeLibraryResolution:
         if len(item_ids) != 1:
-            raise AmbiguousRelink(observation, item_ids)
+            raise AmbiguousRelink(file_identity, item_ids)
         resolution = self._resolution_for_item(session, item_ids[0])
         if resolution is None:
-            raise AmbiguousRelink(observation, item_ids)
-        if self.has_live_locator_conflict(session, resolution.library_item_id, movie_data):
+            raise AmbiguousRelink(file_identity, item_ids)
+        if self.has_live_locator_conflict(session, resolution.library_item_id, observation):
             raise RelinkCopyConflict("The original locator still exists")
-        if self.has_identity_conflict(session, resolution.film_id, movie_data):
+        if self.has_identity_conflict(session, resolution.film_id, observation):
             raise RelinkIdentityConflict("File match conflicts with the candidate film identity")
         return resolution
 
@@ -570,9 +416,9 @@ class CanonicalRuntimeWriter:
     def has_live_locator_conflict(
         session: Session,
         library_item_id: str,
-        movie_data: dict[str, Any],
+        observation: dict[str, Any],
     ) -> bool:
-        incoming = movie_data.get("media_path") or movie_data.get("video_file")
+        incoming = observation.get("media_path") or observation.get("video_file")
         incoming_normalized = str(incoming).replace("\\", "/") if incoming else None
         assets = session.exec(
             select(MediaAsset)
@@ -595,26 +441,21 @@ class CanonicalRuntimeWriter:
     def _resolution_for_item(
         session: Session,
         library_item_id: str | None,
-    ) -> RuntimeMovieResolution | None:
+    ) -> RuntimeLibraryResolution | None:
         if not library_item_id:
             return None
         item = session.get(LibraryItem, library_item_id)
         if item is None:
             return None
-        alias = session.exec(
-            select(LegacyMovieAlias).where(LegacyMovieAlias.library_item_id == item.id)
-        ).first()
-        if alias is None:
-            return None
-        return RuntimeMovieResolution(alias.legacy_movie_id, item.film_id, item.id)
+        return RuntimeLibraryResolution(item.film_id, item.id)
 
     def has_identity_conflict(
         self,
         session: Session,
         film_id: str,
-        movie_data: dict[str, Any],
+        observation: dict[str, Any],
     ) -> bool:
-        for provider, external_id in self._identities(movie_data).items():
+        for provider, external_id in self._identities(observation).items():
             film_values = session.exec(
                 select(ExternalIdentity.external_id)
                 .where(ExternalIdentity.entity_id == film_id)
@@ -636,11 +477,11 @@ class CanonicalRuntimeWriter:
     def _resolve_film(
         self,
         session: Session,
-        movie_data: dict[str, Any],
+        observation: dict[str, Any],
         now: str,
     ) -> tuple[str, dict[str, str] | None]:
         candidates: dict[str, str] = {}
-        for provider, external_id in self._identities(movie_data).items():
+        for provider, external_id in self._identities(observation).items():
             identity = session.exec(
                 select(ExternalIdentity)
                 .where(ExternalIdentity.provider == provider)
@@ -654,7 +495,7 @@ class CanonicalRuntimeWriter:
         conflict = candidates if len(candidate_ids) > 1 else None
         if len(candidate_ids) == 1:
             film_id = next(iter(candidate_ids))
-            self._update_film(session, film_id, movie_data, now)
+            self._update_film(session, film_id, observation, now)
             return film_id, None
 
         film_id = f"film_{uuid4().hex}"
@@ -671,11 +512,11 @@ class CanonicalRuntimeWriter:
         session.add(
             Film(
                 id=film_id,
-                canonical_title=str(movie_data.get("title_cn") or movie_data.get("title") or "Untitled"),
-                original_title=movie_data.get("title"),
-                release_year=self._year(movie_data.get("year")),
-                runtime_minutes=movie_data.get("runtime"),
-                overview=movie_data.get("overview") or movie_data.get("plot"),
+                canonical_title=str(observation.get("title_cn") or observation.get("title") or "Untitled"),
+                original_title=observation.get("title"),
+                release_year=self._year(observation.get("year")),
+                runtime_minutes=observation.get("runtime"),
+                overview=observation.get("overview") or observation.get("plot"),
                 lifecycle_status="active",
                 created_at=now,
                 updated_at=now,
@@ -684,15 +525,15 @@ class CanonicalRuntimeWriter:
         session.flush()
         return film_id, conflict
 
-    def _update_film(self, session: Session, film_id: str, movie_data: dict[str, Any], now: str) -> None:
+    def _update_film(self, session: Session, film_id: str, observation: dict[str, Any], now: str) -> None:
         film = session.get(Film, film_id)
         if film is None:
             return
-        film.canonical_title = str(movie_data.get("title_cn") or movie_data.get("title") or film.canonical_title)
-        film.original_title = movie_data.get("title") or film.original_title
-        film.release_year = self._year(movie_data.get("year"))
-        film.runtime_minutes = movie_data.get("runtime")
-        film.overview = movie_data.get("overview") or movie_data.get("plot")
+        film.canonical_title = str(observation.get("title_cn") or observation.get("title") or film.canonical_title)
+        film.original_title = observation.get("title") or film.original_title
+        film.release_year = self._year(observation.get("year"))
+        film.runtime_minutes = observation.get("runtime")
+        film.overview = observation.get("overview") or observation.get("plot")
         film.updated_at = now
         session.add(film)
 
@@ -700,22 +541,27 @@ class CanonicalRuntimeWriter:
         self,
         session: Session,
         library_item_id: str,
-        movie_data: dict[str, Any],
+        observation: dict[str, Any],
         now: str,
     ) -> None:
         item = session.get(LibraryItem, library_item_id)
         if item is None:
             return
-        item.display_name = movie_data.get("folder_name") or movie_data.get("title") or item.display_name
-        item.availability_status = self._availability(movie_data.get("library_status"))
-        item.last_seen_at = movie_data.get("last_seen_at") or item.last_seen_at
-        item.missing_since = movie_data.get("missing_since")
-        item.metadata_source = movie_data.get("metadata_source")
-        item.metadata_updated_at = movie_data.get("metadata_updated_at")
-        item.scrape_status = movie_data.get("scrape_status") or item.scrape_status
-        item.scrape_error = movie_data.get("scrape_error")
-        item.scraped_at = movie_data.get("scraped_at")
-        item.match_confidence = movie_data.get("tmdb_confidence")
+        item.display_name = observation.get("folder_name") or observation.get("title") or item.display_name
+        incoming_availability = self._availability(observation.get("library_status"))
+        item.availability_status = (
+            "ignored"
+            if item.availability_status == "ignored" and incoming_availability == "available"
+            else incoming_availability
+        )
+        item.last_seen_at = observation.get("last_seen_at") or item.last_seen_at
+        item.missing_since = observation.get("missing_since")
+        item.metadata_source = observation.get("metadata_source")
+        item.metadata_updated_at = observation.get("metadata_updated_at")
+        item.scrape_status = observation.get("scrape_status") or item.scrape_status
+        item.scrape_error = observation.get("scrape_error")
+        item.scraped_at = observation.get("scraped_at")
+        item.match_confidence = observation.get("tmdb_confidence")
         item.retired_at = now if item.availability_status == "retired" else None
         item.updated_at = now
         session.add(item)
@@ -724,13 +570,13 @@ class CanonicalRuntimeWriter:
         self,
         session: Session,
         library_item_id: str,
-        movie_data: dict[str, Any],
+        observation: dict[str, Any],
         now: str,
     ) -> None:
         item = session.get(LibraryItem, library_item_id)
         if item is None:
             return
-        source_key = self.source_item_key(movie_data, item.id)
+        source_key = self.source_item_key(observation, item.id)
         if source_key == item.source_item_key:
             current_history = session.exec(
                 select(LibraryItemLocatorHistory)
@@ -774,13 +620,18 @@ class CanonicalRuntimeWriter:
             existing_history.reason = "runtime_relink"
             session.add(existing_history)
         item.source_item_key = source_key
-        item.availability_status = self._availability(movie_data.get("library_status"))
-        item.missing_since = movie_data.get("missing_since")
+        incoming_availability = self._availability(observation.get("library_status"))
+        item.availability_status = (
+            "ignored"
+            if item.availability_status == "ignored" and incoming_availability == "available"
+            else incoming_availability
+        )
+        item.missing_since = observation.get("missing_since")
         item.updated_at = now
         session.add(item)
 
-    def _sync_identities(self, session: Session, film_id: str, movie_data: dict[str, Any], now: str) -> None:
-        for provider, external_id in self._identities(movie_data).items():
+    def _sync_identities(self, session: Session, film_id: str, observation: dict[str, Any], now: str) -> None:
+        for provider, external_id in self._identities(observation).items():
             existing = session.exec(
                 select(ExternalIdentity)
                 .where(ExternalIdentity.provider == provider)
@@ -795,7 +646,7 @@ class CanonicalRuntimeWriter:
                     provider=provider,
                     external_id=external_id,
                     identity_status="active",
-                    provenance_kind=movie_data.get("metadata_source") or "runtime",
+                    provenance_kind=observation.get("metadata_source") or "runtime",
                     created_at=now,
                     updated_at=now,
                 )
@@ -804,18 +655,20 @@ class CanonicalRuntimeWriter:
     def _sync_assets(
         self,
         session: Session,
-        resolution: RuntimeMovieResolution,
-        movie_data: dict[str, Any],
+        resolution: RuntimeLibraryResolution,
+        observation: dict[str, Any],
         now: str,
         file_observation: FileIdentityObservation | None,
     ) -> None:
         definitions = (
-            ("library", "video", movie_data.get("media_path") or movie_data.get("video_file")),
-            ("library", "nfo", movie_data.get("nfo_path") or movie_data.get("nfo_file")),
-            ("library", "poster", movie_data.get("poster_local")),
-            ("library", "backdrop", movie_data.get("backdrop_local")),
-            ("film", "poster", movie_data.get("poster_path")),
-            ("film", "backdrop", movie_data.get("backdrop_path")),
+            ("library", "video", observation.get("media_path") or observation.get("video_file")),
+            ("library", "nfo", observation.get("nfo_path") or observation.get("nfo_file")),
+            ("library", "poster", observation.get("poster_local")),
+            ("library", "backdrop", observation.get("backdrop_local")),
+            ("library", "poster_thumb", observation.get("poster_thumb_local")),
+            ("library", "backdrop_thumb", observation.get("backdrop_thumb_local")),
+            ("film", "poster", observation.get("poster_path")),
+            ("film", "backdrop", observation.get("backdrop_path")),
         )
         for owner, kind, locator_value in definitions:
             if not locator_value:
@@ -853,50 +706,50 @@ class CanonicalRuntimeWriter:
                     locator=locator,
                     normalized_locator_hash=locator_hash,
                     availability_status=(
-                        "missing" if movie_data.get("library_status") == "missing" else (
+                        "missing" if observation.get("library_status") == "missing" else (
                             "present" if owner == "library" else "unknown"
                         )
                     ),
-                    source=movie_data.get("metadata_source") or "runtime",
+                    source=observation.get("metadata_source") or "runtime",
                     created_at=now,
                     updated_at=now,
                 )
             if owner == "library":
-                if movie_data.get("library_status") == "missing":
+                if observation.get("library_status") == "missing":
                     asset.availability_status = "missing"
-                elif movie_data.get("library_status") in {"retired", "reverted"}:
+                elif observation.get("library_status") in {"retired", "reverted"}:
                     asset.availability_status = "retired"
                 else:
                     asset.availability_status = "present"
-                asset.missing_since = movie_data.get("missing_since")
+                asset.missing_since = observation.get("missing_since")
             else:
                 asset.availability_status = "unknown"
             if kind == "video":
-                asset.file_size = movie_data.get("file_size")
-                asset.file_mtime = movie_data.get("file_mtime")
-                asset.width = movie_data.get("video_width")
-                asset.height = movie_data.get("video_height")
-                asset.codec = movie_data.get("video_codec")
-                asset.bitrate = movie_data.get("video_bitrate")
-                asset.duration_seconds = movie_data.get("video_duration")
-                asset.fps = movie_data.get("video_fps")
-                asset.dynamic_range = movie_data.get("video_dynamic_range")
-                asset.bit_depth = movie_data.get("video_bit_depth")
-                asset.stream_metadata = movie_data.get("audio_tracks")
+                asset.file_size = observation.get("file_size")
+                asset.file_mtime = observation.get("file_mtime")
+                asset.width = observation.get("video_width")
+                asset.height = observation.get("video_height")
+                asset.codec = observation.get("video_codec")
+                asset.bitrate = observation.get("video_bitrate")
+                asset.duration_seconds = observation.get("video_duration")
+                asset.fps = observation.get("video_fps")
+                asset.dynamic_range = observation.get("video_dynamic_range")
+                asset.bit_depth = observation.get("video_bit_depth")
+                asset.stream_metadata = observation.get("audio_tracks")
                 if file_observation is not None:
                     asset.platform_file_id = file_observation.platform_file_id
                     asset.content_fingerprint = file_observation.content_fingerprint
                     asset.content_hash = file_observation.content_hash
             elif kind == "nfo":
-                asset.file_size = movie_data.get("nfo_size")
-                asset.file_mtime = movie_data.get("nfo_mtime")
-                asset.content_fingerprint = movie_data.get("nfo_fingerprint")
-            asset.last_observed_at = movie_data.get("last_seen_at") or now
+                asset.file_size = observation.get("nfo_size")
+                asset.file_mtime = observation.get("nfo_mtime")
+                asset.content_fingerprint = observation.get("nfo_fingerprint")
+            asset.last_observed_at = observation.get("last_seen_at") or now
             asset.updated_at = now
             session.add(asset)
 
     @staticmethod
-    def _profile_id(session: Session) -> str:
+    def local_profile_id(session: Session) -> str:
         profile = session.exec(select(LocalProfile).where(LocalProfile.profile_key == "local")).first()
         if profile is None:
             now = utc_now_iso()
@@ -912,12 +765,12 @@ class CanonicalRuntimeWriter:
         return profile.id
 
     @staticmethod
-    def _identities(movie_data: dict[str, Any]) -> dict[str, str]:
+    def _identities(observation: dict[str, Any]) -> dict[str, str]:
         identities = {}
-        if movie_data.get("tmdb_id") is not None:
-            identities["tmdb.movie"] = str(movie_data["tmdb_id"]).strip()
-        if movie_data.get("imdb_id"):
-            identities["imdb.title"] = str(movie_data["imdb_id"]).strip().casefold()
+        if observation.get("tmdb_id") is not None:
+            identities["tmdb.movie"] = str(observation["tmdb_id"]).strip()
+        if observation.get("imdb_id"):
+            identities["imdb.title"] = str(observation["imdb_id"]).strip().casefold()
         return {provider: value for provider, value in identities.items() if value}
 
     @staticmethod

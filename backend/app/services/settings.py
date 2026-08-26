@@ -8,8 +8,11 @@ import os
 from datetime import datetime, timedelta
 
 import requests
+from sqlmodel import Session, select
 
-SETTINGS_FILE = "data/settings.json"
+import app.database as database
+from app.canonical_models import Setting, canonical_utc_now_iso
+
 MODELS_CACHE_FILE = "data/models_cache.json"
 CACHE_DURATION = timedelta(hours=24)  # Cache models for 24 hours
 ARTWORK_LANGUAGES = {"metadata", "zh", "en", "none"}
@@ -181,46 +184,45 @@ def get_default_settings():
     }
 
 def load_settings():
-    """Load settings from file"""
+    """Load persisted preferences from the fresh Canonical database."""
     try:
-        if os.path.exists(SETTINGS_FILE):
-            with open(SETTINGS_FILE, 'r') as f:
-                saved = json.load(f)
-                defaults = get_default_settings()
-                # Merge saved settings with defaults, refresh models list
-                return {
-                    **defaults,
-                    **saved,
-                    "available_models": get_available_models()  # Always use latest models
-                }
-    except Exception as e:
-        print(f"Error loading settings: {e}")
-    
-    return get_default_settings()
+        with Session(database.engine) as session:
+            saved = {row.key: row.value for row in session.exec(select(Setting)).all()}
+    except Exception as exc:
+        logger.warning("Settings database is unavailable; using defaults: %s", type(exc).__name__)
+        saved = {}
+    defaults = get_default_settings()
+    return {**defaults, **saved, "available_models": get_available_models()}
 
 def save_settings(settings: dict):
-    """Save settings to file"""
+    """Atomically persist preferences without storing the derived model list."""
     try:
-        os.makedirs(os.path.dirname(SETTINGS_FILE), exist_ok=True)
-        # Don't save the models list, it will be fetched dynamically
-        settings_to_save = {k: v for k, v in settings.items() if k != "available_models"}
-        with open(SETTINGS_FILE, 'w') as f:
-            json.dump(settings_to_save, f, indent=2)
+        settings_to_save = {str(k): v for k, v in settings.items() if k != "available_models"}
+        now = canonical_utc_now_iso()
+        with Session(database.engine) as session:
+            existing = {row.key: row for row in session.exec(select(Setting)).all()}
+            for key, row in existing.items():
+                if key not in settings_to_save:
+                    session.delete(row)
+            for key, value in settings_to_save.items():
+                row = existing.get(key) or Setting(key=key, value=value, updated_at=now)
+                row.value = value
+                row.updated_at = now
+                session.add(row)
+            session.commit()
         return True
-    except Exception as e:
-        print(f"Error saving settings: {e}")
+    except Exception as exc:
+        logger.error("Settings could not be saved: %s", type(exc).__name__)
         return False
 
 def _get_saved_tmdb_api_key():
     try:
-        if not os.path.exists(SETTINGS_FILE):
-            return None
-        with open(SETTINGS_FILE, 'r') as f:
-            settings = json.load(f)
-        saved_key = settings.get("tmdb_api_key")
+        with Session(database.engine) as session:
+            row = session.get(Setting, "tmdb_api_key")
+        saved_key = row.value if row is not None else None
         return saved_key.strip() if isinstance(saved_key, str) and saved_key.strip() else None
-    except Exception as e:
-        print(f"Error reading TMDB API key setting: {e}")
+    except Exception as exc:
+        logger.warning("TMDB setting is unavailable: %s", type(exc).__name__)
         return None
 
 def get_tmdb_api_key():
@@ -242,7 +244,7 @@ def get_tmdb_key_status():
     return {"configured": False, "source": None}
 
 def set_tmdb_api_key(api_key: str):
-    """Persist a TMDB API key in settings.json when env does not own it."""
+    """Persist a TMDB API key in the Setting table when env does not own it."""
     if os.getenv("TMDB_API_KEY"):
         return False
 

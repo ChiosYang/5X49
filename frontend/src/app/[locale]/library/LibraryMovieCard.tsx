@@ -8,13 +8,12 @@ import { Check, Globe2, Loader2, Star } from "lucide-react";
 import { mutate } from "swr";
 import { Link } from "@/i18n/routing";
 import { API } from "@/lib/api";
-import { useUpdateMovieUserState } from "@/hooks/useMovie";
-import type { AudioTrack, LibraryMovie, MovieUserState } from "@/types/movie";
+import { useUpdateFilmProfileState } from "@/hooks/useFilm";
+import type { AudioTrack, LibraryFilmSummary } from "@/types/movie";
 import ExternalScoreStrip from "../components/ExternalScoreStrip";
 
 interface LibraryMovieCardProps {
-  movie: LibraryMovie;
-  userState?: MovieUserState;
+  movie: LibraryFilmSummary;
   priority?: boolean;
 }
 
@@ -147,9 +146,9 @@ function formatVideoCodec(codec?: string | null) {
   return codecMap[codec.toLowerCase()] || codec.toUpperCase();
 }
 
-function formatResolutionBadge(movie: LibraryMovie) {
-  const width = movie.video_width;
-  const height = movie.video_height;
+function formatResolutionBadge(movie: LibraryFilmSummary) {
+  const width = movie.primary_item.video?.width;
+  const height = movie.primary_item.video?.height;
   if (!width || !height) {
     return null;
   }
@@ -192,13 +191,14 @@ function countryToCode(country?: string | null) {
   return COUNTRY_CODE_ALIASES[normalized] || null;
 }
 
-function getMediaSpecBadges(movie: LibraryMovie): MediaSpecBadge[] {
+function getMediaSpecBadges(movie: LibraryFilmSummary): MediaSpecBadge[] {
+  const video = movie.primary_item.video;
   const resolution = formatResolutionBadge(movie);
-  const dynamicRange = formatDynamicRange(movie.video_dynamic_range);
-  const videoCodec = formatVideoCodec(movie.video_codec);
-  const audioSpec = getAudioSpecBadge(movie.audio_tracks?.[0]);
-  const bitrate = formatBitrate(movie.video_bitrate);
-  const bitDepth = movie.video_bit_depth ? `${movie.video_bit_depth}-bit` : null;
+  const dynamicRange = formatDynamicRange(video?.dynamic_range);
+  const videoCodec = formatVideoCodec(video?.codec);
+  const audioSpec = getAudioSpecBadge(video?.audio_tracks?.[0]);
+  const bitrate = formatBitrate(video?.bitrate);
+  const bitDepth = video?.bit_depth ? `${video.bit_depth}-bit` : null;
 
   const badges: Array<MediaSpecBadge | null> = [
     resolution ? { label: resolution, variant: "solid" as const } : null,
@@ -218,15 +218,16 @@ function getMediaSpecBadges(movie: LibraryMovie): MediaSpecBadge[] {
   return badges.filter((badge): badge is MediaSpecBadge => Boolean(badge)).slice(0, 5);
 }
 
-function getMetadataBadge(movie: LibraryMovie) {
-  if (movie.metadata_source !== "filename" && movie.scrape_status !== "failed") {
+function getMetadataBadge(movie: LibraryFilmSummary) {
+  const metadata = movie.primary_item.metadata;
+  if (metadata.source !== "filename" && metadata.scrape_status !== "failed") {
     return null;
   }
 
-  if (movie.scrape_status === "needs_review") {
+  if (metadata.scrape_status === "needs_review") {
     return "Needs review";
   }
-  if (movie.scrape_status === "failed") {
+  if (metadata.scrape_status === "failed") {
     return "Match failed";
   }
   return "Unmatched";
@@ -240,17 +241,23 @@ function todayDateValue() {
   return `${year}-${month}-${day}`;
 }
 
-export default function LibraryMovieCard({ movie, userState, priority = false }: LibraryMovieCardProps) {
+export default function LibraryMovieCard({ movie, priority = false }: LibraryMovieCardProps) {
   const t = useTranslations("Library");
   const router = useRouter();
-  const { trigger, isMutating } = useUpdateMovieUserState(movie.id);
-  const [watched, setWatched] = useState(Boolean(userState?.watched));
-  const [favorite, setFavorite] = useState(Boolean(userState?.favorite));
-  const artworkVersion = movie.metadata_updated_at ? `?v=${encodeURIComponent(movie.metadata_updated_at)}` : "";
-  const backdropPath = movie.backdrop_thumb_local || movie.backdrop_local;
-  const backdropSrc = backdropPath ? `${API.mediaUrl(backdropPath)}${artworkVersion}` : null;
-  const title = movie.title_cn || movie.title;
-  const description = movie.overview || movie.plot || movie.micro_genre || "";
+  const { trigger, isMutating } = useUpdateFilmProfileState(movie.id);
+  const profileState = movie.profile_state;
+  const artwork = movie.primary_item.artwork;
+  const [watched, setWatched] = useState(Boolean(profileState.watched));
+  const [favorite, setFavorite] = useState(Boolean(profileState.favorite));
+  const artworkVersion = movie.primary_item.metadata.updated_at
+    ? `?v=${encodeURIComponent(movie.primary_item.metadata.updated_at)}`
+    : "";
+  const backdropPath = artwork.backdrop_thumb_local || artwork.backdrop_local;
+  const backdropSrc = backdropPath
+    ? `${API.mediaUrl(backdropPath)}${artworkVersion}`
+    : artwork.backdrop_provider ? API.providerArtworkUrl(artwork.backdrop_provider) : null;
+  const title = movie.title;
+  const description = movie.overview || movie.micro_genre || "";
   const country = movie.countries?.[0];
   const countryCode = countryToCode(country);
   const countryFlag = countryCode ? countryCodeToFlag(countryCode) : null;
@@ -260,7 +267,7 @@ export default function LibraryMovieCard({ movie, userState, priority = false }:
   const tags = [
     movie.micro_genre,
     ...(movie.genres || []),
-    movie.director ? `Dir. ${movie.director}` : undefined,
+    movie.directors?.[0] ? `Dir. ${movie.directors[0]}` : undefined,
   ]
     .filter(Boolean)
     .slice(0, 3);
@@ -275,12 +282,13 @@ export default function LibraryMovieCard({ movie, userState, priority = false }:
     try {
       await trigger({
         watched: nextWatched,
-        watched_at: nextWatched ? userState?.watched_at || todayDateValue() : null,
+        watched_at: nextWatched ? profileState.watched_at || todayDateValue() : null,
         favorite: nextFavorite,
       });
       await Promise.all([
-        mutate(API.libraryMovieUserState(movie.id)),
-        mutate(API.libraryUserStates()),
+        mutate(API.filmProfileState(movie.id)),
+        mutate(API.libraryFilm(movie.id)),
+        mutate(API.libraryFilms()),
         mutate(API.watchHistory()),
       ]);
       router.refresh();
@@ -347,7 +355,7 @@ export default function LibraryMovieCard({ movie, userState, priority = false }:
                   {title}
                 </h3>
                 <p className="line-clamp-1 text-xs font-bold tracking-wide text-ink uppercase">
-                  {movie.director || movie.title} {movie.year}
+                  {movie.directors?.[0] || movie.title} {movie.year}
                 </p>
               </div>
             </div>

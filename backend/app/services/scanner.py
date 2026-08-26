@@ -23,8 +23,8 @@ from app.contracts.structured_metadata import (
 
 
 @dataclass(frozen=True)
-class ScannedMovie:
-    movie: dict
+class FilmObservation:
+    film: dict
     structured_metadata: StructuredMetadataObservationDraft | None = None
 
 
@@ -55,9 +55,9 @@ class NFOScanner:
 
     def scan(self) -> list[dict]:
         """Scan all subdirectories for movies and parse metadata when available."""
-        return [item.movie for item in self.scan_observed()]
+        return [item.film for item in self.scan_observed()]
 
-    def scan_observed(self) -> list[ScannedMovie]:
+    def scan_observed(self) -> list[FilmObservation]:
         """Scan movies while retaining the internal structured metadata observation."""
         movies = []
         
@@ -80,10 +80,10 @@ class NFOScanner:
     def scan_folder(self, folder: Path | str) -> Optional[dict]:
         """Scan a single movie folder, using NFO when present and filename fallback otherwise."""
         observed = self.scan_folder_observed(folder)
-        return observed.movie if observed else None
+        return observed.film if observed else None
 
-    def scan_folder_observed(self, folder: Path | str) -> Optional[ScannedMovie]:
-        """Scan one folder and return compatibility data plus an internal observation."""
+    def scan_folder_observed(self, folder: Path | str) -> Optional[FilmObservation]:
+        """Scan one folder into Film and structured metadata observations."""
         folder = Path(folder)
         if not folder.exists() or not folder.is_dir():
             return None
@@ -99,8 +99,8 @@ class NFOScanner:
 
         file_title, file_year = self._parse_title_year(video_file.name)
 
-        movie_data = {
-            "id": self._build_movie_id(None, None, file_year, folder, video_file),
+        film_observation = {
+            "id": self._build_source_record_id(None, None, file_year, folder, video_file),
             "title": file_title,
             "title_cn": file_title,
             "year": file_year,
@@ -116,13 +116,13 @@ class NFOScanner:
             "poster_path": None,
             "backdrop_path": None,
         }
-        movie_data = self._with_file_info(movie_data, folder, video_file)
-        return ScannedMovie(
-            movie=movie_data,
+        film_observation = self._with_file_info(film_observation, folder, video_file)
+        return FilmObservation(
+            film=film_observation,
             structured_metadata=StructuredMetadataObservationDraft(
                 origin_kind="filename",
-                source_instance_id="legacy.local",
-                observed_at=movie_data["metadata_updated_at"],
+                source_instance_id="local",
+                observed_at=film_observation["metadata_updated_at"],
                 complete_fields=frozenset({"titles"}),
                 titles=(
                     TitleObservation(file_title, "canonical", "und"),
@@ -134,10 +134,10 @@ class NFOScanner:
     def parse_nfo(self, nfo_path: Path, folder: Path) -> Optional[dict]:
         """Parse a single .nfo XML file and return standardized movie dict."""
         observed = self._parse_nfo_observed(nfo_path, folder)
-        return observed.movie if observed else None
+        return observed.film if observed else None
 
-    def _parse_nfo_observed(self, nfo_path: Path, folder: Path) -> Optional[ScannedMovie]:
-        """Parse one NFO into the compatibility projection and structured observation."""
+    def _parse_nfo_observed(self, nfo_path: Path, folder: Path) -> Optional[FilmObservation]:
+        """Parse one NFO into Film and structured metadata observations."""
         try:
             tree = ET.parse(nfo_path)
             root = tree.getroot()
@@ -196,12 +196,12 @@ class NFOScanner:
                 fanart_url = fanart_elem.text
             
             video_file = self._find_video_file(folder)
-            movie_id = self._build_movie_id(tmdb_id, imdb_id, year, folder, video_file)
+            source_record_id = self._build_source_record_id(tmdb_id, imdb_id, year, folder, video_file)
             generator = root.findtext('generator') or ""
             nfo_source = "tmdb" if generator.strip().lower() == "5x49" else "tmm"
             
-            movie_data = {
-                "id": movie_id,
+            film_observation = {
+                "id": source_record_id,
                 "title": title,
                 "title_cn": title_cn,
                 "year": year,
@@ -231,7 +231,7 @@ class NFOScanner:
                 "scrape_status": "matched",
                 **self.nfo_signature(nfo_path),
             }
-            movie_data = self._with_file_info(movie_data, folder, video_file)
+            film_observation = self._with_file_info(film_observation, folder, video_file)
             title_value = (root.findtext("title") or title).strip()
             original_value = (root.findtext("originaltitle") or title).strip()
             title_locale = self._title_locale(root.findtext("language"))
@@ -254,15 +254,15 @@ class NFOScanner:
                 )
             observation = StructuredMetadataObservationDraft(
                 origin_kind="nfo",
-                source_instance_id="legacy.local",
-                observed_at=movie_data["metadata_updated_at"],
+                source_instance_id="local",
+                observed_at=film_observation["metadata_updated_at"],
                 titles=tuple(titles),
                 countries=tuple(CountryObservation(value) for value in countries),
                 credits=tuple((*director_observations, *structured_actors)),
                 genres=tuple(genre_observations),
                 issues=tuple(actor_issues),
             )
-            return ScannedMovie(movie=movie_data, structured_metadata=observation)
+            return FilmObservation(film=film_observation, structured_metadata=observation)
 
         except ET.ParseError as e:
             print(f"  NFO XML parse error: {e}")
@@ -397,7 +397,7 @@ class NFOScanner:
                 })
         return tracks
 
-    def _build_movie_id(
+    def _build_source_record_id(
         self,
         tmdb_id: Optional[str],
         imdb_id: Optional[str],
@@ -443,9 +443,9 @@ class NFOScanner:
         except OSError:
             return False
 
-    def _with_file_info(self, movie_data: dict, folder: Path, video_file: Optional[Path]) -> dict:
+    def _with_file_info(self, film_observation: dict, folder: Path, video_file: Optional[Path]) -> dict:
         now = datetime.now(timezone.utc).isoformat()
-        movie_data.update({
+        film_observation.update({
             "folder_name": folder.name,
             "folder_path": str(folder.resolve()),
             "last_seen_at": now,
@@ -457,7 +457,7 @@ class NFOScanner:
         if video_file:
             stat = video_file.stat()
             media_path = str(video_file.resolve())
-            movie_data.update({
+            film_observation.update({
                 "media_path": media_path,
                 "video_file": video_file.name,
                 "file_size": stat.st_size,
@@ -467,11 +467,11 @@ class NFOScanner:
             if not probe_data:
                 probe_data = video_probe_service.probe(video_file)
             if probe_data:
-                if movie_data.get("audio_tracks"):
+                if film_observation.get("audio_tracks"):
                     probe_data.pop("audio_tracks", None)
-                movie_data.update(probe_data)
+                film_observation.update(probe_data)
 
-        return movie_data
+        return film_observation
 
     def _cached_video_probe(self, media_path: str, file_size: int, file_mtime: float) -> dict:
         cached = self.video_probe_cache.get(media_path)

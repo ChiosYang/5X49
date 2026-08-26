@@ -153,8 +153,8 @@ class JobRuntime:
             failed = job_store.update(
                 job_id,
                 status="failed",
-                error=str(exc),
-                result_summary=str(exc),
+                error=exc.__class__.__name__,
+                result_summary="Job failed",
                 finished=True,
             )
             if failed:
@@ -169,11 +169,7 @@ class JobRuntime:
             payload = {
                 "source_instance_id": internal_payload.get("source_instance_id"),
                 "fingerprint_id": internal_payload.get("fingerprint_id"),
-                "candidate_count": len({
-                    candidate
-                    for item in items
-                    for candidate in item.get("candidate_item_ids") or []
-                }),
+                "candidate_count": sum(int(item.get("candidate_count") or 0) for item in items),
                 "pending_count": len(items),
             }
         result = JobRuntime._public_result(job.get("result"))
@@ -284,9 +280,9 @@ class JobRuntime:
                 f"Updated {result.get('updated', 0)}, "
                 f"skipped {result.get('skipped', 0)}, failed {result.get('failed', 0)}"
             )
-        if job_type == "external_scores.refresh_movie":
+        if job_type == "external_scores.refresh_film":
             return "External scores refreshed" if result.get("updated_sources") else "No external score match"
-        if job_type == "analysis.analyze_movie":
+        if job_type == "analysis.analyze_film":
             return "Analysis finished"
         if job_type == "library.resolve_relink":
             return (

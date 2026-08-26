@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 from typing import Any
+from uuid import uuid4
 
 from sqlalchemy import CheckConstraint, Column, Index, UniqueConstraint, text
 from sqlmodel import Field, JSON, SQLModel
@@ -18,6 +19,29 @@ from app.contracts.analysis_persistence import (
 
 def canonical_utc_now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
+
+
+FRESH_SCHEMA_EPOCH = "fresh-canonical-v1"
+
+
+def _opaque_id(prefix: str) -> str:
+    return f"{prefix}_{uuid4().hex}"
+
+
+class SchemaMetadata(SQLModel, table=True):
+    __tablename__ = "schema_metadata"
+
+    id: int = Field(default=1, primary_key=True)
+    epoch: str = Field(unique=True)
+    created_at: str = Field(default_factory=canonical_utc_now_iso)
+
+
+class Setting(SQLModel, table=True):
+    __tablename__ = "setting"
+
+    key: str = Field(primary_key=True)
+    value: Any = Field(sa_column=Column(JSON, nullable=False))
+    updated_at: str = Field(default_factory=canonical_utc_now_iso, index=True)
 
 
 class GraphEntity(SQLModel, table=True):
@@ -781,7 +805,7 @@ class AssertionProvenance(SQLModel, table=True):
             name="uq_assertion_provenance_origin",
         ),
         CheckConstraint(
-            "origin_kind IN ('nfo', 'tmdb', 'migration', 'user', 'analysis_run', 'rule')",
+            "origin_kind IN ('nfo', 'tmdb', 'user', 'analysis_run', 'rule')",
             name="ck_assertion_provenance_origin_kind",
         ),
         CheckConstraint(
@@ -990,53 +1014,38 @@ class MediaAsset(SQLModel, table=True):
     updated_at: str = Field(default_factory=canonical_utc_now_iso)
 
 
-class LegacyMovieAlias(SQLModel, table=True):
-    __tablename__ = "legacy_movie_alias"
-
-    legacy_movie_id: str = Field(primary_key=True)
-    film_id: str = Field(foreign_key="film.id", ondelete="RESTRICT", index=True)
-    library_item_id: str = Field(
-        foreign_key="library_item.id",
-        ondelete="RESTRICT",
-        unique=True,
-        index=True,
-    )
-    legacy_library_status: str | None = None
-    created_at: str = Field(default_factory=canonical_utc_now_iso)
-    updated_at: str = Field(default_factory=canonical_utc_now_iso)
-
-
 class IdentityReview(SQLModel, table=True):
     __tablename__ = "identity_review"
     __table_args__ = (
-        UniqueConstraint("legacy_movie_id", "reason", name="uq_identity_review_legacy_reason"),
+        UniqueConstraint("review_key", name="uq_identity_review_key"),
         CheckConstraint("status IN ('open', 'resolved', 'dismissed')", name="ck_identity_review_status"),
+        Index("ix_identity_review_film_status", "film_id", "status"),
+        Index("ix_identity_review_item_status", "library_item_id", "status"),
     )
 
-    id: str = Field(primary_key=True)
-    legacy_movie_id: str = Field(index=True)
-    tmdb_film_id: str | None = Field(default=None, foreign_key="film.id", ondelete="RESTRICT")
-    imdb_film_id: str | None = Field(default=None, foreign_key="film.id", ondelete="RESTRICT")
-    reason: str
+    id: str = Field(default_factory=lambda: _opaque_id("irev"), primary_key=True)
+    film_id: str | None = Field(default=None, foreign_key="film.id", ondelete="RESTRICT")
+    library_item_id: str | None = Field(
+        default=None,
+        foreign_key="library_item.id",
+        ondelete="RESTRICT",
+    )
+    source_instance_id: str
+    source_ref: str
+    reason_code: str
+    candidate_hash: str
+    review_key: str
     status: str = Field(default="open", index=True)
     created_at: str = Field(default_factory=canonical_utc_now_iso)
     updated_at: str = Field(default_factory=canonical_utc_now_iso)
-
-
-class CanonicalBackfillRun(SQLModel, table=True):
-    __tablename__ = "canonical_backfill_run"
-
-    run_key: str = Field(primary_key=True)
-    status: str
-    counts: dict[str, int] = Field(sa_column=Column(JSON))
-    warning_count: int = 0
-    conflict_count: int = 0
-    started_at: str
-    finished_at: str | None = None
+    resolved_at: str | None = None
 
 
 class FilmProfileState(SQLModel, table=True):
     __tablename__ = "film_profile_state"
+    __table_args__ = (
+        CheckConstraint("rating IS NULL OR (rating >= 1 AND rating <= 5)", name="ck_film_profile_rating"),
+    )
 
     profile_id: str = Field(
         primary_key=True,
@@ -1045,6 +1054,8 @@ class FilmProfileState(SQLModel, table=True):
     )
     film_id: str = Field(primary_key=True, foreign_key="film.id", ondelete="RESTRICT")
     favorite: bool = Field(default=False, index=True)
+    rating: int | None = Field(default=None, ge=1, le=5)
+    notes: str | None = None
     created_at: str = Field(default_factory=canonical_utc_now_iso)
     updated_at: str = Field(default_factory=canonical_utc_now_iso)
 
@@ -1052,7 +1063,6 @@ class FilmProfileState(SQLModel, table=True):
 class Viewing(SQLModel, table=True):
     __tablename__ = "viewing"
     __table_args__ = (
-        CheckConstraint("rating IS NULL OR (rating >= 1 AND rating <= 5)", name="ck_viewing_rating"),
         CheckConstraint(
             "watched_at_precision IN ('timestamp', 'date', 'year', 'unknown')",
             name="ck_viewing_precision",
@@ -1080,14 +1090,100 @@ class Viewing(SQLModel, table=True):
     film_id: str = Field(foreign_key="film.id", ondelete="RESTRICT", index=True)
     watched_at: str | None = None
     watched_at_precision: str = "unknown"
-    rating: int | None = Field(default=None, ge=1, le=5)
-    review: str | None = None
-    tags: list[str] | None = Field(default=None, sa_column=Column(JSON))
-    mood: str | None = None
-    favorite_scene: str | None = None
     source: str
     source_record_id: str | None = None
     review_status: str = Field(default="confirmed", index=True)
     created_at: str = Field(default_factory=canonical_utc_now_iso)
     updated_at: str = Field(default_factory=canonical_utc_now_iso)
     deleted_at: str | None = Field(default=None, index=True)
+
+
+class FilmExternalScore(SQLModel, table=True):
+    __tablename__ = "film_external_score"
+    __table_args__ = (
+        UniqueConstraint(
+            "film_id",
+            "source",
+            "kind",
+            "list_name",
+            "edition",
+            name="uq_film_external_score_identity",
+        ),
+        CheckConstraint("kind IN ('rating', 'rank')", name="ck_film_external_score_kind"),
+        CheckConstraint(
+            "(kind = 'rating' AND value IS NOT NULL AND scale IS NOT NULL AND rank IS NULL) OR "
+            "(kind = 'rank' AND rank IS NOT NULL AND value IS NULL AND scale IS NULL)",
+            name="ck_film_external_score_value",
+        ),
+        Index("ix_film_external_score_film_source", "film_id", "source"),
+    )
+
+    id: str = Field(default_factory=lambda: _opaque_id("score"), primary_key=True)
+    film_id: str = Field(foreign_key="film.id", ondelete="RESTRICT", index=True)
+    source: str
+    label: str
+    kind: str
+    value: float | None = None
+    scale: float | None = None
+    rank: int | None = None
+    previous_rank: int | None = None
+    votes: int | None = None
+    list_name: str = ""
+    edition: str = ""
+    source_uri: str | None = None
+    matched_by: str | None = None
+    confidence: float | None = None
+    fetched_at: str
+    expires_at: str | None = None
+    created_at: str = Field(default_factory=canonical_utc_now_iso)
+    updated_at: str = Field(default_factory=canonical_utc_now_iso)
+
+
+class ExternalScoreRefreshState(SQLModel, table=True):
+    __tablename__ = "external_score_refresh_state"
+    __table_args__ = (
+        UniqueConstraint("film_id", "source", name="uq_external_score_refresh_film_source"),
+        CheckConstraint(
+            "status IN ('idle', 'running', 'succeeded', 'failed')",
+            name="ck_external_score_refresh_status",
+        ),
+    )
+
+    id: str = Field(default_factory=lambda: _opaque_id("sref"), primary_key=True)
+    film_id: str = Field(foreign_key="film.id", ondelete="RESTRICT", index=True)
+    source: str
+    status: str = Field(default="idle", index=True)
+    error_code: str | None = None
+    error_message: str | None = None
+    refreshed_at: str | None = None
+    created_at: str = Field(default_factory=canonical_utc_now_iso)
+    updated_at: str = Field(default_factory=canonical_utc_now_iso)
+
+
+class OperationSnapshot(SQLModel, table=True):
+    __tablename__ = "operation_snapshot"
+    __table_args__ = (
+        CheckConstraint(
+            "aggregate_type IN ('film', 'library_item')",
+            name="ck_operation_snapshot_aggregate_type",
+        ),
+        CheckConstraint(
+            "status IN ('available', 'restored', 'expired')",
+            name="ck_operation_snapshot_status",
+        ),
+        UniqueConstraint("event_id", name="uq_operation_snapshot_event"),
+        Index("ix_operation_snapshot_aggregate", "aggregate_type", "aggregate_id", "created_at"),
+    )
+
+    id: str = Field(default_factory=lambda: _opaque_id("snap"), primary_key=True)
+    event_id: str = Field(foreign_key="events.id", ondelete="RESTRICT", index=True)
+    aggregate_type: str
+    aggregate_id: str
+    operation_kind: str
+    before_state: dict[str, Any] = Field(default_factory=dict, sa_column=Column(JSON, nullable=False))
+    after_state: dict[str, Any] = Field(default_factory=dict, sa_column=Column(JSON, nullable=False))
+    optimistic_hash: str
+    backup_manifest_ref: str | None = None
+    status: str = Field(default="available", index=True)
+    created_at: str = Field(default_factory=canonical_utc_now_iso)
+    restored_at: str | None = None

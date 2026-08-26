@@ -1,1 +1,0 @@
--- A first installation intentionally has no application tables.

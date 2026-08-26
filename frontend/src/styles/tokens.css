@@ -22,11 +22,6 @@
   --color-danger: var(--color-red-400);
   --color-scrim: rgb(0 0 0 / 75%);
 
-  /* Compatibility aliases retained during the incremental migration. */
-  --color-background: var(--color-canvas);
-  --color-foreground: var(--color-ink);
-  --color-muted: var(--color-ink-muted);
-
   /* Repeated layout relationships. Numeric spacing remains available. */
   --spacing-page-x: clamp(1.5rem, 5vw, 4rem);
   --spacing-page-y: clamp(4rem, 8vw, 6rem);

@@ -19,11 +19,9 @@ from app.contracts.structured_metadata import canonical_json_hash, normalize_met
 from app.services.structured_metadata_vocab import GENRE_VOCABULARY_VERSION
 
 
-GENRE_ASSERTION_BACKFILL_RUN_KEY = "factual_genre_assertions.v1"
 GENRE_ASSERTION_SOURCE_FIELD = "genres"
 
 _PROVENANCE_ORIGIN_KIND = {
-    "legacy_movie": "migration",
     "nfo": "nfo",
     "tmdb": "tmdb",
 }
@@ -281,7 +279,6 @@ genre_assertion_synchronizer = GenreAssertionSynchronizer()
 
 
 __all__ = [
-    "GENRE_ASSERTION_BACKFILL_RUN_KEY",
     "GENRE_ASSERTION_SOURCE_FIELD",
     "GenreAssertionSyncResult",
     "GenreAssertionSynchronizer",

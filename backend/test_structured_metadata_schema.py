@@ -41,16 +41,16 @@ class StructuredMetadataContractTests(unittest.TestCase):
         self.assertEqual(normalize_metadata_text("  HéLÈNE\tCATTANEO  "), "hélène cattaneo")
         self.assertNotEqual(normalize_metadata_text("Jose"), normalize_metadata_text("José"))
 
-        first = provisional_person_external_id("legacy.local", "  Wong  Kar-wai ")
-        repeated = provisional_person_external_id("legacy.local", "wong kar-wai")
+        first = provisional_person_external_id("local", "  Wong  Kar-wai ")
+        repeated = provisional_person_external_id("local", "wong kar-wai")
         other_source = provisional_person_external_id("jellyfin.local", "Wong Kar-wai")
 
-        self.assertEqual(PROVISIONAL_PERSON_PROVIDER, "legacy.local.person")
+        self.assertEqual(PROVISIONAL_PERSON_PROVIDER, "local.person")
         self.assertEqual(first, repeated)
         self.assertNotEqual(first, other_source)
         self.assertRegex(first, r"^sha256:[0-9a-f]{64}$")
         self.assertNotIn("wong", first)
-        self.assertNotIn("legacy", first)
+        self.assertNotIn("local", first)
 
         self.assertEqual(
             credit_semantic_key(
@@ -100,19 +100,13 @@ class StructuredMetadataSchemaTests(unittest.TestCase):
         self._tmp = tempfile.TemporaryDirectory()
         self.tmp_path = Path(self._tmp.name)
         self.database_path = self.tmp_path / "structured.db"
-        with closing(sqlite3.connect(self.database_path)) as connection:
-            connection.executescript(
-                "CREATE TABLE movie (id VARCHAR PRIMARY KEY, title VARCHAR NOT NULL, "
-                "year INTEGER NOT NULL);"
-                "INSERT INTO movie VALUES ('legacy_structured', 'Schema Sentinel', 2001);"
-            )
         self.engine = create_engine(f"sqlite:///{self.database_path}")
         configure_sqlite_engine(self.engine)
         run_migrations(
             self.engine,
             self.database_path,
             app_version="test",
-            backup_dir=self.tmp_path / "backups",
+            backup_required=False,
         )
         self.now = "2026-08-25T00:00:00Z"
 
@@ -123,12 +117,12 @@ class StructuredMetadataSchemaTests(unittest.TestCase):
     def test_schema_version_tables_indexes_and_seeded_vocabulary_are_available(self):
         inspector = inspect(self.engine)
         tables = set(inspector.get_table_names())
-        self.assertEqual(MIGRATIONS[-1].version, 10)
+        self.assertEqual(MIGRATIONS[-1].version, 1)
         self.assertTrue(set(STRUCTURED_TABLES).issubset(tables))
         with self.engine.connect() as connection:
             self.assertEqual(connection.execute(text("SELECT COUNT(*) FROM concept")).scalar_one(), 19)
-            self.assertGreater(connection.execute(text("SELECT COUNT(*) FROM concept_alias")).scalar_one(), 19)
-            self.assertEqual(connection.execute(text("SELECT COUNT(*) FROM film_title")).scalar_one(), 2)
+            self.assertEqual(connection.execute(text("SELECT COUNT(*) FROM concept_alias")).scalar_one(), 0)
+            self.assertEqual(connection.execute(text("SELECT COUNT(*) FROM film_title")).scalar_one(), 0)
             for table in (
                 "person",
                 "credit",
@@ -152,26 +146,12 @@ class StructuredMetadataSchemaTests(unittest.TestCase):
                 {index["name"] for index in inspector.get_indexes("structured_metadata_review")}
             )
         )
-        with self.engine.connect() as connection:
-            self.assertEqual(
-                connection.execute(
-                    text("SELECT title FROM movie WHERE id='legacy_structured'")
-                ).scalar_one(),
-                "Schema Sentinel",
-            )
-
     def test_fresh_create_all_and_migrated_structured_schema_are_equivalent(self):
         fresh_path = self.tmp_path / "fresh.db"
         fresh = create_engine(f"sqlite:///{fresh_path}")
         configure_sqlite_engine(fresh)
         try:
             SQLModel.metadata.create_all(fresh)
-            run_migrations(
-                fresh,
-                fresh_path,
-                app_version="test",
-                backup_required=False,
-            )
             for table in STRUCTURED_TABLES:
                 self.assertEqual(self._schema_signature(fresh, table), self._schema_signature(self.engine, table))
         finally:

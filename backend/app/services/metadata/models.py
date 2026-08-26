@@ -27,8 +27,8 @@ class ArtworkImage(BaseModel):
     vote_count: int = 0
 
 
-class MovieArtworkOptions(BaseModel):
-    movie_id: str
+class FilmArtworkOptions(BaseModel):
+    film_id: str
     tmdb_id: int
     posters: list[ArtworkImage] = []
     backdrops: list[ArtworkImage] = []
@@ -53,7 +53,7 @@ class ScrapeOptions(BaseModel):
 
 class BatchScrapeOptions(BaseModel):
     scope: Literal["unscraped", "missing_artwork", "all", "selected"] = "unscraped"
-    movie_ids: Optional[list[str]] = None
+    film_ids: Optional[list[str]] = None
     language: Optional[str] = None
     artwork_language: Optional[Literal["metadata", "zh", "en", "none"]] = None
     overwrite: bool = False
@@ -79,7 +79,7 @@ class RootOrganizeConfirmRequest(BaseModel):
 
 class ScrapeResult(BaseModel):
     status: Literal["success", "needs_review", "failed", "skipped"]
-    movie_id: str
+    film_id: str
     message: str
-    movie: Optional[dict] = None
+    film: Optional[dict] = None
     candidates: list[MetadataSearchResult] = []

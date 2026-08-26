@@ -2,17 +2,14 @@ from datetime import datetime, timezone
 from threading import Lock
 from typing import Optional
 
+from sqlmodel import Session, select
+
+from app.canonical_models import ExternalScoreRefreshState, FilmExternalScore
+from app.database import engine
 from app.services.event_bus import library_event_bus
 from app.services.event_store import event_store
 from app.services.external_scores.tspdt import TSPDTDataset
 from app.services.library import library_manager
-
-
-EXTERNAL_SCORE_EVENT_FIELDS = (
-    "external_scores",
-    "external_scores_updated_at",
-    "external_scores_error",
-)
 
 
 def utc_now_iso() -> str:
@@ -35,42 +32,98 @@ class ExternalScoreService:
         with self._lock:
             return dict(self._status)
 
-    def refresh_movie(self, movie_id: str, force: bool = False) -> dict:
-        movie = library_manager.get_movie(movie_id)
-        if not movie:
-            raise LookupError("Movie not found")
+    def refresh_film(self, film_id: str, force: bool = False) -> dict:
+        film = library_manager.get_film_operation_context(film_id)
+        if film is None:
+            raise LookupError("Film not found")
+        now = utc_now_iso()
+        try:
+            match = self.tspdt.match_movie(film)
+        except Exception as exc:
+            safe_message = type(exc).__name__
+            with Session(engine) as session:
+                state = self._refresh_state(session, film_id, self.tspdt.source)
+                state.status = "failed"
+                state.error_code = "source_refresh_failed"
+                state.error_message = safe_message[:160]
+                state.refreshed_at = now
+                state.updated_at = now
+                session.add(state)
+                event_store.append_in_session(
+                    session,
+                    "ExternalScoresRefreshFailed",
+                    "film",
+                    film_id,
+                    {"source": self.tspdt.source, "error_code": state.error_code},
+                )
+                session.commit()
+            raise RuntimeError("External score refresh failed") from exc
 
-        target_movie, updated_sources, skipped_sources = self._refresh_tspdt(movie)
-        if target_movie and updated_sources:
-            score_changes = self._field_changes(movie, target_movie, EXTERNAL_SCORE_EVENT_FIELDS)
-            _, projected = event_store.append_and_project(
+        updated_sources: list[str] = []
+        skipped_sources: list[str] = []
+        with Session(engine) as session:
+            state = self._refresh_state(session, film_id, self.tspdt.source)
+            state.status = "succeeded"
+            state.error_code = None
+            state.error_message = None
+            state.refreshed_at = now
+            state.updated_at = now
+            session.add(state)
+            if match is None:
+                skipped_sources.append(self.tspdt.source)
+            else:
+                score = session.exec(
+                    select(FilmExternalScore)
+                    .where(FilmExternalScore.film_id == film_id)
+                    .where(FilmExternalScore.source == self.tspdt.source)
+                    .where(FilmExternalScore.kind == "rank")
+                    .where(FilmExternalScore.list_name == self.tspdt.list_name)
+                    .where(FilmExternalScore.edition == self.tspdt.edition)
+                ).first()
+                if score is None:
+                    score = FilmExternalScore(
+                        film_id=film_id,
+                        source=self.tspdt.source,
+                        label=self.tspdt.label,
+                        kind="rank",
+                        rank=match.entry.rank,
+                        previous_rank=match.entry.previous_rank,
+                        list_name=self.tspdt.list_name,
+                        edition=self.tspdt.edition,
+                        matched_by=match.matched_by,
+                        confidence=match.confidence,
+                        fetched_at=now,
+                    )
+                else:
+                    score.label = self.tspdt.label
+                    score.rank = match.entry.rank
+                    score.previous_rank = match.entry.previous_rank
+                    score.matched_by = match.matched_by
+                    score.confidence = match.confidence
+                    score.fetched_at = now
+                    score.updated_at = now
+                session.add(score)
+                updated_sources.append(self.tspdt.source)
+            event_store.append_in_session(
+                session,
                 "ExternalScoresRefreshed",
-                "movie",
-                movie_id,
+                "film",
+                film_id,
                 {
-                    "movie_id": movie_id,
                     "updated_sources": updated_sources,
                     "skipped_sources": skipped_sources,
                     "force": force,
-                    **score_changes,
                 },
             )
-            if not projected:
-                raise RuntimeError("External scores event could not be projected")
-            library_event_bus.publish_library_changed("external_scores_updated", movie_id=movie_id)
-            return {
-                "status": "success",
-                "movie_id": movie_id,
-                "movie": projected,
-                "updated_sources": updated_sources,
-                "skipped_sources": skipped_sources,
-            }
+            session.commit()
 
+        result_film = library_manager.get_film(film_id)
+        library_event_bus.publish_library_changed("external_scores_updated", film_id=film_id)
         return {
-            "status": "skipped",
-            "movie_id": movie_id,
-            "movie": target_movie or movie,
-            "updated_sources": [],
+            "status": "success" if updated_sources else "skipped",
+            "film_id": film_id,
+            "film": result_film,
+            "updated_sources": updated_sources,
             "skipped_sources": skipped_sources,
         }
 
@@ -78,104 +131,32 @@ class ExternalScoreService:
         started_at = utc_now_iso()
         self._set_status(state="running", last_started_at=started_at, last_error=None)
         result = {"processed": 0, "updated": 0, "skipped": 0, "failed": 0}
-
         try:
-            for movie in library_manager.get_movies():
-                if movie.get("library_status") in {"missing", "ignored", "reverted"}:
-                    continue
+            for film in library_manager.list_films():
                 result["processed"] += 1
                 try:
-                    refresh_result = self.refresh_movie(movie["id"], force=force)
-                    if refresh_result["updated_sources"]:
-                        result["updated"] += 1
-                    else:
-                        result["skipped"] += 1
+                    refreshed = self.refresh_film(film["id"], force=force)
+                    result["updated" if refreshed["updated_sources"] else "skipped"] += 1
                 except Exception:
                     result["failed"] += 1
-
-            self._set_status(
-                state="idle",
-                last_finished_at=utc_now_iso(),
-                last_result=result,
-            )
+            self._set_status(state="idle", last_finished_at=utc_now_iso(), last_result=result)
             library_event_bus.publish_library_changed("external_scores_batch_updated", result=result)
             return result
         except Exception as exc:
             self._set_status(
                 state="error",
                 last_finished_at=utc_now_iso(),
-                last_error=str(exc),
+                last_error=type(exc).__name__,
             )
             raise
 
-    def _refresh_tspdt(self, movie: dict) -> tuple[Optional[dict], list[str], list[str]]:
-        try:
-            match = self.tspdt.match_movie(movie)
-        except Exception as exc:
-            stored = library_manager.upsert_movie(
-                {
-                    **movie,
-                    "external_scores_error": str(exc),
-                    "external_scores_updated_at": utc_now_iso(),
-                },
-                preserve_id=movie["id"],
-            )
-            event_store.safe_append(
-                "ExternalScoresRefreshFailed",
-                "movie",
-                movie["id"],
-                {"movie_id": movie["id"], "source": "tspdt", "message": str(exc)},
-            )
-            return stored, [], ["tspdt"]
-
-        if not match:
-            return None, [], ["tspdt"]
-
-        score = {
-            "source": self.tspdt.source,
-            "label": self.tspdt.label,
-            "kind": "rank",
-            "rank": match.entry.rank,
-            "previous_rank": match.entry.previous_rank,
-            "list_name": self.tspdt.list_name,
-            "edition": self.tspdt.edition,
-            "title": match.entry.title,
-            "year": match.entry.year,
-            "director": match.entry.director,
-            "matched_by": match.matched_by,
-            "confidence": match.confidence,
-            "fetched_at": utc_now_iso(),
-        }
-        scores = self._replace_source(movie.get("external_scores") or [], score)
-        return {
-            **movie,
-            "external_scores": scores,
-            "external_scores_updated_at": utc_now_iso(),
-            "external_scores_error": None,
-        }, ["tspdt"], []
-
-    def _replace_source(self, scores: list[dict], score: dict) -> list[dict]:
-        return [
-            *[item for item in scores if item.get("source") != score["source"]],
-            score,
-        ]
-
-    def _field_changes(self, previous: dict, current: dict, fields: tuple[str, ...]) -> dict:
-        changed_fields = []
-        previous_values = {}
-        current_values = {}
-        for field in fields:
-            previous_value = previous.get(field)
-            current_value = current.get(field)
-            previous_values[field] = previous_value
-            current_values[field] = current_value
-            if previous_value != current_value:
-                changed_fields.append(field)
-        return {
-            "changed_fields": changed_fields,
-            "previous": previous_values,
-            "current": current_values,
-        }
+    def _refresh_state(self, session: Session, film_id: str, source: str) -> ExternalScoreRefreshState:
+        state = session.exec(
+            select(ExternalScoreRefreshState)
+            .where(ExternalScoreRefreshState.film_id == film_id)
+            .where(ExternalScoreRefreshState.source == source)
+        ).first()
+        return state or ExternalScoreRefreshState(film_id=film_id, source=source)
 
     def _set_status(self, **updates):
         with self._lock:

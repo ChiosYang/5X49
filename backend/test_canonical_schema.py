@@ -1,7 +1,5 @@
-import sqlite3
 import tempfile
 import unittest
-from contextlib import closing
 from pathlib import Path
 
 from sqlalchemy import inspect, text
@@ -16,12 +14,6 @@ class CanonicalSchemaTests(unittest.TestCase):
     def setUp(self):
         self._tmp = tempfile.TemporaryDirectory()
         self.database_path = Path(self._tmp.name) / "canonical.db"
-        with closing(sqlite3.connect(self.database_path)) as connection:
-            connection.executescript(
-                "CREATE TABLE movie (id VARCHAR PRIMARY KEY, title VARCHAR NOT NULL, "
-                "year INTEGER NOT NULL);"
-                "INSERT INTO movie VALUES ('legacy_schema', 'Schema Sentinel', 2001);"
-            )
         self.engine = create_engine(f"sqlite:///{self.database_path}")
         configure_sqlite_engine(self.engine)
         run_migrations(
@@ -45,9 +37,13 @@ class CanonicalSchemaTests(unittest.TestCase):
             "library_item",
             "library_item_locator_history",
             "media_asset",
-            "legacy_movie_alias",
             "identity_review",
-            "canonical_backfill_run",
+            "film_profile_state",
+            "viewing",
+            "film_external_score",
+            "external_score_refresh_state",
+            "operation_snapshot",
+            "schema_metadata",
         }.issubset(tables))
         with self.engine.connect() as connection:
             profiles = connection.execute(
@@ -55,7 +51,14 @@ class CanonicalSchemaTests(unittest.TestCase):
             ).mappings().all()
         self.assertEqual(len(profiles), 1)
         self.assertEqual(profiles[0]["profile_key"], "local")
-        self.assertRegex(profiles[0]["id"], r"^profile_[0-9a-f]{32}$")
+        self.assertRegex(profiles[0]["id"], r"^prof_[0-9a-f]{32}$")
+        with self.engine.connect() as connection:
+            self.assertEqual(
+                connection.execute(text("SELECT epoch FROM schema_metadata WHERE id=1")).scalar_one(),
+                "fresh-canonical-v1",
+            )
+            for removed in ("movie", "movie_user_state", "legacy_movie_alias", "canonical_backfill_run"):
+                self.assertNotIn(removed, tables)
         with self.engine.connect() as connection:
             self.assertEqual(connection.execute(text("PRAGMA foreign_keys")).scalar_one(), 1)
 

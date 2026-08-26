@@ -1,253 +1,145 @@
 "use client";
 
-import { useMemo, useState, useSyncExternalStore } from "react";
-import Image from "next/image";
-import useSWR from "swr";
-import { ChevronDown, Clock, Film, Filter, Wrench } from "lucide-react";
-import { ActivityOperationDetails } from "@/components/activity/ActivityOperationDetails";
-import { useTechnicalMode } from "@/components/TechnicalModeProvider";
-import { Spinner, StateMessage } from "@/components/ui/Feedback";
+import { ChevronDown, Clock, Filter, RotateCcw } from "lucide-react";
+import { useTranslations } from "next-intl";
+import { useMemo, useState } from "react";
+import useSWR, { mutate } from "swr";
+
+import { Button } from "@/components/ui/Button";
+import { InlineFeedback, Spinner, StateMessage } from "@/components/ui/Feedback";
 import { FormField, Select, TextInput } from "@/components/ui/FormControls";
-import { useLibrary } from "@/hooks/useLibrary";
+import { useOperationPreview, useRestoreOperation } from "@/hooks/useFilm";
 import { Link } from "@/i18n/routing";
-import {
-  EVENT_LABELS,
-  EVENT_TYPE_OPTIONS,
-  TECHNICAL_EVENT_TYPES,
-  formatEventTime,
-  formatRelativeEventTime,
-  groupActivityEvents,
-  movieTitle,
-  operationDisplaySummary,
-  operationDisplayTitle,
-  type ActivityOperation,
-} from "@/lib/activity";
 import { API } from "@/lib/api";
-import type { EventRecord, LibraryMovie } from "@/types/movie";
+import type { EventRecord } from "@/types/movie";
 
-const subscribeToHydration = () => () => {};
-const getClientHydrationSnapshot = () => true;
-const getServerHydrationSnapshot = () => false;
-const isDevelopment = process.env.NODE_ENV === "development";
+const aggregateTypes = ["film", "library_item", "viewing", "assertion", "analysis_run", "job"];
 
-export default function LibraryActivityClient() {
-  const hasMounted = useSyncExternalStore(
-    subscribeToHydration,
-    getClientHydrationSnapshot,
-    getServerHydrationSnapshot,
-  );
-  const { isTechnical, setIsTechnical } = useTechnicalMode();
-  const [aggregateType, setAggregateType] = useState("");
-  const [eventType, setEventType] = useState("");
-  const [movieId, setMovieId] = useState("");
-  const [expandedOperationIds, setExpandedOperationIds] = useState<string[]>([]);
+function formatTime(value: string) {
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? value : date.toLocaleString();
+}
 
-  const queryMovieId = isTechnical ? movieId.trim() : "";
-  const url = useMemo(() => API.libraryAuditEventsUrl({
-    aggregate_type: aggregateType || undefined,
-    aggregate_id: queryMovieId || undefined,
-    type: eventType || undefined,
-    limit: 100,
-  }), [aggregateType, eventType, queryMovieId]);
+function eventLabel(value: string) {
+  return value.replace(/([a-z0-9])([A-Z])/g, "$1 $2");
+}
 
-  const { data: events = [], isLoading, error } = useSWR<EventRecord[]>(hasMounted ? url : null, {
-    refreshInterval: 5000,
-  });
-  const { data: movies = [] } = useLibrary();
-
-  const movieById = useMemo(() => {
-    return new Map(movies.map((movie) => [movie.id, movie]));
-  }, [movies]);
-
-  const visibleEvents = isTechnical
-    ? events
-    : events.filter((event) => !TECHNICAL_EVENT_TYPES.has(event.type));
-  const operations = groupActivityEvents(events, isTechnical);
-  const hiddenTechnicalCount = events.length - visibleEvents.length;
-
-  const toggleOperation = (id: string) => {
-    setExpandedOperationIds((current) => (
-      current.includes(id)
-        ? current.filter((item) => item !== id)
-        : [...current, id]
-    ));
-  };
+function SnapshotRestore({ event }: { event: EventRecord }) {
+  const t = useTranslations("Activity");
+  const snapshotId = event.operation_snapshot_id;
+  const { data: preview, error } = useOperationPreview(snapshotId);
+  const restore = useRestoreOperation(snapshotId);
+  if (!snapshotId) return null;
 
   return (
-    <div className="space-y-8">
-      <section className="grid gap-4 border-y border-neutral-900 py-5 md:grid-cols-[minmax(0,1fr)_auto] md:items-end">
-        <div className={`grid gap-3 ${isTechnical ? "sm:grid-cols-3" : "sm:grid-cols-2"}`}>
-          <FormField label="Aggregate">
-            <Select
-              value={aggregateType}
-              onChange={(event) => setAggregateType(event.target.value)}
-            >
-              <option value="">All</option>
-              <option value="movie">Movie</option>
-              <option value="library">Library</option>
-              <option value="file">File</option>
-            </Select>
-          </FormField>
-          <FormField label="Event">
-            <Select
-              value={eventType}
-              onChange={(event) => setEventType(event.target.value)}
-            >
-              <option value="">All events</option>
-              {hasMounted ? EVENT_TYPE_OPTIONS.map((type) => (
-                <option key={type} value={type}>{EVENT_LABELS[type] || type}</option>
-              )) : null}
-            </Select>
-          </FormField>
-          {isTechnical ? (
-            <FormField label="Movie ID">
-              <TextInput
-                value={movieId}
-                onChange={(event) => setMovieId(event.target.value)}
-                placeholder="Optional aggregate id"
-              />
-            </FormField>
-          ) : null}
-        </div>
-        <div className="flex flex-wrap items-center gap-4">
-          {isDevelopment ? (
-            <Link
-              href="/admin/health"
-              className="inline-flex h-9 items-center gap-2 border border-neutral-900 px-3 text-xs font-bold uppercase tracking-widest text-neutral-500 transition-colors hover:border-neutral-700 hover:text-neutral-300"
-            >
-              <Wrench className="h-3.5 w-3.5" />
-              Developer tools
-            </Link>
-          ) : null}
-          <label className="flex w-fit cursor-pointer items-center gap-3 text-xs font-bold uppercase tracking-widest text-neutral-500 transition-colors hover:text-neutral-300">
-            <input
-              type="checkbox"
-              checked={isTechnical}
-              onChange={(event) => setIsTechnical(event.target.checked)}
-              className="h-4 w-4 accent-white"
-            />
-            Show technical
-            {!isTechnical && hiddenTechnicalCount > 0 ? (
-              <span className="text-neutral-700">({hiddenTechnicalCount} hidden)</span>
-            ) : null}
-          </label>
-        </div>
-      </section>
-
-      <div className="flex items-center justify-between gap-4 text-xs font-bold uppercase tracking-widest text-neutral-600">
-        <span className="inline-flex items-center gap-2">
-          <Filter className="h-3.5 w-3.5" />
-          {operations.length} activity groups / {visibleEvents.length} visible steps
-        </span>
-        {isLoading ? (
-          <span className="inline-flex items-center gap-2 text-neutral-500">
-            <Spinner className="h-3.5 w-3.5" />
-            Loading
-          </span>
-        ) : null}
-      </div>
-
-      {error ? (
-        <StateMessage state="error">
-          Activity could not be loaded.
-        </StateMessage>
-      ) : operations.length === 0 ? (
-        <StateMessage>
-          {events.length > 0 && hiddenTechnicalCount === events.length
-            ? "Only technical events are hidden."
-            : "No activity recorded yet."}
-        </StateMessage>
-      ) : (
-        <ol className="space-y-4">
-          {operations.map((operation) => {
-            const expanded = expandedOperationIds.includes(operation.id);
-            const operationMovieId = movieIdForOperation(operation);
-            const movie = operationMovieId ? movieById.get(operationMovieId) : undefined;
-            return (
-              <li key={operation.id} className="grid gap-4 border border-neutral-900 bg-neutral-950/35 p-4 sm:grid-cols-[4.75rem_minmax(0,1fr)]">
-                <ActivityPoster movie={movie} />
-                <div className="grid min-w-0 gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start">
-                  <div className="min-w-0">
-                    <div className="flex flex-wrap items-center gap-3">
-                      <button
-                        type="button"
-                        onClick={() => toggleOperation(operation.id)}
-                        className="inline-flex min-w-0 items-center gap-2 text-left text-base font-semibold text-white transition-colors hover:text-neutral-300"
-                      >
-                        <ChevronDown className={`h-4 w-4 shrink-0 transition-transform ${expanded ? "rotate-0" : "-rotate-90"}`} />
-                        <span className="truncate">{operationDisplayTitle(operation, movie, isTechnical)}</span>
-                      </button>
-                      <span className="border border-neutral-800 px-2 py-1 text-[10px] font-bold uppercase tracking-widest text-neutral-600">
-                        {operation.eventCount} {operation.eventCount === 1 ? "step" : "steps"}
-                      </span>
-                    </div>
-                    <p className="mt-2 break-words text-sm leading-relaxed text-neutral-400">
-                      {operationDisplaySummary(operation, isTechnical)}
-                    </p>
-                    <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs uppercase tracking-widest text-neutral-600">
-                      {operationMovieId ? (
-                        <Link href={`/library/${operationMovieId}`} className="text-neutral-400 hover:text-white">
-                          {movieTitle(movie, operation.primaryEvent)}
-                        </Link>
-                      ) : (
-                        <span>Library activity</span>
-                      )}
-                      {isTechnical ? (
-                        <>
-                          <span>{operation.primaryEvent.aggregate_type}</span>
-                          {operation.correlation_id ? <span className="break-all">{operation.correlation_id}</span> : <span className="break-all">{operation.primaryEvent.id}</span>}
-                        </>
-                      ) : null}
-                    </div>
-                    {expanded ? (
-                      <ActivityOperationDetails
-                        operation={operation}
-                        mode={isTechnical ? "technical" : "friendly"}
-                      />
-                    ) : null}
-                  </div>
-                  <time className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs uppercase tracking-widest text-neutral-600 lg:justify-end">
-                    <Clock className="h-3 w-3" />
-                    {formatEventTime(operation.occurred_at)}
-                    <span className="text-neutral-700">{formatRelativeEventTime(operation.occurred_at)}</span>
-                  </time>
-                </div>
-              </li>
-            );
-          })}
-        </ol>
+    <div className="mt-4 space-y-3 border-t border-line pt-4">
+      {error && <InlineFeedback tone="error">{t("snapshotPreviewFailed")}</InlineFeedback>}
+      {!preview && !error && <Spinner className="h-4 w-4" />}
+      {preview && (
+        <>
+          <div className="grid gap-2 type-meta text-ink-subtle sm:grid-cols-2">
+            <p className="break-words">{t("before")}: {JSON.stringify(preview.before)}</p>
+            <p className="break-words">{t("after")}: {JSON.stringify(preview.after)}</p>
+          </div>
+          <Button
+            onClick={async () => {
+              if (!preview.confirmation_token || !window.confirm(t("restoreConfirm"))) return;
+              await restore.trigger({ confirmation_token: preview.confirmation_token });
+              await mutate(API.activityEvents());
+            }}
+            disabled={!preview.current_matches_after || !preview.confirmation_token || preview.status !== "available"}
+            busy={restore.isMutating}
+            variant="danger"
+          >
+            <RotateCcw className="h-4 w-4" />
+            {t("restore")}
+          </Button>
+          {restore.error && <InlineFeedback tone="error">{t("restoreConflict")}</InlineFeedback>}
+        </>
       )}
     </div>
   );
 }
-function movieIdForOperation(operation: ActivityOperation) {
-  for (const event of operation.events) {
-    if (event.aggregate_type === "movie" && event.aggregate_id) return event.aggregate_id;
-    const payloadMovieId = event.payload?.movie_id;
-    if (typeof payloadMovieId === "string" && payloadMovieId.trim()) return payloadMovieId;
-  }
-  return null;
-}
 
-function ActivityPoster({ movie }: { movie?: LibraryMovie }) {
-  const posterPath = movie?.poster_thumb_local || movie?.poster_local;
-  const artworkVersion = movie?.metadata_updated_at ? `?v=${encodeURIComponent(movie.metadata_updated_at)}` : "";
-  const posterSrc = posterPath ? `${API.mediaUrl(posterPath)}${artworkVersion}` : null;
+export default function LibraryActivityClient() {
+  const t = useTranslations("Activity");
+  const [aggregateType, setAggregateType] = useState("");
+  const [aggregateId, setAggregateId] = useState("");
+  const [eventType, setEventType] = useState("");
+  const [expanded, setExpanded] = useState<string[]>([]);
+  const url = useMemo(() => API.activityEvents({
+    aggregate_type: aggregateType || undefined,
+    aggregate_id: aggregateId.trim() || undefined,
+    type: eventType.trim() || undefined,
+    limit: 100,
+  }), [aggregateId, aggregateType, eventType]);
+  const { data: events = [], isLoading, error } = useSWR<EventRecord[]>(url, { refreshInterval: 5000 });
 
   return (
-    <div className="relative h-28 w-20 overflow-hidden border border-neutral-800 bg-neutral-950 sm:h-28 sm:w-full">
-      {posterSrc ? (
-        <Image
-          src={posterSrc}
-          alt={movie?.title || "Movie poster"}
-          fill
-          sizes="80px"
-          className="object-cover"
-        />
+    <div className="space-y-8">
+      <section className="grid gap-3 border-y border-line py-5 sm:grid-cols-3">
+        <FormField label={t("aggregate")}>
+          <Select value={aggregateType} onChange={(event) => setAggregateType(event.target.value)}>
+            <option value="">{t("all")}</option>
+            {aggregateTypes.map((type) => <option key={type} value={type}>{type}</option>)}
+          </Select>
+        </FormField>
+        <FormField label={t("aggregateId")}>
+          <TextInput value={aggregateId} onChange={(event) => setAggregateId(event.target.value)} placeholder={t("aggregateIdPlaceholder")} />
+        </FormField>
+        <FormField label={t("eventType")}>
+          <TextInput value={eventType} onChange={(event) => setEventType(event.target.value)} placeholder={t("eventTypePlaceholder")} />
+        </FormField>
+      </section>
+
+      <div className="flex items-center justify-between type-meta text-ink-subtle">
+        <span className="inline-flex items-center gap-2"><Filter className="h-3.5 w-3.5" />{t("eventCount", { count: events.length })}</span>
+        {isLoading && <Spinner className="h-4 w-4" />}
+      </div>
+
+      {error ? (
+        <StateMessage state="error">{t("loadFailed")}</StateMessage>
+      ) : events.length === 0 ? (
+        <StateMessage>{t("empty")}</StateMessage>
       ) : (
-        <div className="flex h-full w-full items-center justify-center text-neutral-600">
-          <Film className="h-6 w-6" />
-        </div>
+        <ol className="space-y-3">
+          {events.map((event) => {
+            const open = expanded.includes(event.id);
+            return (
+              <li key={event.id} className="border border-line bg-surface/40 p-4">
+                <button
+                  type="button"
+                  onClick={() => setExpanded((items) => open ? items.filter((id) => id !== event.id) : [...items, event.id])}
+                  className="focus-ring flex w-full items-start justify-between gap-5 text-left"
+                >
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-3">
+                      <ChevronDown className={`h-4 w-4 shrink-0 transition-transform duration-fast ${open ? "" : "-rotate-90"}`} />
+                      <p className="truncate font-bold text-ink">{eventLabel(event.type)}</p>
+                    </div>
+                    <p className="mt-2 truncate type-meta text-ink-subtle">
+                      {event.aggregate_type} · {event.aggregate_id || t("global")}
+                    </p>
+                  </div>
+                  <time className="flex shrink-0 items-center gap-2 type-meta text-ink-subtle">
+                    <Clock className="h-3.5 w-3.5" />{formatTime(event.occurred_at)}
+                  </time>
+                </button>
+                {open && (
+                  <div className="mt-4 space-y-3 pl-7">
+                    {event.display_title && event.film_id ? (
+                      <Link href={`/library/${event.film_id}`} className="font-bold text-ink hover:underline">{event.display_title}</Link>
+                    ) : null}
+                    <pre className="scrollbar-minimal max-h-56 overflow-auto whitespace-pre-wrap break-all border border-line bg-canvas p-3 type-meta text-ink-muted">
+                      {JSON.stringify(event.payload || {}, null, 2)}
+                    </pre>
+                    <SnapshotRestore event={event} />
+                  </div>
+                )}
+              </li>
+            );
+          })}
+        </ol>
       )}
     </div>
   );

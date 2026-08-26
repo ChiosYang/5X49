@@ -43,14 +43,14 @@ class AnalysisService:
         # startup can replace it without reconstructing the singleton.
         return self._database_engine or engine
 
-    def analyze_movie(self, movie_id: str, ctx: Any | None = None) -> dict:
+    def analyze_film(self, film_id: str, ctx: Any | None = None) -> dict:
         try:
             configuration = self.historian.analysis_configuration()
-            job_id = self._job_id(ctx, movie_id)
+            job_id = self._job_id(ctx, film_id)
             with Session(self.database_engine) as session:
                 start = analysis_runtime_persistence.start(
                     session,
-                    movie_id=movie_id,
+                    film_id=film_id,
                     job_id=job_id,
                     provider=configuration.provider,
                     model=configuration.model,
@@ -60,8 +60,8 @@ class AnalysisService:
         except Exception as exc:
             category, code, message, _review = self._safe_failure(exc, False)
             logger.error(
-                "Analysis could not start movie_id=%s category=%s code=%s exception=%s",
-                movie_id,
+                "Analysis could not start film_id=%s category=%s code=%s exception=%s",
+                film_id,
                 category,
                 code,
                 exc.__class__.__name__,
@@ -71,17 +71,17 @@ class AnalysisService:
         if start.cached:
             try:
                 with Session(self.database_engine) as session:
-                    completed = analysis_runtime_persistence.restore_cached_projection(
+                    completed = analysis_runtime_persistence.restore_cached_result(
                         session,
                         start=start,
                         job_id=job_id,
                     )
                     session.commit()
-                return self._result(movie_id, completed, cached=True)
+                return self._result(film_id, completed, cached=True)
             except Exception as exc:
                 logger.error(
-                    "Cached analysis projection failed movie_id=%s exception=%s",
-                    movie_id,
+                    "Cached analysis read failed film_id=%s exception=%s",
+                    film_id,
                     exc.__class__.__name__,
                 )
                 raise AnalysisExecutionError("Analysis persistence failed") from None
@@ -124,7 +124,7 @@ class AnalysisService:
                     job_id=job_id,
                 )
                 session.commit()
-            return self._result(movie_id, completed, cached=False)
+            return self._result(film_id, completed, cached=False)
         except Exception as exc:
             cancelled = exc.__class__.__name__ == "JobCancelled"
             category, code, message, review = self._safe_failure(exc, cancelled)
@@ -144,8 +144,8 @@ class AnalysisService:
             except Exception:
                 logger.error("Failed to persist analysis failure state code=%s", code)
             logger.error(
-                "Analysis failed movie_id=%s category=%s code=%s exception=%s",
-                movie_id,
+                "Analysis failed film_id=%s category=%s code=%s exception=%s",
+                film_id,
                 category,
                 code,
                 exc.__class__.__name__,
@@ -199,9 +199,9 @@ class AnalysisService:
         return "persistence", "analysis_persistence_failed", "Analysis persistence failed", False
 
     @staticmethod
-    def _job_id(ctx: Any | None, movie_id: str) -> str:
+    def _job_id(ctx: Any | None, film_id: str) -> str:
         value = getattr(ctx, "job_id", None)
-        return str(value) if value else f"manual-analysis-{movie_id}"[:160]
+        return str(value) if value else f"manual-analysis-{film_id}"[:160]
 
     @staticmethod
     def _raise_if_cancelled(ctx: Any | None) -> None:
@@ -209,14 +209,15 @@ class AnalysisService:
             ctx.raise_if_cancelled()
 
     @staticmethod
-    def _result(movie_id: str, completed, *, cached: bool) -> dict:
+    def _result(film_id: str, completed, *, cached: bool) -> dict:
         return {
             "status": "success",
-            "movie_id": movie_id,
+            "film_id": film_id,
             "cached": cached,
             "assertions": completed.assertions,
             "evidence": completed.evidence,
             "reviews": completed.reviews,
+            "analysis": completed.view,
         }
 
 

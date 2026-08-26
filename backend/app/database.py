@@ -1,17 +1,15 @@
 import os
 from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
-from shutil import copy2
 
-from sqlalchemy import event
-from sqlmodel import SQLModel, create_engine, Session
+from sqlalchemy import event, inspect, text
+from sqlmodel import create_engine, Session
 
-from app.migrations import run_migrations
+from app.canonical_models import FRESH_SCHEMA_EPOCH
+from app.migrations import MigrationError, run_migrations
 from app.migrations.runner import database_has_user_tables
 
 DEFAULT_SQLITE_FILE = Path("data") / "library.db"
-LEGACY_SQLITE_FILE = Path("library.db")
-
 sqlite_file_name = os.getenv("SQLITE_DB_PATH", str(DEFAULT_SQLITE_FILE))
 sqlite_path = Path(sqlite_file_name)
 
@@ -19,11 +17,6 @@ if not sqlite_path.is_absolute():
     sqlite_path = Path.cwd() / sqlite_path
 
 sqlite_path.parent.mkdir(parents=True, exist_ok=True)
-
-if "SQLITE_DB_PATH" not in os.environ:
-    legacy_sqlite_path = Path.cwd() / LEGACY_SQLITE_FILE
-    if not sqlite_path.exists() and legacy_sqlite_path.exists():
-        copy2(legacy_sqlite_path, sqlite_path)
 
 sqlite_url = f"sqlite:///{sqlite_path}"
 
@@ -50,27 +43,31 @@ def create_db_and_tables():
 
     existing_database = database_has_user_tables(sqlite_path)
     if existing_database:
-        run_migrations(
-            engine,
-            sqlite_path,
-            app_version=_app_version(),
-        )
-
-    SQLModel.metadata.create_all(engine)
-
-    if not existing_database:
-        run_migrations(
-            engine,
-            sqlite_path,
-            app_version=_app_version(),
-            backup_required=False,
-        )
-
-    from app.services.compatibility_projection import (
-        rebuild_legacy_compatibility_projections,
+        _assert_fresh_schema_epoch()
+    run_migrations(
+        engine,
+        sqlite_path,
+        app_version=_app_version(),
+        backup_required=existing_database,
     )
+    _assert_fresh_schema_epoch()
 
-    rebuild_legacy_compatibility_projections(engine)
+
+def _assert_fresh_schema_epoch() -> None:
+    with engine.connect() as connection:
+        tables = set(inspect(connection).get_table_names())
+        if "schema_metadata" not in tables:
+            raise MigrationError(
+                "This database predates the fresh Canonical baseline. "
+                "Archive it and initialize a new database."
+            )
+        epoch = connection.execute(
+            text("SELECT epoch FROM schema_metadata WHERE id = 1")
+        ).scalar_one_or_none()
+        if epoch != FRESH_SCHEMA_EPOCH:
+            raise MigrationError(
+                f"Unsupported database epoch; expected {FRESH_SCHEMA_EPOCH}"
+            )
 
 
 def _app_version() -> str:

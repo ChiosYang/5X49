@@ -4,24 +4,13 @@ Security utilities for input validation and sanitization.
 import re
 from typing import Optional
 
-def validate_movie_id(movie_id: str) -> bool:
-    """
-    Validate movie ID format to prevent injection attacks.
-    
-    Args:
-        movie_id: Movie ID string to validate
-        
-    Returns:
-        True if valid, False otherwise
-        
-    Valid format:
-        - Alphanumeric characters
-        - Underscores and hyphens
-        - Length between 1 and 100 characters
-    """
-    if not movie_id or len(movie_id) > 100:
+def validate_resource_id(resource_id: str, expected_prefix: str | None = None) -> bool:
+    """Validate an opaque public resource identifier."""
+    if not resource_id or len(resource_id) > 100:
         return False
-    return bool(re.match(r'^[a-zA-Z0-9_-]+$', movie_id))
+    if expected_prefix is not None:
+        return bool(re.fullmatch(rf"{re.escape(expected_prefix)}_[0-9a-f]{{32}}", resource_id))
+    return bool(re.fullmatch(r"[a-zA-Z0-9_-]+", resource_id))
 
 
 def sanitize_path(path: str, allowed_base: str) -> Optional[str]:

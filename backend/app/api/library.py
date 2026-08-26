@@ -1,78 +1,65 @@
 import os
+import hashlib
 from pathlib import Path
 
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, Field as PydanticField
+from sqlmodel import Session
 
 from app.api.common import DEFAULT_MEDIA_DIR, job_response
+from app.database import engine
 from app.jobs import job_runtime
+from app.services.analysis_runtime import analysis_runtime_persistence
 from app.services.event_bus import library_event_bus
 from app.services.library import library_manager
 from app.services.library_sync import library_sync_service
 from app.services.metadata.organizer import root_video_organizer
+from app.services.operation_manifests import OperationManifestError, operation_manifest_store
 from app.services.settings import get_media_dir
-from app.services.user_state import movie_user_state_manager
+from app.services.user_state import film_profile_state_manager
 from app.services.watcher import library_watcher
-from app.utils.security import validate_movie_id
+from app.utils.security import validate_resource_id
 
 
 router = APIRouter()
 
 
-class MovieUserStateUpdate(BaseModel):
+class FilmProfileStateUpdate(BaseModel):
     watched: bool | None = None
     watched_at: str | None = None
     rating: int | None = PydanticField(default=None, ge=1, le=5)
     favorite: bool | None = None
-    notes: str | None = None
+    notes: str | None = PydanticField(default=None, max_length=10_000)
 
 
-@router.get("/library")
-def get_library():
-    """Get all movies in the local library."""
-    return library_manager.get_movies()
+@router.get("/library/films")
+def get_library_films():
+    return library_manager.list_films()
 
 
-@router.get("/watch-history")
-def get_watch_history():
-    """List watched movies with personal user state, newest first."""
-    return movie_user_state_manager.watch_history()
+@router.get("/library/films/{film_id}")
+def get_library_film(film_id: str):
+    _validate_id(film_id, "film")
+    film = library_manager.get_film(film_id)
+    if film is None:
+        raise HTTPException(status_code=404, detail="Film not found")
+    return film
 
 
-@router.get("/library/root-videos")
-def get_library_root_videos():
-    """List direct video files in the media root that are waiting for organization."""
-    try:
-        return root_video_organizer.list_root_videos(get_media_dir() or DEFAULT_MEDIA_DIR)
-    except (FileNotFoundError, PermissionError) as exc:
-        raise HTTPException(status_code=400, detail=str(exc))
+@router.get("/films/{film_id}/profile-state")
+def get_film_profile_state(film_id: str):
+    _validate_id(film_id, "film")
+    state = film_profile_state_manager.get(film_id)
+    if state is None:
+        raise HTTPException(status_code=404, detail="Film not found")
+    return state
 
 
-@router.get("/library/user-states")
-def get_library_user_states():
-    """List stored personal user states for library movies."""
-    return movie_user_state_manager.list_all()
-
-
-@router.get("/library/{movie_id}/user-state")
-def get_library_movie_user_state(movie_id: str):
-    """Get personal user state for one movie."""
-    if not validate_movie_id(movie_id):
-        raise HTTPException(status_code=400, detail="Invalid movie ID format")
-    if not library_manager.get_movie(movie_id):
-        raise HTTPException(status_code=404, detail="Movie not found")
-    return movie_user_state_manager.get(movie_id)
-
-
-@router.put("/library/{movie_id}/user-state")
-def update_library_movie_user_state(movie_id: str, request: MovieUserStateUpdate):
-    """Update personal user state for one movie."""
-    if not validate_movie_id(movie_id):
-        raise HTTPException(status_code=400, detail="Invalid movie ID format")
-    if not library_manager.get_movie(movie_id):
-        raise HTTPException(status_code=404, detail="Movie not found")
-    return movie_user_state_manager.upsert(
-        movie_id,
+@router.put("/films/{film_id}/profile-state")
+def update_film_profile_state(film_id: str, request: FilmProfileStateUpdate):
+    _validate_id(film_id, "film")
+    state = film_profile_state_manager.upsert(
+        film_id,
         watched=request.watched,
         watched_at=request.watched_at,
         rating=request.rating,
@@ -80,153 +67,153 @@ def update_library_movie_user_state(movie_id: str, request: MovieUserStateUpdate
         notes=request.notes,
         fields_set=request.model_fields_set,
     )
+    if state is None:
+        raise HTTPException(status_code=404, detail="Film not found")
+    library_event_bus.publish_library_changed("profile_state_updated", film_id=film_id)
+    return state
 
 
-@router.get("/library/{movie_id}")
-def get_library_movie(movie_id: str):
-    """Get details for a specific movie."""
-    if not validate_movie_id(movie_id):
-        raise HTTPException(status_code=400, detail="Invalid movie ID format")
+@router.get("/profile/watch-history")
+def get_watch_history():
+    return film_profile_state_manager.watch_history()
 
-    movie = library_manager.get_movie(movie_id)
-    if not movie:
-        raise HTTPException(status_code=404, detail="Movie not found")
-    return movie
+
+@router.get("/library/root-videos")
+def get_library_root_videos():
+    try:
+        return root_video_organizer.list_root_videos(get_media_dir() or DEFAULT_MEDIA_DIR)
+    except FileNotFoundError:
+        return []
+    except PermissionError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
 
 
 @router.post("/library/seed")
 def seed_library():
-    """Seed the library with test data."""
-    movies = library_manager.seed_test_data()
-    library_event_bus.publish_library_changed("seed", count=len(movies))
-    return movies
+    films = library_manager.seed_test_data()
+    library_event_bus.publish_library_changed("seed", count=len(films))
+    return films
 
 
 @router.post("/library/scan")
-def scan_library(media_dir: str = Query(default=None)):
-    """
-    Scan a directory for TMM-scraped movies and add them to library.
-    If no media_dir is provided, uses the configured MEDIA_DIR from settings.
-    """
-    target_dir = media_dir or get_media_dir() or DEFAULT_MEDIA_DIR
-
-    if not os.path.exists(target_dir):
-        raise HTTPException(status_code=400, detail=f"Directory not found: {target_dir}")
-
-    job = job_runtime.enqueue(
-        "library.reconcile",
-        {"media_dir": target_dir},
-        dedupe_key=f"library.reconcile:{target_dir}",
-    )
-    return job_response(job, "Library scan queued")
-
-
 @router.post("/library/reconcile")
 def reconcile_library(media_dir: str = Query(default=None)):
-    """Scan all configured media folders and mark disappeared movies as missing."""
     target_dir = media_dir or get_media_dir() or DEFAULT_MEDIA_DIR
     if not os.path.exists(target_dir):
         raise HTTPException(status_code=400, detail=f"Directory not found: {target_dir}")
-
+    try:
+        path_ref = operation_manifest_store.create_path_reference(
+            Path(target_dir),
+            Path(target_dir),
+        )
+    except OperationManifestError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    target_hash = hashlib.sha256(str(Path(target_dir).resolve()).encode("utf-8")).hexdigest()[:16]
     job = job_runtime.enqueue(
         "library.reconcile",
-        {"media_dir": target_dir},
-        dedupe_key=f"library.reconcile:{target_dir}",
+        {"media_root_ref": path_ref},
+        dedupe_key=f"library.reconcile:{target_hash}",
     )
     return job_response(job, "Library reconcile queued")
 
 
 @router.post("/library/scan-folder")
 def scan_library_folder(folder_path: str):
-    """Scan one movie folder and upsert its movie record."""
     if not Path(folder_path).exists():
         raise HTTPException(status_code=404, detail="Movie folder or video file not found")
+    try:
+        path_ref = operation_manifest_store.create_path_reference(
+            Path(get_media_dir() or DEFAULT_MEDIA_DIR),
+            Path(folder_path),
+        )
+    except OperationManifestError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    path_hash = hashlib.sha256(str(Path(folder_path).resolve()).encode("utf-8")).hexdigest()[:16]
     job = job_runtime.enqueue(
         "library.scan_folder",
-        {"folder_path": folder_path},
-        dedupe_key=f"library.scan_folder:{folder_path}",
+        {"path_ref": path_ref},
+        dedupe_key=f"library.scan_folder:{path_hash}",
     )
     return job_response(job, "Folder scan queued")
 
 
-@router.post("/library/{movie_id}/refresh")
-def refresh_library_movie(movie_id: str):
-    """Refresh one movie from its known local folder."""
-    if not validate_movie_id(movie_id):
-        raise HTTPException(status_code=400, detail="Invalid movie ID format")
-
-    if not library_manager.get_movie(movie_id):
-        raise HTTPException(status_code=404, detail="Movie not found")
+@router.post("/library/items/{library_item_id}/refresh")
+def refresh_library_item(library_item_id: str):
+    _validate_id(library_item_id, "library item")
+    if library_manager.get_item(library_item_id) is None:
+        raise HTTPException(status_code=404, detail="Library item not found")
     job = job_runtime.enqueue(
-        "library.refresh_movie",
-        {"movie_id": movie_id},
-        dedupe_key=f"library.refresh_movie:{movie_id}",
+        "library.refresh_item",
+        {"library_item_id": library_item_id},
+        dedupe_key=f"library.refresh_item:{library_item_id}",
     )
-    return job_response(job, "Movie refresh queued")
+    return job_response(job, "Library item refresh queued")
 
 
-@router.post("/library/{movie_id}/ignore")
-def ignore_library_movie(movie_id: str):
-    """Mark one movie as ignored so it is hidden from normal library views."""
-    if not validate_movie_id(movie_id):
-        raise HTTPException(status_code=400, detail="Invalid movie ID format")
-
-    movie = library_manager.ignore_movie(movie_id)
-    if not movie:
-        raise HTTPException(status_code=404, detail="Movie not found")
-    library_event_bus.publish_library_changed("ignored", movie_id=movie_id)
-    return {"status": "success", "movie": movie}
+@router.post("/library/items/{library_item_id}/ignore")
+def ignore_library_item(library_item_id: str):
+    _validate_id(library_item_id, "library item")
+    item = library_manager.ignore_item(library_item_id)
+    if item is None:
+        raise HTTPException(status_code=404, detail="Library item not found")
+    library_event_bus.publish_library_changed(
+        "ignored",
+        film_id=item["film_id"],
+        library_item_id=library_item_id,
+    )
+    return {"status": "success", "edition": item}
 
 
 @router.get("/library/sync/status")
 def get_library_sync_status():
-    """Get latest library sync and watcher status."""
-    return {
-        "sync": library_sync_service.get_status(),
-        "watcher": library_watcher.status(),
-    }
+    return {"sync": library_sync_service.get_status(), "watcher": library_watcher.status()}
 
 
-@router.post("/library/analyze/{movie_id}")
-def trigger_analysis(movie_id: str):
-    """Manually trigger analysis for a specific movie."""
-    if not validate_movie_id(movie_id):
-        raise HTTPException(status_code=400, detail="Invalid movie ID format")
-    if not library_manager.get_movie(movie_id):
-        raise HTTPException(status_code=404, detail="Movie not found")
-
+@router.post("/films/{film_id}/analysis-runs")
+def trigger_analysis(film_id: str):
+    _validate_id(film_id, "film")
+    if library_manager.get_film(film_id) is None:
+        raise HTTPException(status_code=404, detail="Film not found")
     job = job_runtime.enqueue(
-        "analysis.analyze_movie",
-        {"movie_id": movie_id},
-        dedupe_key=f"analysis.analyze_movie:{movie_id}",
+        "analysis.analyze_film",
+        {"film_id": film_id},
+        dedupe_key=f"analysis.analyze_film:{film_id}",
     )
-    return job_response(job, f"Analysis queued for {movie_id}")
+    return job_response(job, f"Analysis queued for {film_id}")
+
+
+@router.get("/films/{film_id}/analysis")
+def get_film_analysis(film_id: str):
+    _validate_id(film_id, "film")
+    if library_manager.get_film(film_id) is None:
+        raise HTTPException(status_code=404, detail="Film not found")
+    with Session(engine) as session:
+        return analysis_runtime_persistence.get_analysis(session, film_id)
 
 
 @router.delete("/library")
 def clear_library():
-    """Clear all movies from the library."""
-    library_manager.clear_library()
-    library_event_bus.publish_library_changed("clear")
-    return {"message": "Library cleared"}
+    retired = library_manager.clear_library()
+    library_event_bus.publish_library_changed("clear", retired=retired)
+    return {"message": "Library cleared", "retired": retired}
 
 
 @router.delete("/library/data")
 def clear_library_data():
-    """Clear all database-backed library data while preserving settings and media files."""
     deleted = library_manager.clear_all_data()
     library_event_bus.publish_library_changed("data_clear", deleted=deleted)
-    return {
-        "status": "success",
-        "message": "Library data cleared",
-        "deleted": deleted,
-    }
+    return {"status": "success", "message": "Library data cleared", "deleted": deleted}
 
 
 @router.delete("/library/missing")
-def cleanup_missing_library_movies():
-    """Delete records already marked as missing."""
+def cleanup_missing_library_items():
     deleted = library_manager.cleanup_missing()
     if deleted:
         library_event_bus.publish_library_changed("missing_cleanup", deleted=deleted)
     return {"status": "success", "deleted": deleted}
+
+
+def _validate_id(value: str, label: str) -> None:
+    prefix = "film" if label == "film" else "lib"
+    if not validate_resource_id(value, prefix):
+        raise HTTPException(status_code=400, detail=f"Invalid {label} ID format")

@@ -1,9 +1,11 @@
 import threading
 import time
+import hashlib
 from pathlib import Path
 from typing import Optional
 
 from app.services.event_bus import library_event_bus
+from app.services.operation_manifests import operation_manifest_store
 from app.services.settings import (
     get_auto_organize_root_videos,
     get_media_dir,
@@ -296,12 +298,28 @@ class LibraryWatcher:
             from app.jobs import job_runtime
 
             dedupe_key = None
+            root = Path(self._status.get("media_dir") or get_media_dir()).resolve()
             if job_type == "library.scan_folder":
-                dedupe_key = f"{job_type}:{payload.get('folder_path')}"
+                raw_path = Path(payload["folder_path"]).resolve()
+                path_hash = hashlib.sha256(str(raw_path).encode("utf-8")).hexdigest()[:16]
+                payload = {
+                    "path_ref": operation_manifest_store.create_path_reference(root, raw_path)
+                }
+                dedupe_key = f"{job_type}:{path_hash}"
             elif job_type == "library.mark_path_missing":
-                dedupe_key = f"{job_type}:{payload.get('path')}"
+                raw_path = Path(payload["path"]).resolve()
+                path_hash = hashlib.sha256(str(raw_path).encode("utf-8")).hexdigest()[:16]
+                payload = {
+                    "path_ref": operation_manifest_store.create_path_reference(
+                        root,
+                        raw_path,
+                        allow_missing=True,
+                    )
+                }
+                dedupe_key = f"{job_type}:{path_hash}"
             elif job_type == "organizer.organize_root":
-                dedupe_key = f"{job_type}:{payload.get('media_dir')}"
+                payload = {}
+                dedupe_key = job_type
             job_runtime.enqueue(job_type, payload, dedupe_key=dedupe_key)
         except Exception as exc:
             self._record_error(str(exc))

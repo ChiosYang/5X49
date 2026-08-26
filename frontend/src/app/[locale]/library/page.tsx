@@ -12,8 +12,8 @@ import {
   Type,
 } from "lucide-react";
 import { Link } from "@/i18n/routing";
-import { getLibrary, getLibraryUserStates, getRootVideos } from "@/lib/server-api";
-import type { LibraryMovie } from "@/types/movie";
+import { getLibraryFilms, getRootVideos } from "@/lib/server-api";
+import type { LibraryFilmSummary } from "@/types/movie";
 import LibraryMovieCard from "./LibraryMovieCard";
 import LibraryOrganizeRootButton from "./LibraryOrganizeRootButton";
 import LibraryRefreshButton from "./LibraryRefreshButton";
@@ -85,8 +85,8 @@ function libraryHref(sort: LibrarySortKey, direction: SortDirection, filter: Lib
   return `/library?${params.toString()}`;
 }
 
-function getDurationSeconds(movie: LibraryMovie) {
-  return movie.video_duration ?? (movie.runtime ? movie.runtime * 60 : null);
+function getDurationSeconds(film: LibraryFilmSummary) {
+  return film.primary_item.video?.duration_seconds ?? (film.runtime_minutes ? film.runtime_minutes * 60 : null);
 }
 
 function getTimestamp(value?: string | null) {
@@ -99,7 +99,7 @@ function getTimestamp(value?: string | null) {
 }
 
 function sortMovies(
-  movies: LibraryMovie[],
+  movies: LibraryFilmSummary[],
   sort: LibrarySortKey,
   direction: SortDirection,
   locale: string
@@ -109,19 +109,19 @@ function sortMovies(
 
   return [...movies].sort((a, b) => {
     if (sort === "title") {
-      const titleCompare = collator.compare(a.title_cn || a.title, b.title_cn || b.title);
+      const titleCompare = collator.compare(a.title, b.title);
       return (
         titleCompare * multiplier ||
-        (a.year - b.year) * multiplier ||
+        ((a.year || 0) - (b.year || 0)) * multiplier ||
         collator.compare(a.id, b.id) * multiplier
       );
     }
 
-    const aValue = sort === "added" ? getTimestamp(a.added_at) : getDurationSeconds(a);
-    const bValue = sort === "added" ? getTimestamp(b.added_at) : getDurationSeconds(b);
+    const aValue = sort === "added" ? getTimestamp(a.primary_item.added_at) : getDurationSeconds(a);
+    const bValue = sort === "added" ? getTimestamp(b.primary_item.added_at) : getDurationSeconds(b);
 
     if (aValue == null && bValue == null) {
-      return collator.compare(a.title_cn || a.title, b.title_cn || b.title);
+      return collator.compare(a.title, b.title);
     }
     if (aValue == null) {
       return 1;
@@ -131,7 +131,7 @@ function sortMovies(
     }
 
     const valueCompare = (aValue - bValue) * multiplier;
-    return valueCompare || collator.compare(a.title_cn || a.title, b.title_cn || b.title);
+    return valueCompare || collator.compare(a.title, b.title);
   });
 }
 
@@ -142,13 +142,9 @@ export default async function LibraryPage({ params, searchParams }: LibraryPageP
   const sort = normalizeSort(firstParam(resolvedSearchParams.sort));
   const direction = normalizeDirection(firstParam(resolvedSearchParams.dir), sort);
   const filter = normalizeFilter(firstParam(resolvedSearchParams.filter));
-  const [movies, userStates, rootVideos] = await Promise.all([getLibrary(), getLibraryUserStates(), getRootVideos()]);
-  const userStateByMovieId = new Map(userStates.map((state) => [state.movie_id, state]));
-  const visibleMovies = movies.filter(
-    (movie) => !["missing", "ignored", "reverted"].includes(movie.library_status || "")
-  );
-  const filteredMovies = visibleMovies.filter((movie) => {
-    const state = userStateByMovieId.get(movie.id);
+  const [films, rootVideos] = await Promise.all([getLibraryFilms(), getRootVideos()]);
+  const filteredMovies = films.filter((movie) => {
+    const state = movie.profile_state;
     if (filter === "watched") return Boolean(state?.watched);
     if (filter === "unwatched") return !state?.watched;
     if (filter === "favorite") return Boolean(state?.favorite);
@@ -267,7 +263,6 @@ export default async function LibraryPage({ params, searchParams }: LibraryPageP
               <LibraryMovieCard
                 key={movie.id}
                 movie={movie}
-                userState={userStateByMovieId.get(movie.id)}
                 priority={i === 0}
               />
             ))}

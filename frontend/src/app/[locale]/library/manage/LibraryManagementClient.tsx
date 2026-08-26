@@ -151,8 +151,8 @@ export default function LibraryManagementClient() {
     ? errorMessage(clearError, settingsT("clearAllDataFailed"))
     : clearResult
       ? settingsT("clearAllDataSummary", {
-          movies: clearResult.deleted.movies,
-          userStates: clearResult.deleted.user_states,
+          films: clearResult.deleted.films,
+          editions: clearResult.deleted.library_items,
           jobs: clearResult.deleted.jobs,
           events: clearResult.deleted.events,
         })

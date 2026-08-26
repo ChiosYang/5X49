@@ -11,7 +11,7 @@ from app.services.settings import get_media_dir
 
 
 class LibrarySyncService:
-    """Coordinates folder scans, movie refreshes, and missing-file reconciliation."""
+    """Coordinates Film/LibraryItem scans and missing-file reconciliation."""
 
     def __init__(self):
         self._lock = Lock()
@@ -28,7 +28,7 @@ class LibrarySyncService:
             return dict(self._status)
 
     def reconcile(self, media_dir: Optional[str] = None) -> dict:
-        """Scan the whole library and mark movies missing when they disappear."""
+        """Scan the whole library and mark missing local editions."""
         target_dir = Path(media_dir or get_media_dir())
         started_at = datetime.now(timezone.utc).isoformat()
         self._set_status(state="running", last_started_at=started_at, last_error=None)
@@ -38,19 +38,18 @@ class LibrarySyncService:
                 raise FileNotFoundError(f"Directory not found: {target_dir}")
 
             scanner = NFOScanner(str(target_dir), video_probe_cache=self._video_probe_cache())
-            observed_movies = scanner.scan_observed()
-            movies = [item.movie for item in observed_movies]
-            added = library_manager.add_movies(
-                movies,
-                structured_observations=[item.structured_metadata for item in observed_movies],
+            observed_films = scanner.scan_observed()
+            observations = [item.film for item in observed_films]
+            added = library_manager.add_observations(
+                observations,
+                structured_observations=[item.structured_metadata for item in observed_films],
             )
             missing = library_manager.mark_missing_not_seen_since(started_at)
 
             result = {
-                "scanned": len(movies),
+                "scanned": len(observations),
                 "added": added,
                 "missing": missing,
-                "media_dir": str(target_dir),
             }
             self._set_status(
                 state="idle",
@@ -62,7 +61,7 @@ class LibrarySyncService:
                 "LibraryReconciled",
                 "library",
                 None,
-                {"media_dir": str(target_dir), **result},
+                result,
             )
             return result
         except Exception as exc:
@@ -73,35 +72,35 @@ class LibrarySyncService:
             )
             raise
 
-    def refresh_movie(self, movie_id: str) -> dict:
-        """Refresh one movie from its known folder while preserving its current ID."""
-        movie = library_manager.get_movie(movie_id)
-        if not movie:
-            raise LookupError("Movie not found")
+    def refresh_item(self, library_item_id: str) -> dict:
+        """Refresh one local edition from its current video locator."""
+        item = library_manager.get_item(library_item_id)
+        if not item:
+            raise LookupError("Library item not found")
 
-        folder_path = movie.get("folder_path")
-        if not folder_path and movie.get("folder_name"):
-            folder_path = str(Path(get_media_dir()) / movie["folder_name"])
+        video = item.get("video") or {}
+        video_path = video.get("locator")
+        folder_path = str(Path(video_path).parent) if video_path else None
         if not folder_path:
-            raise ValueError("Movie does not have a folder path")
+            raise ValueError("Library item does not have a local video locator")
 
-        updated_movie = self.scan_folder(folder_path, preserve_id=movie_id)
-        if not updated_movie:
-            raise FileNotFoundError("Movie folder or video file not found")
-        if updated_movie.get("status") == "pending_relink":
-            return updated_movie
+        updated = self.scan_folder(folder_path, library_item_id=library_item_id)
+        if not updated:
+            raise FileNotFoundError("Library item folder or video file not found")
+        if updated.get("status") == "pending_relink":
+            return updated
 
         return {
             "status": "success",
-            "movie_id": movie_id,
+            "library_item_id": library_item_id,
             "updated": True,
-            "movie": updated_movie,
+            "film": updated,
         }
 
     def scan_folder(
         self,
         folder_path: str | Path,
-        preserve_id: Optional[str] = None,
+        library_item_id: Optional[str] = None,
         *,
         command_id: Optional[str] = None,
         correlation_id: Optional[str] = None,
@@ -111,32 +110,31 @@ class LibrarySyncService:
             return None
 
         scanner = NFOScanner(str(folder.parent), video_probe_cache=self._video_probe_cache())
-        observed_movie = scanner.scan_folder_observed(folder)
-        if not observed_movie:
+        observed_film = scanner.scan_folder_observed(folder)
+        if not observed_film:
             return None
-        movie_data = observed_movie.movie
+        film_data = observed_film.film
 
-        upsert_result = library_manager.upsert_movie_with_events(
-            movie_data,
-            preserve_id=preserve_id,
+        upsert_result = library_manager.upsert_observation(
+            film_data,
+            library_item_id=library_item_id,
             command_id=command_id,
             correlation_id=correlation_id,
-            _structured_metadata=observed_movie.structured_metadata,
+            structured_metadata=observed_film.structured_metadata,
         )
-        if upsert_result and upsert_result.get("pending_relink_job_id"):
+        if upsert_result and upsert_result.get("status") == "pending_relink":
             return {
                 "status": "pending_relink",
-                "pending_relink_job_id": upsert_result["pending_relink_job_id"],
+                "pending_relink_job_id": upsert_result["job_id"],
             }
-        movie = upsert_result["movie"] if upsert_result else None
-        if movie:
+        film = library_manager.get_film(upsert_result["film_id"]) if upsert_result else None
+        if film:
             library_event_bus.publish_library_changed(
                 "folder_scanned",
-                folder_path=str(folder.resolve()),
-                movie_id=movie.get("id"),
-                event_types=upsert_result["event_types"] if upsert_result else [],
+                film_id=film.get("id"),
+                library_item_id=upsert_result.get("library_item_id"),
             )
-        return movie
+        return film
 
     def mark_path_missing(self, path: str | Path) -> int:
         normalized_path = str(Path(path).resolve())
@@ -144,7 +142,6 @@ class LibrarySyncService:
         if updated:
             library_event_bus.publish_library_changed(
                 "path_missing",
-                path=normalized_path,
                 updated=updated,
             )
         return updated
@@ -154,11 +151,26 @@ class LibrarySyncService:
             self._status.update(updates)
 
     def _video_probe_cache(self) -> dict[str, dict]:
-        return {
-            movie["media_path"]: movie
-            for movie in library_manager.get_movies()
-            if movie.get("media_path")
-        }
+        cache: dict[str, dict] = {}
+        for film in library_manager.list_films():
+            video = (film.get("primary_item") or {}).get("video") or {}
+            locator = video.get("locator")
+            if locator:
+                cache[locator] = {
+                    "media_path": locator,
+                    "file_size": video.get("file_size"),
+                    "file_mtime": video.get("file_mtime"),
+                    "video_width": video.get("width"),
+                    "video_height": video.get("height"),
+                    "video_codec": video.get("codec"),
+                    "video_bitrate": video.get("bitrate"),
+                    "video_duration": video.get("duration_seconds"),
+                    "video_fps": video.get("fps"),
+                    "video_dynamic_range": video.get("dynamic_range"),
+                    "video_bit_depth": video.get("bit_depth"),
+                    "audio_tracks": video.get("audio_tracks"),
+                }
+        return cache
 
 
 library_sync_service = LibrarySyncService()

@@ -106,9 +106,9 @@ export default function ExternalScoreStrip({
           </div>
         );
 
-        if (showLinks && score.url) {
+        if (showLinks && score.source_uri) {
           return (
-            <a key={score.source} href={score.url} target="_blank" rel="noreferrer" className="focus-ring block">
+            <a key={score.source} href={score.source_uri} target="_blank" rel="noreferrer" className="focus-ring block">
               {content}
             </a>
           );

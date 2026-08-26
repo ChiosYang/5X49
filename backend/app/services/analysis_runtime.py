@@ -5,7 +5,6 @@ from datetime import datetime, timezone
 from typing import Any
 from uuid import uuid4
 
-from sqlalchemy import or_
 from sqlmodel import Session, select
 
 from app.canonical_models import (
@@ -22,7 +21,6 @@ from app.canonical_models import (
     FilmCountry,
     FilmTitle,
     GraphEntity,
-    LegacyMovieAlias,
 )
 from app.contracts.analysis_persistence import (
     AssertionPredicateKey,
@@ -45,7 +43,7 @@ from app.contracts.analysis_v2 import (
     AnalysisV2Output,
 )
 from app.contracts.structured_metadata import StructuredMetadataObservation, canonical_json_hash, normalize_metadata_text
-from app.models import Job, Movie
+from app.models import Job
 from app.services.analysis_evidence import EvidenceBatchResult, EVIDENCE_VERIFICATION_POLICY_VERSION
 from app.services.event_store import event_store
 from app.services.structured_metadata_observations import tmdb_structured_metadata_observation
@@ -84,7 +82,6 @@ class ResolutionFailure(AnalysisRuntimeError):
 class AnalysisStart:
     run_id: str
     film_id: str
-    movie_id: str
     analysis_input: AnalysisV2Input
     input_hash: str
     provider: str
@@ -98,7 +95,7 @@ class AnalysisCompletion:
     assertions: int
     evidence: int
     reviews: int
-    projection: dict[str, Any]
+    view: dict[str, Any]
 
 
 class AnalysisRuntimePersistence:
@@ -106,20 +103,18 @@ class AnalysisRuntimePersistence:
         self,
         session: Session,
         *,
-        movie_id: str,
+        film_id: str,
         job_id: str,
         provider: str,
         model: str,
         prompt_version: str,
     ) -> AnalysisStart:
-        movie = session.get(Movie, movie_id)
-        alias = session.get(LegacyMovieAlias, movie_id)
-        if movie is None or alias is None or session.get(Film, alias.film_id) is None:
-            raise AnalysisRuntimeError("Movie does not have a canonical Film")
-        analysis_input = self.build_input(session, alias.film_id)
+        if session.get(Film, film_id) is None:
+            raise AnalysisRuntimeError("Film does not exist")
+        analysis_input = self.build_input(session, film_id)
         input_hash = canonical_json_hash(analysis_input.model_dump(mode="json"))
         idempotency_key = analysis_run_idempotency_key(
-            film_id=alias.film_id,
+            film_id=film_id,
             analysis_kind=ANALYSIS_KIND,
             provider=provider,
             model=model,
@@ -136,8 +131,7 @@ class AnalysisRuntimePersistence:
         if run is not None and run.status == "succeeded":
             return AnalysisStart(
                 run.id,
-                alias.film_id,
-                movie_id,
+                film_id,
                 analysis_input,
                 input_hash,
                 provider,
@@ -152,7 +146,7 @@ class AnalysisRuntimePersistence:
         now = self._now()
         if run is None:
             run = AnalysisRun(
-                film_id=alias.film_id,
+                film_id=film_id,
                 analysis_kind=ANALYSIS_KIND,
                 provider=provider,
                 model=model,
@@ -190,20 +184,19 @@ class AnalysisRuntimePersistence:
             run.updated_at = now
         session.add(run)
         session.flush()
-        event_store.append_and_project_in_session(
+        event_store.append_in_session(
             session,
             "AnalysisStarted",
-            "movie",
-            movie_id,
-            {"movie_id": movie_id},
+            "analysis_run",
+            run.id,
+            {"film_id": film_id},
             command_id=job_id,
             correlation_id=job_id,
             context={"analysis_kind": ANALYSIS_KIND},
         )
         return AnalysisStart(
             run.id,
-            alias.film_id,
-            movie_id,
+            film_id,
             analysis_input,
             input_hash,
             provider,
@@ -486,21 +479,17 @@ class AnalysisRuntimePersistence:
         session.add(run)
         session.flush()
 
-        projection, micro_genre, micro_genre_definition = self.build_legacy_projection(
-            session,
-            run,
-            start.analysis_input,
-        )
-        event_store.append_and_project_in_session(
+        view = self.get_analysis(session, start.film_id)
+        event_store.append_in_session(
             session,
             "AnalysisCompleted",
-            "movie",
-            start.movie_id,
+            "analysis_run",
+            run.id,
             {
-                "movie_id": start.movie_id,
-                "analysis_data": projection,
-                "micro_genre": micro_genre,
-                "micro_genre_definition": micro_genre_definition,
+                "film_id": start.film_id,
+                "assertion_count": len(assertion_by_candidate),
+                "evidence_count": evidence_count,
+                "review_count": review_count,
             },
             command_id=job_id,
             correlation_id=job_id,
@@ -511,10 +500,10 @@ class AnalysisRuntimePersistence:
             assertions=len(assertion_by_candidate),
             evidence=evidence_count,
             reviews=review_count,
-            projection=projection,
+            view=view,
         )
 
-    def restore_cached_projection(
+    def restore_cached_result(
         self,
         session: Session,
         *,
@@ -522,30 +511,9 @@ class AnalysisRuntimePersistence:
         job_id: str,
     ) -> AnalysisCompletion:
         run = session.get(AnalysisRun, start.run_id)
-        movie = session.get(Movie, start.movie_id)
-        if run is None or run.status != "succeeded" or movie is None:
+        if run is None or run.status != "succeeded":
             raise AnalysisRuntimeError("Cached AnalysisRun is unavailable")
-        projection, micro_genre, micro_genre_definition = self.build_legacy_projection(
-            session,
-            run,
-            start.analysis_input,
-        )
-        if movie.analysis_status != "completed" or movie.analysis_data != projection:
-            event_store.append_and_project_in_session(
-                session,
-                "AnalysisCompleted",
-                "movie",
-                start.movie_id,
-                {
-                    "movie_id": start.movie_id,
-                    "analysis_data": projection,
-                    "micro_genre": micro_genre,
-                    "micro_genre_definition": micro_genre_definition,
-                },
-                command_id=job_id,
-                correlation_id=job_id,
-                context={"analysis_kind": ANALYSIS_KIND, "cached": True},
-            )
+        view = self.get_analysis(session, start.film_id)
         provenance = session.exec(
             select(AssertionProvenance)
             .where(AssertionProvenance.analysis_run_id == run.id)
@@ -556,7 +524,7 @@ class AnalysisRuntimePersistence:
             .where(AnalysisResolutionReview.analysis_run_id == run.id)
             .where(AnalysisResolutionReview.status == "open")
         ).all()
-        return AnalysisCompletion(run.id, len(provenance), 0, len(reviews), projection)
+        return AnalysisCompletion(run.id, len(provenance), 0, len(reviews), view)
 
     def fail(
         self,
@@ -591,124 +559,122 @@ class AnalysisRuntimePersistence:
                 candidate_summary={},
                 now=now,
             )
-        event_store.append_and_project_in_session(
+        event_store.append_in_session(
             session,
             "AnalysisFailed",
-            "movie",
-            start.movie_id,
-            {"movie_id": start.movie_id, "message": error_message[:160]},
+            "analysis_run",
+            run.id,
+            {"film_id": start.film_id, "error_code": error_code[:80]},
             command_id=job_id,
             correlation_id=job_id,
             context={"analysis_kind": ANALYSIS_KIND, "error_code": error_code[:80]},
         )
 
-    def build_legacy_projection(
-        self,
-        session: Session,
-        run: AnalysisRun,
-        analysis_input: AnalysisV2Input,
-    ) -> tuple[dict[str, Any], str | None, str | None]:
-        assertions: dict[str, Assertion] = {}
-        for provenance in session.exec(
+    def get_analysis(self, session: Session, film_id: str) -> dict[str, Any] | None:
+        run = session.exec(
+            select(AnalysisRun)
+            .where(AnalysisRun.film_id == film_id)
+            .order_by(AnalysisRun.created_at.desc(), AnalysisRun.id.desc())
+        ).first()
+        if run is None:
+            return None
+        provenance = session.exec(
             select(AssertionProvenance)
             .where(AssertionProvenance.analysis_run_id == run.id)
             .where(AssertionProvenance.superseded_at.is_(None))
-        ).all():
-            assertion = session.get(Assertion, provenance.assertion_id)
-            if assertion is not None and assertion.review_status != "rejected":
-                assertions[assertion.id] = assertion
-        accepted = session.exec(
-            select(Assertion)
-            .where(Assertion.review_status == "accepted")
-            .where(Assertion.superseded_at.is_(None))
-            .where(
-                or_(
-                    Assertion.subject_entity_id == run.film_id,
-                    Assertion.object_entity_id == run.film_id,
-                )
-            )
         ).all()
-        assertions.update({item.id: item for item in accepted})
-
-        ancestors: list[dict[str, Any]] = []
-        descendants: list[dict[str, Any]] = []
-        micro_genres: list[tuple[str, str | None, str]] = []
-        for assertion in assertions.values():
-            if assertion.predicate == AssertionPredicateKey.HAS_MICRO_GENRE.value:
-                if assertion.subject_entity_id != run.film_id:
-                    continue
-                concept = session.get(Concept, assertion.object_entity_id)
-                if concept is not None:
-                    micro_genres.append((concept.canonical_name, assertion.rationale, assertion.assertion_key))
+        assertion_ids = sorted({item.assertion_id for item in provenance})
+        relations: list[dict[str, Any]] = []
+        evidence_by_id: dict[str, dict[str, Any]] = {}
+        for assertion_id in assertion_ids:
+            assertion = session.get(Assertion, assertion_id)
+            if assertion is None or assertion.review_status == "rejected" or assertion.superseded_at:
                 continue
-            target_id: str | None = None
-            destination = ancestors
-            if assertion.subject_entity_id == run.film_id:
-                target_id = assertion.object_entity_id
-            elif assertion.object_entity_id == run.film_id:
+            direction = "subject_to_target"
+            target_id = assertion.object_entity_id
+            if assertion.object_entity_id == film_id:
+                direction = "target_to_subject"
                 target_id = assertion.subject_entity_id
-                destination = descendants
-            if target_id is None:
-                continue
-            film = session.get(Film, target_id)
-            if film is None:
-                continue
-            destination.append(
+            target_graph = session.get(GraphEntity, target_id)
+            target: dict[str, Any] = {"entity_id": target_id}
+            if target_graph is not None:
+                target["entity_type"] = target_graph.entity_type
+                if target_graph.entity_type == "film":
+                    target_film = session.get(Film, target_id)
+                    if target_film is not None:
+                        target.update(
+                            {
+                                "display_name": target_film.canonical_title,
+                                "release_year": target_film.release_year,
+                            }
+                        )
+                elif target_graph.entity_type == "concept":
+                    concept = session.get(Concept, target_id)
+                    if concept is not None:
+                        target.update({"display_name": concept.canonical_name, "kind": concept.kind})
+            evidence_ids: list[str] = []
+            links = session.exec(
+                select(AssertionEvidence)
+                .where(AssertionEvidence.assertion_id == assertion.id)
+                .where(AssertionEvidence.link_status == "active")
+            ).all()
+            for link in links:
+                evidence = session.get(Evidence, link.evidence_id)
+                if evidence is None:
+                    continue
+                evidence_ids.append(evidence.id)
+                evidence_by_id[evidence.id] = {
+                    "id": evidence.id,
+                    "source_title": evidence.source_title,
+                    "source_uri": evidence.source_uri,
+                    "publisher": evidence.publisher,
+                    "claim": evidence.claim,
+                    "retrieved_at": evidence.retrieved_at,
+                    "stance": link.stance,
+                }
+            relations.append(
                 {
-                    "title": film.canonical_title,
-                    "year": film.release_year or 0,
-                    "type": (assertion.qualifiers or {}).get("relationship_type")
-                    or assertion.predicate,
-                    "reason": assertion.rationale or "",
+                    "id": assertion.id,
+                    "predicate": assertion.predicate,
+                    "direction": direction,
+                    "target": target,
+                    "qualifiers": assertion.qualifiers or {},
+                    "rationale": assertion.rationale,
+                    "review_status": assertion.review_status,
+                    "evidence_ids": sorted(evidence_ids),
                 }
             )
-
-        for review in session.exec(
+        reviews = session.exec(
             select(AnalysisResolutionReview)
             .where(AnalysisResolutionReview.analysis_run_id == run.id)
-            .where(AnalysisResolutionReview.candidate_kind == "assertion")
-            .where(AnalysisResolutionReview.status == "open")
-        ).all():
-            summary = review.candidate_summary or {}
-            target = summary.get("target") or {}
-            if not isinstance(target, dict):
-                continue
-            predicate = summary.get("predicate")
-            rationale = summary.get("rationale") or ""
-            if predicate == AssertionPredicateKey.HAS_MICRO_GENRE.value and target.get("display_name"):
-                micro_genres.append((str(target["display_name"]), str(rationale), review.review_key))
-            elif target.get("entity_type") == "film" and target.get("display_name"):
-                destination = descendants if summary.get("direction") == "target_to_subject" else ancestors
-                destination.append(
-                    {
-                        "title": str(target["display_name"]),
-                        "year": int(target.get("release_year") or 0),
-                        "type": ((summary.get("qualifiers") or {}).get("relationship_type")
-                                 if isinstance(summary.get("qualifiers"), dict) else None)
-                        or str(predicate or "RELATED"),
-                        "reason": str(rationale),
-                    }
-                )
-
-        ancestors = self._dedupe_projection_nodes(ancestors)
-        descendants = self._dedupe_projection_nodes(descendants)
-        micro_genres.sort(key=lambda item: item[2])
-        micro_genre = micro_genres[0][0] if micro_genres else None
-        micro_genre_definition = micro_genres[0][1] if micro_genres else None
-        projection = {
-            "micro_genre": micro_genre or "",
-            "influence_impact": run.result_summary or "",
-            "ancestors": ancestors,
-            "descendants": descendants,
-            "tmdb_metadata": {
-                "title": analysis_input.canonical_title,
-                "year": analysis_input.release_year or 0,
-                "overview": analysis_input.overview or "",
-                "genres": analysis_input.genres,
-                "keywords": [],
+            .order_by(AnalysisResolutionReview.created_at, AnalysisResolutionReview.id)
+        ).all()
+        return {
+            "film_id": film_id,
+            "status": run.status,
+            "run": {
+                "id": run.id,
+                "provider": run.provider,
+                "model": run.model,
+                "created_at": run.created_at,
+                "finished_at": run.finished_at,
+                "error_code": run.error_code,
             },
+            "summary": run.result_summary,
+            "relations": sorted(relations, key=lambda item: (item["predicate"], item["direction"], item["id"])),
+            "evidence": [evidence_by_id[key] for key in sorted(evidence_by_id)],
+            "reviews": [
+                {
+                    "id": review.id,
+                    "predicate": review.predicate,
+                    "candidate_kind": review.candidate_kind,
+                    "reason_code": review.reason_code,
+                    "candidate_summary": review.candidate_summary,
+                    "status": review.status,
+                }
+                for review in reviews
+            ],
         }
-        return projection, micro_genre, micro_genre_definition
 
     def _resolve_target(
         self,
@@ -1260,26 +1226,6 @@ class AnalysisRuntimePersistence:
             return int(candidate_key.removeprefix("a"))
         except ValueError:
             return 10**9
-
-    @staticmethod
-    def _dedupe_projection_nodes(values: list[dict[str, Any]]) -> list[dict[str, Any]]:
-        unique: dict[tuple[str, int, str, str], dict[str, Any]] = {}
-        for item in values:
-            key = (
-                normalize_metadata_text(str(item.get("title") or "")),
-                int(item.get("year") or 0),
-                normalize_metadata_text(str(item.get("type") or "")),
-                normalize_metadata_text(str(item.get("reason") or "")),
-            )
-            unique[key] = item
-        return sorted(
-            unique.values(),
-            key=lambda item: (
-                int(item.get("year") or 0),
-                normalize_metadata_text(str(item.get("title") or "")),
-                normalize_metadata_text(str(item.get("type") or "")),
-            ),
-        )
 
     @staticmethod
     def _release_year(value: Any) -> int | None:

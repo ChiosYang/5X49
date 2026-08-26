@@ -1,6 +1,6 @@
 import { getTranslations } from "next-intl/server";
 import { Link } from "@/i18n/routing";
-import { getLibraryMovie } from "@/lib/server-api";
+import { getLibraryFilm } from "@/lib/server-api";
 import MovieDetailView from "../../[id]/MovieDetailView";
 import MovieDetailOverlay from "../../MovieDetailOverlay";
 
@@ -13,9 +13,9 @@ interface InterceptedMovieDetailPageProps {
 export default async function InterceptedMovieDetailPage({ params }: InterceptedMovieDetailPageProps) {
   const t = await getTranslations("FilmDetail");
   const { id } = await params;
-  const movie = await getLibraryMovie(id);
+  const film = await getLibraryFilm(id);
 
-  if (!movie) {
+  if (!film) {
     return (
       <MovieDetailOverlay>
         <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center space-y-4">
@@ -30,7 +30,7 @@ export default async function InterceptedMovieDetailPage({ params }: Intercepted
 
   return (
     <MovieDetailOverlay>
-      <MovieDetailView movie={movie} />
+      <MovieDetailView film={film} />
     </MovieDetailOverlay>
   );
 }

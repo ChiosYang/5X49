@@ -17,7 +17,7 @@ from typing import Any, Mapping, Sequence
 from openai import OpenAI
 from pydantic import ValidationError
 from sqlalchemy import text
-from sqlmodel import SQLModel, Session, create_engine, select
+from sqlmodel import Session, create_engine, select
 
 from app.canonical_models import (
     AnalysisResolutionReview,
@@ -34,7 +34,6 @@ from app.canonical_models import (
     FilmCountryProvenance,
     FilmTitle,
     GraphEntity,
-    LegacyMovieAlias,
     LibraryItem,
     LocalProfile,
 )
@@ -51,7 +50,6 @@ from app.contracts.analysis_v2 import (
 from app.contracts.structured_metadata import canonical_json_hash, normalize_metadata_text
 from app.migrations.backup import create_verified_backup, inspect_database
 from app.migrations.restore import restore_verified_backup
-from app.models import Movie
 from app.services.analysis import AnalysisExecutionError, AnalysisService
 from app.services.analysis_evidence import (
     EVIDENCE_VERIFICATION_POLICY_VERSION,
@@ -710,7 +708,7 @@ def run_live(
                 case_results.append(_failed_case_result(case, "budget_exceeded"))
                 continue
             try:
-                service.analyze_movie(case.case_id)
+                service.analyze_film(case.input.film_id)
                 result = _collect_live_case_result(engine, case, historian, pricing, policy)
             except AnalysisExecutionError:
                 result = _failed_case_result(case, "analysis_failed")
@@ -965,7 +963,6 @@ def _create_isolated_database(path: Path):
 
     engine = create_engine(f"sqlite:///{path}", connect_args={"timeout": 30})
     configure_sqlite_engine(engine)
-    SQLModel.metadata.create_all(engine)
     run_migrations(engine, path, app_version="gate-b", backup_required=False)
     return engine
 
@@ -1043,19 +1040,6 @@ def _seed_dataset(engine, dataset: AnalysisEvaluationDataset) -> None:
                         last_seen_at=now,
                     ))
             item_id = _stable_id("lib", case.case_id)
-            session.add(Movie(
-                id=case.case_id,
-                title=case.input.original_title or case.input.canonical_title,
-                title_cn=case.input.canonical_title,
-                year=case.input.release_year or 0,
-                tmdb_id=case.input.external_identities.get("tmdb.movie"),
-                imdb_id=case.input.external_identities.get("imdb.title"),
-                overview=case.input.overview,
-                genres=case.input.genres,
-                library_status="available",
-                metadata_source="curated",
-                scrape_status="matched",
-            ))
             session.add(LibraryItem(
                 id=item_id,
                 profile_id="profile_gate_b",
@@ -1070,15 +1054,6 @@ def _seed_dataset(engine, dataset: AnalysisEvaluationDataset) -> None:
                 scrape_status="matched",
                 added_at=now,
                 last_seen_at=now,
-            ))
-            # Keep the fixture seed deterministic even though the ORM models do
-            # not declare relationships that would otherwise guide flush order.
-            session.flush()
-            session.add(LegacyMovieAlias(
-                legacy_movie_id=case.case_id,
-                film_id=case.input.film_id,
-                library_item_id=item_id,
-                legacy_library_status="available",
             ))
             for expected in case.expected_assertions:
                 target_key = _target_reference_key(expected.target.model_dump(mode="json", exclude_none=True))
@@ -1162,10 +1137,10 @@ def _exercise_persistence(engine, dataset: AnalysisEvaluationDataset) -> dict[st
         tmdb=_UnconfiguredTMDB(),
         evidence=evidence,
     )
-    first = service.analyze_movie(case.case_id)
+    first = service.analyze_film(case.input.film_id)
     with Session(engine) as session:
         first_counts = _table_counts(session, W4_TABLES)
-    second = service.analyze_movie(case.case_id)
+    second = service.analyze_film(case.input.film_id)
     with Session(engine) as session:
         replay_counts = _table_counts(session, W4_TABLES)
         assertion = session.exec(
@@ -1190,7 +1165,7 @@ def _exercise_persistence(engine, dataset: AnalysisEvaluationDataset) -> dict[st
         )
 
     historian.model = "fixture-v2"
-    service.analyze_movie(case.case_id)
+    service.analyze_film(case.input.film_id)
     with Session(engine) as session:
         assertion = session.get(Assertion, assertion_id)
         after = (
@@ -1207,7 +1182,7 @@ def _exercise_persistence(engine, dataset: AnalysisEvaluationDataset) -> dict[st
         session.commit()
 
     historian.model = "fixture-v3"
-    service.analyze_movie(case.case_id)
+    service.analyze_film(case.input.film_id)
     with Session(engine) as session:
         link = session.exec(select(AssertionEvidence).where(AssertionEvidence.assertion_id == assertion_id)).one()
         revoked_preserved = link.link_status == "revoked" and link.revoked_at is not None
@@ -1223,7 +1198,7 @@ def _exercise_persistence(engine, dataset: AnalysisEvaluationDataset) -> dict[st
     })
     historian.output = unresolved
     historian.model = "fixture-v4"
-    service.analyze_movie(case.case_id)
+    service.analyze_film(case.input.film_id)
     with Session(engine) as session:
         review_exists = session.exec(
             select(AnalysisResolutionReview)
@@ -1555,7 +1530,7 @@ def _live_operational_checks(engine, dataset, service) -> dict[str, Any]:
             link_id = link.id
         session.commit()
     try:
-        service.analyze_movie(first_case.case_id)
+        service.analyze_film(first_case.input.film_id)
     except AnalysisExecutionError:
         pass
     with Session(engine) as session:

@@ -13,12 +13,12 @@ function jobLabel(type: string) {
     "library.reconcile": "Library scan",
     "library.scan_folder": "Folder scan",
     "library.mark_path_missing": "Missing file update",
-    "library.refresh_movie": "Movie refresh",
+    "library.refresh_item": "Edition refresh",
     "metadata.scrape_library": "Metadata scrape",
     "organizer.organize_root": "Root organization",
     "organizer.confirm_root_video": "Root confirmation",
-    "analysis.analyze_movie": "Film analysis",
-    "external_scores.refresh_movie": "Score refresh",
+    "analysis.analyze_film": "Film analysis",
+    "external_scores.refresh_film": "Score refresh",
     "external_scores.refresh_library": "Score refresh",
   };
 

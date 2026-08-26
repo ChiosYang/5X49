@@ -17,7 +17,6 @@ services:
       - MODEL_NAME=${MODEL_NAME:-openrouter/pony-alpha}
       - API_BASE_URL=${API_BASE_URL:-https://openrouter.ai/api/v1}
       - MEDIA_DIR=/media
-      - LIBRARY_READ_SOURCE=${LIBRARY_READ_SOURCE:-canonical}
       - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-*}
     restart: unless-stopped
     healthcheck:

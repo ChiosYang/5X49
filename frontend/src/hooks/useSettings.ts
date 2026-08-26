@@ -97,8 +97,8 @@ export interface LibraryClearResult {
   status: "success";
   message: string;
   deleted: {
-    user_states: number;
-    movies: number;
+    films: number;
+    library_items: number;
     jobs: number;
     events: number;
   };
@@ -424,8 +424,7 @@ export function useClearLibraryData() {
       if (!res.ok) throw new Error("Failed to clear library data");
       const data = await res.json();
       await Promise.all([
-        mutate(API.library(), []),
-        mutate(API.libraryUserStates(), []),
+        mutate(API.libraryFilms(), []),
         mutate(API.watchHistory(), []),
         mutate(API.jobs()),
       ]);

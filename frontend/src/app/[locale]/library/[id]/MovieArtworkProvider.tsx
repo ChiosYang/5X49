@@ -1,71 +1,71 @@
 "use client";
 
 import { createContext, type ReactNode, useContext, useMemo, useState } from "react";
+
 import { API } from "@/lib/api";
-import type { MovieDetail } from "@/types/movie";
+import type { LibraryFilmDetail } from "@/types/movie";
 import MovieBackdrop from "./MovieBackdrop";
 import MoviePoster from "./MoviePoster";
 
-type MovieArtworkState = Pick<
-  MovieDetail,
-  "poster_local" | "backdrop_local" | "poster_path" | "backdrop_path" | "metadata_updated_at"
->;
+interface FilmArtworkState {
+  posterLocal?: string | null;
+  backdropLocal?: string | null;
+  posterProvider?: string | null;
+  backdropProvider?: string | null;
+  updatedAt?: string | null;
+}
 
 interface MovieArtworkContextValue {
   posterSrc: string | null;
   backdropSrc: string | null;
-  updateFromMovie: (movie: MovieDetail) => void;
+  updateFromFilm: (film: LibraryFilmDetail) => void;
 }
 
 const MovieArtworkContext = createContext<MovieArtworkContextValue | null>(null);
 
-function movieToArtwork(movie: MovieDetail): MovieArtworkState {
+function filmToArtwork(film: LibraryFilmDetail): FilmArtworkState {
+  const artwork = film.primary_item.artwork;
   return {
-    poster_local: movie.poster_local,
-    backdrop_local: movie.backdrop_local,
-    poster_path: movie.poster_path,
-    backdrop_path: movie.backdrop_path,
-    metadata_updated_at: movie.metadata_updated_at,
+    posterLocal: artwork.poster_local,
+    backdropLocal: artwork.backdrop_local,
+    posterProvider: artwork.poster_provider,
+    backdropProvider: artwork.backdrop_provider,
+    updatedAt: film.primary_item.metadata.updated_at,
   };
 }
 
-function artworkSrc(path?: string | null, version?: string | null) {
-  if (!path) return null;
-
-  const cacheVersion = version ? `?v=${encodeURIComponent(version)}` : "";
-  return `${API.mediaUrl(path)}${cacheVersion}`;
+function artworkSrc(localPath?: string | null, providerPath?: string | null, version?: string | null) {
+  if (localPath) {
+    const cacheVersion = version ? `?v=${encodeURIComponent(version)}` : "";
+    return `${API.mediaUrl(localPath)}${cacheVersion}`;
+  }
+  return providerPath ? API.providerArtworkUrl(providerPath) : null;
 }
 
 export function MovieArtworkProvider({
-  initialMovie,
+  initialFilm,
   children,
 }: {
-  initialMovie: MovieDetail;
+  initialFilm: LibraryFilmDetail;
   children: ReactNode;
 }) {
-  const [artwork, setArtwork] = useState<MovieArtworkState>(() => movieToArtwork(initialMovie));
+  const [artwork, setArtwork] = useState<FilmArtworkState>(() => filmToArtwork(initialFilm));
 
   const value = useMemo<MovieArtworkContextValue>(
     () => ({
-      posterSrc: artworkSrc(artwork.poster_local, artwork.metadata_updated_at),
-      backdropSrc: artworkSrc(artwork.backdrop_local, artwork.metadata_updated_at),
-      updateFromMovie: (movie) => setArtwork(movieToArtwork(movie)),
+      posterSrc: artworkSrc(artwork.posterLocal, artwork.posterProvider, artwork.updatedAt),
+      backdropSrc: artworkSrc(artwork.backdropLocal, artwork.backdropProvider, artwork.updatedAt),
+      updateFromFilm: (film) => setArtwork(filmToArtwork(film)),
     }),
-    [artwork]
+    [artwork],
   );
 
-  return (
-    <MovieArtworkContext.Provider value={value}>
-      {children}
-    </MovieArtworkContext.Provider>
-  );
+  return <MovieArtworkContext.Provider value={value}>{children}</MovieArtworkContext.Provider>;
 }
 
 export function useMovieArtwork() {
   const context = useContext(MovieArtworkContext);
-  if (!context) {
-    throw new Error("useMovieArtwork must be used within MovieArtworkProvider");
-  }
+  if (!context) throw new Error("useMovieArtwork must be used within MovieArtworkProvider");
   return context;
 }
 

@@ -15,9 +15,10 @@ from app.services.metadata.models import (
     ScrapeOptions,
 )
 from app.services.metadata.organizer import root_video_organizer
+from app.services.operation_manifests import OperationManifestError, operation_manifest_store
 from app.services.metadata.scraper import metadata_scraper
 from app.services.settings import get_media_dir
-from app.utils.security import validate_movie_id
+from app.utils.security import validate_resource_id
 
 
 router = APIRouter()
@@ -65,32 +66,30 @@ def get_metadata_movie(tmdb_id: int, language: str | None = Query(default=None))
         raise HTTPException(status_code=502, detail=f"TMDB movie lookup failed: {str(exc)}")
 
 
-@router.post("/library/{movie_id}/external-scores/refresh")
-def refresh_library_movie_external_scores(movie_id: str, force: bool = Query(default=False)):
-    """Refresh external score sources for a specific movie."""
-    if not validate_movie_id(movie_id):
-        raise HTTPException(status_code=400, detail="Invalid movie ID format")
+@router.post("/films/{film_id}/external-scores/refresh")
+def refresh_film_external_scores(film_id: str, force: bool = Query(default=False)):
+    if not validate_resource_id(film_id, "film"):
+        raise HTTPException(status_code=400, detail="Invalid Film ID format")
 
-    if not library_manager.get_movie(movie_id):
-        raise HTTPException(status_code=404, detail="Movie not found")
+    if not library_manager.get_film(film_id):
+        raise HTTPException(status_code=404, detail="Film not found")
     job = job_runtime.enqueue(
-        "external_scores.refresh_movie",
-        {"movie_id": movie_id, "force": force},
-        dedupe_key=f"external_scores.refresh_movie:{movie_id}:{force}",
+        "external_scores.refresh_film",
+        {"film_id": film_id, "force": force},
+        dedupe_key=f"external_scores.refresh_film:{film_id}:{force}",
     )
-    return job_response(job, "Movie external score refresh queued")
+    return job_response(job, "Film external score refresh queued")
 
 
-@router.get("/library/{movie_id}/artwork")
-def get_library_movie_artwork(movie_id: str):
-    """List selectable TMDB posters and backdrops for one movie."""
-    if not validate_movie_id(movie_id):
-        raise HTTPException(status_code=400, detail="Invalid movie ID format")
+@router.get("/films/{film_id}/artwork")
+def get_film_artwork(film_id: str):
+    if not validate_resource_id(film_id, "film"):
+        raise HTTPException(status_code=400, detail="Invalid Film ID format")
 
     try:
-        return metadata_scraper.artwork_options(movie_id).model_dump()
+        return metadata_scraper.artwork_options(film_id).model_dump()
     except LookupError:
-        raise HTTPException(status_code=404, detail="Movie not found")
+        raise HTTPException(status_code=404, detail="Film not found")
     except ValueError as exc:
         raise HTTPException(status_code=409, detail=str(exc))
     except RuntimeError as exc:
@@ -102,16 +101,15 @@ def get_library_movie_artwork(movie_id: str):
         raise HTTPException(status_code=502, detail=f"TMDB artwork lookup failed: {str(exc)}")
 
 
-@router.put("/library/{movie_id}/artwork")
-def update_library_movie_artwork(movie_id: str, selection: ArtworkSelection):
-    """Apply a selected TMDB poster and/or backdrop to one movie."""
-    if not validate_movie_id(movie_id):
-        raise HTTPException(status_code=400, detail="Invalid movie ID format")
+@router.put("/films/{film_id}/artwork")
+def update_film_artwork(film_id: str, selection: ArtworkSelection):
+    if not validate_resource_id(film_id, "film"):
+        raise HTTPException(status_code=400, detail="Invalid Film ID format")
 
     try:
-        return metadata_scraper.apply_artwork(movie_id, selection)
+        return metadata_scraper.apply_artwork(film_id, selection)
     except LookupError:
-        raise HTTPException(status_code=404, detail="Movie not found")
+        raise HTTPException(status_code=404, detail="Film not found")
     except ValueError as exc:
         raise HTTPException(status_code=409, detail=str(exc))
     except RuntimeError as exc:
@@ -123,28 +121,26 @@ def update_library_movie_artwork(movie_id: str, selection: ArtworkSelection):
         raise HTTPException(status_code=502, detail=f"TMDB artwork update failed: {str(exc)}")
 
 
-@router.post("/library/{movie_id}/scrape")
-def scrape_library_movie(movie_id: str, options: ScrapeOptions | None = None):
-    """Scrape TMDB metadata for one movie, optionally writing local artwork and NFO files."""
-    if not validate_movie_id(movie_id):
-        raise HTTPException(status_code=400, detail="Invalid movie ID format")
+@router.post("/films/{film_id}/scrape")
+def scrape_film(film_id: str, options: ScrapeOptions | None = None):
+    if not validate_resource_id(film_id, "film"):
+        raise HTTPException(status_code=400, detail="Invalid Film ID format")
 
-    result = metadata_scraper.scrape_movie(movie_id, options or ScrapeOptions())
+    result = metadata_scraper.scrape_film(film_id, options or ScrapeOptions())
     if result.status == "failed":
         raise HTTPException(status_code=409, detail=result.model_dump())
     return result.model_dump()
 
 
-@router.post("/library/{movie_id}/scrape/confirm")
-def confirm_library_movie_scrape(movie_id: str, tmdb_id: int, options: ScrapeOptions | None = None):
-    """Scrape one movie using a user-confirmed TMDB ID."""
-    if not validate_movie_id(movie_id):
-        raise HTTPException(status_code=400, detail="Invalid movie ID format")
+@router.post("/films/{film_id}/scrape/confirm")
+def confirm_film_scrape(film_id: str, tmdb_id: int, options: ScrapeOptions | None = None):
+    if not validate_resource_id(film_id, "film"):
+        raise HTTPException(status_code=400, detail="Invalid Film ID format")
 
     scrape_options = options or ScrapeOptions()
     scrape_options.tmdb_id = tmdb_id
     scrape_options.mode = "manual"
-    result = metadata_scraper.scrape_movie(movie_id, scrape_options)
+    result = metadata_scraper.scrape_film(film_id, scrape_options)
     if result.status == "failed":
         raise HTTPException(status_code=409, detail=result.model_dump())
     return result.model_dump()
@@ -173,10 +169,9 @@ def organize_root_library_videos(options: RootOrganizeOptions | None = None):
     job = job_runtime.enqueue(
         "organizer.organize_root",
         {
-            "media_dir": get_media_dir() or DEFAULT_MEDIA_DIR,
             "options": options.model_dump() if options else None,
         },
-        dedupe_key=f"organizer.organize_root:{get_media_dir() or DEFAULT_MEDIA_DIR}",
+        dedupe_key="organizer.organize_root",
     )
     return job_response(job, "Root video organization queued")
 
@@ -186,15 +181,21 @@ def confirm_root_library_video(payload: RootOrganizeConfirmRequest):
     """Organize one root video using a user-confirmed TMDB ID."""
     if not Path(payload.path).exists():
         raise HTTPException(status_code=404, detail="Root video file not found")
+    try:
+        manifest_ref = operation_manifest_store.create(
+            Path(get_media_dir() or DEFAULT_MEDIA_DIR),
+            Path(payload.path),
+        )
+    except OperationManifestError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     job = job_runtime.enqueue(
         "organizer.confirm_root_video",
         {
-            "path": payload.path,
+            "manifest_ref": manifest_ref,
             "tmdb_id": payload.tmdb_id,
-            "media_dir": get_media_dir() or DEFAULT_MEDIA_DIR,
             "options": (payload.options or RootOrganizeOptions()).model_dump(),
         },
-        dedupe_key=f"organizer.confirm_root_video:{payload.path}",
+        dedupe_key=f"organizer.confirm_root_video:{manifest_ref}",
     )
     return job_response(job, "Root video confirmation queued")
 
