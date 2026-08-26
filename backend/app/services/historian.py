@@ -112,9 +112,10 @@ def get_movie_metadata(movie_name, tmdb_id=None, lang="en"):
     return None
 
 class FilmHistorian:
-    def __init__(self):
-        # Model will be fetched dynamically on each analysis
-        pass
+    def __init__(self, *, client_factory=None):
+        # Production keeps the dynamic client; isolated evaluation can pin a
+        # provider endpoint without changing global settings.
+        self._client_factory = client_factory or get_client
 
     def analysis_configuration(self) -> AnalysisModelConfiguration:
         base_url = get_base_url().casefold()
@@ -145,7 +146,7 @@ class FilmHistorian:
             f"INPUT:\n{analysis_input.model_dump_json()}\n\n"
             f"OUTPUT JSON SCHEMA:\n{json.dumps(schema, ensure_ascii=False, sort_keys=True)}"
         )
-        client = get_client()
+        client = self._client_factory()
         response = client.chat.completions.create(
             model=configuration.model,
             messages=[{"role": "user", "content": prompt}],

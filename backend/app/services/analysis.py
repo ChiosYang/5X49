@@ -24,16 +24,30 @@ class AnalysisExecutionError(RuntimeError):
 
 
 class AnalysisService:
-    def __init__(self):
-        self.historian = FilmHistorian()
-        self.tmdb = TMDBClient()
-        self.evidence = evidence_retriever
+    def __init__(
+        self,
+        *,
+        database_engine=None,
+        historian=None,
+        tmdb=None,
+        evidence=None,
+    ):
+        self._database_engine = database_engine
+        self.historian = historian if historian is not None else FilmHistorian()
+        self.tmdb = tmdb if tmdb is not None else TMDBClient()
+        self.evidence = evidence if evidence is not None else evidence_retriever
+
+    @property
+    def database_engine(self):
+        # Keep the module-level engine fallback so existing tests and production
+        # startup can replace it without reconstructing the singleton.
+        return self._database_engine or engine
 
     def analyze_movie(self, movie_id: str, ctx: Any | None = None) -> dict:
         try:
             configuration = self.historian.analysis_configuration()
             job_id = self._job_id(ctx, movie_id)
-            with Session(engine) as session:
+            with Session(self.database_engine) as session:
                 start = analysis_runtime_persistence.start(
                     session,
                     movie_id=movie_id,
@@ -56,7 +70,7 @@ class AnalysisService:
 
         if start.cached:
             try:
-                with Session(engine) as session:
+                with Session(self.database_engine) as session:
                     completed = analysis_runtime_persistence.restore_cached_projection(
                         session,
                         start=start,
@@ -86,7 +100,7 @@ class AnalysisService:
                 generation.output,
                 ctx,
             )
-            with Session(engine) as session:
+            with Session(self.database_engine) as session:
                 evidence_candidates = analysis_runtime_persistence.evidence_candidates(
                     session,
                     generation.output,
@@ -95,7 +109,7 @@ class AnalysisService:
             evidence_batch = self.evidence.verify(evidence_candidates)
             self._raise_if_cancelled(ctx)
 
-            with Session(engine) as session:
+            with Session(self.database_engine) as session:
                 completed = analysis_runtime_persistence.complete(
                     session,
                     start=start,
@@ -115,7 +129,7 @@ class AnalysisService:
             cancelled = exc.__class__.__name__ == "JobCancelled"
             category, code, message, review = self._safe_failure(exc, cancelled)
             try:
-                with Session(engine) as session:
+                with Session(self.database_engine) as session:
                     analysis_runtime_persistence.fail(
                         session,
                         start=start,
@@ -141,7 +155,7 @@ class AnalysisService:
             raise AnalysisExecutionError(message) from None
 
     def _prepare_tmdb_targets(self, output, ctx) -> tuple[dict[str, dict], dict[str, str]]:
-        with Session(engine) as session:
+        with Session(self.database_engine) as session:
             missing = analysis_runtime_persistence.missing_tmdb_targets(session, output)
         if not missing:
             return {}, {}
