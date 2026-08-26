@@ -1,6 +1,6 @@
 # Fresh Canonical Baseline
 
-Status: In Progress
+Status: Complete
 Last updated: 2026-08-26
 Related: `docs/domain-model.md`, `docs/product-roadmap.md`,
 `docs/analysis-v2-contract.md`
@@ -33,28 +33,26 @@ and other durable resources directly to the frontend.
   evidence.
 - Adding a new dependency or changing the default frontend port.
 
-## Existing behavior
+## Previous behavior
 
-Canonical tables are the default read source, but runtime commands still write
-Legacy Movie and MovieUserState projections. Old aliases, shadow/legacy read
-modes, Movie event replay, `analysis_data`, and schema-specific backfills keep
-the application tied to the former data model. The frontend consumes those
-compatibility DTOs and treats the old Movie ID as both Film and LibraryItem.
+Before this cutover, Canonical tables were overlaid on a Movie compatibility
+runtime with aliases, selectable reads, replay and JSON analysis projection.
+The Fresh Canonical baseline deliberately removes that development-only history.
 
 ## Acceptance criteria
 
-- [ ] Fresh startup creates only `fresh-canonical-v1` and fixed reference rows.
-- [ ] Old v1-v10 databases are rejected without modification.
-- [ ] Runtime code contains no Legacy Movie table, alias, shadow read, dual
+- [x] Fresh startup creates only `fresh-canonical-v1` and fixed reference rows.
+- [x] Old v1-v10 databases are rejected without modification.
+- [x] Runtime code contains no Legacy Movie table, alias, shadow read, dual
   write, Movie projector, compatibility analysis JSON, or legacy source kind.
-- [ ] Library APIs and UI use Film IDs; LibraryItem IDs are used only for local
+- [x] Library APIs and UI use Film IDs; LibraryItem IDs are used only for local
   edition operations.
-- [ ] Scan, metadata, artwork, scores, personal state, analysis, jobs, Activity,
+- [x] Scan, metadata, artwork, scores, personal state, analysis, jobs, Activity,
   and bounded restore remain available.
-- [ ] One Film appears once in the Library and exposes all non-retired editions.
-- [ ] Full backend and frontend verification passes, including Gate B offline
+- [x] One Film appears once in the Library and exposes all non-retired editions.
+- [x] Full backend and frontend verification passes, including Gate B offline
   tooling regression.
-- [ ] The active database is recoverably archived and replaced with an empty
+- [x] The active database is recoverably archived and replaced with an empty
   fresh baseline database without modifying media.
 
 ## Decisions
@@ -78,7 +76,7 @@ compatibility DTOs and treats the old Movie ID as both Film and LibraryItem.
 
 ### Slice 1 — Fresh schema baseline
 
-Status: In Progress
+Status: Complete
 
 - Intended behavior: establish the new epoch, domain tables, normalized score
   and operation snapshot records, and reject pre-baseline databases.
@@ -87,7 +85,7 @@ Status: In Progress
 
 ### Slice 2 — Canonical runtime and events
 
-Status: Pending
+Status: Complete
 
 - Intended behavior: make all commands write Canonical tables directly and
   rebuild audit/restore around stable aggregates.
@@ -96,7 +94,7 @@ Status: Pending
 
 ### Slice 3 — Resource API and frontend
 
-Status: Pending
+Status: Complete
 
 - Intended behavior: switch backend routes and frontend types/hooks/pages to
   Film-centric resource contracts while preserving the current product UX.
@@ -105,7 +103,7 @@ Status: Pending
 
 ### Slice 4 — Cleanup and cutover
 
-Status: Pending
+Status: Complete
 
 - Intended behavior: remove historical compatibility tools and documentation,
   update Gate B tooling, complete regression checks, and initialize the active
@@ -115,11 +113,30 @@ Status: Pending
 
 ## Verification evidence
 
-- None yet.
+- Fresh schema snapshot matches registered SQLModel metadata; focused migration,
+  lifecycle and Analysis schema run passed 20 tests.
+- Full backend discovery passed 114 tests.
+- Backend `compileall` passed.
+- Frontend lint, sequential typecheck and production build passed.
+- Browser smoke passed for English Library, Film detail, Watch History,
+  Activity, Management and Settings, plus Chinese Library/Film detail. Desktop
+  and 375px checks found no document-level horizontal overflow or current
+  console errors; a manual watched command appeared in Watch History.
+- Runtime compatibility-symbol audit is clean.
+- Both Compose files parse, expose `5549:3000`, and contain no removed read-source
+  environment setting. Docker CLI is unavailable, so `docker compose config`
+  remains unverified.
+- Gate B offline run `fresh-canonical-v1-20260826-01` reported tooling passed and
+  strict live/human/overall blocked with dataset hash prefix `fbfc9a1a481aef30`.
+- The former active database was moved to
+  `backend/data/archive/fresh-canonical-cutover-20260826T111552Z/`. The new
+  active database has epoch `fresh-canonical-v1`, applied version 1, nine
+  predicates, nineteen Genre references, zero Films, no removed tables and
+  `PRAGMA integrity_check=ok`.
 
 ## Remaining risks
 
 - This is an intentional breaking cutover. Any unarchived old database cannot
   be opened by the new application.
-- The existing Event replay and timeline restore implementation cannot be
-  reused mechanically because it projects Legacy Movie rows.
+- Docker runtime first-install evidence remains unavailable on this machine.
+- Gate B live Evidence and complete human review remain independently blocked.

@@ -1,9 +1,8 @@
 # Analysis V2 and Evaluation Contract
 
-Status: Adopted contract; persistence schema is implemented in version 8,
-factual Genre Assertions in version 9, and Analysis V2 runtime plus compatible
-Legacy transition in version 10. Gate B tooling is implemented; its live and
-human evidence remain blocked.
+Status: Adopted contract in the `fresh-canonical-v1` baseline. Persistence,
+factual Genre Assertions and the Analysis V2 runtime are active; Gate B tooling
+is implemented while its strict live and human evidence remain blocked.
 
 The executable schemas live in `backend/app/contracts/analysis_v2.py`. Runtime
 producers and evaluation tooling must validate against those Pydantic models;
@@ -85,12 +84,12 @@ USD 5 total / USD 0.25 p95 per-case budget. Missing evidence blocks; evidence
 present but below a safety or quality threshold fails.
 
 The internal `app.evaluation.gate_b` CLI validates the corpus, rehearses the
-runtime in a fresh schema-v10 database, runs one explicitly pinned OpenRouter
+runtime in an isolated Fresh Canonical v1 database, runs one explicitly pinned OpenRouter
 model with a versioned pricing manifest and explicit public-network consent,
 creates a bounded review template, and concludes the evidence. Exit codes are
 0 passed, 2 failed, and 3 blocked. Run databases, backups, reports, and reviews
 remain under the ignored `backend/data/analysis-v2/gate-b/` boundary. The tool
-never reads or modifies the application database, Gate A input, or media. A
+never reads or modifies the application database or media. A
 bounded `pilot` command is available for prompt tuning; its report always keeps
 strict live status blocked and cannot be used by `review-template` or Gate B
 conclusion. Strict `run` also performs an Evidence-network preflight before any
@@ -99,8 +98,8 @@ boundary.
 
 ## Persistence boundary
 
-Schema version 8 implements the durable boundary without connecting model
-generation. The persisted `assertion-predicate.v1` registry contains the eight
+Fresh Canonical v1 implements the durable boundary. The persisted
+`assertion-predicate.v1` registry contains the eight
 model predicates plus factual `HAS_GENRE`; the model schema remains unchanged
 and cannot output `HAS_GENRE`. Assertion identity is the canonical hash of
 subject, predicate, object, and qualifier hash. Run, scope, provenance, and
@@ -108,7 +107,7 @@ review state are intentionally excluded.
 
 An automated model result may only create an inferred, proposed Assertion.
 Accepted and rejected decisions survive refresh and re-analysis. A Genre that
-the fixed W3 vocabulary resolves uniquely from NFO, TMDB, or Legacy metadata
+the fixed vocabulary resolves uniquely from NFO or TMDB metadata
 may instead be accepted under `structured-genre-import.v1`; the policy version
 and factual provenance remain explicit.
 
@@ -136,6 +135,7 @@ verifies it. Name/year-only and unsupported-provider references remain review
 items. A supplied provider/ID is atomic: it must resolve to a Film whose known
 title and release year agree with the candidate and may never silently fall
 back to a same-name Film. The current prompt/resolver/persistence snapshots are
-`genealogy-v2.v2`, `analysis-resolver.v2`, and `analysis-persistence.v2`. The
-synchronous title-only `/analyze/{movie_name}` compatibility route
-is not a persistence producer and remains on its existing response contract.
+`genealogy-v2.v2`, `analysis-resolver.v2`, and `analysis-persistence.v2`.
+Analysis is exposed only through `POST /films/{film_id}/analysis-runs` and
+`GET /films/{film_id}/analysis`; there is no title-only compatibility route or
+raw analysis projection.

@@ -1,361 +1,136 @@
-# 5X49 Database Migration and Backup Strategy
+# 5X49 Fresh Canonical Database Lifecycle
 
 - Status: Adopted
-- Effective from: schema version 1
-- Applies to: the embedded SQLite application database
+- Epoch: `fresh-canonical-v1`
+- Current version: `1`
 
-## Purpose
+## Baseline decision
 
-5X49 treats a user's library database as durable product data. A schema change
-must therefore be versioned, repeatable, observable, and preceded by a verified
-backup. Application startup must stop when those guarantees cannot be met.
+The historical v1–v10 development sequence has been compressed into one new
+production baseline. The application still owns a linear SQLite migration
+runner, but a new installation is created only by that runner. Startup no
+longer combines `SQLModel.metadata.create_all()`, historical migrations and a
+projection rebuild.
 
-This document is the contract for database evolution. Runtime behavior is
-implemented under `backend/app/migrations/`; changes to that behavior and this
-document must be reviewed together.
+The baseline migration is static and repository-owned:
 
-## Decision
-
-5X49 uses a small, repository-owned, linear migration runner for the current
-SQLite-only architecture. Each migration is an immutable Python module with a
-positive integer version, a stable name, a deterministic checksum, and one
-transactional `upgrade` operation.
-
-Alembic was evaluated and is deliberately deferred. It would provide mature
-revision graph and multi-dialect tooling, but it would not replace 5X49's
-required SQLite online backup, integrity checks, manifest, or data backfill
-validation. A linear runner is the smaller operational surface while the app
-has one embedded database, one release line, and no downgrade requirement.
-Re-evaluate Alembic when any of the following becomes true:
-
-- more than one database dialect is supported;
-- independent release branches need concurrent migration heads;
-- schema diffs regularly require generated revision review;
-- database operations are separated from application deployment.
-
-`SQLModel.metadata.create_all()` remains valid for a brand-new database and for
-creating tables introduced after all pending migrations succeed. It is not a
-substitute for altering an existing schema.
-
-## Version Journal
-
-The runner owns a `schema_migrations` table with one row per version:
-
-| Column | Meaning |
-| --- | --- |
-| `version` | Monotonically increasing integer primary key. |
-| `name` | Stable human-readable migration name. |
-| `checksum` | SHA-256 of the migration's declared operations. |
-| `started_at` | UTC timestamp for the most recent attempt. |
-| `finished_at` | UTC timestamp for success or failure. |
-| `status` | `running`, `applied`, or `failed`. |
-| `error_summary` | Bounded diagnostic text; never credentials or row data. |
-
-Applied migrations are immutable. If code presents the same version with a
-different name or checksum, startup fails closed. A failed version may be
-retried only with the same identity and checksum. Registering duplicate,
-non-positive, or non-increasing versions is an application error.
-
-The initial migration, version 1, absorbs the former hand-written `ADD COLUMN`
-logic for `movie` and `job`. It is intentionally idempotent so it can stamp a
-database that already has the current columns without rewriting data.
-
-Migration version 2 adds the canonical identity and library schema:
-`graph_entity`, `local_profile`, `film`, `external_identity`, `library_item`,
-`library_item_locator_history`, `media_asset`, `legacy_movie_alias`, identity
-review, and canonical backfill report tables. It creates the single local
-profile idempotently and leaves all legacy tables and public reads unchanged.
-
-Migration version 3 reads legacy Movie rows in stable ID order. Exact TMDB and
-IMDb identities reuse a Film; cross-provider conflicts remain separate and
-create an identity review. Title/year never auto-merges. Each legacy row gets
-one LibraryItem and permanent alias, local/provider assets are normalized and
-deduplicated, and the migration stores aggregate counts without titles or
-paths. Re-executing the backfill skips existing aliases and creates no durable
-duplicates.
-
-Migration version 4 adds FilmProfileState and Viewing. Favorite values use OR
-semantics when multiple legacy Movie aliases resolve to one Film. Watched rows
-and rows with a watched timestamp become confirmed Viewings; unwatched rows
-with rating or notes become `needs_review` and do not affect watched/history
-projections. Empty default rows create no durable personal record. Source IDs
-make reruns idempotent, while aggregate reports contain only counts.
-
-Migration version 5 adds nullable `platform_file_id` and `content_hash` fields
-and indexes to MediaAsset. Existing files are not opened during migration;
-normal reconcile fills stable platform identity, the versioned bounded
-fingerprint, and complete hashes where the foreground read budget permits.
-
-Migration version 6 adds the W3 structured-metadata foundation: Person, Credit
-and CreditProvenance, Concept and ConceptAlias, source-owned FilmTitle,
-FilmCountry and its provenance, and StructuredMetadataReview. The migration is
-schema-only. It does not inspect legacy rows, seed a vocabulary, access media or
-the network, or change the legacy API. Provider person identities continue to
-use ExternalIdentity; provisional local identities are hashed from one source
-instance and a normalized name by the runtime contract. Film-to-Concept edges
-remain W4 factual Assertions and are not part of version 6.
-
-Migration version 7 is a deterministic data migration and does not change the
-physical schema. It seeds the versioned 19-item TMDB Movie Genre dictionary and
-its English, simplified-Chinese, and common legacy aliases; validates countries
-against the bundled ISO 3166-1 alpha-2 dictionary; and backfills FilmTitle,
-FilmCountry, Person, Credit, provenance, and bounded review records from Legacy
-Movie rows in stable ID order. It does not access the network or media files.
-Unknown genres do not create dynamic Concept rows, and unmappable countries or
-invalid people/credits remain reviewable. The run summary is stored under the
-`legacy_structured_metadata.v1` backfill key without titles or paths.
-
-Migration version 8 adds the W4 Analysis persistence foundation:
-`AssertionPredicate`, `AnalysisRun`, `Assertion`, `Evidence`,
-`AssertionEvidence`, `AssertionProvenance`, and `AnalysisResolutionReview`.
-It seeds only the nine immutable `assertion-predicate.v1` reference rows. It
-does not inspect legacy analysis, invoke a model, retrieve Evidence, access
-media, or create user-domain Assertions. Raw model input/output and page bodies
-are deliberately absent from the schema. Full data clear removes W4 domain
-rows in restrictive-FK order while retaining the predicate registry, migration
-journal, settings, and media.
-
-Migration version 9 is a deterministic data migration with no physical schema
-change. It resolves Legacy Movie genres through `tmdb-movie-genres:v1` and
-materializes Film-to-Concept `HAS_GENRE` Assertions accepted under
-`structured-genre-import.v1`. One Assertion is shared across sources while
-Legacy aliases retain source-scoped `migration` provenance keyed by stable
-LibraryItem IDs. Unknown or conflicting values remain reviewable. The run
-summary uses `factual_genre_assertions.v1`; the migration does not access media,
-the network, model providers, or raw analysis data.
-
-Migration version 10 is also a deterministic data migration with no physical
-schema change. It selects one stable Legacy alias per Film, parses only bounded
-genealogy summary, micro-genre, ancestor, and descendant fields, and creates a
-versioned Legacy AnalysisRun. Uniquely resolved Film references become inferred
-proposed Assertions with directional provenance; unresolved references and
-incompatible payloads become bounded analysis reviews. It does not call a
-model, retrieve Evidence, access media, modify historical EventRecord rows, or
-copy complete Legacy `analysis_data` into W4 storage. The run summary is stored
-under `legacy_analysis_v2.v1`; existing Movie JSON remains a rollback-compatible
-projection until a successful V2 analysis replaces it.
-
-W3 can be rehearsed against the same isolated input contract as Gate A while
-keeping its evidence and conclusion independent:
-
-```powershell
-python -m app.migrations.structured_metadata rehearse `
-  --input-dir data/gate-a/input `
-  --run-dir data/structured-metadata/runs/<run-id>
+```text
+backend/app/migrations/versions/v0001_fresh_canonical_baseline.py
+backend/app/migrations/schema/fresh_canonical_v1.sql
 ```
 
-The command creates a verified backup and working database under the ignored
-run directory, upgrades only the copy, repeats backfill/NFO/TMDB observations,
-checks source priority and lifecycle behavior, scans public surfaces for
-privacy canaries, and verifies that the input hash, size, and sidecars remain
-unchanged. Exit code `0` means W3 passed, `2` means a W3 check failed, and `3`
-means the input or isolation contract was not satisfied.
+The SQL snapshot is generated from registered SQLModel metadata during
+development, reviewed in Git, and verified by schema-equivalence tests. Runtime
+never regenerates it.
 
-## Startup Sequence
+## Epoch and journal
 
-Database initialization runs before the job runtime and filesystem watcher:
+`database_metadata` contains the epoch marker `fresh-canonical-v1`.
+`schema_migrations` journals the immutable version, name, checksum, timestamps,
+status and bounded error summary.
 
-1. Resolve the configured SQLite path and inspect whether it contains user
-   tables without modifying it.
-2. Discover pending migrations. A database without the journal is treated as
-   being at version 0.
-3. If an existing database has pending migrations, run the backup preflight and
-   create one verified online backup before changing schema or creating the
-   journal.
-4. Apply pending migrations one at a time. Each schema/data operation runs in
-   its own transaction; journal status is committed separately so failure is
-   diagnosable.
-5. Run `SQLModel.metadata.create_all()` only after existing-schema migrations
-   succeed. For a new empty database, create the current schema first and then
-   run the idempotent migrations without a backup.
-6. Idempotently calibrate Canonical-owned Movie and MovieUserState compatibility
-   fields from Film/LibraryItem/MediaAsset/Viewing. This emits no events and
-   leaves legacy-owned analysis, people, genres, scores, and audit payloads
-   unchanged.
-7. Start jobs, watchers, and API traffic only after the database reaches the
-   current version.
+Startup behavior:
 
-No migration runs from a request handler or background job.
-Application SQLite connections enable `PRAGMA foreign_keys=ON`, so the
-canonical `RESTRICT`, XOR, and uniqueness constraints are enforced at runtime,
-not only represented in table DDL.
+1. Resolve the exact SQLite path.
+2. Inspect it read-only before creating application tables.
+3. If empty, apply baseline v1 and fixed reference rows transactionally.
+4. If it has the current epoch, validate checksums and apply future pending v2+.
+5. If it contains pre-epoch application tables or another epoch, refuse startup
+   without modifying the file.
+6. Start Job workers, watcher and HTTP traffic only after the journal reaches
+   the current version.
 
-## Pre-upgrade Backup Contract
+Repeated startup is a no-op for schema and reference data.
 
-The backup implementation uses SQLite's online backup API. Copying only a live
-`.db` file is forbidden because write-ahead-log state may not be included.
+## Baseline contents
 
-Before migration the runner must:
+Baseline v1 creates the current canonical domain:
 
-- run `PRAGMA integrity_check` against the source and require exactly `ok`;
-- ensure the backup destination is writable and has enough free space;
-- write to a temporary file in the destination directory;
-- complete the SQLite online backup, then reopen it independently;
-- run `PRAGMA integrity_check` against the backup;
-- require the backup to be non-empty and record its byte size;
-- compute a SHA-256 hash and atomically move it to its final name;
-- atomically write a JSON manifest containing app version, source and target
-  schema versions, UTC timestamp, hash, size, table row counts, and filename.
+- Film/GraphEntity/ExternalIdentity;
+- LibraryItem/LocatorHistory/MediaAsset;
+- LocalProfile/FilmProfileState/Viewing;
+- Person/Credit/Concept/FilmTitle/FilmCountry and provenance/reviews;
+- Assertion/Evidence/AnalysisRun and resolution reviews;
+- FilmExternalScore/ExternalScoreRefreshState;
+- OperationSnapshot;
+- Job/EventRecord/Setting.
 
-Backups live beside application data under `backups/database/`. Final names
-contain the app version, source and target schema versions, UTC timestamp, and a
-hash prefix. The source path is intentionally excluded from the manifest so a
-support bundle does not disclose a user's filesystem layout.
+It also seeds the fixed Assertion predicate registry and the versioned 19-item
+TMDB Movie Genre vocabulary. It creates no user Film, media, profile history or
+analysis rows.
 
-There is no automatic retention or unattended restore in this first slice.
-Backups are never deleted by migration code. Restore is an explicit offline
-operator action implemented by `python -m app.migrations.restore` from the
-`backend/` directory.
+The baseline intentionally has no Movie table, per-Movie state, legacy alias,
+historical backfill report or compatibility projection.
 
-Verification is the default and does not modify the target:
+## Old database cutover
 
-```bash
+An old development database is not upgraded or imported. Cutover is an explicit
+offline operator action:
+
+1. Stop frontend and backend writers.
+2. Resolve only `backend/data/library.db` and its exact `-wal`/`-shm` sidecars.
+3. Move existing files to
+   `backend/data/archive/fresh-canonical-cutover-<UTC timestamp>/`.
+4. Apply Fresh Canonical baseline v1 to a new empty `library.db`.
+5. Verify integrity, epoch, version, fixed reference rows and absence of removed tables.
+6. Do not copy old settings, scan media or modify video/NFO/artwork files.
+
+The archive is Git-ignored and manually recoverable with an older compatible
+application build. The Fresh Canonical application has no old-database import
+entry point.
+
+## Future migrations
+
+Future changes resume at version 2. Each migration must have a monotonically
+increasing integer version, stable name, deterministic checksum and one
+transactional upgrade.
+
+- Never edit an applied migration; add the next version.
+- Do not access network services, credentials or media files from migrations.
+- Prefer additive schema changes and deterministic bounded data transforms.
+- Do not log row content, secrets or paths in journal errors.
+- Compare fresh baseline-plus-migrations with the registered current SQLModel schema.
+- Test repeat execution, checksum mismatch, transactional failure and recovery.
+
+## Backup and restore
+
+Existing same-epoch databases with future pending migrations use SQLite's
+online backup API before mutation. A backup is reopened, integrity-checked,
+hashed and described by a path-free manifest. Copying only a live `.db` file is
+not an acceptable backup when WAL may be active.
+
+Offline verification:
+
+```powershell
 uv run python -m app.migrations.restore --manifest <backup.manifest.json>
 ```
 
-Replacement requires the application to be stopped, the exact target path, and
-the current target file SHA-256 as a confirmation token:
-
-```bash
-uv run python -m app.migrations.restore \
-  --manifest <backup.manifest.json> \
-  --replace \
-  --target data/library.db \
-  --confirm-current-sha256 <current-library.db-sha256>
-```
-
-Before replacement the command creates and verifies a second backup of the
-current target under `backups/pre-restore/`, checkpoints WAL, checks exclusive
-access, archives remaining WAL/SHM sidecars, copies the selected backup through
-a verified temporary file, atomically replaces the target, and verifies the
-restored integrity, hash, size, and row counts. It refuses path traversal,
-manifest mismatch, a changed target hash, a busy database, or a failed safety
-backup. The previous compatible application version should be used after
-restoring an older schema.
-
-## Failure and Recovery Semantics
-
-Migration is fail-closed. The application does not start when source integrity,
-disk capacity, backup creation, backup verification, checksum validation, or a
-migration operation fails.
-
-Every migration operation is transactional. A failed operation is rolled back,
-its journal row is marked `failed`, and the pre-upgrade backup remains available.
-Already applied earlier versions are not rolled back automatically. Rerunning
-the same release skips applied versions and retries a failed version, making
-recovery deterministic after the underlying issue is corrected.
-
-Downgrade migrations are not supported. Rollback means restoring the verified
-pre-upgrade backup and running the prior application release.
-
-## Legacy Fixture Policy
-
-Legacy databases are represented as reviewable SQL fixture sources, not checked
-in binary `.db` files. Tests materialize them in a temporary directory and may
-never open or copy the developer's real `backend/data/library.db`.
-
-The compatibility set is:
-
-- `empty`: no user tables, representing a first installation;
-- `oldest-supported`: minimal historical `movie` and `job` tables with rows that
-  require column creation and default backfills;
-- `current-unversioned`: current-era core tables and representative rows but no
-  migration journal, representing an existing installation at adoption time.
-- `partial-legacy-columns`: an interrupted or partially upgraded database where
-  some version 1 columns and non-default values already exist;
-- `movie-only`: a historical database containing only the `movie` table;
-- `job-only`: a historical database containing only the `job` table;
-- `legacy-user-state-events`: a pre-journal database with movies, jobs, user
-  state, and audit events that must survive upgrade and restore unchanged.
-- `canonical-identities`: canonical identity reuse and conflict-review rows;
-- `viewing-migration`: multiple aliases, meaningful/default personal state, and
-  confirmed/needs-review Viewing conversion.
-
-Each fixture includes expected invariants such as row counts and sentinel field
-values. Fixtures must use synthetic identifiers, relative media paths, and no
-credentials or personal filesystem locations.
-
-Every migration change must test, where applicable:
-
-- upgrade from each supported legacy fixture;
-- source and backup integrity plus manifest hash/size/counts;
-- preservation and expected transformation of sentinel data;
-- a second run producing no schema or data changes and no extra backup;
-- checksum mismatch rejection;
-- migration failure rollback, journal status, and continued readability of the
-  legacy tables.
-
-## Change Rules
-
-- Never edit an applied migration; add the next integer version.
-- Keep migrations independent of network services, API keys, media files, and
-  wall-clock-local time.
-- Prefer additive schema changes and resumable, explicitly validated backfills.
-- Do not log row contents or sensitive settings in error summaries.
-- Update this contract when backup layout, journal semantics, support window, or
-  recovery behavior changes.
-- Before a release containing a new migration, exercise backup restoration in a
-  temporary environment and compare integrity, row counts, and sentinel data.
-
-## Strict Gate A rehearsal
-
-Gate A never operates on `backend/data/library.db` or writes to the supplied
-media root. Stop writers and place an offline SQLite copy and the read-only media
-root pointer at the fixed ignored locations:
-
-```text
-backend/data/gate-a/input/library.db
-backend/data/gate-a/input/media-root.txt
-```
-
-The database must not have `-wal` or `-shm` sidecars. `media-root.txt` is UTF-8
-and contains one absolute existing directory. Run from `backend/` with a new,
-unique run ID:
+Replacement requires stopped writers, the exact target and its current SHA-256:
 
 ```powershell
-python -m app.migrations.gate_a rehearse `
-  --input-dir data/gate-a/input `
-  --run-dir data/gate-a/runs/<run-id>
+uv run python -m app.migrations.restore `
+  --manifest <backup.manifest.json> `
+  --replace `
+  --target data/library.db `
+  --confirm-current-sha256 <current-sha256>
 ```
 
-The command refuses the live application database, a byte-identical development
-clone as strict evidence, broken integrity/FKs, an invalid migration journal,
-insufficient disk, SQLite sidecars, an existing run directory, or a run path
-outside `data/gate-a/runs/`. It creates a verified source backup, migrates only a
-working copy, proves the second migration is a no-op, audits Canonical/Legacy
-consistency, restores the original backup byte-for-byte, remigrates it, and—when
-real media is present—performs two reconciles plus ordinary/deep-clear recovery
-exercises. Input hash, size, and sidecar state must be unchanged afterward.
+The restore command creates a safety backup, checks exclusivity, validates the
+manifest and target hash, handles exact sidecars and verifies the restored
+database. Downgrade migrations are not supported; rollback means restoring a
+verified backup and running the corresponding earlier application build.
 
-Raw working databases, manifests, cache files, and versioned JSON evidence stay
-under the Git-ignored run directory for human review. The JSON report contains
-only check IDs, statuses, booleans/counts, failed field names, and truncated
-fingerprints. Legacy Movie/Library audit payloads are immutable compatibility
-records: the rehearsal compares their digest before/after migration. Privacy
-canaries are enforced on CLI/report output, stable LibraryItem events, and the
-public Job representation; raw titles, paths, secrets, or full identifiers in
-those surfaces fail the run.
+## Release verification
 
-After local evidence passes, run the isolated Docker matrix from the repository
-root. It uses a unique Compose project/container name, random host ports,
-read-only media and isolated data bind mounts, and cleans only its own runtime
-resources:
+Before releasing a migration change:
 
-```powershell
-backend/scripts/gate_a_docker_smoke.ps1 `
-  -InputDir backend/data/gate-a/input `
-  -RunDir backend/data/gate-a/runs/<run-id>
-```
+- create a fresh database in an isolated directory;
+- run startup twice and compare schema/reference digests;
+- verify a deliberately old/pre-epoch database is rejected byte-for-byte;
+- exercise failure rollback and checksum mismatch;
+- exercise verified backup/restore for a same-epoch database;
+- run the full backend test suite and `python -m compileall -q app`.
 
-Finally combine both version-1 reports:
-
-```powershell
-python -m app.migrations.gate_a conclude `
-  --local-report data/gate-a/runs/<run-id>/local-report.json `
-  --docker-report data/gate-a/runs/<run-id>/docker-report.json
-```
-
-Exit codes are `0` passed, `2` failed, and `3` blocked. Missing real-library or
-Docker evidence is always `blocked`, never a warning or an implicit pass. Keep
-the raw run until manual review; afterward delete only the exact reviewed run
-directory and input copy.
+Gate A and its legacy-fixture/Docker migration matrix are retired. Analysis V2
+continues to use Gate B independently; Gate B does not authorize a database
+epoch conversion.

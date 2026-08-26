@@ -1,230 +1,100 @@
-# Analysis V2 Persistence
+# Analysis V2 Persistence and Gate B
 
-Status: Blocked
-Last updated: 2026-08-26
-Related: W4 and Gate B in `docs/product-roadmap.md`, `docs/domain-model.md`,
-`docs/analysis-v2-contract.md`
+- Status: Blocked
+- Owner: Backend / Analysis
+- Updated: 2026-08-26
 
 ## Goal
 
-Turn validated Analysis V2 output into durable, reviewable Graph data without
-letting model output invent identities, overwrite user decisions, or become an
-unbounded raw-data archive.
+Persist validated analysis as resolvable, reviewable graph facts without raw
+model artifacts, and prove its usefulness and safety with a fixed public
+evaluation set.
 
-## Scope
+## Current contract
 
-- Add the versioned Assertion predicate registry and schema version 8 for
-  Assertion, Evidence, AnalysisRun, provenance, links, and resolution review.
-- Establish deterministic hashes, review rules, Evidence URI policy, and
-  privacy-safe persistence boundaries.
-- Data migration version 9 and runtime metadata synchronization materialize
-  factual Genre Assertions. Version 10 and the Library worker persist validated
-  Analysis V2 runs, relationships, verified Evidence, reviews, and compatible
-  Legacy analysis. The remaining slice evaluates quality and concludes Gate B.
+- Canonical Film input only; no media path, filename, Viewing, profile notes,
+  credentials or raw source document.
+- Strict `analysis-output.v2`, bounded public summary, up to eight Assertions
+  and up to two Evidence candidates per Assertion.
+- Model output creates only inferred/proposed Assertions.
+- Exact identities, title/year consistency and entity kinds are validated before
+  creating an edge. Unresolved/conflicting targets create bounded reviews.
+- Accepted/rejected user decisions survive refresh and re-analysis.
+- Evidence is stored only after public HTTP(S) network/content validation; page
+  bodies are hashed in memory and discarded.
+- AnalysisRun idempotency includes Film, model/provider, versions and input hash.
+- `GET /films/{film_id}/analysis` reads AnalysisRun/Assertion/Evidence/Review
+  directly. There is no compatibility analysis JSON.
 
-## Non-goals
+## Delivery slices
 
-- Graph API or UI, review UI, Explore, Cinema DNA, or Ask.
-- Model execution, Evidence retrieval, legacy `analysis_data` backfill, or
-  runtime projection changes in Slice 1.
-- Raw prompt/response, web-page body, hidden reasoning, path, or credential
-  retention.
-- Declaring Gate A or Gate B passed.
+### Slice 1 — Persistence contract and schema
 
-## Existing behavior
+Status: Complete in Fresh Canonical v1.
 
-W3 schema version 7 supplies canonical Film, Person, Credit, Concept, Genre
-vocabulary, provenance, and runtime metadata observations. Schema version 8
-adds the durable W4 boundary. Data migration version 9 now materializes trusted
-Legacy Genre facts, while NFO and TMDB refresh the same Assertions in the
-  existing metadata transaction. Version 10 transitions compatible Legacy
-analysis, and the Library analysis worker now treats W4 records as durable data
-while continuing to produce the existing Movie projection. Slice 4 tooling and
-the human-adjudicated `analysis-eval.v1` corpus are complete. A bounded pinned
-pilot has exercised the corrected v2 prompt/resolver policy, but strict Gate B
-evidence is blocked on Evidence-network preflight, the full live run, and its
-post-output human review.
+- Assertion predicate registry.
+- AnalysisRun, Assertion, Evidence, links, provenance and resolution review.
+- Stable canonical hashing and privacy validators.
 
-## Acceptance criteria
+### Slice 2 — Factual genre Assertions
 
-- [x] Schema version 8 is additive and preserves all version 1–7 checksums and
-  existing domain rows.
-- [x] The predicate registry contains the eight model predicates plus factual
-  `HAS_GENRE`; `HAS_GENRE` is not accepted as model output.
-- [x] Assertion identity excludes run, provenance, scope, and review state.
-- [x] Automatic model writes are inferred proposals; trusted structured Genre
-  imports may use versioned policy acceptance.
-- [x] Evidence stores only verified HTTP(S) metadata and bounded claims, never
-  source bodies or raw Analysis payloads.
-- [x] Unresolved or rejected candidates have a bounded, deterministic analysis
-  review identity and cannot create formal Graph nodes directly.
-- [x] Ordinary Library clear preserves W4 durable data; full data clear removes
-  it in FK order while preserving predicate reference rows and migration state.
-- [x] HTTP routes and legacy response shapes remain unchanged.
-- [x] Trusted Legacy, NFO, and TMDB Genre facts synchronize source-scoped,
-  policy-accepted `HAS_GENRE` Assertions without overwriting user decisions.
-- [x] Analysis runtime persistence and compatible Legacy transition are
-  complete without changing HTTP response shapes.
-- [x] The 36-case corpus, balanced `gate-b-policy.v2`, deterministic
-  scorer, isolated rehearsal, restore/privacy checks, and strict CLI are
-  implemented.
-- [x] All 36 cases were human-adjudicated before any live output was viewed;
-  bounded Concept aliases map equivalent wording to one gold target.
-- [ ] The pinned live run plus complete helpfulness/novel-prediction review
-  passes Gate B.
+Status: Complete in Fresh Canonical v1.
 
-## Decisions
+- Fixed TMDB Movie Genre vocabulary.
+- NFO/TMDB genre observations materialize shared factual accepted `HAS_GENRE`.
+- Source-scoped provenance supersedes/restores without changing user decisions.
 
-- `assertion-predicate.v1` contains `HAS_GENRE`, `HAS_THEME`, `HAS_MOVEMENT`,
-  `HAS_VISUAL_STYLE`, `HAS_MICRO_GENRE`, `INFLUENCED_BY`, `REMAKE_OF`,
-  `ADAPTED_FROM`, and `VISUALLY_SIMILAR_TO`.
-- The eight Analysis V2 model predicates remain a strict subset of the stored
-  registry. `HAS_GENRE` is reserved for structured or curated sources.
-- A trusted NFO, TMDB, or Legacy Genre observation that resolves uniquely may
-  be accepted by `structured-genre-import.v1`; ambiguous values remain review
-  items.
-- Evidence v1 is `catalog`, `web`, or `dataset` material retrieved over a safe
-  public HTTP(S) route. NFO is provenance and user explanation is curated
-  rationale, not Evidence.
-- AnalysisRun keeps versions, hashes, bounded validated summary, cost, status,
-  trace IDs, and redacted errors. It does not keep raw input/output.
-- Job and Event IDs are diagnostic strings rather than foreign keys because
-  those operational records may be cleared independently of durable runs.
-- Accepted/rejected review state is user-owned. Automated refresh can only
-  preserve it, never reset it.
+### Slice 3 — Runtime persistence
 
-## Open questions
+Status: Complete in Fresh Canonical v1.
 
-- The exact OpenRouter model and matching pricing manifest must be selected and
-  frozen before the live run.
+- Canonical input builder and strict historian.
+- Direction-aware entity resolution and non-owned exact Film support.
+- Transactional AnalysisRun/Assertion/Evidence/Review persistence.
+- Idempotent successful-run reuse, safe retry and bounded failure state.
+- Structured FilmAnalysisView with no raw/hidden artifacts.
 
-## Slices
+### Slice 4 — Fixed evaluation and Gate B
 
-### Slice 1 — Persistence contract and schema v8
+Status: Blocked; tooling complete.
 
-Status: Complete
+- 36 public cases and human-adjudicated expected relationships are frozen.
+- Offline isolated rehearsal, scoring, rejected/revoked protection, restore and
+  privacy checks pass.
+- A diagnostic pilot has run against the pinned model.
+- Strict 36-case live Evidence and complete post-output human review are missing.
 
-- Intended behavior: add the predicate registry, persistence models,
-  deterministic helpers, additive migration, lifecycle integration, and
-  documentation without changing runtime analysis.
-- Dependencies: completed W3 structured metadata and adopted Analysis V2
-  contract; no API key, network, Docker, or Gate A pass required.
-- Verification: schema constraints, nine legacy fixtures, fresh/create_all
-  equivalence, backup/idempotence, clear semantics, focused and full backend
-  regressions, and isolated W3/Gate A tool regressions.
+## Gate B exit criteria
 
-### Slice 2 — Factual Genre Assertions
+`gate-b-policy.v2` requires, among other frozen thresholds:
 
-Status: Complete
+- 36/36 successful adjudicated cases;
+- at least 85% acceptable displayed edges;
+- at least 95% entity-resolution decision accuracy;
+- at least 75% required Assertion recall;
+- zero forbidden/harmful edges, invented entities or rejected-state revival;
+- zero semantic duplicates and replay-created rows;
+- complete human review, median helpfulness at least 4/5 and 80% at least 4;
+- at least 70% qualifying Evidence coverage for evidence-priority relations;
+- every persisted Evidence passing `evidence-http.v1` and freshness rules;
+- total cost at most USD 5 and p95 per case at most USD 0.25;
+- verified restore equality and zero privacy leaks.
 
-- Intended behavior: deterministically materialize W3 Genre observations as
-  factual `HAS_GENRE` Assertions and keep their provenance synchronized.
-- Dependencies: Slice 1 and `structured-genre-import.v1`.
-- Verification: backfill/runtime idempotence, source removal, conflict review,
-  accepted-state preservation, and compatibility reads.
+Missing live, pricing, Evidence or human evidence is `blocked`; complete evidence
+that misses a threshold is `failed`. Only the strict `conclude` command may
+record Passed.
 
-### Slice 3 — Analysis V2 runtime and legacy transition
+## Remaining work
 
-Status: Complete
+1. Make the public Evidence preflight reliable under the production SSRF boundary.
+2. Run all 36 cases with one exact model and pricing manifest.
+3. Complete `analysis-eval-human-review.v1` after seeing the output.
+4. Run strict conclusion and update only the redacted quality summary.
+5. Start Film Graph UI only after Gate B passes and separate UI/product acceptance succeeds.
 
-- Intended behavior: create/reuse AnalysisRun, resolve references, persist
-  proposed Assertions and verified Evidence transactionally, and transition
-  compatible legacy analysis without raw artifact retention.
-- Dependencies: Slice 2 and an implemented safe Evidence retrieval boundary.
-- Verification: retries, version changes, unresolved review, rollback,
-  rejected-state protection, privacy, and legacy projection compatibility.
+## Risks
 
-### Slice 4 — Evaluation and Gate B handoff
-
-Status: Blocked (tooling complete)
-
-- Intended behavior: run the fixed 36-film adjudicated evaluation set and
-  produce a privacy-safe Graph quality report and Gate B conclusion.
-- Dependencies: Slices 1–3 and dataset adjudication are complete. OpenRouter
-  Key and exact model/pricing evidence are available. Strict Evidence-network
-  preflight, the complete live output, and post-output human review are still
-  absent.
-- Verification: entity resolution, precision, duplicate rate, helpfulness,
-  cost, restore, and a strict passed/failed/blocked Gate B matrix.
-
-## Verification evidence
-
-- `python -m unittest test_analysis_persistence_schema.py` — 8 tests passed.
-- Focused Analysis persistence, migration, Canonical, W3, and Gate A run — 64
-  tests passed.
-- Complete backend discovery excluding credential-dependent `test_agent.py` —
-  169 tests passed in 104.005 seconds.
-- W3 rehearsal `w4-v8-20260825-02` — passed on the fixed offline input after
-  upgrading its isolated work copy to schema v8.
-- Gate A rehearsal `w4-v8-20260825-02` — every local phase passed at v8,
-  including predicate-registry preservation; overall status remains Blocked
-  because Docker evidence is absent.
-- `python -m compileall -q app` and `git diff --check` — passed; Git reported
-  only the repository's existing LF-to-CRLF checkout warnings.
-- Slice 2 focused Genre Assertion, Analysis persistence, migration, Canonical,
-  W3, TMDB, and Gate run — 82 tests passed.
-- Complete backend discovery excluding credential-dependent `test_agent.py` —
-  176 tests passed in 110.096 seconds after Slice 2.
-- W3 rehearsal `w4-s2-v9-20260825-01` — passed at current schema v9.
-- Gate A rehearsal `w4-s2-v9-20260825-01` — every local check passed at v9 and
-  the source remained unchanged; strict status remains Blocked without Docker.
-- Git-safe Slice 2 evidence is recorded in
-  `docs/quality/analysis-v2-persistence-slice2.md`.
-- Slice 3 focused Analysis runtime, Evidence, Legacy transition, migration,
-  Canonical, W3, and Gate regression — 104 tests passed.
-- Complete backend discovery excluding credential-dependent `test_agent.py` —
-  190 tests passed in 123.781 seconds after Slice 3.
-- W3 rehearsal `w4-s3-v10-20260825-01` — passed after upgrading only its
-  isolated work copy to current schema v10.
-- Gate A rehearsal `w4-s3-v10-20260825-01` — every local phase passed at v10;
-  strict status remains Blocked because Docker evidence is absent.
-- `python -m compileall -q app` and `git diff --check` — passed before final
-  handoff; Git reported only checkout line-ending warnings.
-- Git-safe Slice 3 evidence is recorded in
-  `docs/quality/analysis-v2-persistence-slice3.md`.
-- Gate B dataset validation passed for 36 adjudicated cases with 12 Chinese, 12
-  English, and 12 mixed/other cases; the frozen hash prefix is
-  `fbfc9a1a481aef30`.
-- Offline rehearsal `w4-s4-adjudicated-20260826-03` passed tooling, persistence,
-  scoring, verified restore, and privacy checks at schema v10. Its strict
-  status is Blocked: live and human evidence were intentionally not fabricated.
-- Gate B and Analysis runtime focused tests passed 13 tests in 21.208 seconds.
-  Concept aliases matched one gold target and duplicate aliases remained
-  detectable. Git-safe status and
-  threshold evidence are recorded in `docs/quality/analysis-v2-gate-b.md`.
-- Complete backend discovery excluding credential-dependent `test_agent.py`
-  passed 199 tests in 136.751 seconds after dataset adjudication.
-- W3 rehearsal `w4-s4-gate-b-20260826-01` passed at schema v10; Gate A with
-  the same run ID passed every local phase and preserved its source fingerprint,
-  while the strict Gate A result remains Blocked because Docker is absent.
-- `python -m compileall -q app` and `git diff --check` passed; Git emitted only
-  the repository's checkout line-ending warnings.
-- Corrective policy v2 plus Legacy compatibility tests passed 29 tests in
-  22.000 seconds. They
-  cover atomic provider identities, title/year consistency, bounded Concept
-  prompt context, qualifier rejection, Assertion/Evidence caps, strict Evidence
-  preflight, and diagnostic-only pilot behavior.
-- Offline policy-v2 rehearsal `w4-s4-policy-v2-rehearsal-20260826-01` passed
-  tooling, isolated persistence, verified restore, and privacy checks while
-  correctly retaining strict Blocked status.
-- Diagnostic pilot `w4-s4-pilot-v2-20260826-02` completed 6/6 cases with a
-  frozen dataset hash, zero resolved identity conflicts, complete conflict and
-  unresolved-review capture, zero qualifier/duplicate violations, required
-  recall above the v2 threshold, equal restore digest, and zero privacy leaks.
-  The raw output remains ignored and the pilot report cannot count as strict
-  live or human evidence.
-- Complete backend discovery excluding credential-dependent `test_agent.py`
-  passed 208 tests in 119.610 seconds after the corrective iteration.
-
-## Remaining risks
-
-- Automated tests use a fake DNS resolver and HTTP transport. The production
-  retriever pins a validated public address and revalidates every redirect. In
-  the current execution environment public names resolve to a reserved address
-  range, so strict Evidence preflight fails closed; the SSRF boundary was not
-  weakened to manufacture evidence.
-- The OpenRouter Key and exact model/pricing evidence are available, but there
-  is no complete strict live report or human review of live output, so Gate B
-  cannot pass.
-- Gate A remains independently Blocked. A future Gate B pass would still not
-  authorize Graph UI until Gate A also passes.
+- Free model availability and behavior may change without notice.
+- DNS pinning/TLS behavior must remain secure; do not weaken it to obtain a pass.
+- Human usefulness and novel-relation review cannot be replaced by automatic scoring.
+- A Gate B pass validates the frozen scope, not unlimited whole-library analysis.

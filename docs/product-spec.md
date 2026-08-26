@@ -52,7 +52,7 @@ Import → Understand → Explore → Remember → Ask
 ### 5.1 必做
 
 - **数据基础与安全**：Film / LibraryItem 身份分离；Person、Concept、Credit、Assertion、Evidence、AnalysisRun、Viewing 边界；版本化迁移；升级前备份与恢复路径。
-- **Import**：Local Folder / NFO 导入、稳定外部身份、幂等扫描、匹配复核和现有 Library 兼容。
+- **Import**：Local Folder / NFO 导入、稳定外部身份、幂等扫描、匹配复核和多版本 Film 资料库。
 - **Understand**：Analysis V2 结构化输出、来源与生成记录、去重与错误恢复；单电影 Graph、证据侧栏和列表回退。
 - **Explore**：只选择质量达标的 2–3 个维度，展示 Owned / Watched / Unwatched、覆盖率和可回溯列表。
 - **Remember**：多次 Viewing、旧状态迁移、Diary 时间线和稳定导出。
@@ -159,7 +159,7 @@ Beta 是否继续、收缩或调整，依据激活、信任、重复核心行为
 | 周次 | 主要能力 | 对应核心任务 | 用户结果 |
 | --- | --- | --- | --- |
 | W2 | Schema RFC、迁移、备份 | JTBD-1、JTBD-4 | 收藏身份清楚，升级不丢日记与审核数据 |
-| W3 | 规范实体、身份解析、兼容层 | JTBD-1、JTBD-2 | 重复扫描稳定，作品与本地媒体不混淆 |
+| W3 | 规范实体、身份解析、Fresh Canonical API | JTBD-1、JTBD-2 | 重复扫描稳定，作品与本地媒体不混淆 |
 | W4 | Analysis V2、Assertion、Evidence、评测 | JTBD-2、JTBD-6 | 关系来源可核查，查询不会建立在不可追踪文本上 |
 | W5 | 单电影 Graph 垂直切片 | JTBD-2、JTBD-3 | 从一部电影理解并继续探索可信关系 |
 | W6 | Setup Wizard、无 Key 路径、Private Alpha | JTBD-1、JTBD-2 | 外部用户可独立安装、导入并获得首次价值 |
@@ -174,15 +174,15 @@ Beta 是否继续、收缩或调整，依据激活、信任、重复核心行为
 
 所有条目初始均为未勾选；未勾选表示**尚未评估**，不表示失败或完成。每次 Gate 评审必须附证据链接或记录，不得用计划、口头确认或推测替代实测结果。
 
-### Gate A｜W2 Schema Ready
+### Fresh Canonical 基线（已采用）
 
-- [ ] Film 与 LibraryItem 已分离，删除或断开媒体不会误删 Film。
-- [ ] Viewing 为多记录事件模型，旧状态映射明确。
-- [ ] Assertion、Evidence、AnalysisRun 的边界和 durable / projection 分类明确。
-- [ ] 旧数据迁移、升级前备份和失败恢复方案可执行并有验证记录。
-- [ ] 现有 Library / user-state API 的兼容策略明确。
+- [x] Film 与 LibraryItem 已分离，删除或断开媒体不会误删 Film。
+- [x] Viewing 为多记录事实模型，watched 由 confirmed Viewing 推导。
+- [x] Assertion、Evidence、AnalysisRun 具备独立持久化和来源边界。
+- [x] 新数据库以 `fresh-canonical-v1` 建立；旧开发库只归档、不升级。
+- [x] Library、Profile State 与 Analysis 已切换到 Film/LibraryItem 资源 API。
 
-未通过动作：继续完善领域模型、迁移与恢复；不开始 Graph UI。
+这是一项已完成的架构基线，不是继续阻塞产品开发的质量 Gate。
 
 ### Gate B｜W4 Graph Data Trusted
 

@@ -1,1323 +1,232 @@
-# Backend API Documentation
+# 5X49 Backend API
 
-This document describes the REST API endpoints available in the backend application, built with FastAPI. Base URL depends on where the API is hosted (default typically `http://localhost:8000`).
+This document describes the Fresh Canonical resource API. The backend normally
+listens on `http://127.0.0.1:8000`; the frontend proxies `/api/*` and `/media/*`
+from port `5549`.
 
-## General 
+## Resource IDs
 
-### Health Check
-- **URL**: `/health`
-- **Method**: `GET`
-- **Description**: Returns the health status of the API.
-- **Response**:
-  ```json
-  {
-    "status": "healthy"
-  }
-  ```
+- Film IDs use `film_<32 lowercase hex>`.
+- LibraryItem IDs use `lib_<32 lowercase hex>`.
+- OperationSnapshot IDs use `snap_<32 lowercase hex>`.
+- Film is the stable public work identity. A Film may own several LibraryItems.
+- LibraryItem is used only for a concrete local edition or source item.
 
-### Root Info
-- **URL**: `/`
-- **Method**: `GET`
-- **Description**: Returns basic info about the running API and media directory setup.
-- **Response**:
-  ```json
-  {
-    "message": "Film Genealogy API is running",
-    "media_dir": "/path/to/media"
-  }
-  ```
+There are no Movie IDs, aliases, compatibility responses, or selectable read
+sources. Invalid resource IDs return `400`; missing resources return `404`.
 
----
+## Core and settings
 
-## Library Management
+| Method | Path | Purpose |
+| --- | --- | --- |
+| `GET` | `/health` | Process health. |
+| `GET` | `/` | Service information. |
+| `GET` | `/settings` | Combined non-secret settings. |
+| `GET/PUT` | `/settings/model` | Analysis model selection. |
+| `GET/PUT` | `/settings/media-dir` | Local media root. |
+| `GET/PUT` | `/settings/language` | Application language. |
+| `GET/PUT` | `/settings/artwork-language` | Preferred artwork language. |
+| `GET/PUT` | `/settings/library-watch` | Filesystem watcher state. |
+| `GET/PUT` | `/settings/auto-organize-root` | Root-video automation. |
+| `GET/PUT` | `/settings/scrape-confirmation` | Require confirmation before scraping. |
+| `GET/PUT` | `/settings/tmdb` | TMDB configuration state/write. Reads never expose the secret. |
+| `POST` | `/settings/tmdb/test` | Test TMDB access. |
+| `GET/PUT` | `/settings/base-url` | OpenAI-compatible endpoint setting. |
+| `POST` | `/settings/models/refresh` | Refresh model catalog. |
+| `GET` | `/settings/test-api-key` | Test the configured analysis provider. |
 
-Library compatibility reads are selected at process startup with
-`LIBRARY_READ_SOURCE=canonical|shadow|legacy`:
+## Library Films
 
-- `canonical` is the default. Canonical Film/LibraryItem/MediaAsset and personal
-  state fields are overlaid on the existing `Movie` response shape.
-- `shadow` returns Legacy rows while comparing the corresponding Canonical
-  result. Logs contain only scope/counts, field names, null flags, source layers,
-  and truncated hashes.
-- `legacy` uses the pre-migration read path as an emergency rollback. Invalid
-  values emit one warning and also fall back to `legacy`.
+### `GET /library/films`
 
-All three modes keep Canonical and Legacy writes enabled in the same database
-transaction. Changing the read source therefore does not require a database
-rollback; container deployments should restart the backend after changing the
-environment variable.
+Returns `LibraryFilmSummary[]`, one row per visible Film. Each row includes the
+selected title and metadata, `primary_item`, profile state, external scores and
+analysis status. Films whose only editions are ignored are omitted.
 
-### Search Metadata
-- **URL**: `/metadata/search`
-- **Method**: `GET`
-- **Description**: Searches TMDB using the configured `TMDB_API_KEY` and returns scored movie candidates.
-- **Query Parameters**:
-  - `query` (string, required): Title or filename-derived query.
-  - `year` (integer, optional): Release year hint.
-  - `language` (string, optional): TMDB language such as `zh-CN` or `en-US`. Defaults to the app language.
-- **Response**:
-  ```json
-  [
-    {
-      "tmdb_id": 27205,
-      "title": "Inception",
-      "original_title": "Inception",
-      "year": 2010,
-      "overview": "...",
-      "poster_path": "/...",
-      "backdrop_path": "/...",
-      "popularity": 80.5,
-      "score": 95.0
-    }
-  ]
-  ```
-- **Errors**: `503 TMDB_API_KEY is not configured`, `502 Metadata search failed`.
+Primary edition selection is deterministic:
 
-### Get Metadata Movie Candidate
-- **URL**: `/metadata/movie/{tmdb_id}`
-- **Method**: `GET`
-- **Description**: Looks up one TMDB movie ID and returns it in the same candidate shape used by metadata search. This is used to review a manually entered TMDB ID before confirming a scrape or root video organization.
-- **Path Parameters**:
-  - `tmdb_id` (integer): TMDB movie ID.
-- **Query Parameters**:
-  - `language` (string, optional): TMDB language such as `zh-CN` or `en-US`.
-- **Response**:
-  ```json
-  {
-    "tmdb_id": 603,
-    "title": "The Matrix",
-    "original_title": "The Matrix",
-    "year": 1999,
-    "overview": "...",
-    "poster_path": "/poster.jpg",
-    "backdrop_path": "/backdrop.jpg",
-    "popularity": 100,
-    "score": 100
-  }
-  ```
+1. `available` before `missing` and `ignored`;
+2. an edition with a present main video first;
+3. `last_seen_at` descending;
+4. LibraryItem ID ascending.
 
-### Get All Movies
-- **URL**: `/library`
-- **Method**: `GET`
-- **Description**: Get all movies currently stored in the local library.
-- **Response**: Array of `Movie` objects.
+### `GET /library/films/{film_id}`
 
-### List Movie User States
-- **URL**: `/library/user-states`
-- **Method**: `GET`
-- **Description**: Lists stored personal watch states for movies. Movies without a saved state are omitted and should be treated as unwatched, unrated, and not favorite by clients.
-- **Response**: Array of `MovieUserState` objects.
+Returns `LibraryFilmDetail`, including every non-retired `LibraryEdition` for
+the Film, selected structured metadata, profile state, scores and analysis
+status.
 
-### Get Watch History
-- **URL**: `/watch-history`
-- **Method**: `GET`
-- **Description**: Lists the latest active confirmed Viewing for each Film, newest first. Multiple visible aliases for the same Film produce one history entry, using the lexicographically smallest non-retired alias as the stable compatibility movie ID. This endpoint does not use playback progress or playback sessions.
-- **Response**: Array of objects with:
-  - `movie` (`Movie`): The matching library movie.
-  - `user_state` (`MovieUserState`): Personal state containing `movie_id`, `watched`, `watched_at`, `rating`, `favorite`, `notes`, and `updated_at`.
+### `POST /library/items/{library_item_id}/refresh`
 
-### Subscribe To Library Events
-- **URL**: `/library/events`
-- **Method**: `GET`
-- **Description**: Opens a Server-Sent Events stream for library invalidation events.
-- **Response Type**: `text/event-stream`
-- **Events**:
-  - `connected`: Emitted when the stream is established.
-  - `library_changed`: Emitted after library records are scanned, reconciled, seeded, cleared, or marked missing.
-  - `job_queued`, `job_started`, `job_progress`, `job_succeeded`, `job_failed`, `job_cancelled`, `job_retried`: Emitted by the background job runtime for queued actor jobs.
-  - `heartbeat`: Emitted periodically to keep long-lived connections open.
-- **Example Event**:
-  ```text
-  event: library_changed
-  data: {"reason":"folder_scanned","movie_id":"603_1999","folder_path":"/media/The Matrix (1999)","timestamp":"2026-05-11T00:00:00+00:00"}
-  ```
+Queues `library.refresh_item`. The response is an accepted Job envelope.
 
-### List Library Audit Events
-- **URL**: `/library/audit-events`
-- **Method**: `GET`
-- **Description**: Lists persisted audit events recorded by library, metadata, organizer, analysis, and external score actions. This is a historical event log and is separate from the live `/library/events` SSE stream. Current v1 event meanings, payload fields, projectability, and compatibility rules are documented in [`docs/event-contracts.md`](event-contracts.md).
-- **Query Parameters**:
-  - `aggregate_type` (string, optional): Filter by aggregate type, such as `movie`, `library`, or `file`.
-  - `aggregate_id` (string, optional): Filter by aggregate ID, usually a movie ID for `movie` aggregates.
-  - `type` (string, optional): Filter by event type, such as `MovieDiscovered`, `MetadataMatched`, or `AnalysisCompleted`.
-  - `command_id` (string, optional): Filter by the command that created related events.
-  - `correlation_id` (string, optional): Filter by the operation trace shared by related events.
-  - `limit` (integer, optional): Number of events to return, 1-500. Defaults to 100.
-- **Response**: Array of `EventRecord` objects, newest first. Current event types include `MovieDiscovered`, `MovieFileObserved`, `MovieMetadataParsedFromNfo`, `MovieFolderScanned`, `MovieMarkedMissing`, `MovieRestored`, `MovieIgnored`, `MovieStateBackfilled`, `MetadataMatchSuggested`, `MetadataMatched`, `MovieStateRestored`, `MetadataRestored`, `MetadataScrapeFailed`, `ArtworkDownloaded`, `ArtworkSelected`, `ArtworkSelectionRestored`, `ArtworkRestored`, `MovieFileSnapshotBackfilled`, `NfoWritten`, `NfoRestored`, `RootVideoOrganizationNeedsReview`, `RootVideoMoved`, `RootVideoMoveReversed`, `RootVideoOrganized`, `RootVideoOrganizationReverted`, `MovieProjectionRebuilt`, `AnalysisStarted`, `AnalysisCompleted`, `AnalysisFailed`, `ExternalScoresRefreshed`, `ExternalScoresRefreshFailed`, `LibraryReconciled`, `LibraryCleared`, `MissingMoviesCleaned`, and `LibrarySeeded`.
+### `POST /library/items/{library_item_id}/ignore`
 
-### Dry-Run Library Operation
-- **URL**: `/library/operations/dry-run`
-- **Method**: `GET`
-- **Description**: Runs a read-only consistency check for one correlated operation. It does not mutate the database or filesystem.
-- **Query Parameters**:
-  - `correlation_id` (string, optional): Operation trace ID to inspect. Required if `command_id` is not provided.
-  - `command_id` (string, optional): Command ID to inspect. Required if `correlation_id` is not provided.
-  - `limit` (integer, optional): Number of events to inspect, 1-500. Defaults to 500.
-- **Response**: Object containing `status`, `checks`, `side_effects`, `recoverable_fields`, `missing_payload`, `unsafe_actions`, and boolean summaries such as `can_restore_poster`, `can_restore_backdrop`, `can_trace_nfo_writer`, and `can_reverse_root_move`.
+Marks one edition ignored and returns the updated edition. Other editions and
+the shared Film metadata/profile/analysis are unchanged.
 
-### Restore Library Operation
-- **URL**: `/library/operations/restore`
-- **Method**: `POST`
-- **Description**: Executes supported compensation actions for one correlated operation. It first runs the operation dry-run, then restores narrowly supported file side effects or conflict-checked `Movie` field values and records compensation events. It does not delete original events.
-- **Request Body**:
-  - `correlation_id` (string, optional): Operation trace ID to restore. Required if `command_id` is not provided.
-  - `command_id` (string, optional): Command ID to restore. Required if `correlation_id` is not provided.
-  - `actions` (array of strings, optional): Any of `restore_metadata`, `restore_artwork_selection`, `restore_poster`, `restore_backdrop`, `restore_nfo`, or `reverse_root_move`. Defaults to all supported actions.
-  - `limit` (integer, optional): Number of events to inspect, 1-500. Defaults to 500.
-- **Response**: Object containing `status`, `operation_id`, restore command/correlation IDs, `restored`, `skipped`, and the dry-run report used for safety checks.
-- **Compensation Events**: Supported actions append `MetadataRestored`, `ArtworkSelectionRestored`, `ArtworkRestored`, `NfoRestored`, or `RootVideoMoveReversed` with `causation_id` pointing at the original side-effect event. Field-level restores only write fields whose current value still matches the original event's `current` value; conflicts are reported and skipped. When a reversed root video move belongs to an operation that created a new movie record, the restore also appends `RootVideoOrganizationReverted` and projects that movie to `library_status=reverted`.
+### Scanning and lifecycle
 
-### Background Jobs
-- **URL**: `/jobs`
-- **Method**: `GET`
-- **Description**: Lists recent background jobs created by long-running library, metadata, analysis, organizer, and external score actions.
-- **Query Parameters**:
-  - `status` (string, optional): Filter by `queued`, `running`, `cancelling`, `succeeded`, `failed`, or `cancelled`.
-  - `type` (string, optional): Filter by job type, such as `library.reconcile`.
-  - `limit` (integer, optional): Number of jobs to return, 1-200. Defaults to 50.
-- **Response**: Array of `Job` objects.
-- **Privacy boundary**: Job execution keeps its full internal payload/result in
-  SQLite, but list, detail, cancel/retry responses and SSE job events expose a
-  sanitized projection. Internal paths, titles, free-form progress/error text,
-  and raw dedupe keys are not returned. Public payloads contain only explicitly
-  allowed summaries; results retain status and count/boolean fields; dedupe keys
-  are represented by a truncated SHA-256 identifier.
-- **Internal relink job**: `library.resolve_relink` is queued only when a sampled
-  file fingerprint has multiple candidates. Public Job payloads/results expose
-  counts, status, source instance, and truncated hash identifiers only; titles
-  and absolute paths are redacted.
+| Method | Path | Purpose |
+| --- | --- | --- |
+| `POST` | `/library/scan` | Queue a full reconcile. |
+| `POST` | `/library/reconcile` | Alias of the canonical reconcile command. |
+| `POST` | `/library/scan-folder?folder_path=...` | Queue one controlled folder/file scan. |
+| `GET` | `/library/sync/status` | Reconcile and watcher state. |
+| `DELETE` | `/library/missing` | Retire missing LibraryItems. |
+| `DELETE` | `/library` | Retire all LibraryItems but preserve Film-level data. |
+| `DELETE` | `/library/data` | Delete domain data while retaining settings, migration journal and fixed references. |
+| `POST` | `/library/seed` | Insert normal demonstration Films for local development. |
 
-### Get Background Job
-- **URL**: `/jobs/{job_id}`
-- **Method**: `GET`
-- **Description**: Returns one job record.
-- **Response**:
-  ```json
-  {
-    "id": "job_abc",
-    "type": "library.reconcile",
-    "status": "succeeded",
-    "payload": {},
-    "progress": {"stage": "scanning", "current": 10, "total": 10},
-    "result": {"scanned": 10, "added": 2, "missing": 1},
-    "result_summary": "Scanned 10, added 2, missing 1",
-    "error": null,
-    "attempts": 1,
-    "max_attempts": 1,
-    "dedupe_key": "dedupe_0123456789abcdef",
-    "cancel_requested": false,
-    "created_at": "2026-05-19T00:00:00+00:00",
-    "updated_at": "2026-05-19T00:00:03+00:00",
-    "started_at": "2026-05-19T00:00:01+00:00",
-    "finished_at": "2026-05-19T00:00:03+00:00"
-  }
-  ```
-- **Errors**: `404 Job not found`.
+Scan and organizer Job payloads expose only stable IDs, counts and controlled
+manifest references. Absolute paths are held in Git-ignored private manifests,
+not public Job/Event payloads.
 
-### Cancel Background Job
-- **URL**: `/jobs/{job_id}/cancel`
-- **Method**: `POST`
-- **Description**: Cancels a queued job immediately or requests cooperative cancellation for a running job.
-- **Response**: `Job` object.
+## Profile state and Viewing
 
-### Retry Background Job
-- **URL**: `/jobs/{job_id}/retry`
-- **Method**: `POST`
-- **Description**: Creates a new queued job using the failed or cancelled job's payload.
-- **Response**: Accepted-job envelope.
+### `GET /films/{film_id}/profile-state`
 
-### Delete Background Job
-- **URL**: `/jobs/{job_id}`
-- **Method**: `DELETE`
-- **Description**: Deletes a terminal job. Active jobs cannot be deleted.
-- **Response**: `{"status": "success", "deleted": true}`
+Returns one `FilmProfileState` with:
 
-Long-running mutation endpoints return an accepted-job envelope:
+```json
+{
+  "film_id": "film_0123456789abcdef0123456789abcdef",
+  "favorite": false,
+  "rating": null,
+  "notes": null,
+  "watched": false,
+  "watched_at": null,
+  "updated_at": null
+}
+```
+
+### `PUT /films/{film_id}/profile-state`
+
+Accepts any subset of `favorite`, `rating` (1–5 or null), `notes` (up to 10,000
+characters), `watched`, and `watched_at`.
+
+- `watched=true` creates or restores a confirmed manual Viewing.
+- `watched=false` revokes only the manual Viewing.
+- Other confirmed sources, including future Diary entries, are preserved.
+- Derived `watched` is true when any active confirmed Viewing exists.
+
+### `GET /profile/watch-history`
+
+Returns at most one entry per Film, ordered by the latest active confirmed
+Viewing. Each entry embeds the Film summary and derived profile state.
+
+## Metadata, artwork and external scores
+
+| Method | Path | Purpose |
+| --- | --- | --- |
+| `GET` | `/metadata/search?query=...&year=...&language=...` | Search TMDB candidates. |
+| `GET` | `/metadata/movie/{tmdb_id}` | Load one confirmation candidate. |
+| `POST` | `/films/{film_id}/scrape` | Scrape one Film. |
+| `POST` | `/films/{film_id}/scrape/confirm?tmdb_id=...` | Scrape with an explicit candidate. |
+| `GET` | `/films/{film_id}/artwork` | List TMDB artwork options. |
+| `PUT` | `/films/{film_id}/artwork` | Apply validated poster/backdrop paths. |
+| `POST` | `/films/{film_id}/external-scores/refresh` | Queue one Film score refresh. |
+| `POST` | `/library/external-scores/refresh` | Queue library-wide score refresh. |
+| `GET` | `/library/external-scores/status` | Latest source refresh state. |
+| `POST` | `/library/scrape` | Queue a batch metadata scrape. |
+| `GET` | `/library/scrape/status` | Batch scrape status. |
+
+TMDB requests require `TMDB_API_KEY` from the environment or managed setting.
+The API never returns the key. External scores are normalized
+`FilmExternalScore` resources rather than JSON stored on a library row.
+
+## Root organizer
+
+| Method | Path | Purpose |
+| --- | --- | --- |
+| `GET` | `/library/root-videos` | List videos directly under the media root. |
+| `POST` | `/library/organize-root` | Queue automatic organization. |
+| `POST` | `/library/organize-root/confirm` | Confirm one path and TMDB identity. |
+| `GET` | `/library/organize/status` | Latest organizer status. |
+
+File moves are bounded by the configured media root. Restorable moves reference
+a private controlled manifest; the Event and OperationSnapshot store only its
+opaque reference.
+
+## Analysis V2
+
+### `POST /films/{film_id}/analysis-runs`
+
+Queues `analysis.analyze_film`. The runtime builds Canonical input, validates
+`analysis-output.v2`, resolves entities and transactionally persists
+AnalysisRun, Assertion, provenance, Evidence and resolution reviews.
+
+### `GET /films/{film_id}/analysis`
+
+Returns `FilmAnalysisView` assembled from the latest successful AnalysisRun and
+active structured records. It contains a bounded summary, relations, Evidence,
+reviews and status. Raw prompts/responses, hidden reasoning and compatibility
+JSON are never stored or returned.
+
+## Activity and operation restore
+
+### `GET /activity/events`
+
+Lists bounded `EventRecord` objects newest first. Optional filters are
+`aggregate_type`, `aggregate_id`, `type`, `command_id`, `correlation_id`, and
+`limit` (1–500). Canonical aggregate types include `film`, `library_item`,
+`viewing`, `assertion`, `analysis_run`, and `job`.
+
+### `GET /library/events`
+
+Server-Sent Events stream for live invalidation and Job status notifications.
+
+### `GET /operations/{snapshot_id}/preview`
+
+Returns the bounded before/after diff, current-state match and a confirmation
+token when restoration remains safe.
+
+### `POST /operations/{snapshot_id}/restore`
+
+Body:
+
+```json
+{"confirmation_token":"<64 lowercase hex>"}
+```
+
+Returns `409` if the current state has drifted, the token is stale, the snapshot
+was already restored, or a controlled file restore is no longer safe.
+
+## Jobs
+
+| Method | Path | Purpose |
+| --- | --- | --- |
+| `GET` | `/jobs` | List sanitized jobs; optional `status`, `type`, `limit`. |
+| `GET` | `/jobs/{job_id}` | Get one sanitized job. |
+| `POST` | `/jobs/{job_id}/cancel` | Cancel or request cancellation. |
+| `POST` | `/jobs/{job_id}/retry` | Retry a failed/cancelled Job. |
+| `DELETE` | `/jobs/{job_id}` | Delete a terminal Job. |
+
+Long-running commands return:
 
 ```json
 {
   "status": "queued",
-  "message": "Library reconcile queued",
-  "job_id": "job_abc",
+  "message": "...",
+  "job_id": "job_0123456789abcdef0123456789abcdef",
   "job": {}
 }
 ```
 
-### Get Movie Details
-- **URL**: `/library/{movie_id}`
-- **Method**: `GET`
-- **Description**: Get detailed information for a specific movie by ID.
-- **Path Parameters**:
-  - `movie_id` (string): ASCII movie ID, such as `603_1999`, `tt0133093_1999`, or `local_<hash>`.
-- **Response**: `Movie` object.
-- **Errors**: `400 Invalid ID format`, `404 Movie not found`.
-
-### Get Movie User State
-- **URL**: `/library/{movie_id}/user-state`
-- **Method**: `GET`
-- **Description**: Gets the personal watch state for one movie. If no state has been saved, returns a default state with `watched=false`, `rating=null`, `favorite=false`, `notes=null`, `watched_at=null`, and `updated_at=null`.
-- **Path Parameters**:
-  - `movie_id` (string): ASCII movie ID.
-- **Response**: `MovieUserState`.
-- **Errors**: `400 Invalid ID format`, `404 Movie not found`.
-
-### Update Movie User State
-- **URL**: `/library/{movie_id}/user-state`
-- **Method**: `PUT`
-- **Description**: Creates or updates Film-level personal state through any permanent movie alias. The result is projected to every visible alias for Legacy rollback compatibility. This is manual state only; it does not record playback progress or sessions.
-- **Path Parameters**:
-  - `movie_id` (string): ASCII movie ID.
-- **Request Body**:
-  - `watched` (boolean, optional): Whether the movie has been watched.
-  - `watched_at` (string or null, optional): User-entered watched date or timestamp.
-  - `rating` (integer or null, optional): Personal rating from 1 to 5.
-  - `favorite` (boolean, optional): Favorite marker.
-  - `notes` (string or null, optional): Free-form personal notes.
-- **Viewing behavior**: `watched=false` soft-deletes only compatibility Viewings created by the legacy state/API adapters; Diary or other confirmed Viewings remain active, so derived `watched` may remain `true`. Rating or notes without a confirmed compatibility Viewing are retained as `needs_review` and do not appear in watch history.
-- **Response**: Updated `MovieUserState`.
-- **Errors**: `400 Invalid ID format`, `404 Movie not found`, `422 rating must be between 1 and 5`.
-
-### Get Movie Audit Events
-- **URL**: `/library/{movie_id}/audit-events`
-- **Method**: `GET`
-- **Description**: Lists persisted audit events for one movie.
-- **Path Parameters**:
-  - `movie_id` (string): ASCII movie ID.
-- **Query Parameters**:
-  - `type` (string, optional): Filter by event type.
-  - `limit` (integer, optional): Number of events to return, 1-500. Defaults to 100.
-- **Response**: Array of `EventRecord` objects, newest first.
-- **Errors**: `400 Invalid ID format`, `404 Movie not found`.
-
-### Dry-run Movie Timeline State
-- **URL**: `/library/{movie_id}/timeline/state`
-- **Method**: `GET`
-- **Description**: Replays one movie's persisted event timeline from an empty in-memory state and reports what the Movie state would be at a historical cutoff. This is read-only: it does not modify the database, files, or live event stream.
-- **Path Parameters**:
-  - `movie_id` (string): ASCII movie ID.
-- **Query Parameters**:
-  - `before_event_id` (string, optional): Replay events before this movie event, excluding the event itself.
-  - `at` (string, optional): Replay events whose `occurred_at` is less than or equal to this ISO timestamp.
-  - Exactly one of `before_event_id` or `at` is required.
-- **Response**:
-  ```json
-  {
-    "dry_run": true,
-    "movie_id": "603_1999",
-    "target": {
-      "selector_type": "before_event_id",
-      "before_event_id": "evt_abc",
-      "at": null,
-      "cutoff_event": {"id": "evt_abc", "type": "MetadataMatched", "occurred_at": "2026-05-22T00:00:02+00:00"}
-    },
-    "current_state": {},
-    "target_state": {},
-    "field_diff": [
-      {"field": "title", "current": "Updated", "target": "Original", "restorable": true}
-    ],
-    "events_processed": 1,
-    "events_after_cutoff": 3,
-    "projectable_events": 1,
-    "skipped_projectable_events": 0,
-    "unsupported_events": 0,
-    "unsupported_event_types": {},
-    "skipped_events": [],
-    "missing_payload": []
-  }
-  ```
-- **Notes**: `target_state` is built only from supported projectable events. If the timeline cannot construct a state, for example because no usable `MovieDiscovered` exists before the cutoff, `target_state` is `null` and the reason is reported in `skipped_events` or `missing_payload`.
-- **Errors**: `400 Invalid movie ID format`, `400 Exactly one of before_event_id or at is required`, `400 at must be a valid ISO timestamp`, `404 Movie not found`, `404 before_event_id does not belong to this movie`.
-
-### Dry-run Movie Timeline Restore Preview
-- **URL**: `/library/{movie_id}/timeline/restore-preview`
-- **Method**: `GET`
-- **Description**: Extends timeline state dry-run with field and file recoverability analysis for returning the movie to a historical cutoff. This endpoint is preview-only and never writes compensation events or changes files.
-- **Path Parameters**:
-  - `movie_id` (string): ASCII movie ID.
-- **Query Parameters**:
-  - `before_event_id` (string, optional): Preview restoring to before this movie event.
-  - `at` (string, optional): Preview restoring to this ISO timestamp, inclusive.
-  - Exactly one of `before_event_id` or `at` is required.
-- **Response Additions**:
-  ```json
-  {
-    "status": "partial",
-    "field_restore": [
-      {"field": "title", "current": "Updated", "target": "Original", "restorable": true}
-    ],
-    "file_restore": {
-      "restorable_files": [
-        {"event_id": "evt_art", "type": "ArtworkDownloaded", "file_type": "poster", "path": "/media/Movie/poster.jpg", "backup_path": "/media/Movie/.5x49-backups/cmd/poster.jpg", "backup_file_exists": true}
-      ],
-      "missing_file_backups": [
-        {"event_id": "evt_nfo", "type": "NfoWritten", "file_type": "nfo", "path": "/media/Movie/movie.nfo", "backup_path": null, "backup_file_exists": false, "reason": "Side-effect event has no available backup file"}
-      ],
-      "unsafe_files": []
-    },
-    "restorable_files": [
-      {"event_id": "evt_art", "type": "ArtworkDownloaded", "file_type": "poster", "path": "/media/Movie/poster.jpg", "backup_path": "/media/Movie/.5x49-backups/cmd/poster.jpg", "backup_file_exists": true}
-    ],
-    "missing_file_backups": [
-      {"event_id": "evt_nfo", "type": "NfoWritten", "file_type": "nfo", "path": "/media/Movie/movie.nfo", "backup_path": null, "backup_file_exists": false, "reason": "Side-effect event has no available backup file"}
-    ]
-  }
-  ```
-- **Status Values**: `safe` when all reported changes are recoverable, `partial` when fields are recoverable but payload or file backups are incomplete, `unsafe` when root-video reversal would conflict with current filesystem state, and `unknown` when no supported recovery action is identified.
-- **Errors**: Same as `/library/{movie_id}/timeline/state`.
-
-### Restore Movie Timeline
-- **URL**: `/library/{movie_id}/timeline/restore`
-- **Method**: `POST`
-- **Description**: Executes supported historical timeline compensation for one movie. It recomputes restore-preview first, then restores conflict-checked Movie fields and available poster/backdrop/NFO backups. It never deletes original events and does not execute root-video reversal in this timeline endpoint.
-- **Request Body**:
-  ```json
-  {
-    "before_event_id": "evt_xxx",
-    "at": null,
-    "restore_fields": ["title", "tmdb_id"],
-    "restore_files": ["poster", "backdrop", "nfo"],
-    "allow_partial": false
-  }
-  ```
-- **Rules**:
-  - Exactly one of `before_event_id` or `at` is required.
-  - `restore_fields=null` restores all preview-restorable fields; `[]` restores no fields.
-  - `restore_files=null` restores all preview-restorable poster/backdrop/NFO files; `[]` restores no files.
-  - `restore_files` only supports `poster`, `backdrop`, and `nfo`.
-  - `allow_partial=false` blocks the whole restore with `409` if any requested field or file cannot be safely restored.
-  - `allow_partial=true` restores the safe subset and reports skipped/conflicting items.
-- **Response**:
-  ```json
-  {
-    "status": "restored",
-    "movie_id": "603_1999",
-    "restore_command_id": "cmd_timeline_restore_xxx",
-    "restore_correlation_id": "corr_timeline_restore_xxx",
-    "target": {"selector_type": "before_event_id", "before_event_id": "evt_xxx"},
-    "actions_requested": {"restore_fields": ["title"], "restore_files": ["poster"], "allow_partial": false},
-    "restored": [],
-    "skipped": [],
-    "conflicts": [],
-    "dry_run": {}
-  }
-  ```
-- **Compensation Events**: Field restores append projectable `MovieStateRestored`. Poster/backdrop file restores append `ArtworkRestored`; NFO restores append `NfoRestored`. All emitted compensation events share one timeline restore `command_id` and `correlation_id`.
-- **Errors**: `400 Invalid movie ID format`, `400 Exactly one of before_event_id or at is required`, `400 Unsupported restore_files`, `404 Movie not found`, `404 before_event_id does not belong to this movie`, `409` when restore is not fully safe and `allow_partial=false`.
-
-### Movie Projection Rebuild
-- **URL**: `/library/projections/movie/rebuild`
-- **Method**: `POST`
-- **Description**: Runs a Movie projection consistency check and, for one explicitly confirmed movie, can rebuild the `Movie` read model from supported events. Full-library rebuild remains dry-run only.
-- **Query Parameters**:
-  - `dry_run` (boolean, optional): Defaults to `true`. Set to `false` only for confirmed single-movie rebuild execution.
-  - `base` (string, optional): `current` or `empty`. Defaults to `current`.
-  - `movie_id` (string, optional): Restrict the check to one movie. Required when `dry_run=false`.
-  - `limit` (integer, optional): Maximum movie events to process, 1-5000. Defaults to 1000.
-  - `since` (string, optional): Only include events whose `occurred_at` is greater than or equal to this timestamp. Not allowed when `dry_run=false`.
-  - `confirmation_token` (string, optional): Required when `dry_run=false`; copy it from a matching `dry_run=true&base=empty&movie_id=...` report.
-- **Dry-run Response**:
-  ```json
-  {
-    "dry_run": true,
-    "mode": "empty_replay",
-    "note": "Empty-base dry-run replays only currently supported movie events; unsupported events are reported but not applied.",
-    "base": "empty",
-    "movie_id": "local_xxx",
-    "since": null,
-    "limit": 1000,
-    "events_processed": 12,
-    "event_stream_truncated": false,
-    "last_event": {"id": "evt_xxx", "type": "MetadataMatched", "occurred_at": "2026-05-26T00:00:00+00:00"},
-    "projectable_events": 10,
-    "skipped_projectable_events": 0,
-    "skipped_events": [],
-    "unsupported_events": 2,
-    "unsupported_event_types": {"ArtworkDownloaded": 1, "NfoWritten": 1},
-    "movies_compared": 1,
-    "movies_with_differences": 0,
-    "differences": [],
-    "projected_state": {"id": "local_xxx", "title": "Example", "year": 2026},
-    "confirmation_token": "sha256..."
-  }
-  ```
-- **Execution Rules**:
-  - `dry_run=false` requires `movie_id`, `base=empty`, no `since`, and a matching `confirmation_token`.
-  - The service recomputes the dry-run report before writing. Token mismatch returns `409`.
-  - Rebuild is blocked with `409` if the event stream is truncated by `limit`, the movie cannot be projected from events, or any projectable event is skipped.
-  - Successful execution replaces only core projectable Movie fields, writes missing projected fields as `null`, and appends an audit-only `MovieProjectionRebuilt` event with `aggregate_type="projection"`.
-- **Execution Response**:
-  ```json
-  {
-    "status": "rebuilt",
-    "movie_id": "local_xxx",
-    "confirmation_token": "sha256...",
-    "fields_replaced": ["title", "tmdb_id"],
-    "before": {},
-    "after": {},
-    "dry_run": {},
-    "audit_event_id": "evt_xxx"
-  }
-  ```
-- **Projectable Events**:
-  - `base=current` and `base=empty`: `MovieDiscovered`, `MovieFileObserved`, `MovieMetadataParsedFromNfo`, `MovieIgnored`, `MovieMarkedMissing`, `MovieRestored`, `MovieStateBackfilled`, `MetadataMatched`, `ArtworkSelected`, `MovieStateRestored`, `MetadataRestored`, `ArtworkSelectionRestored`, `RootVideoOrganizationReverted`, `AnalysisStarted`, `AnalysisCompleted`, `AnalysisFailed`, and `ExternalScoresRefreshed`.
-- **Notes**: `base=empty` needs a usable `MovieDiscovered` before later per-movie events can be applied. Projectable events that lack required payload, such as old `ExternalScoresRefreshed` events without `current` score fields, are counted in `skipped_projectable_events` and block execution.
-- **Errors**: `400 base must be 'current' or 'empty'`, `400 movie_id is required when dry_run=false`, `400 base=empty is required when dry_run=false`, `400 since is not supported when dry_run=false`, `400 Invalid movie ID format`, `404 Movie not found`, `409` when confirmation is missing/stale or the rebuild is blocked by projection gaps.
-
-### Backfill MovieDiscovered Events
-- **URL**: `/library/events/backfill/movie-discovered`
-- **Method**: `POST`
-- **Description**: Creates missing `MovieDiscovered` initialization events for existing `Movie` rows. Defaults to dry-run mode. When executed with `dry_run=false`, it only appends events to the `events` table and does not modify the `movie` table.
-- **Query Parameters**:
-  - `dry_run` (boolean, optional): Defaults to `true`. Set to `false` to append missing initialization events.
-  - `movie_id` (string, optional): Restrict the backfill check or execution to one movie.
-  - `sample_limit` (integer, optional): Number of sample event specs to return, 0-50. Defaults to 20.
-- **Response**:
-  ```json
-  {
-    "dry_run": true,
-    "event_type": "MovieDiscovered",
-    "movie_id": null,
-    "movies_checked": 42,
-    "already_initialized": 0,
-    "events_to_create": 42,
-    "created_events": 0,
-    "created_event_ids": [],
-    "sample_events": [
-      {
-        "type": "MovieDiscovered",
-        "aggregate_type": "movie",
-        "aggregate_id": "local_xxx",
-        "actor_type": "migration",
-        "payload": {"id": "local_xxx", "movie_id": "local_xxx", "title": "Example", "year": 2026},
-        "context": {"source": "backfill", "backfill_kind": "movie_discovered", "reason": "initialize_event_replay"},
-        "occurred_at": "2026-05-20T00:00:00+00:00"
-      }
-    ],
-    "timestamp_strategy": "Backfilled initialization events are placed just before each movie's earliest existing movie event when one exists; otherwise they use added_at, last_seen_at, or current time."
-  }
-  ```
-- **Notes**: The timestamp strategy makes historical initialization events sort before existing per-movie events so `base=empty` replay can apply later events in order. Existing movies that already have `MovieDiscovered` are skipped.
-- **Errors**: `400 Invalid movie ID format`, `404 Movie not found`.
-
-### Backfill Movie Replay Events
-- **URL**: `/library/events/backfill/movie-replay`
-- **Method**: `POST`
-- **Description**: Plans or appends replay migration events for existing Movie rows. Defaults to dry-run mode. Executing with `dry_run=false` only appends backfill events to the `events` table; it does not rewrite old events, update the `Movie` table, or modify media files.
-- **Query Parameters**:
-  - `dry_run` (boolean, optional): Defaults to `true`. Set to `false` to append planned backfill events.
-  - `movie_id` (string, optional): Restrict the backfill check or execution to one movie.
-  - `sample_limit` (integer, optional): Number of sample event specs to return, 0-50. Defaults to 20.
-- **Response**:
-  ```json
-  {
-    "dry_run": true,
-    "movie_id": null,
-    "movies_checked": 42,
-    "events_checked": 120,
-    "events_to_create": 12,
-    "created_events": 0,
-    "created_event_ids": [],
-    "sample_events": [
-      {
-        "type": "MovieStateBackfilled",
-        "aggregate_type": "movie",
-        "aggregate_id": "local_xxx",
-        "actor_type": "migration",
-        "payload": {
-          "movie_id": "local_xxx",
-          "current": {"id": "local_xxx", "title": "Example", "year": 2026},
-          "source_event_ids": ["evt_old"],
-          "source_event_types": ["MetadataMatched"],
-          "reason": "old_projectable_event_payload_missing_current",
-          "source": "backfill"
-        },
-        "context": {"source": "backfill", "backfill_kind": "movie_state"},
-        "occurred_at": "2026-05-26T00:00:00+00:00"
-      }
-    ],
-    "unsupported": [],
-    "unavailable_file_snapshots": [],
-    "coverage_before": {
-      "available": true,
-      "events_processed": 120,
-      "skipped_projectable_events": 3,
-      "movies_compared": 39
-    },
-    "notes": []
-  }
-  ```
-- **Backfill events**: Missing initialization creates `MovieDiscovered` with `context.source="backfill"` and sorts it before the movie's earliest existing event. Old `MetadataMatched` or `ArtworkSelected` events that lack usable `current` payload can create projectable `MovieStateBackfilled` migration snapshots. Existing poster/backdrop/NFO files can create audit-only `MovieFileSnapshotBackfilled` records with `restore_available=false`.
-- **Notes**: Backfill events are migration snapshots, not reconstructed historical facts. `MovieStateBackfilled` improves replay coverage from the migration point forward; it does not make earlier timeline states exact. `MovieFileSnapshotBackfilled` records current file metadata only and does not create backups.
-- **Errors**: `400 Invalid movie ID format`, `404 Movie not found`.
-
-### Dry-run NFO Signatures
-- **URL**: `/library/events/dry-run/nfo-signatures`
-- **Method**: `POST`
-- **Description**: Scans a media directory or one movie folder and compares observed NFO file signatures against the current `Movie` table. This is read-only: it does not update `Movie` rows and does not append events.
-- **Query Parameters**:
-  - `media_dir` (string, optional): Media root to scan. Defaults to configured media directory.
-  - `folder_path` (string, optional): Restrict the check to one movie folder.
-  - `limit` (integer, optional): Maximum result rows to return, 1-1000. Defaults to 200.
-  - `include_unchanged` (boolean, optional): Include unchanged matches in `results`. Defaults to `false`.
-- **Response**:
-  ```json
-  {
-    "dry_run": true,
-    "media_dir": "/media",
-    "folder_path": null,
-    "folders_scanned": 42,
-    "nfo_files_found": 40,
-    "matched_movies": 39,
-    "unchanged": 20,
-    "new_signatures": 12,
-    "changed_signatures": 7,
-    "unmatched_movies": 1,
-    "folders_without_nfo": 2,
-    "results_returned": 20,
-    "results_truncated": false,
-    "results": [
-      {
-        "status": "changed",
-        "movie_id": "local_xxx",
-        "title": "Example",
-        "year": 2026,
-        "folder_path": "/media/Example (2026)",
-        "nfo_path": "/media/Example (2026)/movie.nfo",
-        "observed": {
-          "nfo_file": "movie.nfo",
-          "nfo_path": "/media/Example (2026)/movie.nfo",
-          "nfo_size": 1234,
-          "nfo_mtime": 1778583332.9761415,
-          "nfo_fingerprint": "..."
-        },
-        "current": {
-          "nfo_file": "movie.nfo",
-          "nfo_path": "/media/Example (2026)/movie.nfo",
-          "nfo_size": 1200,
-          "nfo_mtime": 1778583000.0,
-          "nfo_fingerprint": "..."
-        },
-        "changed_fields": ["nfo_size", "nfo_mtime", "nfo_fingerprint"],
-        "parse_error": null
-      }
-    ]
-  }
-  ```
-- **Result Statuses**: `new_signature` means the movie exists but has no stored NFO signature yet; `changed` means at least one signature field changed; `unchanged` means the observed signature matches the stored signature; `unmatched_movie` means an NFO file was found but no existing `Movie` row matched it.
-- **Movie Fields**: `Movie` now includes `nfo_file`, `nfo_path`, `nfo_size`, `nfo_mtime`, and `nfo_fingerprint` when available.
-- **Errors**: `404 Movie folder not found`, `404 Media directory not found`.
-
-### Refresh Movie External Scores
-- **URL**: `/library/{movie_id}/external-scores/refresh`
-- **Method**: `POST`
-- **Description**: Queues a job to refresh external score and ranking signals for one movie. The current implementation imports TSPDT data from `dataset/TSPDT - 1,000 Greatest Films (Table).csv` and writes high-confidence matches to the movie's `external_scores`.
-- **Path Parameters**:
-  - `movie_id` (string): The ID of the movie.
-- **Query Parameters**:
-  - `force` (boolean, optional): Reserved for sources with TTL caches. Defaults to `false`.
-- **Response**: Accepted-job envelope. Final result is stored in the job's `result`.
-- **Errors**: `400 Invalid ID format`, `404 Movie not found`.
-
-### Refresh Library External Scores
-- **URL**: `/library/external-scores/refresh`
-- **Method**: `POST`
-- **Description**: Queues a background refresh of external score sources for available movies.
-- **Query Parameters**:
-  - `force` (boolean, optional): Reserved for sources with TTL caches. Defaults to `false`.
-- **Response**: Accepted-job envelope.
-
-### Get External Score Refresh Status
-- **URL**: `/library/external-scores/status`
-- **Method**: `GET`
-- **Description**: Returns the latest batch external score refresh status.
-- **Response**:
-  ```json
-  {
-    "state": "idle",
-    "last_started_at": "2026-05-18T00:00:00+00:00",
-    "last_finished_at": "2026-05-18T00:01:00+00:00",
-    "last_error": null,
-    "last_result": {"processed": 100, "updated": 20, "skipped": 80, "failed": 0}
-  }
-  ```
-
-### Seed Library
-- **URL**: `/library/seed`
-- **Method**: `POST`
-- **Description**: Seeds the library with test data.
-- **Response**: Success message objects from the manager.
-
-### Scan Library (from Directory)
-- **URL**: `/library/scan`
-- **Method**: `POST`
-- **Description**: Queues a media directory reconciliation job that scans movie folders, upserts discovered records, and marks disappeared movies as missing.
-- **Query Parameters**:
-  - `media_dir` (string, optional): Target directory to scan. Defaults to system media dir config.
-- **Response**: Accepted-job envelope. Final reconcile counts are stored in the job's `result`.
-
-### Reconcile Library
-- **URL**: `/library/reconcile`
-- **Method**: `POST`
-- **Description**: Queues a full library reconciliation and marks movies not seen in the pass as `missing`.
-- **Query Parameters**:
-  - `media_dir` (string, optional): Target directory to scan. Defaults to system media dir config.
-- **Response**: Accepted-job envelope. Final reconcile counts are stored in the job's `result`.
-
-### Scan Folder
-- **URL**: `/library/scan-folder`
-- **Method**: `POST`
-- **Description**: Queues a scan for a single movie folder and upserts the corresponding movie record.
-- **Query Parameters**:
-  - `folder_path` (string, required): Absolute path to a movie folder.
-- **Response**: Accepted-job envelope. Final movie payload is stored in the job's `result`.
-
-### Refresh Movie
-- **URL**: `/library/{movie_id}/refresh`
-- **Method**: `POST`
-- **Description**: Queues a refresh for one movie from its known local folder while preserving the existing movie ID.
-- **Path Parameters**:
-  - `movie_id` (string): The ID of the movie.
-- **Response**: Accepted-job envelope. Final movie payload is stored in the job's `result`.
-- **Errors**: `400 Invalid ID format`, `404 Movie not found`.
-
-### Get Movie Artwork Options
-- **URL**: `/library/{movie_id}/artwork`
-- **Method**: `GET`
-- **Description**: Lists selectable TMDB posters and backdrops for a movie that already has a `tmdb_id`.
-- **Path Parameters**:
-  - `movie_id` (string): The ID of the movie.
-- **Response**:
-  ```json
-  {
-    "movie_id": "603_1999",
-    "tmdb_id": 603,
-    "posters": [
-      {
-        "file_path": "/poster.jpg",
-        "url": "https://image.tmdb.org/t/p/original/poster.jpg",
-        "thumbnail_url": "https://image.tmdb.org/t/p/w500/poster.jpg",
-        "width": 2000,
-        "height": 3000,
-        "aspect_ratio": 0.667,
-        "language": "en",
-        "vote_average": 5.3,
-        "vote_count": 10
-      }
-    ],
-    "backdrops": [],
-    "current_poster_path": "/poster.jpg",
-    "current_backdrop_path": "/backdrop.jpg"
-  }
-  ```
-- **Errors**: `400 Invalid ID format`, `404 Movie not found`, `409 Movie does not have a TMDB ID`, `503 TMDB_API_KEY is not configured`.
-
-### Update Movie Artwork
-- **URL**: `/library/{movie_id}/artwork`
-- **Method**: `PUT`
-- **Description**: Applies a selected TMDB poster and/or backdrop. The backend verifies the selected TMDB paths, downloads them over the existing `<video-stem>-poster.jpg` / `<video-stem>-fanart.jpg` files, updates artwork references in the local NFO when present, rescans the folder, and returns the updated movie.
-- **Body**:
-  ```json
-  {
-    "poster_path": "/poster.jpg",
-    "backdrop_path": "/backdrop.jpg"
-  }
-  ```
-  Each field is optional, but at least one must be provided.
-- **Response**:
-  ```json
-  {
-    "status": "success",
-    "movie_id": "603_1999",
-    "movie": {},
-    "poster_path": "/poster.jpg",
-    "backdrop_path": "/backdrop.jpg"
-  }
-  ```
-- **Errors**: `400 Invalid ID format`, `404 Movie not found`, `409` for missing TMDB ID, invalid selection, or missing folder, `503 TMDB_API_KEY is not configured`.
-
-### Scrape Movie Metadata
-- **URL**: `/library/{movie_id}/scrape`
-- **Method**: `POST`
-- **Description**: Uses TMDB to enrich one movie, optionally downloading `<video-stem>-poster.jpg` / `<video-stem>-fanart.jpg`, writing `<video-stem>.nfo`, rescanning the folder, and updating the database.
-- **Body**:
-  ```json
-  {
-    "mode": "auto",
-    "language": "zh-CN",
-    "artwork_language": "en",
-    "overwrite": false,
-    "write_nfo": true,
-    "download_artwork": true,
-    "tmdb_id": null
-  }
-  ```
-- **Artwork Language**: `artwork_language` is optional and controls posters/backdrops independently from metadata text. Supported values are `metadata` (follow `language`), `zh`, `en`, and `none` (textless). When omitted, the saved `/settings/artwork-language` value is used.
-- **Response**:
-  ```json
-  {
-    "status": "success",
-    "movie_id": "local_...",
-    "message": "Metadata scraped",
-    "movie": {},
-    "candidates": []
-  }
-  ```
-- **Needs Review**: If the best automatic match has low confidence, or `/settings/scrape-confirmation` is enabled, returns `status: "needs_review"` with up to 20 scored `candidates`.
-- **Errors**: `400 Invalid ID format`, `409` with a scrape result payload when scraping fails.
-
-### Confirm Movie Metadata Match
-- **URL**: `/library/{movie_id}/scrape/confirm`
-- **Method**: `POST`
-- **Description**: Scrapes one movie using a user-selected TMDB ID.
-- **Query Parameters**:
-  - `tmdb_id` (integer, required): Confirmed TMDB movie ID.
-- **Body**: Same options as Scrape Movie Metadata.
-- **Response**: Same shape as Scrape Movie Metadata.
-
-### Scrape Library Metadata
-- **URL**: `/library/scrape`
-- **Method**: `POST`
-- **Description**: Starts a background metadata scrape for movies matching the requested scope.
-- **Body**:
-  ```json
-  {
-    "scope": "unscraped",
-    "movie_ids": null,
-    "language": "zh-CN",
-    "artwork_language": "en",
-    "overwrite": false,
-    "write_nfo": true,
-    "download_artwork": true
-  }
-  ```
-- **Scopes**:
-  - `unscraped`: Available movies with `metadata_source=filename` and `scrape_status` of `pending` or `failed`.
-  - `missing_artwork`: Movies missing local poster or backdrop.
-  - `all`: Every available movie.
-  - `selected`: Only IDs listed in `movie_ids`.
-- **Confirmation Mode**: When `/settings/scrape-confirmation` is enabled, automatic matches are counted as `needs_review` and are not written until confirmed with `/library/{movie_id}/scrape/confirm`.
-- **Response**: Accepted-job envelope. Final batch scrape counts are stored in the job's `result`.
-
-Root video organization accepts the same `language` and `artwork_language` scrape options when moving and scraping direct media-root videos.
-
-### Get Metadata Scrape Status
-- **URL**: `/library/scrape/status`
-- **Method**: `GET`
-- **Description**: Returns latest batch metadata scrape state.
-- **Response**:
-  ```json
-  {
-    "state": "idle",
-    "last_started_at": "2026-05-12T00:00:00+00:00",
-    "last_finished_at": "2026-05-12T00:01:00+00:00",
-    "last_error": null,
-    "last_result": {
-      "processed": 10,
-      "succeeded": 8,
-      "needs_review": 1,
-      "failed": 1,
-      "skipped": 0
-    }
-  }
-  ```
-
-### Organize Root Videos
-- **URL**: `/library/organize-root`
-- **Method**: `POST`
-- **Description**: Queues a background job that looks only at video files placed directly in the configured media root, waits for stable files, matches them with TMDB, moves high-confidence matches into movie folders, then scrapes metadata/artwork/NFO. When `/settings/scrape-confirmation` is enabled, matched files return `needs_review` before any move or scrape writes occur.
-- **Body**:
-  ```json
-  {
-    "min_confidence": 85,
-    "rename_style": "preserve_stem",
-    "overwrite": false,
-    "write_nfo": true,
-    "download_artwork": true,
-    "language": "zh-CN"
-  }
-  ```
-- **Rename Styles**:
-  - `preserve_stem`: Keep the original video filename and move it into a matched movie folder.
-  - `title_year`: Rename the video to the matched title/year.
-- **Response**: Accepted-job envelope. Final organization counts are stored in the job's `result`.
-
-### Confirm Root Video Organization
-- **URL**: `/library/organize-root/confirm`
-- **Method**: `POST`
-- **Description**: Queues a job that moves one stable direct media-root video into a movie folder and scrapes it using a user-confirmed TMDB ID. This is the confirmation path for root videos when `/settings/scrape-confirmation` is enabled.
-- **Body**:
-  ```json
-  {
-    "path": "/media/The.Matrix.1999.1080p.mkv",
-    "tmdb_id": 603,
-    "options": {
-      "rename_style": "preserve_stem",
-      "overwrite": false,
-      "write_nfo": true,
-      "download_artwork": true,
-      "language": "zh-CN"
-    }
-  }
-  ```
-- **Response**: Accepted-job envelope. Final organization payload is stored in the job's `result`.
-- **Errors**: `404 Root video file not found`.
-
-### Get Root Organization Status
-- **URL**: `/library/organize/status`
-- **Method**: `GET`
-- **Description**: Returns latest root video organization state.
-- **Response**:
-  ```json
-  {
-    "state": "idle",
-    "last_error": null,
-    "last_result": {
-      "processed": 1,
-      "organized": 1,
-      "scraped": 1,
-      "needs_review": 0,
-      "failed": 0,
-      "skipped": 0
-    }
-  }
-  ```
-
-### List Root Videos
-- **URL**: `/library/root-videos`
-- **Method**: `GET`
-- **Description**: Lists direct video files under the configured media root that are waiting for organization. This endpoint is read-only and does not create library records.
-- **Errors**: Returns `400` when the configured media root does not exist or cannot be read by the backend process.
-- **Response**:
-  ```json
-  [
-    {
-      "path": "/media/output.mp4",
-      "filename": "output.mp4",
-      "size": 7697577,
-      "mtime": 1778580000.0,
-      "stable": true,
-      "parsed_title": "output",
-      "parsed_year": 0,
-      "status": "needs_organize"
-    }
-  ]
-  ```
-
-### Get Library Sync Status
-- **URL**: `/library/sync/status`
-- **Method**: `GET`
-- **Description**: Returns last reconciliation status and automatic watcher status.
-- **Response**:
-  ```json
-  {
-    "sync": {
-      "state": "idle",
-      "last_started_at": "2026-05-10T00:00:00+00:00",
-      "last_finished_at": "2026-05-10T00:00:03+00:00",
-      "last_error": null,
-      "last_result": {"scanned": 10, "added": 2, "missing": 1}
-    },
-    "watcher": {
-      "running": true,
-      "media_dir": "/media",
-      "mode": "events",
-      "last_event_at": 1778371200.0,
-      "last_error": null,
-      "pending": 0
-    }
-  }
-  ```
-
-### Clear Library
-- **URL**: `/library`
-- **Method**: `DELETE`
-- **Description**: Removes the Legacy Movie compatibility rows and retires their LibraryItem, local MediaAsset, and active locator history. Film identity, external identities, Viewings, and favorites are retained. A later scan of the same item reactivates its original LibraryItem and permanent alias and rebuilds the Legacy personal-state projection.
-- **Response**: `{"message": "Library cleared"}`
-
-### Clear All Library Data
-- **URL**: `/library/data`
-- **Method**: `DELETE`
-- **Description**: Irreversibly deletes all Legacy and Canonical library-domain data, including movies, aliases, Films, identities, assets, locator history, personal state/Viewings, Assertion/Evidence/AnalysisRun records and analysis reviews, background jobs, persisted events, identity reviews, and Canonical backfill reports. It preserves the versioned Assertion predicate registry, migration journal, media files, generated NFO/artwork files, saved settings, and environment configuration.
-- **Response**:
-  ```json
-  {
-    "status": "success",
-    "message": "Library data cleared",
-    "deleted": {
-      "user_states": 3,
-      "movies": 42,
-      "jobs": 5,
-      "events": 120
-    }
-  }
-  ```
-
-### Ignore Movie
-- **URL**: `/library/{movie_id}/ignore`
-- **Method**: `POST`
-- **Description**: Marks one movie as `library_status=ignored` so it is hidden from normal library views and skipped by reconciliation/scrape batches.
-- **Path Parameters**:
-  - `movie_id` (string): The ID of the movie.
-- **Response**: `{"status": "success", "movie": Movie}`
-- **Errors**: `400 Invalid ID format`, `404 Movie not found`.
-
-### Clean Missing Records
-- **URL**: `/library/missing`
-- **Method**: `DELETE`
-- **Description**: Deletes Legacy Movie compatibility rows already marked `library_status=missing` and retires their Canonical LibraryItem/assets. Film identities and Film-level personal data remain available for a later rescan and alias restoration.
-- **Response**: `{"status": "success", "deleted": 3}`
-
----
-
-## Analysis
-
-### Analyze Genealogy (Specific Movie)
-- **URL**: `/analyze/{movie_name}`
-- **Method**: `GET`
-- **Description**: Synchronously analyzes the genealogy of a given movie name.
-- **Path Parameters**:
-  - `movie_name` (string): The name of the movie to analyze.
-- **Response**: Analysis result payload.
-- **Errors**: `404 Film not found or analysis failed`.
-
-### Trigger Analysis (Background)
-- **URL**: `/library/analyze/{movie_id}`
-- **Method**: `POST`
-- **Description**: Queues an analysis run for a specific movie in the background.
-- **Path Parameters**:
-  - `movie_id` (string): The ID of the movie.
-- **Response**: Accepted-job envelope.
-- **Runtime behavior**: The worker builds a path-free canonical input, validates
-  Analysis V2 output, persists inferred proposed relationships and verified
-  public Evidence, and writes the existing `analysis_status`, `micro_genre`,
-  and `analysis_data` compatibility fields transactionally. Repeating an
-  already successful run with the same input/model/version reuses the stored
-  AnalysisRun. Invalid or unresolved references become bounded reviews rather
-  than new Graph entities.
-- The older synchronous `/analyze/{movie_name}` route remains a compatibility
-  operation and does not persist AnalysisRun or Assertion data.
-
----
-
-## Settings & Configuration
-
-### Get Settings
-- **URL**: `/settings`
-- **Method**: `GET`
-- **Description**: Retrieves whole current system settings dictionary.
-- **Response Notes**: Includes library watcher fields such as `watch_library`, `watch_mode` (`events` or `polling`), `watch_debounce_seconds`, `watch_interval_seconds`, `media_file_stable_seconds`, `scrape_require_confirmation`, and `artwork_language`. Secret values such as `tmdb_api_key` are not returned; TMDB configuration is represented by the `tmdb` status object.
-
-### Get Model Setting
-- **URL**: `/settings/model`
-- **Method**: `GET`
-- **Description**: Get the currently configured model and list of available models.
-- **Response**:
-  ```json
-  {
-    "current_model": "gpt-4",
-    "available_models": ["gpt-4", "gpt-3.5-turbo"]
-  }
-  ```
-
-### Update Model Setting
-- **URL**: `/settings/model`
-- **Method**: `PUT`
-- **Description**: Updates the currently active model.
-- **Query Parameters**:
-  - `model_name` (string, required): The intended model to use.
-- **Response**: `{"message": "Model updated", "model_name": "..."}`
-- **Errors**: `500 Failed to save settings`
-
-### Get Media Directory
-- **URL**: `/settings/media-dir`
-- **Method**: `GET`
-- **Description**: Fetches the currently configured media directory pathway.
-- **Response**: `{"media_dir": "/path/to/media"}`
-
-### Update Media Directory
-- **URL**: `/settings/media-dir`
-- **Method**: `PUT`
-- **Description**: Updates the media directory location setting.
-- **Query Parameters**:
-  - `media_dir` (string, required): The target filesystem path string.
-- **Response**: Success status with a prompt to restart server for static files changes.
-
-### Get Language Setting
-- **URL**: `/settings/language`
-- **Method**: `GET`
-- **Description**: Fetches the current language localization ('zh' or 'en').
-- **Response**: `{"language": "zh"}`
-
-### Update Language Setting
-- **URL**: `/settings/language`
-- **Method**: `PUT`
-- **Description**: Sets the system language configuration.
-- **Query Parameters**:
-  - `language` (string, required): Allowed values `zh` or `en`.
-
-### Get Library Watch Setting
-- **URL**: `/settings/library-watch`
-- **Method**: `GET`
-- **Description**: Gets whether automatic library watching is enabled and the current watcher status.
-- **Response**: `{"watch_library": true, "watcher": {...}}`
-
-### Update Library Watch Setting
-- **URL**: `/settings/library-watch`
-- **Method**: `PUT`
-- **Description**: Enables or disables the automatic library watcher immediately and persists the setting.
-- **Query Parameters**:
-  - `enabled` (boolean, required): Whether to run the watcher.
-  - The watcher defaults to native filesystem events with debounce to avoid repeated full-tree scans.
-  - Set `watch_mode` to `polling` in settings or `WATCH_MODE=polling` to use the legacy polling fallback for mounts where native events are unreliable.
-
-### Get Auto Organize Root Setting
-- **URL**: `/settings/auto-organize-root`
-- **Method**: `GET`
-- **Description**: Gets whether stable direct video files in the media root are automatically organized when the watcher is running.
-- **Response**: `{"auto_organize_root_videos": false}`
-
-### Update Auto Organize Root Setting
-- **URL**: `/settings/auto-organize-root`
-- **Method**: `PUT`
-- **Description**: Enables or disables automatic root video organization.
-- **Query Parameters**:
-  - `enabled` (boolean, required): Whether to organize root videos automatically.
-
-### Get Scrape Confirmation Setting
-- **URL**: `/settings/scrape-confirmation`
-- **Method**: `GET`
-- **Description**: Gets whether automatic TMDB matches require manual confirmation before writing artwork, NFO files, or matched metadata.
-- **Response**: `{"scrape_require_confirmation": false}`
-
-### Update Scrape Confirmation Setting
-- **URL**: `/settings/scrape-confirmation`
-- **Method**: `PUT`
-- **Description**: Enables or disables manual confirmation before automatic metadata scraping writes files or matched metadata.
-- **Query Parameters**:
-  - `enabled` (boolean, required): Whether every automatic TMDB match must be confirmed first.
-
-### Get Artwork Language Setting
-- **URL**: `/settings/artwork-language`
-- **Method**: `GET`
-- **Description**: Gets the poster/backdrop language used by TMDB scraping when a request does not provide `artwork_language`.
-- **Response**: `{"artwork_language": "metadata"}`
-
-### Update Artwork Language Setting
-- **URL**: `/settings/artwork-language`
-- **Method**: `PUT`
-- **Description**: Sets poster/backdrop language separately from metadata text language.
-- **Query Parameters**:
-  - `language` (string, required): One of `metadata`, `zh`, `en`, or `none`.
-
-### Get TMDB Setting
-- **URL**: `/settings/tmdb`
-- **Method**: `GET`
-- **Description**: Gets TMDB API key configuration status without exposing the key.
-- **Response**:
-  ```json
-  {
-    "configured": true,
-    "source": "environment"
-  }
-  ```
-- **Response Fields**:
-  - `configured` (boolean): Whether a TMDB API key is available.
-  - `source` (string, nullable): `environment`, `settings`, or `null`.
-
-### Update TMDB Setting
-- **URL**: `/settings/tmdb`
-- **Method**: `PUT`
-- **Description**: Saves a TMDB API key in settings when `TMDB_API_KEY` is not managed by the process environment. Sending an empty `api_key` clears the saved settings key.
-- **Request Body**:
-  ```json
-  {
-    "api_key": "..."
-  }
-  ```
-- **Response**: `{"status": "success", "configured": true, "source": "settings"}`
-- **Errors**: `409 TMDB_API_KEY is configured by environment`, `500 Failed to save settings`
-
-### Test TMDB API Key
-- **URL**: `/settings/tmdb/test`
-- **Method**: `POST`
-- **Description**: Tests the currently configured TMDB API key by calling TMDB configuration.
-- **Response**:
-  ```json
-  {
-    "status": "success",
-    "message": "TMDB API key is valid"
-  }
-  ```
-- **Errors**: `503 TMDB_API_KEY is not configured`, `502 TMDB API test failed`
-
-### Get Base URL
-- **URL**: `/settings/base-url`
-- **Method**: `GET`
-- **Description**: Get the designated API base URL setting.
-
-### Update Base URL
-- **URL**: `/settings/base-url`
-- **Method**: `PUT`
-- **Description**: Updates the designated API base URL.
-- **Query Parameters**:
-  - `base_url` (string, required): URL payload.
-
-### Refresh Models
-- **URL**: `/settings/models/refresh`
-- **Method**: `POST`
-- **Description**: Forces a refresh caching update of the available models from the OpenRouter API.
-
-### Test API Key
-- **URL**: `/settings/test-api-key`
-- **Method**: `GET`
-- **Description**: Ping test verifying the integrity of the OpenRouter API Key configured in the environment.
-- **Response**: Status and count of valid accessible models or an error state message.
-
----
-
-## System & Agents
-
-### List Directories
-- **URL**: `/sys/list-dirs`
-- **Method**: `GET`
-- **Description**: List valid subdirectories under a given folder path. Used primarily for frontend file browser components.
-- **Query Parameters**:
-  - `path` (string, optional): Starts at `/` by default.
-- **Response**:
-  ```json
-  {
-    "current_path": "/path",
-    "parent_path": "/",
-    "directories": [
-      {
-        "name": "Movies",
-        "path": "/path/Movies"
-      }
-    ]
-  }
-  ```
-
-### Trigger Manual Scan
-- **URL**: `/sys/scan-library`
-- **Method**: `POST`
-- **Description**: Starts a background reconciliation for the configured media library without returning immediate scan stats.
-- **Response**: Accepted-job envelope.
-
-### Clean Inbox (Agent Stream)
-- **URL**: `/api/agents/clean-inbox`
-- **Method**: `GET` (Supports Text/Event-Stream)
-- **Description**: Summons the Librarian Agent to execute inbox organization directives. Provides streaming Server-Sent Events (SSE) representing agent thoughts, actions, tool executions, and resolutions.
-
----
-
-## Data Models
-
-### Job schema
-
-Background jobs are persisted in SQLite and executed by the in-process actor
-runtime. The schema below describes the public projection; stored execution
-records retain their internal payload/result for retry and worker execution.
-
-- `id` (String): Primary key, formatted as `job_<uuid-hex>`.
-- `type` (String): Actor command such as `library.reconcile`, `metadata.scrape_library`, `analysis.analyze_movie`, or `organizer.organize_root`.
-- `status` (String): `queued`, `running`, `cancelling`, `succeeded`, `failed`, or `cancelled`.
-- `payload` (Object, Optional): Sanitized, type-specific input summary. Most job
-  types expose `{}`; relink jobs expose source/hash identifiers and counts only.
-- `progress` (Object, Optional): Sanitized stage and optional numeric
-  `current` / `total` / `percent` counters; free-form messages are internal.
-- `result` (Object, Optional): Sanitized status, counts, booleans, and approved
-  token lists from the final handler result.
-- `result_summary` (String, Optional): Generated UI-safe result text.
-- `error` (String, Optional): Generic public failure/cancellation text; detailed
-  worker errors remain in the internal record and server logs.
-- `attempts` / `max_attempts` (Integer): Execution attempt counters.
-- `priority` (Integer): Higher-priority jobs are claimed first.
-- `dedupe_key` (String, Optional): Truncated SHA-256 identifier for the internal
-  dedupe key. Active jobs still reuse the full stored key.
-- `cancel_requested` (Boolean): Cooperative cancellation flag checked by long-running handlers.
-- `created_at`, `updated_at`, `started_at`, `finished_at` (String, Optional): UTC ISO timestamps.
-
-### EventRecord schema
-
-Audit events are persisted in the `events` table. The current v1 event payload
-contracts are documented in [`docs/event-contracts.md`](event-contracts.md).
-Most events currently act as an audit sidecar while selected low-risk events
-such as `MovieIgnored`, `MovieMarkedMissing`, `MovieRestored`,
-`MovieStateBackfilled`, `MovieStateRestored`, `MetadataRestored`, `ArtworkSelectionRestored`,
-`RootVideoOrganizationReverted`, `AnalysisStarted`, `AnalysisCompleted`, and
-`AnalysisFailed` are synchronously projected into the `Movie` current-state
-table. `MovieDiscovered` and `MovieFileObserved` are additionally supported by
-empty-base projection dry-runs.
-
-- `id` (String): Primary key, formatted as `evt_<uuid-hex>`.
-- `aggregate_type` (String): Event aggregate category, such as `movie`, `library`, or `file`.
-- `aggregate_id` (String, Optional): Aggregate identifier. Movie events use the current movie ID.
-- `type` (String): Semantic event type, for example `MovieDiscovered`, `MovieFileObserved`, `MovieFolderScanned`, `MovieMetadataParsedFromNfo`, `MovieMarkedMissing`, `MovieRestored`, `MovieIgnored`, `MovieStateBackfilled`, `MetadataMatchSuggested`, `MetadataMatched`, `MovieStateRestored`, `MetadataRestored`, `MetadataScrapeFailed`, `ArtworkDownloaded`, `ArtworkSelected`, `ArtworkSelectionRestored`, `ArtworkRestored`, `MovieFileSnapshotBackfilled`, `NfoWritten`, `NfoRestored`, `RootVideoOrganizationNeedsReview`, `RootVideoMoved`, `RootVideoMoveReversed`, `RootVideoOrganized`, `RootVideoOrganizationReverted`, `MovieProjectionRebuilt`, `AnalysisStarted`, `AnalysisCompleted`, `AnalysisFailed`, `ExternalScoresRefreshed`, `ExternalScoresRefreshFailed`, `LibraryReconciled`, `LibraryCleared`, `MissingMoviesCleaned`, or `LibrarySeeded`.
-- `actor_type` / `actor_id` (String, Optional): Actor metadata. Stage 1 defaults to `system`.
-- `command_id`, `correlation_id`, `causation_id` (String, Optional): Optional command and trace identifiers reserved for later event-sourced workflows.
-- `payload` (Object): Event-specific details.
-- `context` (Object): Additional metadata reserved for later use.
-- `schema_version` (Integer): Event payload schema version.
-- `occurred_at` (String): UTC ISO timestamp.
-
-Scan-related events are de-duplicated: `MovieDiscovered` is recorded for new records, `MovieFileObserved` is recorded only when key local file fields change, `MovieMetadataParsedFromNfo` is recorded only when NFO signature fields change, and `MovieRestored` is recorded when a previously missing movie is observed as available again. Successful folder scans no longer append `MovieFolderScanned` by default; UI refresh notifications are still published through `/library/events`. `MovieDiscovered` and `MovieFileObserved` include available ffprobe-derived video details such as resolution, codec, bitrate, duration, frame rate, dynamic range, bit depth, and audio track summaries.
-
-Projectability is intentionally narrow. Current Movie projection rules cover `MovieDiscovered`, `MovieFileObserved`, `MovieMetadataParsedFromNfo`, `MovieIgnored`, `MovieMarkedMissing`, `MovieRestored`, `MovieStateBackfilled`, `MetadataMatched`, `ArtworkSelected`, `MovieStateRestored`, `MetadataRestored`, `ArtworkSelectionRestored`, `RootVideoOrganizationReverted`, `AnalysisStarted`, `AnalysisCompleted`, `AnalysisFailed`, and `ExternalScoresRefreshed`. Projection dry-run uses the same event set for `base=current` and `base=empty`, but `base=empty` needs a usable `MovieDiscovered` before later per-movie events can be applied. `MetadataMatched`, `ArtworkSelected`, and successful `ExternalScoresRefreshed` commands now use append-first projection for Movie state; endpoint response shapes are unchanged. `MovieStateBackfilled` is a migration snapshot and should not be treated as original historical truth. File side effects such as artwork downloads and NFO writes still execute before their result events and are not blindly replayed. Other events are currently audit-only, side-effect-only, or compensation records until their projector behavior is explicitly added to the event contract.
-
-Stage 4 side-effect events carry richer audit payloads. `MetadataMatched` and `ArtworkSelected` include `changed_fields`, `previous`, and `current` summaries for the fields they changed. `ArtworkDownloaded` records poster/backdrop file writes, `NfoWritten` records NFO creation or artwork updates, and both include `backup_path` when an existing file was backed up before overwrite. `RootVideoMoved` records the root video move before later scan/scrape steps run. `RootVideoOrganized` includes source/target file snapshots and the selected TMDB candidate. Scrape, artwork, and root-video organization flows also populate `command_id` and `correlation_id` so related side-effect and scan events can be grouped. `/library/operations/restore` can use this event chain to execute supported compensation actions and append `MetadataRestored`, `ArtworkSelectionRestored`, `ArtworkRestored`, `NfoRestored`, or `RootVideoMoveReversed`; `ArtworkRestored` can restore either poster or backdrop file content when the matching `ArtworkDownloaded.backup_path` still exists. For root-video operations that created a new movie record, the restore also appends `RootVideoOrganizationReverted` so the record is hidden from normal library views instead of later appearing as missing.
-
-### Movie schema
-The core database payload associated with movies.
-
-- `id` (String): Primary key identifier. IDs are URL-safe ASCII strings. Movies with TMDB/IMDb metadata use that external ID plus year; local-only movies use a stable `local_<hash>` derived from the media path.
-- `title` (String): Movie canonical title
-- `title_cn` (String, Optional): Chinese localized title
-- `year` (Integer): Release year
-- `poster_local` / `backdrop_local` (String, Optional): Local stored original artwork paths
-- `poster_thumb_local` / `backdrop_thumb_local` (String, Optional): Backend-generated local thumbnail paths served from `/artwork-cache`
-- `poster_path` / `backdrop_path` (String, Optional): Remote or relative endpoint paths
-- `tmdb_id` / `imdb_id` (String, Optional): Scraped identity IDs
-- `overview` / `plot` (String, Optional): Descriptive summary
-- `director` (String, Optional)
-- `runtime` (Integer, Optional): Runtime length
-- `countries` (Array of Strings, Optional): Production countries parsed from NFO metadata
-- `audio_tracks` (Array of Dicts, Optional): Audio stream summaries with `codec`, `language`, and `channels` when available
-- `imdb_rating` (Float, Optional): Score
-- `external_scores` (Array of Dicts, Optional): External score/ranking signals. TSPDT entries use `source=tspdt`, `kind=rank`, `rank`, `previous_rank`, `list_name`, `edition`, `matched_by`, and `confidence`. Future rating sources may use `kind=rating`, `value`, `scale`, `votes`, `url`, `fetched_at`, and `expires_at`.
-- `external_scores_updated_at` (String, Optional): Last external score refresh timestamp for this movie
-- `external_scores_error` (String, Optional): Last external score refresh error, if any
-- `genres` (Array of Strings, Optional)
-- `actors` (Array of Dicts, Optional): Detailed cast
-- `analysis_status` (String): Status code (default `'pending'`)
-- `micro_genre` / `micro_genre_definition` (String, Optional): Analysis outputs
-- `analysis_data` (JSON/Dictionary, Optional): Compatibility genealogy result
-  generated from the latest normalized AnalysisRun; includes `micro_genre`,
-  `influence_impact`, `ancestors`, `descendants`, and bounded TMDB metadata,
-  without hidden reasoning or Evidence response bodies
-- `folder_name` / `video_file` (String, Optional): Physical system locators
-- `nfo_source` (String, Optional): Indicator of metadata origin file
-- `media_path` (String, Optional): Absolute path to the primary video file
-- `folder_path` (String, Optional): Absolute path to the movie folder
-- `file_size` (Integer, Optional): Primary video file size in bytes
-- `file_mtime` (Float, Optional): Primary video file modification time
-- `video_width` / `video_height` (Integer, Optional): Primary video resolution from `ffprobe`
-- `video_codec` (String, Optional): Primary video stream codec, for example `h264`, `hevc`, or `av1`
-- `video_bitrate` (Integer, Optional): Primary video bitrate in bits per second, falling back to container bitrate when stream bitrate is unavailable
-- `video_duration` (Float, Optional): Primary video duration in seconds
-- `video_fps` (Float, Optional): Average frame rate
-- `video_dynamic_range` (String, Optional): Detected dynamic range, usually `SDR`, `HDR10`, `HLG`, `Dolby Vision`, or `unknown`
-- `video_bit_depth` (Integer, Optional): Detected video bit depth when exposed by the stream metadata
-- `added_at` (String, Optional): Timestamp when the movie record was first added to the local library
-- `last_seen_at` (String, Optional): Last successful scan timestamp
-- `missing_since` (String, Optional): Timestamp when the movie was first marked missing
-- `library_status` (String): Library availability status, `available`, `missing`, or `ignored`
-- `metadata_updated_at` (String, Optional): Last metadata parse timestamp
-- `metadata_source` (String, Optional): Metadata origin such as `filename`, `tmm`, or `tmdb`
-- `scrape_status` (String): Metadata scrape status, `pending`, `matched`, `needs_review`, or `failed`
-- `scrape_error` (String, Optional): Last metadata scrape error
-- `scraped_at` (String, Optional): Last successful metadata scrape timestamp
-- `tmdb_confidence` (Float, Optional): Automatic TMDB match confidence score
-
-Filename-only records are discovery records, not confirmed identity metadata. They are created with `metadata_source=filename` and `scrape_status=pending`; high-confidence or user-confirmed TMDB scraping changes them to `scrape_status=matched`. For discovery records and TMDB matching, the primary video filename is the source of the parsed title/year; folder names are treated as physical containers, not movie identity.
-
-Root video organization only processes direct files under the media root. It does not scan nested folders as root videos, skips unstable or temporary files, and requires a high-confidence TMDB match before moving files. Root videos are surfaced by `/library/root-videos` so the UI can show pending files without treating the media root as a movie folder.
+Public Job representations never include credentials, absolute paths, raw
+model/provider output, titles used as privacy canaries, or full dedupe values.
+
+## Compatibility policy
+
+This is a deliberate breaking baseline. The following endpoints do not exist:
+
+- `/library/{movie_id}`
+- `/library/user-states`
+- `/watch-history`
+- `/library/analyze/{movie_id}`
+- `/analyze/{movie_name}`
+- Movie timeline, projection rebuild and historical backfill endpoints
+
+The generated OpenAPI document at `/docs` is authoritative for request-model
+field details. Any route or response-shape change must update this document and
+`skills/5x49-backend/SKILL.md` together.
