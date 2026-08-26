@@ -1,0 +1,437 @@
+{
+  "format_version": "analysis-eval.v1",
+  "dataset_id": "5x49-gate-b-genealogy-v1",
+  "description": "A public, AI-drafted 36-film Analysis V2 corpus. Film selection is fixed before model execution; every case remains draft until a human adjudicates the expected relationships.",
+  "cases": [
+    {
+      "case_id": "eval_infernal_affairs_2002",
+      "language": "zh",
+      "tags": ["non_latin_title", "cross_decade", "remake", "influence"],
+      "input": {"film_id": "film_00000000000000000000000000000001", "canonical_title": "无间道", "original_title": "無間道", "localized_titles": ["Infernal Affairs"], "release_year": 2002, "genres": ["Crime", "Thriller"], "countries": ["HK"], "external_identities": {"tmdb.movie": "10775"}},
+      "expected_assertions": [
+        {"predicate": "REMAKE_OF", "direction": "target_to_subject", "target": {"entity_type": "film", "provider": "tmdb.movie", "external_id": "1422", "display_name": "The Departed", "release_year": 2006}, "label": "required", "note": "The later film is the expected remake direction."},
+        {"predicate": "REMAKE_OF", "target": {"entity_type": "film", "provider": "tmdb.movie", "external_id": "1422", "display_name": "The Departed", "release_year": 2006}, "label": "forbidden", "note": "The original must not be represented as a remake of the later film."}
+      ],
+      "annotator_count": 0,
+      "adjudication_status": "draft"
+    },
+    {
+      "case_id": "eval_hero_2002",
+      "language": "zh",
+      "tags": ["same_title", "non_latin_title", "cross_decade", "visual_style"],
+      "input": {"film_id": "film_00000000000000000000000000000002", "canonical_title": "英雄", "localized_titles": ["Hero"], "release_year": 2002, "genres": ["Action", "Drama"], "countries": ["CN"], "external_identities": {"tmdb.movie": "79"}},
+      "expected_assertions": [
+        {"predicate": "HAS_VISUAL_STYLE", "target": {"entity_type": "concept", "display_name": "Color-coded wuxia formalism"}, "label": "required", "note": "The draft expects the film's highly structured color design."},
+        {"predicate": "VISUALLY_SIMILAR_TO", "target": {"entity_type": "film", "provider": "tmdb.movie", "external_id": "10173", "display_name": "Hero", "release_year": 1992}, "label": "forbidden", "note": "Same English title alone is not a valid visual relationship."}
+      ],
+      "annotator_count": 0,
+      "adjudication_status": "draft"
+    },
+    {
+      "case_id": "eval_farewell_my_concubine_1993",
+      "language": "zh",
+      "tags": ["non_latin_title", "cross_decade", "adaptation", "influence"],
+      "input": {"film_id": "film_00000000000000000000000000000003", "canonical_title": "霸王别姬", "localized_titles": ["Farewell My Concubine"], "release_year": 1993, "genres": ["Drama", "Romance"], "countries": ["CN"], "external_identities": {"tmdb.movie": "10997"}},
+      "expected_assertions": [
+        {"predicate": "HAS_THEME", "target": {"entity_type": "concept", "display_name": "Performance, identity, and historical rupture"}, "label": "required", "note": "The draft treats performance and identity across political upheaval as the central theme."}
+      ],
+      "annotator_count": 0,
+      "adjudication_status": "draft"
+    },
+    {
+      "case_id": "eval_in_the_mood_for_love_2000",
+      "language": "zh",
+      "tags": ["non_latin_title", "cross_decade", "visual_style", "influence"],
+      "input": {"film_id": "film_00000000000000000000000000000004", "canonical_title": "花样年华", "localized_titles": ["In the Mood for Love"], "release_year": 2000, "genres": ["Drama", "Romance"], "countries": ["HK"], "external_identities": {"tmdb.movie": "843"}},
+      "expected_assertions": [
+        {"predicate": "HAS_VISUAL_STYLE", "target": {"entity_type": "concept", "display_name": "Saturated romantic modernism"}, "label": "required", "note": "The draft expects a bounded description of color, repetition, and constrained framing."},
+        {"predicate": "VISUALLY_SIMILAR_TO", "target": {"entity_type": "film", "provider": "tmdb.movie", "external_id": "426", "display_name": "Vertigo", "release_year": 1958}, "label": "acceptable", "note": "A carefully rationalized comparison is acceptable, not required."}
+      ],
+      "annotator_count": 0,
+      "adjudication_status": "draft"
+    },
+    {
+      "case_id": "eval_crouching_tiger_hidden_dragon_2000",
+      "language": "zh",
+      "tags": ["non_latin_title", "adaptation", "visual_style", "influence"],
+      "input": {"film_id": "film_00000000000000000000000000000005", "canonical_title": "卧虎藏龙", "localized_titles": ["Crouching Tiger, Hidden Dragon"], "release_year": 2000, "genres": ["Action", "Drama", "Romance"], "countries": ["CN", "TW", "HK"], "external_identities": {"tmdb.movie": "146"}},
+      "expected_assertions": [
+        {"predicate": "HAS_MOVEMENT", "target": {"entity_type": "concept", "display_name": "Transnational wuxia revival"}, "label": "required", "note": "The draft locates the film in the international revival of wuxia cinema."}
+      ],
+      "annotator_count": 0,
+      "adjudication_status": "draft"
+    },
+    {
+      "case_id": "eval_a_better_tomorrow_1986",
+      "language": "zh",
+      "tags": ["same_title", "cold_title", "non_latin_title", "cross_decade", "remake", "influence"],
+      "input": {"film_id": "film_00000000000000000000000000000006", "canonical_title": "英雄本色", "localized_titles": ["A Better Tomorrow"], "release_year": 1986, "genres": ["Action", "Crime"], "countries": ["HK"], "external_identities": {"tmdb.movie": "11471"}},
+      "expected_assertions": [
+        {"predicate": "HAS_MOVEMENT", "target": {"entity_type": "concept", "display_name": "Heroic bloodshed"}, "label": "required", "note": "The film is a defining work of heroic bloodshed."},
+        {"predicate": "REMAKE_OF", "direction": "target_to_subject", "target": {"entity_type": "film", "provider": "imdb.title", "external_id": "tt1138442", "display_name": "A Better Tomorrow", "release_year": 2010}, "label": "acceptable", "note": "The later Korean version may be represented in the descendant direction."},
+        {"predicate": "REMAKE_OF", "target": {"entity_type": "film", "provider": "imdb.title", "external_id": "tt1138442", "display_name": "A Better Tomorrow", "release_year": 2010}, "label": "forbidden", "note": "The original must not point to the later version as its source."}
+      ],
+      "annotator_count": 0,
+      "adjudication_status": "draft"
+    },
+    {
+      "case_id": "eval_raise_the_red_lantern_1991",
+      "language": "zh",
+      "tags": ["non_latin_title", "adaptation", "visual_style", "cross_decade"],
+      "input": {"film_id": "film_00000000000000000000000000000007", "canonical_title": "大红灯笼高高挂", "localized_titles": ["Raise the Red Lantern"], "release_year": 1991, "genres": ["Drama"], "countries": ["CN"], "external_identities": {"tmdb.movie": "10404"}},
+      "expected_assertions": [
+        {"predicate": "HAS_THEME", "target": {"entity_type": "concept", "display_name": "Patriarchal confinement and ritualized power"}, "label": "required", "note": "The draft expects the household's ritualized power structure to be represented."}
+      ],
+      "annotator_count": 0,
+      "adjudication_status": "draft"
+    },
+    {
+      "case_id": "eval_yi_yi_2000",
+      "language": "zh",
+      "tags": ["cold_title", "non_latin_title", "cross_decade", "influence"],
+      "input": {"film_id": "film_00000000000000000000000000000008", "canonical_title": "一一", "localized_titles": ["Yi Yi"], "release_year": 2000, "genres": ["Drama"], "countries": ["TW"], "external_identities": {"tmdb.movie": "25538"}},
+      "expected_assertions": [
+        {"predicate": "HAS_THEME", "target": {"entity_type": "concept", "display_name": "Urban family life across generations"}, "label": "required", "note": "The draft expects the multigenerational urban-family structure."},
+        {"predicate": "VISUALLY_SIMILAR_TO", "target": {"entity_type": "film", "provider": "tmdb.movie", "external_id": "18148", "display_name": "Tokyo Story", "release_year": 1953}, "label": "acceptable", "note": "A restrained family-structure comparison is acceptable when carefully explained."}
+      ],
+      "annotator_count": 0,
+      "adjudication_status": "draft"
+    },
+    {
+      "case_id": "eval_a_brighter_summer_day_1991",
+      "language": "zh",
+      "tags": ["cold_title", "non_latin_title", "cross_decade", "influence"],
+      "input": {"film_id": "film_00000000000000000000000000000009", "canonical_title": "牯岭街少年杀人事件", "localized_titles": ["A Brighter Summer Day"], "release_year": 1991, "genres": ["Crime", "Drama", "Romance"], "countries": ["TW"], "external_identities": {"tmdb.movie": "15804"}},
+      "expected_assertions": [
+        {"predicate": "HAS_THEME", "target": {"entity_type": "concept", "display_name": "Youth identity, violence, and political displacement"}, "label": "required", "note": "The draft expects youth identity within a displaced political community."}
+      ],
+      "annotator_count": 0,
+      "adjudication_status": "draft"
+    },
+    {
+      "case_id": "eval_chungking_express_1994",
+      "language": "zh",
+      "tags": ["non_latin_title", "visual_style", "cross_decade", "influence"],
+      "input": {"film_id": "film_0000000000000000000000000000000a", "canonical_title": "重庆森林", "localized_titles": ["Chungking Express"], "release_year": 1994, "genres": ["Comedy", "Drama", "Romance"], "countries": ["HK"], "external_identities": {"tmdb.movie": "11104"}},
+      "expected_assertions": [
+        {"predicate": "HAS_VISUAL_STYLE", "target": {"entity_type": "concept", "display_name": "Step-printed urban impressionism"}, "label": "required", "note": "The draft expects the film's step-printing and compressed city imagery."}
+      ],
+      "annotator_count": 0,
+      "adjudication_status": "draft"
+    },
+    {
+      "case_id": "eval_ashes_of_time_1994",
+      "language": "zh",
+      "tags": ["cold_title", "non_latin_title", "adaptation", "visual_style", "cross_decade"],
+      "input": {"film_id": "film_0000000000000000000000000000000b", "canonical_title": "东邪西毒", "localized_titles": ["Ashes of Time"], "release_year": 1994, "genres": ["Action", "Drama"], "countries": ["HK"], "external_identities": {"tmdb.movie": "40751"}},
+      "expected_assertions": [
+        {"predicate": "HAS_VISUAL_STYLE", "target": {"entity_type": "concept", "display_name": "Fragmented memory wuxia"}, "label": "required", "note": "The draft expects the elliptical, memory-driven treatment of wuxia."}
+      ],
+      "annotator_count": 0,
+      "adjudication_status": "draft"
+    },
+    {
+      "case_id": "eval_the_killer_1989",
+      "language": "zh",
+      "tags": ["same_title", "cold_title", "non_latin_title", "cross_decade", "remake", "influence"],
+      "input": {"film_id": "film_0000000000000000000000000000000c", "canonical_title": "喋血双雄", "localized_titles": ["The Killer"], "release_year": 1989, "genres": ["Action", "Crime", "Drama"], "countries": ["HK"], "external_identities": {"tmdb.movie": "10835"}},
+      "expected_assertions": [
+        {"predicate": "HAS_MOVEMENT", "target": {"entity_type": "concept", "display_name": "Heroic bloodshed"}, "label": "required", "note": "The film belongs to heroic bloodshed."},
+        {"predicate": "REMAKE_OF", "direction": "target_to_subject", "target": {"entity_type": "film", "provider": "tmdb.movie", "external_id": "970347", "display_name": "The Killer", "release_year": 2024}, "label": "acceptable", "note": "The later film may appear only in the descendant direction."},
+        {"predicate": "REMAKE_OF", "target": {"entity_type": "film", "provider": "tmdb.movie", "external_id": "970347", "display_name": "The Killer", "release_year": 2024}, "label": "forbidden", "note": "Same title must not reverse the original/remake direction."}
+      ],
+      "annotator_count": 0,
+      "adjudication_status": "draft"
+    },
+
+    {
+      "case_id": "eval_psycho_1960",
+      "language": "en",
+      "tags": ["same_title", "cross_decade", "remake", "influence"],
+      "input": {"film_id": "film_0000000000000000000000000000000d", "canonical_title": "Psycho", "release_year": 1960, "genres": ["Horror", "Thriller"], "countries": ["US"], "external_identities": {"tmdb.movie": "539"}},
+      "expected_assertions": [
+        {"predicate": "REMAKE_OF", "direction": "target_to_subject", "target": {"entity_type": "film", "provider": "tmdb.movie", "external_id": "11252", "display_name": "Psycho", "release_year": 1998}, "label": "required", "note": "The shot-for-shot remake belongs in the descendant direction."},
+        {"predicate": "REMAKE_OF", "target": {"entity_type": "film", "provider": "tmdb.movie", "external_id": "11252", "display_name": "Psycho", "release_year": 1998}, "label": "forbidden", "note": "The 1960 film is not a remake of the 1998 film."}
+      ],
+      "annotator_count": 0,
+      "adjudication_status": "draft"
+    },
+    {
+      "case_id": "eval_the_thing_1982",
+      "language": "en",
+      "tags": ["same_title", "cold_title", "cross_decade", "remake", "visual_style"],
+      "input": {"film_id": "film_0000000000000000000000000000000e", "canonical_title": "The Thing", "release_year": 1982, "genres": ["Horror", "Science Fiction"], "countries": ["US"], "external_identities": {"tmdb.movie": "1091"}},
+      "expected_assertions": [
+        {"predicate": "REMAKE_OF", "target": {"entity_type": "film", "provider": "tmdb.movie", "external_id": "10785", "display_name": "The Thing from Another World", "release_year": 1951}, "label": "acceptable", "note": "The draft accepts the common remake relationship when carefully qualified."},
+        {"predicate": "REMAKE_OF", "direction": "target_to_subject", "target": {"entity_type": "film", "provider": "tmdb.movie", "external_id": "60935", "display_name": "The Thing", "release_year": 2011}, "label": "forbidden", "note": "The 2011 film is a prequel, not a remake edge for this gate."}
+      ],
+      "annotator_count": 0,
+      "adjudication_status": "draft"
+    },
+    {
+      "case_id": "eval_heat_1995",
+      "language": "en",
+      "tags": ["same_title", "cross_decade", "remake", "influence"],
+      "input": {"film_id": "film_0000000000000000000000000000000f", "canonical_title": "Heat", "release_year": 1995, "genres": ["Action", "Crime", "Drama"], "countries": ["US"], "external_identities": {"tmdb.movie": "949"}},
+      "expected_assertions": [
+        {"predicate": "REMAKE_OF", "target": {"entity_type": "film", "provider": "imdb.title", "external_id": "tt0097700", "display_name": "L.A. Takedown", "release_year": 1989}, "label": "required", "note": "The feature reworks Mann's earlier television film."},
+        {"predicate": "REMAKE_OF", "target": {"entity_type": "film", "provider": "imdb.title", "external_id": "tt0298203", "display_name": "Heat", "release_year": 1972}, "label": "forbidden", "note": "A same-title film is not enough to establish identity or lineage."}
+      ],
+      "annotator_count": 0,
+      "adjudication_status": "draft"
+    },
+    {
+      "case_id": "eval_the_matrix_1999",
+      "language": "en",
+      "tags": ["cross_decade", "visual_style", "influence", "adaptation"],
+      "input": {"film_id": "film_00000000000000000000000000000010", "canonical_title": "The Matrix", "release_year": 1999, "genres": ["Action", "Science Fiction"], "countries": ["US"], "external_identities": {"tmdb.movie": "603"}},
+      "expected_assertions": [
+        {"predicate": "INFLUENCED_BY", "target": {"entity_type": "film", "provider": "tmdb.movie", "external_id": "9323", "display_name": "Ghost in the Shell", "release_year": 1995}, "label": "required", "note": "The draft expects a carefully evidenced visual and conceptual influence."},
+        {"predicate": "INFLUENCED_BY", "target": {"entity_type": "film", "provider": "tmdb.movie", "external_id": "78", "display_name": "Blade Runner", "release_year": 1982}, "label": "acceptable", "note": "A bounded cyberpunk lineage is acceptable."},
+        {"predicate": "REMAKE_OF", "target": {"entity_type": "film", "provider": "tmdb.movie", "external_id": "624860", "display_name": "The Matrix Resurrections", "release_year": 2021}, "label": "forbidden", "note": "A sequel is not a remake source."}
+      ],
+      "annotator_count": 0,
+      "adjudication_status": "draft"
+    },
+    {
+      "case_id": "eval_blade_runner_1982",
+      "language": "en",
+      "tags": ["cross_decade", "adaptation", "visual_style", "influence"],
+      "input": {"film_id": "film_00000000000000000000000000000011", "canonical_title": "Blade Runner", "release_year": 1982, "genres": ["Drama", "Science Fiction", "Thriller"], "countries": ["US"], "external_identities": {"tmdb.movie": "78"}},
+      "expected_assertions": [
+        {"predicate": "INFLUENCED_BY", "target": {"entity_type": "film", "provider": "tmdb.movie", "external_id": "19", "display_name": "Metropolis", "release_year": 1927}, "label": "acceptable", "note": "A visual-city lineage is acceptable with external support."},
+        {"predicate": "HAS_VISUAL_STYLE", "target": {"entity_type": "concept", "display_name": "Neon noir futurism"}, "label": "required", "note": "The draft expects the film's noir-inflected future city style."}
+      ],
+      "annotator_count": 0,
+      "adjudication_status": "draft"
+    },
+    {
+      "case_id": "eval_alien_1979",
+      "language": "en",
+      "tags": ["cross_decade", "visual_style", "influence", "cold_title"],
+      "input": {"film_id": "film_00000000000000000000000000000012", "canonical_title": "Alien", "release_year": 1979, "genres": ["Horror", "Science Fiction"], "countries": ["GB", "US"], "external_identities": {"tmdb.movie": "348"}},
+      "expected_assertions": [
+        {"predicate": "INFLUENCED_BY", "target": {"entity_type": "film", "provider": "tmdb.movie", "external_id": "2661", "display_name": "Planet of the Vampires", "release_year": 1965}, "label": "acceptable", "note": "The draft accepts a supported production-design and scenario comparison."},
+        {"predicate": "HAS_VISUAL_STYLE", "target": {"entity_type": "concept", "display_name": "Biomechanical industrial horror"}, "label": "required", "note": "The draft expects the biomechanical and industrial visual synthesis."}
+      ],
+      "annotator_count": 0,
+      "adjudication_status": "draft"
+    },
+    {
+      "case_id": "eval_the_shining_1980",
+      "language": "en",
+      "tags": ["cross_decade", "adaptation", "visual_style", "influence"],
+      "input": {"film_id": "film_00000000000000000000000000000013", "canonical_title": "The Shining", "release_year": 1980, "genres": ["Horror"], "countries": ["GB", "US"], "external_identities": {"tmdb.movie": "694"}},
+      "expected_assertions": [
+        {"predicate": "HAS_THEME", "target": {"entity_type": "concept", "display_name": "Isolation, repetition, and domestic terror"}, "label": "required", "note": "The draft expects the Overlook's spatial and psychological isolation."},
+        {"predicate": "VISUALLY_SIMILAR_TO", "target": {"entity_type": "film", "provider": "tmdb.movie", "external_id": "4024", "display_name": "Last Year at Marienbad", "release_year": 1961}, "label": "acceptable", "note": "A corridor and spatial-memory comparison is acceptable if bounded."}
+      ],
+      "annotator_count": 0,
+      "adjudication_status": "draft"
+    },
+    {
+      "case_id": "eval_the_godfather_1972",
+      "language": "en",
+      "tags": ["cross_decade", "adaptation", "influence"],
+      "input": {"film_id": "film_00000000000000000000000000000014", "canonical_title": "The Godfather", "release_year": 1972, "genres": ["Crime", "Drama"], "countries": ["US"], "external_identities": {"tmdb.movie": "238"}},
+      "expected_assertions": [
+        {"predicate": "HAS_THEME", "target": {"entity_type": "concept", "display_name": "Family loyalty as institutional power"}, "label": "required", "note": "The draft expects the fusion of family and criminal institution."}
+      ],
+      "annotator_count": 0,
+      "adjudication_status": "draft"
+    },
+    {
+      "case_id": "eval_arrival_2016",
+      "language": "en",
+      "tags": ["cross_decade", "adaptation", "visual_style", "influence"],
+      "input": {"film_id": "film_00000000000000000000000000000015", "canonical_title": "Arrival", "release_year": 2016, "genres": ["Drama", "Science Fiction"], "countries": ["US"], "external_identities": {"tmdb.movie": "329865"}},
+      "expected_assertions": [
+        {"predicate": "HAS_THEME", "target": {"entity_type": "concept", "display_name": "Language, time, and chosen grief"}, "label": "required", "note": "The draft expects language and non-linear time to remain connected to the emotional choice."}
+      ],
+      "annotator_count": 0,
+      "adjudication_status": "draft"
+    },
+    {
+      "case_id": "eval_get_out_2017",
+      "language": "en",
+      "tags": ["cross_decade", "influence", "visual_style"],
+      "input": {"film_id": "film_00000000000000000000000000000016", "canonical_title": "Get Out", "release_year": 2017, "genres": ["Horror", "Mystery", "Thriller"], "countries": ["US"], "external_identities": {"tmdb.movie": "419430"}},
+      "expected_assertions": [
+        {"predicate": "INFLUENCED_BY", "target": {"entity_type": "film", "provider": "tmdb.movie", "external_id": "12223", "display_name": "The Stepford Wives", "release_year": 1975}, "label": "acceptable", "note": "The draft accepts an evidenced social-horror lineage."},
+        {"predicate": "HAS_THEME", "target": {"entity_type": "concept", "display_name": "Racial commodification beneath liberal civility"}, "label": "required", "note": "The draft expects the film's central social-horror mechanism."}
+      ],
+      "annotator_count": 0,
+      "adjudication_status": "draft"
+    },
+    {
+      "case_id": "eval_mad_max_fury_road_2015",
+      "language": "en",
+      "tags": ["cross_decade", "visual_style", "influence"],
+      "input": {"film_id": "film_00000000000000000000000000000017", "canonical_title": "Mad Max: Fury Road", "release_year": 2015, "genres": ["Action", "Adventure", "Science Fiction"], "countries": ["AU", "US"], "external_identities": {"tmdb.movie": "76341"}},
+      "expected_assertions": [
+        {"predicate": "HAS_VISUAL_STYLE", "target": {"entity_type": "concept", "display_name": "Kinetic desert action clarity"}, "label": "required", "note": "The draft expects readable center-framed action and saturated desert imagery."},
+        {"predicate": "INFLUENCED_BY", "target": {"entity_type": "film", "provider": "tmdb.movie", "external_id": "995", "display_name": "Stagecoach", "release_year": 1939}, "label": "acceptable", "note": "A supported chase-western lineage is acceptable."}
+      ],
+      "annotator_count": 0,
+      "adjudication_status": "draft"
+    },
+    {
+      "case_id": "eval_moonlight_2016",
+      "language": "en",
+      "tags": ["adaptation", "visual_style", "influence", "cross_decade"],
+      "input": {"film_id": "film_00000000000000000000000000000018", "canonical_title": "Moonlight", "release_year": 2016, "genres": ["Drama"], "countries": ["US"], "external_identities": {"tmdb.movie": "376867"}},
+      "expected_assertions": [
+        {"predicate": "HAS_THEME", "target": {"entity_type": "concept", "display_name": "Masculinity, intimacy, and self-formation"}, "label": "required", "note": "The draft expects the triptych's identity and intimacy arc."},
+        {"predicate": "HAS_VISUAL_STYLE", "target": {"entity_type": "concept", "display_name": "Lyrical color portraiture"}, "label": "acceptable", "note": "A bounded description of color and close portraiture is acceptable."}
+      ],
+      "annotator_count": 0,
+      "adjudication_status": "draft"
+    },
+
+    {
+      "case_id": "eval_rashomon_1950",
+      "language": "mixed",
+      "tags": ["non_latin_title", "cross_decade", "remake", "influence"],
+      "input": {"film_id": "film_00000000000000000000000000000019", "canonical_title": "羅生門", "localized_titles": ["Rashomon"], "release_year": 1950, "genres": ["Crime", "Drama", "Mystery"], "countries": ["JP"], "external_identities": {"tmdb.movie": "548"}},
+      "expected_assertions": [
+        {"predicate": "HAS_THEME", "target": {"entity_type": "concept", "display_name": "Conflicting testimony and unstable truth"}, "label": "required", "note": "The draft expects the multiple-testimony structure."},
+        {"predicate": "REMAKE_OF", "direction": "target_to_subject", "target": {"entity_type": "film", "provider": "imdb.title", "external_id": "tt0059555", "display_name": "The Outrage", "release_year": 1964}, "label": "acceptable", "note": "The later adaptation may appear in the descendant direction."},
+        {"predicate": "REMAKE_OF", "target": {"entity_type": "film", "provider": "imdb.title", "external_id": "tt0059555", "display_name": "The Outrage", "release_year": 1964}, "label": "forbidden", "note": "The direction must not be reversed."}
+      ],
+      "annotator_count": 0,
+      "adjudication_status": "draft"
+    },
+    {
+      "case_id": "eval_seven_samurai_1954",
+      "language": "mixed",
+      "tags": ["non_latin_title", "cross_decade", "remake", "influence"],
+      "input": {"film_id": "film_0000000000000000000000000000001a", "canonical_title": "七人の侍", "localized_titles": ["Seven Samurai"], "release_year": 1954, "genres": ["Action", "Drama"], "countries": ["JP"], "external_identities": {"tmdb.movie": "346"}},
+      "expected_assertions": [
+        {"predicate": "REMAKE_OF", "direction": "target_to_subject", "target": {"entity_type": "film", "provider": "tmdb.movie", "external_id": "966", "display_name": "The Magnificent Seven", "release_year": 1960}, "label": "required", "note": "The later western remake belongs in the descendant direction."},
+        {"predicate": "REMAKE_OF", "target": {"entity_type": "film", "provider": "tmdb.movie", "external_id": "966", "display_name": "The Magnificent Seven", "release_year": 1960}, "label": "forbidden", "note": "The original is not a remake of its descendant."}
+      ],
+      "annotator_count": 0,
+      "adjudication_status": "draft"
+    },
+    {
+      "case_id": "eval_oldboy_2003",
+      "language": "mixed",
+      "tags": ["same_title", "non_latin_title", "cross_decade", "remake", "adaptation"],
+      "input": {"film_id": "film_0000000000000000000000000000001b", "canonical_title": "올드보이", "localized_titles": ["Oldboy"], "release_year": 2003, "genres": ["Action", "Drama", "Mystery"], "countries": ["KR"], "external_identities": {"tmdb.movie": "670"}},
+      "expected_assertions": [
+        {"predicate": "REMAKE_OF", "direction": "target_to_subject", "target": {"entity_type": "film", "provider": "tmdb.movie", "external_id": "87516", "display_name": "Oldboy", "release_year": 2013}, "label": "required", "note": "The later American version belongs in the descendant direction."},
+        {"predicate": "REMAKE_OF", "target": {"entity_type": "film", "provider": "tmdb.movie", "external_id": "87516", "display_name": "Oldboy", "release_year": 2013}, "label": "forbidden", "note": "Same title must not reverse the remake direction."}
+      ],
+      "annotator_count": 0,
+      "adjudication_status": "draft"
+    },
+    {
+      "case_id": "eval_parasite_2019",
+      "language": "mixed",
+      "tags": ["non_latin_title", "visual_style", "cross_decade", "influence"],
+      "input": {"film_id": "film_0000000000000000000000000000001c", "canonical_title": "기생충", "localized_titles": ["Parasite"], "release_year": 2019, "genres": ["Comedy", "Drama", "Thriller"], "countries": ["KR"], "external_identities": {"tmdb.movie": "496243"}},
+      "expected_assertions": [
+        {"predicate": "HAS_THEME", "target": {"entity_type": "concept", "display_name": "Class hierarchy expressed through domestic architecture"}, "label": "required", "note": "The draft expects class and vertical space to remain connected."},
+        {"predicate": "REMAKE_OF", "target": {"entity_type": "film", "provider": "tmdb.movie", "external_id": "496243", "display_name": "Parasite", "release_year": 2019}, "label": "forbidden", "note": "Self-reference is always forbidden."}
+      ],
+      "annotator_count": 0,
+      "adjudication_status": "draft"
+    },
+    {
+      "case_id": "eval_spirited_away_2001",
+      "language": "mixed",
+      "tags": ["non_latin_title", "visual_style", "cross_decade", "influence"],
+      "input": {"film_id": "film_0000000000000000000000000000001d", "canonical_title": "千と千尋の神隠し", "localized_titles": ["Spirited Away"], "release_year": 2001, "genres": ["Animation", "Family", "Fantasy"], "countries": ["JP"], "external_identities": {"tmdb.movie": "129"}},
+      "expected_assertions": [
+        {"predicate": "HAS_THEME", "target": {"entity_type": "concept", "display_name": "Liminal identity, labor, and remembering one's name"}, "label": "required", "note": "The draft expects identity and work within the spirit-world threshold."},
+        {"predicate": "HAS_VISUAL_STYLE", "target": {"entity_type": "concept", "display_name": "Hand-drawn folkloric surrealism"}, "label": "acceptable", "note": "A precise visual-style description is acceptable."}
+      ],
+      "annotator_count": 0,
+      "adjudication_status": "draft"
+    },
+    {
+      "case_id": "eval_tokyo_story_1953",
+      "language": "mixed",
+      "tags": ["cold_title", "non_latin_title", "cross_decade", "influence"],
+      "input": {"film_id": "film_0000000000000000000000000000001e", "canonical_title": "東京物語", "localized_titles": ["Tokyo Story"], "release_year": 1953, "genres": ["Drama"], "countries": ["JP"], "external_identities": {"tmdb.movie": "18148"}},
+      "expected_assertions": [
+        {"predicate": "INFLUENCED_BY", "target": {"entity_type": "film", "provider": "tmdb.movie", "external_id": "43864", "display_name": "Make Way for Tomorrow", "release_year": 1937}, "label": "required", "note": "The draft expects the acknowledged family-story precursor with external support."},
+        {"predicate": "HAS_VISUAL_STYLE", "target": {"entity_type": "concept", "display_name": "Low-height domestic stillness"}, "label": "acceptable", "note": "A bounded account of Ozu's camera position and transitions is acceptable."}
+      ],
+      "annotator_count": 0,
+      "adjudication_status": "draft"
+    },
+    {
+      "case_id": "eval_solaris_1972",
+      "language": "mixed",
+      "tags": ["same_title", "non_latin_title", "cross_decade", "adaptation", "visual_style"],
+      "input": {"film_id": "film_0000000000000000000000000000001f", "canonical_title": "Солярис", "localized_titles": ["Solaris"], "release_year": 1972, "genres": ["Drama", "Science Fiction"], "countries": ["RU"], "external_identities": {"tmdb.movie": "593"}},
+      "expected_assertions": [
+        {"predicate": "VISUALLY_SIMILAR_TO", "direction": "target_to_subject", "target": {"entity_type": "film", "provider": "tmdb.movie", "external_id": "2103", "display_name": "Solaris", "release_year": 2002}, "label": "acceptable", "note": "A comparison between adaptations is acceptable without calling one a remake."},
+        {"predicate": "REMAKE_OF", "direction": "target_to_subject", "target": {"entity_type": "film", "provider": "tmdb.movie", "external_id": "2103", "display_name": "Solaris", "release_year": 2002}, "label": "forbidden", "note": "The gate treats these as separate adaptations rather than a required remake edge."}
+      ],
+      "annotator_count": 0,
+      "adjudication_status": "draft"
+    },
+    {
+      "case_id": "eval_stalker_1979",
+      "language": "mixed",
+      "tags": ["cold_title", "non_latin_title", "adaptation", "visual_style", "cross_decade"],
+      "input": {"film_id": "film_00000000000000000000000000000020", "canonical_title": "Сталкер", "localized_titles": ["Stalker"], "release_year": 1979, "genres": ["Drama", "Science Fiction"], "countries": ["RU"], "external_identities": {"tmdb.movie": "1398"}},
+      "expected_assertions": [
+        {"predicate": "HAS_THEME", "target": {"entity_type": "concept", "display_name": "Faith, desire, and the unknowable Zone"}, "label": "required", "note": "The draft expects the tension between belief, desire, and uncertainty."},
+        {"predicate": "HAS_VISUAL_STYLE", "target": {"entity_type": "concept", "display_name": "Material slow cinema science fiction"}, "label": "acceptable", "note": "A precise account of duration, texture, and color zones is acceptable."}
+      ],
+      "annotator_count": 0,
+      "adjudication_status": "draft"
+    },
+    {
+      "case_id": "eval_persona_1966",
+      "language": "mixed",
+      "tags": ["same_title", "cold_title", "non_latin_title", "cross_decade", "visual_style", "influence"],
+      "input": {"film_id": "film_00000000000000000000000000000021", "canonical_title": "Persona", "release_year": 1966, "genres": ["Drama"], "countries": ["SE"], "external_identities": {"tmdb.movie": "797"}},
+      "expected_assertions": [
+        {"predicate": "INFLUENCED_BY", "direction": "target_to_subject", "target": {"entity_type": "film", "provider": "tmdb.movie", "external_id": "1018", "display_name": "Mulholland Drive", "release_year": 2001}, "label": "acceptable", "note": "A later identity-fracture lineage is acceptable with evidence."},
+        {"predicate": "VISUALLY_SIMILAR_TO", "target": {"entity_type": "film", "provider": "imdb.title", "external_id": "tt1413492", "display_name": "Persona", "release_year": 2008}, "label": "forbidden", "note": "A same-title record is not a relationship."}
+      ],
+      "annotator_count": 0,
+      "adjudication_status": "draft"
+    },
+    {
+      "case_id": "eval_suspiria_1977",
+      "language": "mixed",
+      "tags": ["same_title", "cross_decade", "remake", "visual_style", "influence"],
+      "input": {"film_id": "film_00000000000000000000000000000022", "canonical_title": "Suspiria", "release_year": 1977, "genres": ["Horror"], "countries": ["IT"], "external_identities": {"tmdb.movie": "11906"}},
+      "expected_assertions": [
+        {"predicate": "REMAKE_OF", "direction": "target_to_subject", "target": {"entity_type": "film", "provider": "tmdb.movie", "external_id": "361292", "display_name": "Suspiria", "release_year": 2018}, "label": "required", "note": "The later reimagining belongs in the descendant direction."},
+        {"predicate": "HAS_VISUAL_STYLE", "target": {"entity_type": "concept", "display_name": "Expressionist primary-color horror"}, "label": "required", "note": "The draft expects the saturated lighting and architectural abstraction."},
+        {"predicate": "REMAKE_OF", "target": {"entity_type": "film", "provider": "tmdb.movie", "external_id": "361292", "display_name": "Suspiria", "release_year": 2018}, "label": "forbidden", "note": "The original/remake direction must not be reversed."}
+      ],
+      "annotator_count": 0,
+      "adjudication_status": "draft"
+    },
+    {
+      "case_id": "eval_amelie_2001",
+      "language": "mixed",
+      "tags": ["cold_title", "visual_style", "cross_decade", "influence"],
+      "input": {"film_id": "film_00000000000000000000000000000023", "canonical_title": "Le Fabuleux Destin d'Amélie Poulain", "localized_titles": ["Amélie"], "release_year": 2001, "genres": ["Comedy", "Romance"], "countries": ["FR"], "external_identities": {"tmdb.movie": "194"}},
+      "expected_assertions": [
+        {"predicate": "HAS_VISUAL_STYLE", "target": {"entity_type": "concept", "display_name": "Whimsical red-green storybook realism"}, "label": "required", "note": "The draft expects the controlled palette and playful subjective devices."}
+      ],
+      "annotator_count": 0,
+      "adjudication_status": "draft"
+    },
+    {
+      "case_id": "eval_pans_labyrinth_2006",
+      "language": "mixed",
+      "tags": ["non_latin_title", "adaptation", "visual_style", "cross_decade", "influence"],
+      "input": {"film_id": "film_00000000000000000000000000000024", "canonical_title": "El laberinto del fauno", "localized_titles": ["Pan's Labyrinth"], "release_year": 2006, "genres": ["Drama", "Fantasy", "War"], "countries": ["ES", "MX"], "external_identities": {"tmdb.movie": "1417"}},
+      "expected_assertions": [
+        {"predicate": "HAS_THEME", "target": {"entity_type": "concept", "display_name": "Fascist obedience opposed by dangerous fantasy"}, "label": "required", "note": "The draft expects politics and fantasy to remain causally connected."},
+        {"predicate": "REMAKE_OF", "target": {"entity_type": "film", "provider": "tmdb.movie", "external_id": "1417", "display_name": "Pan's Labyrinth", "release_year": 2006}, "label": "forbidden", "note": "Self-reference is forbidden."}
+      ],
+      "annotator_count": 0,
+      "adjudication_status": "draft"
+    }
+  ]
+}

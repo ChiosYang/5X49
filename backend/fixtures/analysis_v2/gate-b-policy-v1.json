@@ -1,0 +1,40 @@
+{
+  "format_version": "gate-b-policy.v1",
+  "dataset": {
+    "case_count": 36,
+    "language_minimums": {"zh": 12, "en": 12, "mixed_or_other": 12},
+    "tag_minimums": {
+      "same_title": 4,
+      "cold_title": 6,
+      "non_latin_title": 10,
+      "cross_decade": 12,
+      "remake": 4,
+      "adaptation": 4,
+      "visual_style": 8,
+      "influence": 12
+    },
+    "forbidden_case_minimum": 12
+  },
+  "thresholds": {
+    "run_completion_rate": 1.0,
+    "display_edge_precision": 0.85,
+    "resolution_decision_accuracy": 0.95,
+    "required_assertion_recall": 0.75,
+    "forbidden_or_harmful_count": 0,
+    "invented_entity_count": 0,
+    "unresolved_review_capture_rate": 1.0,
+    "semantic_duplicate_rate": 0.0,
+    "replay_new_row_count": 0,
+    "rejected_reactivation_count": 0,
+    "review_field_change_count": 0,
+    "revoked_link_reactivation_count": 0,
+    "helpfulness_median": 4.0,
+    "helpfulness_four_or_higher_rate": 0.8,
+    "priority_evidence_coverage": 0.7,
+    "evidence_freshness_days": 30,
+    "total_cost_usd": 5.0,
+    "case_cost_p95_usd": 0.25
+  },
+  "priority_evidence_predicates": ["INFLUENCED_BY", "REMAKE_OF", "ADAPTED_FROM"],
+  "evidence_policy_version": "evidence-http.v1"
+}

@@ -6,8 +6,10 @@ from pydantic import ValidationError
 from app.contracts.analysis_v2 import (
     AnalysisEvaluationCase,
     AnalysisEvaluationDataset,
+    AnalysisEvaluationHumanReview,
     AnalysisV2Input,
     AnalysisV2Output,
+    GateBPricingManifest,
 )
 from app.contracts.anonymous_events import AnonymousMetricsExport, LocalAnonymousEvent
 
@@ -110,6 +112,43 @@ class ProductContractTests(unittest.TestCase):
                 "description": "Too small",
                 "cases": cases[:29],
             })
+
+    def test_draft_evaluation_allows_zero_annotators_but_adjudicated_does_not(self):
+        draft = self._evaluation_case(0, "same_title")
+        draft["annotator_count"] = 0
+        draft["adjudication_status"] = "draft"
+        self.assertEqual(AnalysisEvaluationCase.model_validate(draft).annotator_count, 0)
+
+        draft["adjudication_status"] = "adjudicated"
+        with self.assertRaisesRegex(ValidationError, "require an annotator"):
+            AnalysisEvaluationCase.model_validate(draft)
+
+    def test_human_review_and_pricing_contracts_are_bounded_and_versioned(self):
+        review = AnalysisEvaluationHumanReview.model_validate({
+            "run_id": "gate-b-review-01",
+            "dataset_id": "genealogy-v2-baseline",
+            "dataset_hash": "a" * 64,
+            "reviewer_count": 1,
+            "cases": [{
+                "case_id": "eval_case_00",
+                "summary_helpfulness": 4,
+                "novel_predictions": [{
+                    "prediction_hash": "b" * 64,
+                    "label": "acceptable",
+                }],
+            }],
+        })
+        self.assertEqual(review.format_version, "analysis-eval-human-review.v1")
+
+        pricing = GateBPricingManifest.model_validate({
+            "provider": "openrouter",
+            "model": "example/model",
+            "input_usd_per_million": 0.5,
+            "output_usd_per_million": 1.5,
+            "effective_at": "2026-08-26T00:00:00Z",
+            "source_uri": "https://openrouter.ai/example/model",
+        })
+        self.assertEqual(pricing.currency, "USD")
 
     def test_local_anonymous_event_rejects_library_identifiers_and_paths(self):
         event = LocalAnonymousEvent.model_validate({

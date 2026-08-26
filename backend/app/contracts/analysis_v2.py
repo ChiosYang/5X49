@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import datetime
 from enum import StrEnum
 from typing import Literal
 
@@ -131,8 +132,16 @@ class AnalysisV2Output(StrictContract):
 class EvaluationExpectedAssertion(StrictContract):
     predicate: AnalysisPredicate
     target: AnalysisEntityReference
+    direction: Literal["subject_to_target", "target_to_subject"] = "subject_to_target"
+    qualifiers: AnalysisQualifier | None = None
     label: Literal["required", "acceptable", "forbidden"]
     note: str | None = Field(default=None, max_length=400)
+
+    @model_validator(mode="after")
+    def validate_direction(self):
+        if self.target.entity_type != "film" and self.direction != "subject_to_target":
+            raise ValueError("Concept evaluation assertions must point from subject to target")
+        return self
 
 
 class AnalysisEvaluationCase(StrictContract):
@@ -150,8 +159,14 @@ class AnalysisEvaluationCase(StrictContract):
     ]] = Field(default_factory=list, min_length=1)
     input: AnalysisV2Input
     expected_assertions: list[EvaluationExpectedAssertion] = Field(default_factory=list)
-    annotator_count: int = Field(ge=1, le=20)
+    annotator_count: int = Field(ge=0, le=20)
     adjudication_status: Literal["draft", "adjudicated"]
+
+    @model_validator(mode="after")
+    def require_annotator_for_adjudicated_case(self):
+        if self.adjudication_status == "adjudicated" and self.annotator_count < 1:
+            raise ValueError("adjudicated evaluation cases require an annotator")
+        return self
 
 
 class AnalysisEvaluationDataset(StrictContract):
@@ -173,3 +188,54 @@ class AnalysisEvaluationDataset(StrictContract):
         if not {"zh", "en"}.issubset(languages):
             raise ValueError("evaluation set must include Chinese and English cases")
         return self
+
+
+class AnalysisEvaluationNovelPredictionReview(StrictContract):
+    prediction_hash: str = Field(pattern=r"^[0-9a-f]{64}$")
+    label: Literal["acceptable", "incorrect", "harmful"]
+    note: str | None = Field(default=None, max_length=400)
+
+
+class AnalysisEvaluationHumanCaseReview(StrictContract):
+    case_id: str = Field(pattern=r"^eval_[a-z0-9][a-z0-9_-]{2,63}$")
+    summary_helpfulness: int = Field(ge=1, le=5)
+    novel_predictions: list[AnalysisEvaluationNovelPredictionReview] = Field(
+        default_factory=list,
+        max_length=50,
+    )
+
+    @model_validator(mode="after")
+    def require_unique_prediction_reviews(self):
+        hashes = [item.prediction_hash for item in self.novel_predictions]
+        if len(hashes) != len(set(hashes)):
+            raise ValueError("human review contains duplicate prediction hashes")
+        return self
+
+
+class AnalysisEvaluationHumanReview(StrictContract):
+    format_version: Literal["analysis-eval-human-review.v1"] = (
+        "analysis-eval-human-review.v1"
+    )
+    run_id: str = Field(pattern=r"^[A-Za-z0-9._-]{1,80}$")
+    dataset_id: str = Field(pattern=r"^[a-z0-9][a-z0-9._-]{2,80}$")
+    dataset_hash: str = Field(pattern=r"^[0-9a-f]{64}$")
+    reviewer_count: int = Field(ge=1, le=20)
+    cases: list[AnalysisEvaluationHumanCaseReview] = Field(min_length=1, max_length=50)
+
+    @model_validator(mode="after")
+    def require_unique_case_reviews(self):
+        case_ids = [case.case_id for case in self.cases]
+        if len(case_ids) != len(set(case_ids)):
+            raise ValueError("human review contains duplicate case IDs")
+        return self
+
+
+class GateBPricingManifest(StrictContract):
+    format_version: Literal["gate-b-pricing.v1"] = "gate-b-pricing.v1"
+    provider: Literal["openrouter", "openai", "openai_compatible"]
+    model: str = Field(min_length=1, max_length=160)
+    currency: Literal["USD"] = "USD"
+    input_usd_per_million: float = Field(ge=0, le=1000)
+    output_usd_per_million: float = Field(ge=0, le=1000)
+    effective_at: datetime
+    source_uri: HttpUrl

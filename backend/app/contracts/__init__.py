@@ -1,7 +1,9 @@
 from app.contracts.analysis_v2 import (
     AnalysisEvaluationDataset,
+    AnalysisEvaluationHumanReview,
     AnalysisV2Input,
     AnalysisV2Output,
+    GateBPricingManifest,
 )
 from app.contracts.anonymous_events import AnonymousMetricsExport, LocalAnonymousEvent
 from app.contracts.structured_metadata import (
@@ -29,8 +31,10 @@ __all__ = [
     "GenreObservation",
     "ObservationIssue",
     "AnalysisEvaluationDataset",
+    "AnalysisEvaluationHumanReview",
     "AnalysisV2Input",
     "AnalysisV2Output",
+    "GateBPricingManifest",
     "AnonymousMetricsExport",
     "LocalAnonymousEvent",
     "PROVISIONAL_PERSON_PROVIDER",
