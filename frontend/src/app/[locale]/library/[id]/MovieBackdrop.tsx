@@ -4,12 +4,14 @@ import { useState } from "react";
 import Image from "next/image";
 
 interface MovieBackdropProps {
-  src: string | null;
+  sources: string[];
   title: string;
 }
 
-export default function MovieBackdrop({ src, title }: MovieBackdropProps) {
+export default function MovieBackdrop({ sources, title }: MovieBackdropProps) {
+  const [sourceIndex, setSourceIndex] = useState(0);
   const [loadedSrc, setLoadedSrc] = useState<string | null>(null);
+  const src = sources[sourceIndex] ?? null;
   const loaded = !!src && loadedSrc === src;
 
   return (
@@ -25,6 +27,10 @@ export default function MovieBackdrop({ src, title }: MovieBackdropProps) {
             sizes="100vw"
             unoptimized
             onLoad={() => setLoadedSrc(src)}
+            onError={() => {
+              setLoadedSrc(null);
+              setSourceIndex((current) => current + 1);
+            }}
             className={`object-cover transition-opacity duration-150 ease-out ${loaded ? "opacity-100" : "opacity-0"}`}
           />
         </div>

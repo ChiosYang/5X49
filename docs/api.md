@@ -28,7 +28,8 @@ sources. Invalid resource IDs return `400`; missing resources return `404`.
 | `GET` | `/` | Service information. |
 | `GET` | `/settings` | Combined non-secret settings. |
 | `GET/PUT` | `/settings/model` | Analysis model selection. |
-| `GET/PUT` | `/settings/media-dir` | Local media root. |
+| `GET/PUT` | `/settings/media-dir` | Local media root. `PUT` requires an existing readable directory and applies immediately without an application restart. |
+| `GET` | `/media/{relative_path}` | Serve a file from the current media root with traversal and symlink-escape protection. |
 | `GET/PUT` | `/settings/language` | Application language. |
 | `GET/PUT` | `/settings/artwork-language` | Preferred artwork language. |
 | `GET/PUT` | `/settings/library-watch` | Filesystem watcher state. |

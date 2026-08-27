@@ -284,10 +284,15 @@ def refresh_models_cache():
 
 def get_media_dir():
     """Get current media directory"""
-    settings = load_settings()
-    # Default to environment variable or hardcoded default
     default_media_dir = os.getenv("MEDIA_DIR", "/media")
-    return settings.get("media_dir", default_media_dir)
+    try:
+        with Session(database.engine) as session:
+            row = session.get(Setting, "media_dir")
+        value = row.value if row is not None else None
+        return value if isinstance(value, str) and value.strip() else default_media_dir
+    except Exception as exc:
+        logger.warning("Media directory setting is unavailable; using default: %s", type(exc).__name__)
+        return default_media_dir
 
 def set_media_dir(media_dir: str):
     """Set media directory"""

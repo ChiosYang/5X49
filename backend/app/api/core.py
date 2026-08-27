@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 
-from app.api.common import MEDIA_DIR
+from app.services.settings import get_media_dir
 router = APIRouter()
 
 
@@ -11,4 +11,4 @@ def health_check():
 
 @router.get("/")
 def read_root():
-    return {"message": "Film Genealogy API is running", "media_dir": MEDIA_DIR}
+    return {"message": "Film Genealogy API is running", "media_dir": get_media_dir()}

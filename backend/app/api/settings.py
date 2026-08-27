@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 
 import requests
 from fastapi import APIRouter, HTTPException
@@ -75,15 +76,20 @@ def update_media_directory(media_dir: str):
     if not media_dir:
         raise HTTPException(status_code=400, detail="Media directory cannot be empty")
 
-    if not os.path.exists(media_dir):
-        print(f"Warning: Setting non-existent media_dir: {media_dir}")
+    try:
+        resolved_media_dir = Path(media_dir).expanduser().resolve(strict=True)
+    except (OSError, RuntimeError, ValueError):
+        raise HTTPException(status_code=400, detail="Media directory does not exist") from None
+    if not resolved_media_dir.is_dir() or not os.access(resolved_media_dir, os.R_OK):
+        raise HTTPException(status_code=400, detail="Media directory is not readable")
 
-    success = set_media_dir(media_dir)
+    normalized_media_dir = str(resolved_media_dir)
+    success = set_media_dir(normalized_media_dir)
     if success:
         return {
             "status": "success",
-            "media_dir": media_dir,
-            "message": "Media directory updated. Please restart server to apply changes for static file serving.",
+            "media_dir": normalized_media_dir,
+            "message": "Media directory updated and is available immediately.",
         }
     else:
         raise HTTPException(status_code=500, detail="Failed to save settings")

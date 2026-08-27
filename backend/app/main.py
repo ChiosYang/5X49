@@ -1,5 +1,4 @@
 import os
-import logging
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
@@ -7,7 +6,6 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
-from app.api.common import MEDIA_DIR
 from app.api.router import api_router
 from app.database import create_db_and_tables
 from app.jobs import job_runtime
@@ -55,11 +53,6 @@ app.add_middleware(
     allow_methods=["GET", "POST", "PUT", "DELETE"],
     allow_headers=["*"],
 )
-
-if os.path.exists(MEDIA_DIR):
-    app.mount("/media", StaticFiles(directory=MEDIA_DIR), name="media")
-else:
-    logging.getLogger("app").warning("MEDIA_DIR does not exist: %s", MEDIA_DIR)
 
 ARTWORK_CACHE_DIR.mkdir(parents=True, exist_ok=True)
 app.mount("/artwork-cache", StaticFiles(directory=ARTWORK_CACHE_DIR), name="artwork-cache")

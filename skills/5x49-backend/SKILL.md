@@ -110,6 +110,9 @@ curl -s http://127.0.0.1:8000/workflows/<workflow_id>
 ## 设置与维护
 
 - `/settings/*` 管理语言、媒体目录、watcher、刮削确认、TMDB 和模型。
+- `PUT /settings/media-dir` 只接受存在且可读的目录；保存后 `/media/*`
+  立即使用新根目录，无需重启后端。媒体路由不得接受绝对路径、路径穿越或
+  逃逸到根目录外的符号链接。
 - `/library/root-videos`、`/library/organize-root`、
   `/library/organize-root/confirm` 与 `/library/organize/status` 管理根目录散片。
 - `/library/scrape`、`/library/scrape/status` 管理批量刮削。
