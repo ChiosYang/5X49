@@ -15,6 +15,7 @@ from app.services.metadata.organizer import root_video_organizer
 from app.services.metadata.scraper import metadata_scraper
 from app.services.operation_manifests import operation_manifest_store
 from app.services.settings import get_media_dir, get_tmdb_scrape_concurrency
+from app.workflows.analysis import execute_analysis_workflow
 
 
 DEFAULT_MEDIA_DIR = os.getenv("MEDIA_DIR", "/media")
@@ -312,7 +313,7 @@ def confirm_root_video(payload: dict, ctx) -> dict:
 
 
 def analyze_film(payload: dict, ctx) -> dict:
-    result = analysis_service.analyze_film(payload["film_id"], ctx=ctx)
+    result = execute_analysis_workflow(analysis_service, payload["film_id"], ctx=ctx)
     return {
         "status": result["status"],
         "film_id": result["film_id"],

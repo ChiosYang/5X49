@@ -51,8 +51,10 @@ class _Historian:
 class _Evidence:
     def __init__(self, result: EvidenceBatchResult | None = None):
         self.result = result or EvidenceBatchResult((), ())
+        self.candidates = None
 
-    def verify(self, _candidates):
+    def verify(self, candidates):
+        self.candidates = candidates
         return self.result
 
 
@@ -247,6 +249,49 @@ class AnalysisRuntimeTests(unittest.TestCase):
         self.assertEqual(assertion.review_status, "rejected")
         self.assertEqual(assertion.rationale, "User-owned rationale.")
         self.assertEqual(len(provenance), 2)
+
+    def test_policy_critic_rejects_identity_conflict_before_evidence_or_assertion_write(self):
+        output = AnalysisV2Output.model_validate(
+            {
+                "subject_film_id": SUBJECT_ID,
+                "summary": "Summary",
+                "assertions": [
+                    {
+                        "predicate": "INFLUENCED_BY",
+                        "target": {
+                            "entity_type": "film",
+                            "entity_id": ANCESTOR_ID,
+                            "display_name": "Wrong title",
+                            "release_year": 1970,
+                        },
+                        "rationale": "Candidate must be reviewed.",
+                        "evidence_candidates": [
+                            {
+                                "source_title": "Public source",
+                                "source_uri": "https://example.com/should-not-fetch",
+                                "claim": "This candidate is inconsistent.",
+                            }
+                        ],
+                    }
+                ],
+            }
+        )
+        evidence = _Evidence()
+        result = AnalysisService(
+            database_engine=self.engine,
+            historian=_Historian(output),
+            tmdb=_Tmdb(),
+            evidence=evidence,
+        ).analyze_film(SUBJECT_ID)
+
+        self.assertEqual(evidence.candidates, {})
+        self.assertEqual(result["assertions"], 0)
+        self.assertEqual(result["evidence"], 0)
+        self.assertEqual(result["reviews"], 1)
+        with Session(self.engine) as session:
+            self.assertEqual(len(session.exec(select(Assertion)).all()), 0)
+            review = session.exec(select(AnalysisResolutionReview)).one()
+        self.assertEqual(review.reason_code, "identity_conflict")
 
     def test_completion_failure_rolls_back_and_records_safe_failure(self):
         service = AnalysisService(

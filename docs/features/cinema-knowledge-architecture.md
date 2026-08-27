@@ -67,7 +67,7 @@ Analysis → Historian → Resolver → Critic → Evidence → Persistence
   before Gate B.
 - [x] Library, metadata and Analysis long operations resume safely from durable
   Workflow steps.
-- [ ] Analysis candidates pass deterministic resolver and critic policies
+- [x] Analysis candidates pass deterministic resolver and critic policies
   before persistence.
 - [ ] Gate B remains strict and only a valid conclusion may unlock accepted
   inferred Graph edges.
@@ -127,7 +127,7 @@ Status: Complete
 
 ### Slice 5 — Constrained Analysis pipeline
 
-Status: Pending
+Status: Complete
 
 - Keep one Historian call and split deterministic Resolver, Policy Critic and
   Evidence verification stages.
@@ -186,6 +186,13 @@ Status: Pending
   — 18 Schema v3, workflow lifecycle, privacy, route and migration tests passed.
 - `npm run typecheck` — passed after the public Job DTO/SSE surface was replaced
   by WorkflowRun/WorkflowStep.
+- `python -m unittest test_analysis_critic.py test_analysis_runtime.py -q` —
+  9 deterministic Critic and runtime persistence tests passed.
+- `python -m unittest test_gate_b_evaluation.py -q` — 11 evaluator/scoring,
+  restore, policy and strict-blocking tests passed through the shared Workflow.
+- Offline Gate B rehearsal `architecture-phase5-20260827-01` — tooling passed;
+  live, human and overall remained strictly blocked with frozen dataset hash
+  prefix `fbfc9a1a481aef30`.
 
 ## Remaining risks
 

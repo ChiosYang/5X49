@@ -27,7 +27,7 @@ def get_client():
     )
 
 
-ANALYSIS_PROMPT_VERSION = "genealogy-v2.v2"
+ANALYSIS_PROMPT_VERSION = "genealogy-v2.v3"
 
 
 @dataclass(frozen=True)

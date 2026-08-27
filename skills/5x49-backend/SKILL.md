@@ -84,6 +84,9 @@ curl -s http://127.0.0.1:8000/films/<film_id>/analysis
 读取接口返回结构化 `FilmAnalysisView`；不要寻找 raw response、hidden reasoning
 或兼容分析 JSON。模型运行需要现有 OpenRouter/OpenAI-compatible 配置；TMDB Key
 只用于验证尚未存在的精确电影身份。
+模型候选必须先通过 `analysis-policy-critic.v1`；身份/标题/年份矛盾、类型或
+方向错误、自引用、Concept alias 歧义、qualifier、语义重复及超出 8 条的候选
+进入 review，不得绕过 Critic 直接持久化。
 
 ## Activity、恢复与 Workflows
 

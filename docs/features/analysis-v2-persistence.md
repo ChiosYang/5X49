@@ -19,6 +19,9 @@ evaluation set.
 - Model output creates only inferred/proposed Assertions.
 - Exact identities, title/year consistency and entity kinds are validated before
   creating an edge. Unresolved/conflicting targets create bounded reviews.
+- The deterministic `analysis-policy-critic.v1` runs before Evidence retrieval,
+  enforces type/direction/self-reference, alias uniqueness, qualifier, semantic
+  duplicate and eight-Assertion limits, and is shared by production and Gate B.
 - Accepted/rejected user decisions survive refresh and re-analysis.
 - Evidence is stored only after public HTTP(S) network/content validation; page
   bodies are hashed in memory and discarded.
@@ -63,6 +66,18 @@ Status: Blocked; tooling complete.
   privacy checks pass.
 - A diagnostic pilot has run against the pinned model.
 - Strict 36-case live Evidence and complete post-output human review are missing.
+
+### Architecture pipeline hardening
+
+Status: Complete.
+
+- Analysis now runs through the versioned durable Workflow entrypoint.
+- Historian remains the only model call; Resolver, Policy Critic and Evidence
+  verifier are deterministic stages.
+- Gate B live and offline persistence paths call the same Workflow entrypoint
+  and production Critic rather than a test-specific resolver.
+- The current versions are `genealogy-v2.v3`, `analysis-resolver.v3` and
+  `analysis-policy-critic.v1`.
 
 ## Gate B exit criteria
 

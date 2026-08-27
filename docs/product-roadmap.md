@@ -83,7 +83,8 @@ Exit: factual Graph contract, accessibility, privacy and bounded traversal pass.
 
 - persisted Workflow steps now own reconcile, metadata and Analysis execution;
 - retries, cancellation and crash recovery preserve completed step state;
-- retain one Historian model call and deterministic resolution/criticism.
+- one Historian call now feeds deterministic resolution, policy criticism and
+  Evidence verification shared by production and Gate B.
 
 Exit: restart and retry cannot duplicate domain or external side effects.
 

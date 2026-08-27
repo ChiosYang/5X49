@@ -1,7 +1,7 @@
 # Analysis V2 Gate B quality summary
 
-- Evidence date: 2026-08-26
-- Database target: `fresh-canonical-v1` / version 1
+- Evidence date: 2026-08-27
+- Database target: `fresh-canonical-v1` / version 3
 - Dataset contract: `analysis-eval.v1`
 - Dataset size: 36 public cases
 - Dataset language split: 12 / 12 / 12
@@ -57,6 +57,12 @@ The focused corrective Gate B, Analysis runtime and Evidence suite passed its
 recorded checks. Policy-v2 offline rehearsal
 `w4-s4-policy-v2-rehearsal-20260826-01` returned `tool_status=passed` and the
 required strict Blocked statuses.
+
+After the durable Workflow and deterministic Critic cutover, offline rehearsal
+`architecture-phase5-20260827-01` again returned `tool_status=passed` with
+live/human/overall strictly blocked and the same frozen dataset hash prefix.
+Production and evaluator now share `genealogy-v2.v3`, `analysis-resolver.v3`,
+`analysis-policy-critic.v1` and the same Analysis Workflow entrypoint.
 
 The ignored diagnostic run `w4-s4-pilot-v2-20260826-02` used the pinned free
 model with low reasoning and a bounded output budget. It completed 6/6 cases.

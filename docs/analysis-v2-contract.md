@@ -134,8 +134,15 @@ identity may create a non-owned Film only after the existing TMDB client
 verifies it. Name/year-only and unsupported-provider references remain review
 items. A supplied provider/ID is atomic: it must resolve to a Film whose known
 title and release year agree with the candidate and may never silently fall
-back to a same-name Film. The current prompt/resolver/persistence snapshots are
-`genealogy-v2.v2`, `analysis-resolver.v2`, and `analysis-persistence.v2`.
+back to a same-name Film. Before Evidence retrieval or persistence, the
+versioned deterministic Critic rejects identity/title/year contradictions,
+entity/predicate mismatches, self-reference, ambiguous Concept aliases,
+non-empty model qualifiers, semantic duplicates and candidates beyond the
+eight-edge budget. Rejected candidates become bounded idempotent reviews and
+cannot be ordinary Graph edges.
+
+The current prompt/resolver/policy snapshots are `genealogy-v2.v3`,
+`analysis-resolver.v3`, and `analysis-policy-critic.v1`.
 Analysis is exposed only through `POST /films/{film_id}/analysis-runs` and
 `GET /films/{film_id}/analysis`; there is no title-only compatibility route or
 raw analysis projection.

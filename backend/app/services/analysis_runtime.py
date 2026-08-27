@@ -45,6 +45,7 @@ from app.contracts.analysis_v2 import (
 from app.contracts.structured_metadata import StructuredMetadataObservation, canonical_json_hash, normalize_metadata_text
 from app.models import Job
 from app.services.analysis_evidence import EvidenceBatchResult, EVIDENCE_VERIFICATION_POLICY_VERSION
+from app.services.analysis_critic import ANALYSIS_CRITIC_VERSION, AnalysisCriticResult
 from app.services.event_store import event_store
 from app.services.structured_metadata_observations import tmdb_structured_metadata_observation
 from app.services.structured_metadata_sync import structured_metadata_synchronizer
@@ -52,8 +53,8 @@ from app.services.structured_metadata_sync import structured_metadata_synchroniz
 
 ANALYSIS_KIND = "genealogy_v2"
 ANALYSIS_SCHEMA_VERSION = "analysis-output.v2"
-ANALYSIS_RESOLVER_VERSION = "analysis-resolver.v2"
-ANALYSIS_POLICY_VERSION = "analysis-persistence.v2"
+ANALYSIS_RESOLVER_VERSION = "analysis-resolver.v3"
+ANALYSIS_POLICY_VERSION = ANALYSIS_CRITIC_VERSION
 ANALYSIS_APP_VERSION = "0.1.0"
 ACTIVE_JOB_STATUSES = frozenset({"queued", "running", "cancelling"})
 
@@ -329,10 +330,13 @@ class AnalysisRuntimePersistence:
         session: Session,
         output: AnalysisV2Output,
         remote_targets: dict[str, dict[str, Any]],
+        allowed_candidate_keys: frozenset[str] | None = None,
     ) -> dict[str, Any]:
         result: dict[str, Any] = {}
         for index, assertion in enumerate(output.assertions):
             assertion_key = self.assertion_candidate_key(index)
+            if allowed_candidate_keys is not None and assertion_key not in allowed_candidate_keys:
+                continue
             if not self._preliminarily_resolvable(session, assertion, remote_targets.get(assertion_key)):
                 continue
             for evidence_index, evidence in enumerate(assertion.evidence_candidates):
@@ -353,6 +357,7 @@ class AnalysisRuntimePersistence:
         remote_failures: dict[str, str],
         evidence_batch: EvidenceBatchResult,
         job_id: str,
+        critic_result: AnalysisCriticResult | None = None,
     ) -> AnalysisCompletion:
         if output.subject_film_id != start.film_id:
             raise AnalysisSubjectMismatch("Analysis output subject does not match the input Film")
@@ -362,9 +367,23 @@ class AnalysisRuntimePersistence:
         now = self._now()
         assertion_by_candidate: dict[str, Assertion] = {}
         review_count = 0
+        accepted_keys = frozenset(critic_result.accepted_keys) if critic_result is not None else None
 
         for index, candidate in enumerate(output.assertions):
             candidate_key = self.assertion_candidate_key(index)
+            rejection = critic_result.rejection_for(candidate_key) if critic_result is not None else None
+            if accepted_keys is not None and candidate_key not in accepted_keys:
+                self._upsert_review(
+                    session,
+                    run=run,
+                    predicate=candidate.predicate.value,
+                    candidate_kind="assertion",
+                    reason_code=rejection.reason_code if rejection is not None else "invalid_candidate",
+                    candidate_summary=self._assertion_summary(candidate),
+                    now=now,
+                )
+                review_count += 1
+                continue
             try:
                 if self._has_disallowed_model_qualifiers(candidate):
                     raise ResolutionFailure("invalid_candidate")

@@ -6,6 +6,7 @@ from sqlmodel import Session
 
 from app.database import engine
 from app.services.analysis_evidence import evidence_retriever
+from app.services.analysis_critic import analysis_policy_critic
 from app.services.analysis_runtime import (
     AnalysisRuntimeError,
     AnalysisSubjectMismatch,
@@ -107,10 +108,18 @@ class AnalysisService:
             )
             self._progress(ctx, "critic", "Applying deterministic analysis policy")
             with Session(self.database_engine) as session:
+                critic_result = analysis_policy_critic.evaluate(
+                    session,
+                    subject_film_id=start.film_id,
+                    output=generation.output,
+                    remote_targets=remote_targets,
+                    remote_failures=remote_failures,
+                )
                 evidence_candidates = analysis_runtime_persistence.evidence_candidates(
                     session,
                     generation.output,
                     remote_targets,
+                    allowed_candidate_keys=frozenset(critic_result.accepted_keys),
                 )
             self._progress(ctx, "verify_evidence", "Verifying public Evidence")
             evidence_batch = self.evidence.verify(evidence_candidates)
@@ -129,6 +138,7 @@ class AnalysisService:
                     remote_targets=remote_targets,
                     remote_failures=remote_failures,
                     evidence_batch=evidence_batch,
+                    critic_result=critic_result,
                     job_id=job_id,
                 )
                 session.commit()

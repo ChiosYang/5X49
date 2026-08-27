@@ -51,6 +51,7 @@ from app.contracts.structured_metadata import canonical_json_hash, normalize_met
 from app.migrations.backup import create_verified_backup, inspect_database
 from app.migrations.restore import restore_verified_backup
 from app.services.analysis import AnalysisExecutionError, AnalysisService
+from app.workflows.analysis import execute_analysis_workflow
 from app.services.analysis_evidence import (
     EVIDENCE_VERIFICATION_POLICY_VERSION,
     EvidenceBatchResult,
@@ -708,7 +709,7 @@ def run_live(
                 case_results.append(_failed_case_result(case, "budget_exceeded"))
                 continue
             try:
-                service.analyze_film(case.input.film_id)
+                execute_analysis_workflow(service, case.input.film_id)
                 result = _collect_live_case_result(engine, case, historian, pricing, policy)
             except AnalysisExecutionError:
                 result = _failed_case_result(case, "analysis_failed")
@@ -1137,10 +1138,10 @@ def _exercise_persistence(engine, dataset: AnalysisEvaluationDataset) -> dict[st
         tmdb=_UnconfiguredTMDB(),
         evidence=evidence,
     )
-    first = service.analyze_film(case.input.film_id)
+    first = execute_analysis_workflow(service, case.input.film_id)
     with Session(engine) as session:
         first_counts = _table_counts(session, W4_TABLES)
-    second = service.analyze_film(case.input.film_id)
+    second = execute_analysis_workflow(service, case.input.film_id)
     with Session(engine) as session:
         replay_counts = _table_counts(session, W4_TABLES)
         assertion = session.exec(
@@ -1165,7 +1166,7 @@ def _exercise_persistence(engine, dataset: AnalysisEvaluationDataset) -> dict[st
         )
 
     historian.model = "fixture-v2"
-    service.analyze_film(case.input.film_id)
+    execute_analysis_workflow(service, case.input.film_id)
     with Session(engine) as session:
         assertion = session.get(Assertion, assertion_id)
         after = (
@@ -1182,7 +1183,7 @@ def _exercise_persistence(engine, dataset: AnalysisEvaluationDataset) -> dict[st
         session.commit()
 
     historian.model = "fixture-v3"
-    service.analyze_film(case.input.film_id)
+    execute_analysis_workflow(service, case.input.film_id)
     with Session(engine) as session:
         link = session.exec(select(AssertionEvidence).where(AssertionEvidence.assertion_id == assertion_id)).one()
         revoked_preserved = link.link_status == "revoked" and link.revoked_at is not None
@@ -1198,7 +1199,7 @@ def _exercise_persistence(engine, dataset: AnalysisEvaluationDataset) -> dict[st
     })
     historian.output = unresolved
     historian.model = "fixture-v4"
-    service.analyze_film(case.input.film_id)
+    execute_analysis_workflow(service, case.input.film_id)
     with Session(engine) as session:
         review_exists = session.exec(
             select(AnalysisResolutionReview)
@@ -1530,7 +1531,7 @@ def _live_operational_checks(engine, dataset, service) -> dict[str, Any]:
             link_id = link.id
         session.commit()
     try:
-        service.analyze_film(first_case.input.film_id)
+        execute_analysis_workflow(service, first_case.input.film_id)
     except AnalysisExecutionError:
         pass
     with Session(engine) as session:
