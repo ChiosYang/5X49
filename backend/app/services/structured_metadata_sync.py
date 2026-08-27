@@ -35,18 +35,12 @@ from app.services.genre_assertion_sync import (
     ResolvedGenreAssertion,
     genre_assertion_synchronizer,
 )
+from app.services.provenance_resolver import SOURCE_PRECEDENCE, provenance_resolver
 from app.services.structured_metadata_vocab import (
     GENRE_VOCABULARY_VERSION,
     STRUCTURED_METADATA_VOCABULARY,
 )
 
-
-SOURCE_PRECEDENCE = {
-    "curated": 0,
-    "nfo": 1,
-    "tmdb": 2,
-    "filename": 3,
-}
 
 _FIELD_TO_GROUP = {
     "title": "titles",
@@ -171,12 +165,12 @@ class StructuredMetadataSynchronizer:
             observation=observation,
             current_review_keys=current_review_keys,
         )
-        self._materialize_selected_titles(session, film_id)
+        resolved = provenance_resolver.materialize_film(session, film_id)
         session.flush()
         return StructuredMetadataSyncResult(
             titles_active=self._active_title_count(session, film_id),
-            countries_active=len(self.selected_country_codes(session, film_id)),
-            credits_active=len(self.selected_credit_ids(session, film_id)),
+            countries_active=len(resolved.countries.value),
+            credits_active=len(resolved.credits.value),
             genre_assertions_active=genre_assertions_active,
             reviews_open=len(
                 session.exec(
@@ -188,38 +182,14 @@ class StructuredMetadataSynchronizer:
         )
 
     def selected_country_codes(self, session: Session, film_id: str) -> tuple[str, ...]:
-        candidates: list[tuple[int, str]] = []
-        countries = session.exec(select(FilmCountry).where(FilmCountry.film_id == film_id)).all()
-        for country in countries:
-            provenance = session.exec(
-                select(FilmCountryProvenance)
-                .where(FilmCountryProvenance.film_country_id == country.id)
-                .where(FilmCountryProvenance.superseded_at.is_(None))
-            ).all()
-            for item in provenance:
-                candidates.append((self.source_rank(item.origin_kind), country.iso_3166_1))
-        if not candidates:
-            return ()
-        best = min(rank for rank, _code in candidates)
-        return tuple(sorted({code for rank, code in candidates if rank == best}))
+        return provenance_resolver.resolve_countries(session, film_id).value
 
     def selected_credit_ids(self, session: Session, film_id: str) -> tuple[str, ...]:
-        candidates: list[tuple[int, str]] = []
-        for credit in session.exec(select(Credit).where(Credit.film_id == film_id)).all():
-            for provenance in session.exec(
-                select(CreditProvenance)
-                .where(CreditProvenance.credit_id == credit.id)
-                .where(CreditProvenance.superseded_at.is_(None))
-            ).all():
-                candidates.append((self.source_rank(provenance.origin_kind), credit.id))
-        if not candidates:
-            return ()
-        best = min(rank for rank, _credit_id in candidates)
-        return tuple(sorted({credit_id for rank, credit_id in candidates if rank == best}))
+        return provenance_resolver.resolve_credits(session, film_id).value
 
     @staticmethod
     def source_rank(origin_kind: str) -> int:
-        return SOURCE_PRECEDENCE.get(origin_kind, 100)
+        return provenance_resolver.source_rank(origin_kind)
 
     def _sync_titles(
         self,
@@ -684,46 +654,7 @@ class StructuredMetadataSynchronizer:
                 session.add(review)
 
     def _materialize_selected_titles(self, session: Session, film_id: str) -> None:
-        film = session.get(Film, film_id)
-        if film is None:
-            return
-        titles = session.exec(
-            select(FilmTitle)
-            .where(FilmTitle.film_id == film_id)
-            .where(FilmTitle.superseded_at.is_(None))
-        ).all()
-        if not titles:
-            return
-        type_rank = {"canonical": 0, "localized": 1, "original": 2, "alternative": 3}
-        selected = min(
-            titles,
-            key=lambda item: (
-                self.source_rank(item.origin_kind),
-                type_rank[item.title_type],
-                item.locale,
-                item.normalized_title,
-            ),
-        )
-        originals = [item for item in titles if item.title_type == "original"]
-        selected_original = min(
-            originals,
-            key=lambda item: (
-                self.source_rank(item.origin_kind),
-                item.locale,
-                item.normalized_title,
-            ),
-        ) if originals else None
-        changed = False
-        if film.canonical_title != selected.title:
-            film.canonical_title = selected.title
-            changed = True
-        original_value = selected_original.title if selected_original else film.original_title
-        if film.original_title != original_value:
-            film.original_title = original_value
-            changed = True
-        if changed:
-            film.updated_at = self._now()
-            session.add(film)
+        provenance_resolver.materialize_film(session, film_id)
 
     def _observation_owns_credit_order(
         self,

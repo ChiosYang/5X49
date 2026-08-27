@@ -53,8 +53,9 @@ from app.services.canonical_runtime import (
     canonical_runtime_writer,
 )
 from app.services.file_identity import FileIdentityObservation, full_content_hash
-from app.services.structured_metadata_sync import structured_metadata_synchronizer
 from app.services.private_payloads import private_payload_store
+from app.services.provenance_resolver import provenance_resolver
+from app.services.structured_metadata_sync import structured_metadata_synchronizer
 
 
 SEED_DATA_FILE = Path(__file__).parent.parent / "data" / "seed_movies.json"
@@ -736,7 +737,8 @@ class LibraryManager:
             .where(AnalysisRun.film_id == film_id)
             .order_by(AnalysisRun.created_at.desc(), AnalysisRun.id.desc())
         ).first()
-        genre_names = self._concept_names(session, film_id, "HAS_GENRE", "genre")
+        resolved_metadata = provenance_resolver.resolve_film(session, film_id)
+        genre_names = list(resolved_metadata.genres.value)
         micro_genres = self._concept_names(session, film_id, "HAS_MICRO_GENRE", "micro_genre")
         scores = [self._score_view(score) for score in session.exec(
             select(FilmExternalScore)
@@ -755,9 +757,16 @@ class LibraryManager:
                 "tmdb": identities.get("tmdb.movie"),
                 "imdb": identities.get("imdb.title"),
             },
-            "countries": list(structured_metadata_synchronizer.selected_country_codes(session, film_id)),
+            "countries": list(resolved_metadata.countries.value),
             "genres": genre_names,
-            "directors": self._director_names(session, film_id),
+            "directors": list(
+                provenance_resolver.selected_credit_names(
+                    session,
+                    film_id,
+                    department="Directing",
+                    job="Director",
+                )
+            ),
             "micro_genre": micro_genres[0] if micro_genres else None,
             "primary_item": self._edition_view(session, primary),
             "profile_state": state,

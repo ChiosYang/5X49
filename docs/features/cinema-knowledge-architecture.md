@@ -78,14 +78,14 @@ Analysis → Historian → Resolver → Critic → Evidence → Persistence
 
 ### Slice 0 — Architecture handoff
 
-Status: In Progress
+Status: Complete
 
 - Store this contract and align Roadmap, Domain Model and API documentation.
 - Verification: documentation diff review and link validation.
 
 ### Slice 1 — Provenance Resolver
 
-Status: Pending
+Status: Complete
 
 - Introduce `provenance-selection.v1` and a shared `ResolvedValue` contract.
 - Resolve titles, countries, Credits, factual Assertions and identity conflicts.
@@ -169,7 +169,8 @@ Status: Pending
 
 ## Verification evidence
 
-- Pending implementation. Record only commands and results actually run.
+- `python -m unittest test_provenance_resolver.py test_structured_metadata_runtime.py test_canonical_runtime.py test_api_routes.py -q`
+  — 21 tests passed.
 
 ## Remaining risks
 
