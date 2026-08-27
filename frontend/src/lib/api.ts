@@ -25,6 +25,7 @@ export const API = {
   libraryFilm: (filmId: string) => `${API_BASE_URL}/library/films/${segment(filmId)}`,
   filmProfileState: (filmId: string) => `${API_BASE_URL}/films/${segment(filmId)}/profile-state`,
   filmAnalysis: (filmId: string) => `${API_BASE_URL}/films/${segment(filmId)}/analysis`,
+  filmGraph: (filmId: string) => `${API_BASE_URL}/films/${segment(filmId)}/graph`,
   filmAnalysisRuns: (filmId: string) => `${API_BASE_URL}/films/${segment(filmId)}/analysis-runs`,
   filmArtwork: (filmId: string) => `${API_BASE_URL}/films/${segment(filmId)}/artwork`,
   filmExternalScores: (filmId: string) => `${API_BASE_URL}/films/${segment(filmId)}/external-scores/refresh`,

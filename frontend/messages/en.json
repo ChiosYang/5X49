@@ -126,6 +126,33 @@
     "sourceLocalFolder": "Local folder",
     "sourceLocalNfo": "Local NFO"
   },
+  "FilmGraph": {
+    "eyebrow": "Cinema Knowledge",
+    "title": "Factual Graph",
+    "loading": "Loading factual relationships",
+    "error": "The factual graph could not be loaded.",
+    "empty": "No accepted factual relationships are available yet.",
+    "factualPolicy": "Accepted facts only",
+    "diagramLabel": "One-hop factual relationship diagram",
+    "relations": "Relationships",
+    "source": "Source: {source}",
+    "structured": "structured metadata",
+    "evidence": "{count, plural, one {# evidence item} other {# evidence items}}",
+    "truncated": "The graph was truncated to its highest-priority relationships.",
+    "relationsMap": {
+      "DIRECTED_BY": "Directed by",
+      "FEATURES_ACTOR": "Features actor",
+      "HAS_GENRE": "Genre",
+      "HAS_THEME": "Theme",
+      "HAS_MOVEMENT": "Movement",
+      "HAS_VISUAL_STYLE": "Visual style",
+      "HAS_MICRO_GENRE": "Micro-genre",
+      "INFLUENCED_BY": "Influenced by",
+      "REMAKE_OF": "Remake of",
+      "ADAPTED_FROM": "Adapted from",
+      "VISUALLY_SIMILAR_TO": "Visually similar to"
+    }
+  },
   "WatchHistory": {
     "title": "Watch History",
     "subtitle": "Review your personal film record by watched date.",

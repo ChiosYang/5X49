@@ -23,6 +23,7 @@ description: 5X49 Fresh Canonical FastAPI 的 Film、LibraryItem、Viewing、Ana
 ```bash
 curl -s http://127.0.0.1:8000/library/films
 curl -s http://127.0.0.1:8000/library/films/film_0123456789abcdef0123456789abcdef
+curl -s http://127.0.0.1:8000/films/film_0123456789abcdef0123456789abcdef/graph
 curl -s -X POST http://127.0.0.1:8000/library/reconcile
 curl -s -X POST http://127.0.0.1:8000/library/items/lib_0123456789abcdef0123456789abcdef/refresh
 curl -s -X POST http://127.0.0.1:8000/library/items/lib_0123456789abcdef0123456789abcdef/ignore
@@ -30,6 +31,8 @@ curl -s -X POST http://127.0.0.1:8000/library/items/lib_0123456789abcdef01234567
 
 - `GET /library/films` 一部 Film 一项，直接包含 profile state 和 primary edition。
 - `GET /library/films/{film_id}` 返回全部非 retired editions。
+- `GET /films/{film_id}/graph` 只从同步 Read Model 返回一跳、定长的
+  accepted factual 图谱；Gate B 前不会暴露 inferred/proposed 关系。
 - `POST /library/scan` 与 `/library/reconcile` 返回 queued Job。
 - `POST /library/scan-folder?folder_path=...` 只允许媒体根内目标。
 - `DELETE /library/missing` 退休 missing editions。

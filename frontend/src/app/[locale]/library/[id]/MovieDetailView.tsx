@@ -2,6 +2,7 @@ import { getTranslations } from "next-intl/server";
 
 import type { LibraryEdition, LibraryFilmDetail } from "@/types/movie";
 import ExternalScoreStrip from "../../components/ExternalScoreStrip";
+import FilmGraphPanel from "./FilmGraphPanel";
 import LibraryEditionActions from "./LibraryEditionActions";
 import MovieAnalysisSection from "./MovieAnalysisSection";
 import {
@@ -124,6 +125,8 @@ export default async function MovieDetailView({ film }: { film: LibraryFilmDetai
             </div>
           </section>
         )}
+
+        <FilmGraphPanel filmId={film.id} />
 
         <section className="border-b border-line-strong px-8 py-10 md:px-16">
           <span className="type-label block text-ink-subtle">{t("editions")}</span>

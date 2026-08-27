@@ -4,6 +4,7 @@ import useSWRMutation from "swr/mutation";
 import { API } from "@/lib/api";
 import type {
   FilmAnalysisView,
+  FilmGraphView,
   FilmProfileState,
   FilmProfileStateUpdate,
   JobAccepted,
@@ -31,6 +32,10 @@ export function useFilmAnalysis(filmId: string) {
   return useSWR<FilmAnalysisView | null>(filmId ? API.filmAnalysis(filmId) : null, {
     refreshInterval: (data) => data?.status === "running" ? 5000 : 0,
   });
+}
+
+export function useFilmGraph(filmId: string) {
+  return useSWR<FilmGraphView>(filmId ? API.filmGraph(filmId) : null);
 }
 
 export function useFilmProfileState(filmId: string) {

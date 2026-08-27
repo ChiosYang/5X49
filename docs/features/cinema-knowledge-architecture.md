@@ -63,7 +63,7 @@ Analysis → Historian → Resolver → Critic → Evidence → Persistence
 - [x] Library, Film detail and local search read exclusively from versioned
   synchronous read models.
 - [x] Read models rebuild to the same digest and never access media or network.
-- [ ] Film details expose a bounded factual Graph with no inferred leakage
+- [x] Film details expose a bounded factual Graph with no inferred leakage
   before Gate B.
 - [ ] Library, metadata and Analysis long operations resume safely from durable
   Workflow steps.
@@ -107,7 +107,7 @@ Status: Complete
 
 ### Slice 3 — Factual Film Graph
 
-Status: Pending
+Status: Complete
 
 - Add `GET /films/{film_id}/graph` over Graph read models.
 - Include selected Credit edges and active accepted factual Assertion edges.
@@ -176,6 +176,12 @@ Status: Pending
 - `python -m unittest test_database_migrations.py test_canonical_schema.py test_canonical_runtime.py test_api_routes.py -q`
   — 23 migration and runtime regression tests passed.
 - `npm run lint` and `npm run typecheck` — passed after the safe DTO cutover.
+- `python -m unittest test_graph_query.py -v` — 3 factual visibility,
+  strict-projection and missing-root tests passed.
+- Isolated browser smoke at `5550`/`8001` — Chinese and English factual Graph
+  rendered the same accepted Genre edge; the 375px viewport had equal document
+  client/scroll widths, 2 keyboard-focusable SVG nodes and the accessible
+  relation-list fallback. Temporary services were stopped afterward.
 
 ## Remaining risks
 

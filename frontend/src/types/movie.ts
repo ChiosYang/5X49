@@ -167,6 +167,37 @@ export interface FilmAnalysisView {
   }>;
 }
 
+export interface GraphNode {
+  id: string;
+  entity_type: "film" | "person" | "concept";
+  display_label: string;
+  release_year?: number | null;
+  concept_kind?: string | null;
+  in_library: boolean;
+}
+
+export interface GraphEdge {
+  id: string;
+  edge_kind: "credit" | "assertion";
+  subject_id: string;
+  object_id: string;
+  relation: string;
+  direction: "subject_to_object";
+  review_status: "accepted";
+  source_kinds: string[];
+  active_evidence_count: number;
+  conflicted: boolean;
+}
+
+export interface FilmGraphView {
+  root: GraphNode;
+  nodes: GraphNode[];
+  edges: GraphEdge[];
+  truncated: boolean;
+  visibility_policy: "graph-visibility.v1" | "graph-visibility.v2";
+  projection_version: string;
+}
+
 export interface WatchHistoryEntry {
   film: LibraryFilmSummary;
   viewing: {

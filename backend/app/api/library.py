@@ -11,6 +11,7 @@ from app.database import engine
 from app.jobs import job_runtime
 from app.services.analysis_runtime import analysis_runtime_persistence
 from app.services.event_bus import library_event_bus
+from app.services.graph_query import graph_query_service
 from app.services.library import library_manager
 from app.services.library_sync import library_sync_service
 from app.services.metadata.organizer import root_video_organizer
@@ -189,6 +190,15 @@ def get_film_analysis(film_id: str):
         raise HTTPException(status_code=404, detail="Film not found")
     with Session(engine) as session:
         return analysis_runtime_persistence.get_analysis(session, film_id)
+
+
+@router.get("/films/{film_id}/graph")
+def get_film_graph(film_id: str):
+    _validate_id(film_id, "film")
+    graph = graph_query_service.get_film_graph(film_id)
+    if graph is None:
+        raise HTTPException(status_code=404, detail="Film not found")
+    return graph
 
 
 @router.delete("/library")

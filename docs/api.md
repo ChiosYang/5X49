@@ -68,6 +68,19 @@ selection-policy version and conflict state. Missing or stale projections
 return `503` with stable code `projection_unavailable`; the API does not fall
 back to live Canonical joins.
 
+### `GET /films/{film_id}/graph`
+
+Returns a one-hop `FilmGraphView` assembled only from Graph read models. Under
+`graph-visibility.v1`, the service includes Resolver-selected Director/Actor
+Credits and active, accepted, factual Assertions. Proposed, rejected,
+superseded and inferred Assertions are excluded server-side.
+
+The response is bounded to 65 nodes and 64 edges, uses stable Genre/Director/
+other-fact/Actor priority, and reports `truncated`, `visibility_policy` and
+`projection_version`. Nodes expose only public identity and display fields;
+edges expose public source kinds, review status, active Evidence count and
+conflict state, never internal provenance references.
+
 ### `POST /library/items/{library_item_id}/refresh`
 
 Queues `library.refresh_item`. The response is an accepted Job envelope.

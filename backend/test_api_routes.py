@@ -5,6 +5,7 @@ from fastapi.routing import APIRoute
 from fastapi.testclient import TestClient
 
 from app.main import app
+from app.services.projections import ProjectionUnavailable
 
 
 REMOVED_ROUTES = {
@@ -27,6 +28,7 @@ CANONICAL_ROUTES = {
     ("POST", "/library/items/{library_item_id}/ignore"),
     ("POST", "/films/{film_id}/analysis-runs"),
     ("GET", "/films/{film_id}/analysis"),
+    ("GET", "/films/{film_id}/graph"),
     ("GET", "/films/{film_id}/artwork"),
     ("PUT", "/films/{film_id}/artwork"),
     ("POST", "/films/{film_id}/scrape"),
@@ -87,6 +89,25 @@ class ApiRouteContractTests(unittest.TestCase):
             response = self.client.get("/library/root-videos")
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json(), [])
+
+    def test_projection_unavailable_has_stable_503_contract(self):
+        with patch(
+            "app.api.library.library_manager.list_films",
+            side_effect=ProjectionUnavailable("library projection is unavailable"),
+        ):
+            response = self.client.get("/library/films")
+        self.assertEqual(response.status_code, 503)
+        self.assertEqual(response.json()["detail"]["code"], "projection_unavailable")
+
+    def test_graph_route_uses_film_resource_contract(self):
+        film_id = "film_" + "a" * 32
+        with patch(
+            "app.api.library.graph_query_service.get_film_graph",
+            return_value={"root": {"id": film_id}, "nodes": [], "edges": []},
+        ):
+            response = self.client.get(f"/films/{film_id}/graph")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["root"]["id"], film_id)
 
 
 if __name__ == "__main__":

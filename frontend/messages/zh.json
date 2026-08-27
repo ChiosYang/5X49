@@ -126,6 +126,33 @@
     "sourceLocalFolder": "本地文件夹",
     "sourceLocalNfo": "本地 NFO"
   },
+  "FilmGraph": {
+    "eyebrow": "电影知识",
+    "title": "事实图谱",
+    "loading": "正在读取事实关系",
+    "error": "事实图谱读取失败。",
+    "empty": "当前还没有已接受的事实关系。",
+    "factualPolicy": "仅展示已接受事实",
+    "diagramLabel": "一跳电影事实关系图",
+    "relations": "完整关系列表",
+    "source": "来源：{source}",
+    "structured": "结构化元数据",
+    "evidence": "{count} 条证据",
+    "truncated": "图谱已按优先级截断，仅显示最重要的关系。",
+    "relationsMap": {
+      "DIRECTED_BY": "导演",
+      "FEATURES_ACTOR": "演员",
+      "HAS_GENRE": "类型",
+      "HAS_THEME": "主题",
+      "HAS_MOVEMENT": "电影运动",
+      "HAS_VISUAL_STYLE": "视觉风格",
+      "HAS_MICRO_GENRE": "微流派",
+      "INFLUENCED_BY": "受其影响",
+      "REMAKE_OF": "翻拍自",
+      "ADAPTED_FROM": "改编自",
+      "VISUALLY_SIMILAR_TO": "视觉相似"
+    }
+  },
   "WatchHistory": {
     "title": "观影历史",
     "subtitle": "按观看日期回看你的个人电影记录",
