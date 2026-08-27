@@ -132,7 +132,7 @@ export default async function MovieDetailView({ film }: { film: LibraryFilmDetai
               <div key={edition.id} className="flex min-w-0 items-center justify-between gap-4 border border-line p-4">
                 <div className="min-w-0">
                   <p className="truncate font-bold text-ink">{editionLabel(edition, t("edition", { index: index + 1 }))}</p>
-                  <p className="type-meta mt-1 truncate text-ink-subtle">{edition.video?.locator || sourceLabel[edition.source_type] || edition.source_type}</p>
+                  <p className="type-meta mt-1 truncate text-ink-subtle">{edition.video?.file_name || sourceLabel[edition.source_type] || edition.source_type}</p>
                 </div>
                 <div className="flex shrink-0 items-center gap-3">
                   <span className="rounded-pill border border-line px-3 py-1 type-badge text-ink-muted">{statusLabel[edition.status]}</span>

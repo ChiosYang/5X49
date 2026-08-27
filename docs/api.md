@@ -46,7 +46,8 @@ sources. Invalid resource IDs return `400`; missing resources return `404`.
 
 Returns `LibraryFilmSummary[]`, one row per visible Film. Each row includes the
 selected title and metadata, `primary_item`, profile state, external scores and
-analysis status. Films whose only editions are ignored are omitted.
+analysis status. Films whose only editions are ignored are omitted. The
+optional `q` query parameter filters the synchronous local search projection.
 
 Primary edition selection is deterministic:
 
@@ -60,6 +61,12 @@ Primary edition selection is deterministic:
 Returns `LibraryFilmDetail`, including every non-retired `LibraryEdition` for
 the Film, selected structured metadata, profile state, scores and analysis
 status.
+
+Both Film endpoints read only versioned synchronous projections. Responses may
+include `resolved_sources`, containing only source kind, observation time,
+selection-policy version and conflict state. Missing or stale projections
+return `503` with stable code `projection_unavailable`; the API does not fall
+back to live Canonical joins.
 
 ### `POST /library/items/{library_item_id}/refresh`
 

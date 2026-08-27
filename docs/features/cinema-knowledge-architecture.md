@@ -58,11 +58,11 @@ Analysis → Historian → Resolver → Critic → Evidence → Persistence
 
 ## Acceptance criteria
 
-- [ ] Every selected metadata value is produced by one resolver and exposes a
+- [x] Every selected metadata value is produced by one resolver and exposes a
   safe public source summary.
-- [ ] Library, Film detail and local search read exclusively from versioned
+- [x] Library, Film detail and local search read exclusively from versioned
   synchronous read models.
-- [ ] Read models rebuild to the same digest and never access media or network.
+- [x] Read models rebuild to the same digest and never access media or network.
 - [ ] Film details expose a bounded factual Graph with no inferred leakage
   before Gate B.
 - [ ] Library, metadata and Analysis long operations resume safely from durable
@@ -95,7 +95,7 @@ Status: Complete
 
 ### Slice 2 — Synchronous CQRS read models
 
-Status: Pending
+Status: Complete
 
 - Add Schema v2 projection state plus Library, Detail, Search and Graph read
   models.
@@ -171,6 +171,11 @@ Status: Pending
 
 - `python -m unittest test_provenance_resolver.py test_structured_metadata_runtime.py test_canonical_runtime.py test_api_routes.py -q`
   — 21 tests passed.
+- `python -m unittest test_projections.py -v` — 4 projection transaction,
+  strict-read, privacy and deterministic-rebuild tests passed.
+- `python -m unittest test_database_migrations.py test_canonical_schema.py test_canonical_runtime.py test_api_routes.py -q`
+  — 23 migration and runtime regression tests passed.
+- `npm run lint` and `npm run typecheck` — passed after the safe DTO cutover.
 
 ## Remaining risks
 

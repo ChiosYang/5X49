@@ -8,6 +8,7 @@ from sqlmodel import create_engine, Session
 from app.canonical_models import FRESH_SCHEMA_EPOCH
 from app.migrations import MigrationError, run_migrations
 from app.migrations.runner import database_has_user_tables
+from app.services.projections import install_projection_hooks, projection_coordinator
 
 DEFAULT_SQLITE_FILE = Path("data") / "library.db"
 sqlite_file_name = os.getenv("SQLITE_DB_PATH", str(DEFAULT_SQLITE_FILE))
@@ -36,6 +37,7 @@ def _enable_sqlite_foreign_keys(dbapi_connection, _connection_record) -> None:
 
 
 configure_sqlite_engine(engine)
+install_projection_hooks()
 
 
 def create_db_and_tables():
@@ -51,6 +53,7 @@ def create_db_and_tables():
         backup_required=existing_database,
     )
     _assert_fresh_schema_epoch()
+    projection_coordinator.bootstrap(engine)
 
 
 def _assert_fresh_schema_epoch() -> None:

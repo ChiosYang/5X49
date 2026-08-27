@@ -2,7 +2,7 @@
 
 - Status: Adopted
 - Epoch: `fresh-canonical-v1`
-- Current version: `1`
+- Current version: `2`
 
 ## Baseline decision
 
@@ -25,7 +25,7 @@ never regenerates it.
 
 ## Epoch and journal
 
-`database_metadata` contains the epoch marker `fresh-canonical-v1`.
+`schema_metadata` contains the epoch marker `fresh-canonical-v1`.
 `schema_migrations` journals the immutable version, name, checksum, timestamps,
 status and bounded error summary.
 
@@ -37,8 +37,10 @@ Startup behavior:
 4. If it has the current epoch, validate checksums and apply future pending v2+.
 5. If it contains pre-epoch application tables or another epoch, refuse startup
    without modifying the file.
-6. Start Job workers, watcher and HTTP traffic only after the journal reaches
-   the current version.
+6. Bootstrap and verify synchronous read models without filesystem or network
+   access.
+7. Start Job workers, watcher and HTTP traffic only after the journal and
+   projections reach the current version.
 
 Repeated startup is a no-op for schema and reference data.
 
@@ -62,6 +64,26 @@ analysis rows.
 The baseline intentionally has no Movie table, per-Movie state, legacy alias,
 historical backfill report or compatibility projection.
 
+## Additive Schema v2
+
+Schema v2 adds disposable synchronous CQRS tables for Library, Film detail,
+search and factual Graph reads, plus `projection_state`. Domain writes refresh
+affected rows in the same SQLite transaction. A projection failure rolls back
+the domain write and EventRecord as well.
+
+Projection payloads contain only public DTO data and never media locators,
+credentials or source payloads. They can be verified or rebuilt without media
+or network access:
+
+```powershell
+uv run python -m app.projections verify
+uv run python -m app.projections rebuild --all
+uv run python -m app.projections rebuild --film <film-id>
+```
+
+Library and detail APIs never silently fall back to live Canonical joins. A
+missing or stale projection returns `503` with code `projection_unavailable`.
+
 ## Old database cutover
 
 An old development database is not upgraded or imported. Cutover is an explicit
@@ -81,7 +103,7 @@ entry point.
 
 ## Future migrations
 
-Future changes resume at version 2. Each migration must have a monotonically
+Future changes resume at version 3. Each migration must have a monotonically
 increasing integer version, stable name, deterministic checksum and one
 transactional upgrade.
 

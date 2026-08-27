@@ -33,8 +33,8 @@ class FilmProfileStateUpdate(BaseModel):
 
 
 @router.get("/library/films")
-def get_library_films():
-    return library_manager.list_films()
+def get_library_films(q: str | None = Query(default=None, max_length=200)):
+    return library_manager.list_films(query=q)
 
 
 @router.get("/library/films/{film_id}")

@@ -2,8 +2,9 @@ import os
 import logging
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from app.api.common import MEDIA_DIR
@@ -12,6 +13,7 @@ from app.database import create_db_and_tables
 from app.jobs import job_runtime
 from app.services.artwork_cache import ARTWORK_CACHE_DIR
 from app.services.settings import get_watch_library
+from app.services.projections import ProjectionUnavailable
 from app.services.watcher import library_watcher
 
 
@@ -27,6 +29,19 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(lifespan=lifespan)
+
+
+@app.exception_handler(ProjectionUnavailable)
+async def projection_unavailable_handler(_request: Request, exc: ProjectionUnavailable):
+    return JSONResponse(
+        status_code=503,
+        content={
+            "detail": {
+                "code": exc.code,
+                "message": str(exc),
+            }
+        },
+    )
 
 ALLOWED_ORIGINS = os.getenv(
     "ALLOWED_ORIGINS",

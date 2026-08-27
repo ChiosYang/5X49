@@ -44,6 +44,12 @@ class CanonicalSchemaTests(unittest.TestCase):
             "external_score_refresh_state",
             "operation_snapshot",
             "schema_metadata",
+            "projection_state",
+            "library_film_read_model",
+            "film_detail_read_model",
+            "film_search_read_model",
+            "graph_node_read_model",
+            "graph_edge_read_model",
         }.issubset(tables))
         with self.engine.connect() as connection:
             profiles = connection.execute(

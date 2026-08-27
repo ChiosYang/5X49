@@ -44,6 +44,164 @@ class Setting(SQLModel, table=True):
     updated_at: str = Field(default_factory=canonical_utc_now_iso, index=True)
 
 
+class ProjectionState(SQLModel, table=True):
+    __tablename__ = "projection_state"
+    __table_args__ = (
+        CheckConstraint(
+            "status IN ('ready', 'rebuilding', 'failed')",
+            name="ck_projection_state_status",
+        ),
+        CheckConstraint(
+            "row_count >= 0 AND length(projection_version) > 0",
+            name="ck_projection_state_values",
+        ),
+        CheckConstraint(
+            "digest IS NULL OR (length(digest) = 64 AND digest NOT GLOB '*[^0-9a-f]*')",
+            name="ck_projection_state_digest",
+        ),
+    )
+
+    name: str = Field(primary_key=True)
+    projection_version: str
+    status: str = Field(default="ready", index=True)
+    row_count: int = 0
+    digest: str | None = None
+    rebuilt_at: str | None = None
+    updated_at: str = Field(default_factory=canonical_utc_now_iso)
+
+
+class LibraryFilmReadModel(SQLModel, table=True):
+    __tablename__ = "library_film_read_model"
+    __table_args__ = (
+        Index("ix_library_film_read_sort", "visible", "sort_title", "release_year"),
+        CheckConstraint(
+            "length(source_hash) = 64 AND source_hash NOT GLOB '*[^0-9a-f]*'",
+            name="ck_library_film_read_hash",
+        ),
+    )
+
+    film_id: str = Field(
+        primary_key=True,
+        foreign_key="film.id",
+        ondelete="CASCADE",
+    )
+    sort_title: str = Field(index=True)
+    release_year: int | None = Field(default=None, index=True)
+    primary_item_id: str | None = Field(default=None, index=True)
+    visible: bool = Field(default=True, index=True)
+    payload: dict[str, Any] = Field(default_factory=dict, sa_column=Column(JSON, nullable=False))
+    source_hash: str
+    projection_version: str
+    projected_at: str = Field(default_factory=canonical_utc_now_iso)
+
+
+class FilmDetailReadModel(SQLModel, table=True):
+    __tablename__ = "film_detail_read_model"
+    __table_args__ = (
+        CheckConstraint(
+            "length(source_hash) = 64 AND source_hash NOT GLOB '*[^0-9a-f]*'",
+            name="ck_film_detail_read_hash",
+        ),
+    )
+
+    film_id: str = Field(
+        primary_key=True,
+        foreign_key="film.id",
+        ondelete="CASCADE",
+    )
+    payload: dict[str, Any] = Field(default_factory=dict, sa_column=Column(JSON, nullable=False))
+    source_hash: str
+    projection_version: str
+    projected_at: str = Field(default_factory=canonical_utc_now_iso)
+
+
+class FilmSearchReadModel(SQLModel, table=True):
+    __tablename__ = "film_search_read_model"
+    __table_args__ = (
+        Index("ix_film_search_read_title_year", "normalized_title", "release_year"),
+        CheckConstraint(
+            "length(source_hash) = 64 AND source_hash NOT GLOB '*[^0-9a-f]*'",
+            name="ck_film_search_read_hash",
+        ),
+    )
+
+    film_id: str = Field(
+        primary_key=True,
+        foreign_key="film.id",
+        ondelete="CASCADE",
+    )
+    normalized_title: str = Field(index=True)
+    release_year: int | None = Field(default=None, index=True)
+    search_text: str
+    source_hash: str
+    projection_version: str
+    projected_at: str = Field(default_factory=canonical_utc_now_iso)
+
+
+class GraphNodeReadModel(SQLModel, table=True):
+    __tablename__ = "graph_node_read_model"
+    __table_args__ = (
+        CheckConstraint(
+            "entity_type IN ('film', 'person', 'concept')",
+            name="ck_graph_node_read_entity_type",
+        ),
+        CheckConstraint(
+            "length(source_hash) = 64 AND source_hash NOT GLOB '*[^0-9a-f]*'",
+            name="ck_graph_node_read_hash",
+        ),
+        Index("ix_graph_node_read_type_label", "entity_type", "display_label"),
+    )
+
+    entity_id: str = Field(
+        primary_key=True,
+        foreign_key="graph_entity.id",
+        ondelete="CASCADE",
+    )
+    entity_type: str = Field(index=True)
+    display_label: str
+    secondary_label: str | None = None
+    owned: bool = Field(default=False, index=True)
+    payload: dict[str, Any] = Field(default_factory=dict, sa_column=Column(JSON, nullable=False))
+    source_hash: str
+    projection_version: str
+    projected_at: str = Field(default_factory=canonical_utc_now_iso)
+
+
+class GraphEdgeReadModel(SQLModel, table=True):
+    __tablename__ = "graph_edge_read_model"
+    __table_args__ = (
+        CheckConstraint(
+            "edge_kind IN ('credit', 'assertion')",
+            name="ck_graph_edge_read_kind",
+        ),
+        CheckConstraint(
+            "length(source_hash) = 64 AND source_hash NOT GLOB '*[^0-9a-f]*'",
+            name="ck_graph_edge_read_hash",
+        ),
+        Index("ix_graph_edge_read_subject_priority", "subject_entity_id", "priority", "edge_id"),
+        Index("ix_graph_edge_read_object_priority", "object_entity_id", "priority", "edge_id"),
+    )
+
+    edge_id: str = Field(primary_key=True)
+    edge_kind: str = Field(index=True)
+    subject_entity_id: str = Field(
+        foreign_key="graph_entity.id",
+        ondelete="CASCADE",
+        index=True,
+    )
+    object_entity_id: str = Field(
+        foreign_key="graph_entity.id",
+        ondelete="CASCADE",
+        index=True,
+    )
+    relation: str = Field(index=True)
+    priority: int = Field(default=100, index=True)
+    payload: dict[str, Any] = Field(default_factory=dict, sa_column=Column(JSON, nullable=False))
+    source_hash: str
+    projection_version: str
+    projected_at: str = Field(default_factory=canonical_utc_now_iso)
+
+
 class GraphEntity(SQLModel, table=True):
     __tablename__ = "graph_entity"
     __table_args__ = (

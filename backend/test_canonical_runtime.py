@@ -65,7 +65,8 @@ class FreshCanonicalRuntimeTests(unittest.TestCase):
         self.assertEqual(len(films), 1)
         detail = library_manager.get_film(films[0]["id"])
         self.assertEqual(len(detail["editions"]), 2)
-        self.assertEqual(detail["primary_item"]["video"]["locator"], str(second_path.resolve()))
+        self.assertEqual(detail["primary_item"]["video"]["file_name"], second_path.name)
+        self.assertNotIn("locator", detail["primary_item"]["video"])
         with Session(self.engine) as session:
             self.assertEqual(len(session.exec(select(Film)).all()), 1)
             self.assertEqual(len(session.exec(select(LibraryItem)).all()), 2)

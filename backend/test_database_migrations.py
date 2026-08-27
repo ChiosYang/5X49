@@ -29,14 +29,14 @@ class FreshCanonicalMigrationTests(unittest.TestCase):
         configure_sqlite_engine(engine)
         return path, engine
 
-    def test_fresh_v1_is_static_idempotent_and_has_fixed_reference_rows(self):
+    def test_fresh_schema_is_static_idempotent_and_has_fixed_reference_rows(self):
         path, engine = self._engine("fresh.db")
         try:
             first = run_migrations(engine, path, app_version="test", backup_required=False)
             before = self._digest(engine)
             second = run_migrations(engine, path, app_version="test", backup_required=False)
-            self.assertEqual(first.current_version, 1)
-            self.assertEqual(first.applied_versions, (1,))
+            self.assertEqual(first.current_version, 2)
+            self.assertEqual(first.applied_versions, (1, 2))
             self.assertEqual(second.applied_versions, ())
             self.assertIsNone(second.backup)
             self.assertEqual(before, self._digest(engine))

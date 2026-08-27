@@ -40,6 +40,13 @@ export interface FilmProfileStateUpdate {
   notes?: string | null;
 }
 
+export interface ResolvedSource {
+  source_kind?: string | null;
+  observed_at?: string | null;
+  policy_version: string;
+  conflicted: boolean;
+}
+
 export interface LibraryEdition {
   id: string;
   film_id: string;
@@ -66,7 +73,7 @@ export interface LibraryEdition {
     backdrop_provider?: string | null;
   };
   video?: {
-    locator: string;
+    file_name?: string | null;
     file_size?: number | null;
     file_mtime?: number | null;
     width?: number | null;
@@ -102,6 +109,7 @@ export interface LibraryFilmSummary {
     latest_run_id?: string | null;
     summary?: string | null;
   };
+  resolved_sources?: Record<string, ResolvedSource>;
 }
 
 export interface LibraryFilmDetail extends LibraryFilmSummary {

@@ -326,23 +326,15 @@ class LibraryManager:
             "hash_id": self._hash_identifier(complete_hash),
         }
 
-    def list_films(self) -> list[dict[str, Any]]:
-        with Session(engine) as session:
-            film_ids = sorted({
-                item.film_id
-                for item in session.exec(
-                    select(LibraryItem).where(LibraryItem.availability_status != "retired")
-                ).all()
-            })
-            rows = [self._film_view(session, film_id, include_editions=False) for film_id in film_ids]
-        return sorted(
-            [row for row in rows if row is not None],
-            key=lambda row: (str(row["title"]).casefold(), row.get("year") or 0, row["id"]),
-        )
+    def list_films(self, query: str | None = None) -> list[dict[str, Any]]:
+        from app.services.projections import projection_reader
+
+        return projection_reader.list_films(engine, query=query)
 
     def get_film(self, film_id: str) -> dict[str, Any] | None:
-        with Session(engine) as session:
-            return self._film_view(session, film_id, include_editions=True)
+        from app.services.projections import projection_reader
+
+        return projection_reader.get_film(engine, film_id)
 
     def get_item(self, library_item_id: str) -> dict[str, Any] | None:
         with Session(engine) as session:
@@ -360,7 +352,15 @@ class LibraryManager:
         video = item.get("video") or {}
         artwork = item.get("artwork") or {}
         metadata = item.get("metadata") or {}
-        locator = video.get("locator")
+        with Session(engine) as session:
+            video_asset = session.exec(
+                select(MediaAsset)
+                .where(MediaAsset.library_item_id == item["id"])
+                .where(MediaAsset.asset_kind == "video")
+                .where(MediaAsset.availability_status != "retired")
+                .order_by(MediaAsset.id)
+            ).first()
+        locator = video_asset.locator if video_asset is not None else None
         return {
             "id": film_id,
             "film_id": film_id,
@@ -635,6 +635,8 @@ class LibraryManager:
             return len(items)
 
     def clear_all_data(self) -> dict[str, int]:
+        from app.services.projections import projection_coordinator
+
         with Session(engine) as session:
             counts = {
                 "films": len(session.exec(select(Film.id)).all()),
@@ -687,6 +689,7 @@ class LibraryManager:
                 )
             session.exec(delete(Job))
             session.exec(delete(EventRecord))
+            projection_coordinator.rebuild_all(session)
             session.commit()
             return counts
 
@@ -698,7 +701,7 @@ class LibraryManager:
         self.add_observations(payloads)
         return self.list_films()
 
-    def _film_view(
+    def _canonical_film_view(
         self,
         session: Session,
         film_id: str,
@@ -829,7 +832,7 @@ class LibraryManager:
             "artwork": artwork,
             "video": (
                 {
-                    "locator": video.locator,
+                    "file_name": Path(video.locator).name,
                     "file_size": video.file_size,
                     "file_mtime": video.file_mtime,
                     "width": video.width,
