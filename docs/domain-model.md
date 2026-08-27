@@ -31,6 +31,21 @@ specific owned edition and is used only when an operation targets a local
 version. Several LibraryItems may share one Film and therefore share profile
 state, structured metadata, scores and analysis.
 
+## Knowledge architecture layers
+
+Fresh Canonical remains the sole source of truth while the product grows four
+explicit derived layers:
+
+1. provenance resolution selects current display values and reports conflicts;
+2. synchronous CQRS read models serve Library, Detail, Search and Graph;
+3. durable workflows coordinate long-running external and filesystem work;
+4. the constrained Analysis pipeline proposes reviewable knowledge.
+
+Read models, Workflow state and portable exports are not domain facts. They
+cannot overwrite Canonical records and must not be used as fallback truth.
+EventRecord remains audit-only. The staged contract is maintained in
+`docs/features/cinema-knowledge-architecture.md`.
+
 ## Graph identity
 
 `GraphEntity` supplies the stable identity and entity kind for Film, Person and
@@ -149,6 +164,6 @@ contains only IDs, counts, booleans, bounded status and truncated hashes.
 ## Explicitly absent
 
 The v1 epoch has no Movie table, per-Movie state table, permanent compatibility
-alias, historical backfill report, compatibility reader, projection rebuilder,
-or raw analysis JSON projection. Old databases are not upgraded into this model;
+alias, historical backfill report, compatibility reader, legacy projection
+rebuilder, or raw analysis JSON projection. Old databases are not upgraded into this model;
 they are archived and the application creates an empty Fresh Canonical database.

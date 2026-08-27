@@ -62,7 +62,32 @@ gate currently carried forward from W4.
 Exit: fresh first start is deterministic; no removed compatibility symbol or
 table is reachable; media remains untouched during database cutover.
 
-### 2. Finish Gate B
+### 2. Provenance and synchronous read models
+
+- centralize deterministic metadata selection and conflict reporting;
+- add transactional Library, Detail, Search and Graph read models;
+- provide offline projection verify/rebuild and strict stale-state handling.
+
+Exit: product reads are reproducible, projection rebuild digests match and no
+read model is treated as durable truth.
+
+### 3. Factual Film Graph
+
+- expose accepted factual Assertions and selected Credits on Film detail;
+- ship a bounded accessible SVG plus list fallback;
+- keep every inferred edge server-side hidden before Gate B.
+
+Exit: factual Graph contract, accessibility, privacy and bounded traversal pass.
+
+### 4. Durable workflows and constrained Analysis
+
+- move reconcile, metadata and Analysis to persisted Workflow steps;
+- make retries, cancellation and crash recovery idempotent;
+- retain one Historian model call and deterministic resolution/criticism.
+
+Exit: restart and retry cannot duplicate domain or external side effects.
+
+### 5. Finish Gate B
 
 - Resolve the public Evidence network preflight or document an approved product
   policy that changes the Evidence requirement.
@@ -73,7 +98,7 @@ table is reachable; media remains untouched during database cutover.
 Exit: every `gate-b-policy` threshold passes and Gate B is explicitly recorded
 as Passed.
 
-### 3. Film Graph MVP
+### 6. Reviewed inferred Graph
 
 Only after Gate B passes:
 
@@ -85,14 +110,16 @@ Only after Gate B passes:
 Graph UI is additionally subject to its own product/accessibility/performance
 acceptance. A quality-gate pass does not automatically ship it.
 
-### 4. Diary and Explore
+### 7. Local-first portability, Diary and Explore
 
 - multiple explicit Viewing records and diary editing;
 - Explore by the most reliable dimensions: genre, person, country/decade;
 - explainable Cinema DNA based on accepted facts and user Viewing data;
 - local-first export/backup and setup health.
+- keep multi-device synchronization out of scope until a separate conflict and
+  security contract exists.
 
-### 5. Ask MVP
+### 8. Ask MVP
 
 - database/graph performs strict filtering and entity lookup;
 - the model structures intent and explains already selected results;

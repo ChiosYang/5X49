@@ -4,6 +4,11 @@ This document describes the Fresh Canonical resource API. The backend normally
 listens on `http://127.0.0.1:8000`; the frontend proxies `/api/*` and `/media/*`
 from port `5549`.
 
+The staged Graph, Workflow and portability interfaces are tracked in
+`docs/features/cinema-knowledge-architecture.md`. They are added here only when
+their implementation slice is complete; the feature document is not a runtime
+compatibility promise.
+
 ## Resource IDs
 
 - Film IDs use `film_<32 lowercase hex>`.
