@@ -4,9 +4,9 @@ import logging
 
 from fastapi import APIRouter, HTTPException, Query
 
-from app.api.common import DEFAULT_MEDIA_DIR, job_response
-from app.jobs import job_runtime
+from app.api.common import DEFAULT_MEDIA_DIR, workflow_response
 from app.services.settings import get_media_dir
+from app.workflows import workflow_runtime
 from app.services.operation_manifests import OperationManifestError, operation_manifest_store
 
 
@@ -61,11 +61,11 @@ def trigger_manual_scan():
         target_hash = hashlib.sha256(
             str(Path(target_dir).resolve()).encode("utf-8")
         ).hexdigest()[:16]
-        job = job_runtime.enqueue(
+        workflow = workflow_runtime.enqueue(
             "library.reconcile",
             {"media_root_ref": path_ref},
             dedupe_key=f"library.reconcile:{target_hash}",
         )
-        return job_response(job, "Library scan queued")
+        return workflow_response(workflow, "Library scan queued")
     except (OperationManifestError, OSError):
         raise HTTPException(status_code=500, detail="Failed to start scan") from None

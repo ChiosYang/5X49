@@ -44,6 +44,8 @@ from app.models import (
     Person,
     StructuredMetadataReview,
     Viewing,
+    WorkflowRun,
+    WorkflowStep,
     utc_now_iso,
 )
 from app.services.canonical_runtime import (
@@ -343,16 +345,34 @@ class LibraryManager:
                 return None
             return self._edition_view(session, item)
 
+    def get_item_operation_context(self, library_item_id: str) -> dict[str, Any] | None:
+        """Return one edition with its private locator for command services only."""
+        with Session(engine) as session:
+            item = session.get(LibraryItem, library_item_id)
+            if item is None or item.availability_status == "retired":
+                return None
+            view = self._edition_view(session, item)
+            video_asset = session.exec(
+                select(MediaAsset)
+                .where(MediaAsset.library_item_id == item.id)
+                .where(MediaAsset.asset_kind == "video")
+                .where(MediaAsset.availability_status != "retired")
+                .order_by(MediaAsset.id)
+            ).first()
+            if video_asset is not None:
+                view["video"] = {**(view.get("video") or {}), "locator": video_asset.locator}
+            return view
+
     def get_film_operation_context(self, film_id: str) -> dict[str, Any] | None:
         """Return the bounded flat input used by scan/metadata command services."""
-        film = self.get_film(film_id)
-        if film is None:
-            return None
-        item = film["primary_item"]
-        video = item.get("video") or {}
-        artwork = item.get("artwork") or {}
-        metadata = item.get("metadata") or {}
         with Session(engine) as session:
+            film = self._canonical_film_view(session, film_id, include_editions=False)
+            if film is None:
+                return None
+            item = film["primary_item"]
+            video = item.get("video") or {}
+            artwork = item.get("artwork") or {}
+            metadata = item.get("metadata") or {}
             video_asset = session.exec(
                 select(MediaAsset)
                 .where(MediaAsset.library_item_id == item["id"])
@@ -408,10 +428,18 @@ class LibraryManager:
         }
 
     def list_operation_contexts(self) -> list[dict[str, Any]]:
+        with Session(engine) as session:
+            film_ids = list(
+                session.exec(
+                    select(Film.id)
+                    .where(Film.lifecycle_status == "active")
+                    .order_by(Film.id)
+                ).all()
+            )
         return [
             context
-            for film in self.list_films()
-            if (context := self.get_film_operation_context(film["id"])) is not None
+            for film_id in film_ids
+            if (context := self.get_film_operation_context(film_id)) is not None
         ]
 
     def update_film_observation(
@@ -688,6 +716,8 @@ class LibraryManager:
                     delete(GraphEntity).where(GraphEntity.id.in_([*film_ids, *removable_entity_ids]))
                 )
             session.exec(delete(Job))
+            session.exec(delete(WorkflowStep))
+            session.exec(delete(WorkflowRun))
             session.exec(delete(EventRecord))
             projection_coordinator.rebuild_all(session)
             session.commit()
@@ -931,6 +961,8 @@ class LibraryManager:
         observation_payload: dict[str, Any],
         ambiguity: AmbiguousRelink,
     ) -> str:
+        from app.workflows.store import workflow_store
+
         digest = hashlib.sha256(ambiguity.observation.content_fingerprint.encode("utf-8")).hexdigest()
         dedupe_key = f"library.resolve_relink:{SOURCE_INSTANCE_ID}:{digest}"
         source_item_id = self._hash_identifier(
@@ -947,38 +979,28 @@ class LibraryManager:
                 },
             ),
         }
-        existing = session.exec(
-            select(Job)
-            .where(Job.dedupe_key == dedupe_key)
-            .where(Job.status.in_(("queued", "running", "cancelling")))
-        ).first()
-        if existing:
-            current = dict(existing.payload or {})
-            items = list(current.get("items") or [])
-            if not any(item.get("source_item_id") == source_item_id for item in items):
-                items.append(pending_item)
-                existing.payload = {**current, "items": items}
-                existing.updated_at = utc_now_iso()
-                session.add(existing)
-            session.flush()
-            return existing.id
-        job = Job(
-            id=f"job_{uuid4().hex}",
-            type="library.resolve_relink",
-            payload={
+        workflow, job, created = workflow_store.enqueue_in_session(
+            session,
+            "library.resolve_relink",
+            {
                 "source_instance_id": SOURCE_INSTANCE_ID,
                 "content_fingerprint": ambiguity.observation.content_fingerprint,
                 "fingerprint_id": digest[:16],
                 "items": [pending_item],
             },
             dedupe_key=dedupe_key,
-            max_attempts=1,
-            created_at=utc_now_iso(),
-            updated_at=utc_now_iso(),
+            subject_type="library",
         )
-        session.add(job)
-        session.flush()
-        return job.id
+        if not created:
+            current = dict(job.payload or {})
+            items = list(current.get("items") or [])
+            if not any(item.get("source_item_id") == source_item_id for item in items):
+                items.append(pending_item)
+                job.payload = {**current, "items": items}
+                job.updated_at = utc_now_iso()
+                session.add(job)
+            session.flush()
+        return workflow.id
 
     @staticmethod
     def _item(session: Session, item_id: str) -> LibraryItem:

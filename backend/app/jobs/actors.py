@@ -29,15 +29,12 @@ def _media_dir(payload: dict) -> str:
 
 
 def reconcile_library(payload: dict, ctx) -> dict:
-    ctx.progress(stage="scanning", message="Scanning library")
-    ctx.raise_if_cancelled()
-    return library_sync_service.reconcile(_media_dir(payload))
+    return library_sync_service.reconcile(_media_dir(payload), ctx=ctx)
 
 
 def scan_folder(payload: dict, ctx) -> dict:
-    ctx.progress(stage="scanning", message="Scanning folder")
     _media_root, folder_path = operation_manifest_store.resolve_path(payload["path_ref"])
-    film = library_sync_service.scan_folder(folder_path)
+    film = library_sync_service.scan_folder(folder_path, ctx=ctx)
     if not film:
         raise FileNotFoundError("Film folder or video file not found")
     if film.get("status") == "pending_relink":
@@ -50,15 +47,16 @@ def scan_folder(payload: dict, ctx) -> dict:
 
 
 def mark_path_missing(payload: dict, ctx) -> dict:
-    ctx.progress(stage="marking_missing", message="Marking path missing")
+    ctx.progress(stage="resolve_subject", message="Resolving missing path reference")
     _media_root, path = operation_manifest_store.resolve_path(payload["path_ref"])
+    ctx.progress(stage="persist", message="Persisting missing edition state")
     updated = library_sync_service.mark_path_missing(str(path))
+    ctx.progress(stage="finalize", message="Finalizing missing edition update")
     return {"status": "success", "updated": updated}
 
 
 def refresh_item(payload: dict, ctx) -> dict:
-    ctx.progress(stage="refreshing", message="Refreshing library item")
-    result = library_sync_service.refresh_item(payload["library_item_id"])
+    result = library_sync_service.refresh_item(payload["library_item_id"], ctx=ctx)
     return {
         "status": result.get("status", "success"),
         "library_item_id": payload["library_item_id"],
@@ -67,19 +65,24 @@ def refresh_item(payload: dict, ctx) -> dict:
 
 
 def resolve_relink(payload: dict, ctx) -> dict:
-    ctx.progress(stage="resolving", message="Resolving an ambiguous file identity")
+    ctx.progress(stage="inspect", message="Inspecting ambiguous file identity")
     ctx.raise_if_cancelled()
     try:
-        return library_manager.resolve_relink(
+        ctx.progress(stage="resolve", message="Resolving file identity")
+        ctx.progress(stage="persist", message="Persisting relink decision")
+        result = library_manager.resolve_relink(
             payload,
             job_id=getattr(ctx, "job_id", None),
         )
+        ctx.progress(stage="finalize", message="Finalizing relink")
+        return result
     except Exception:
         raise RuntimeError("Relink resolution failed") from None
 
 
 def scrape_library(payload: dict, ctx) -> dict:
     options = BatchScrapeOptions(**payload.get("options", {}))
+    ctx.progress(stage="resolve_subject", message="Resolving metadata refresh scope")
     films = [
         film
         for film in library_manager.list_operation_contexts()
@@ -92,10 +95,11 @@ def scrape_library(payload: dict, ctx) -> dict:
         last_started_at=datetime.now(timezone.utc).isoformat(),
         last_error=None,
     )
-    ctx.progress(stage="scraping", current=0, total=total, message="Scraping metadata")
+    ctx.progress(stage="search_match", current=0, total=total, message="Searching metadata matches")
 
     try:
         ctx.raise_if_cancelled()
+        ctx.progress(stage="fetch", current=0, total=total, message="Fetching metadata observations")
         concurrency = min(get_tmdb_scrape_concurrency(), total) if total else 1
         film_iterator = iter(films)
         futures: dict[Future, dict] = {}
@@ -166,7 +170,7 @@ def scrape_library(payload: dict, ctx) -> dict:
                     else:
                         result["failed"] += 1
                     ctx.progress(
-                        stage="scraping",
+                        stage="fetch",
                         current=result["processed"],
                         total=total,
                         message=f"Scraped {result['processed']} of {total}",
@@ -182,12 +186,16 @@ def scrape_library(payload: dict, ctx) -> dict:
 
         ctx.raise_if_cancelled()
 
+        ctx.progress(stage="persist", message="Persisting metadata results")
+        ctx.progress(stage="artwork_scores", message="Finalizing artwork and score state")
+
         metadata_scraper._set_status(
             state="idle",
             last_finished_at=datetime.now(timezone.utc).isoformat(),
             last_result=result,
         )
         library_event_bus.publish_library_changed("metadata_batch_scraped", result=result)
+        ctx.progress(stage="finalize", message="Metadata refresh complete")
         return result
     except Exception as exc:
         if exc.__class__.__name__ == "JobCancelled":
@@ -208,9 +216,11 @@ def scrape_library(payload: dict, ctx) -> dict:
 def organize_root(payload: dict, ctx) -> dict:
     options_payload = payload.get("options") or {}
     options = RootOrganizeOptions(**options_payload) if options_payload else RootOrganizeOptions()
+    ctx.progress(stage="resolve_subject", message="Resolving media root")
     root = Path(_media_dir(payload)).resolve()
     if not root.exists() or not root.is_dir():
         raise FileNotFoundError(f"Directory not found: {root}")
+    ctx.progress(stage="inspect", message="Inspecting root videos")
     videos = root_video_organizer._root_videos(root)
     total = len(videos)
     result = {
@@ -226,7 +236,7 @@ def organize_root(payload: dict, ctx) -> dict:
         last_started_at=datetime.now(timezone.utc).isoformat(),
         last_error=None,
     )
-    ctx.progress(stage="organizing", current=0, total=total, message="Organizing root videos")
+    ctx.progress(stage="persist", current=0, total=total, message="Organizing root videos")
 
     try:
         for video_path in videos:
@@ -244,7 +254,7 @@ def organize_root(payload: dict, ctx) -> dict:
             else:
                 result["failed"] += 1
             ctx.progress(
-                stage="organizing",
+                stage="persist",
                 current=result["processed"],
                 total=total,
                 message=f"Processed {result['processed']} of {total}",
@@ -258,6 +268,7 @@ def organize_root(payload: dict, ctx) -> dict:
         )
         if result["processed"]:
             library_event_bus.publish_library_changed("root_videos_organized", result=result)
+        ctx.progress(stage="finalize", current=result["processed"], total=total, message="Root organization complete")
         return result
     except Exception as exc:
         if exc.__class__.__name__ == "JobCancelled":
@@ -276,9 +287,11 @@ def organize_root(payload: dict, ctx) -> dict:
 
 
 def confirm_root_video(payload: dict, ctx) -> dict:
-    ctx.progress(stage="organizing", message="Organizing confirmed root video")
+    ctx.progress(stage="resolve_subject", message="Resolving confirmed root video")
     manifest_ref = payload["manifest_ref"]
     manifest = operation_manifest_store.load(manifest_ref)
+    ctx.progress(stage="inspect", message="Inspecting confirmed root video")
+    ctx.progress(stage="persist", message="Organizing confirmed root video")
     result = root_video_organizer.organize_file_confirmed(
         Path(manifest["source"]),
         Path(manifest["media_root"]),
@@ -290,6 +303,7 @@ def confirm_root_video(payload: dict, ctx) -> dict:
         raise RuntimeError(result.get("message") or "Root video organization failed")
     if result.get("status") == "skipped":
         raise ValueError(result.get("message") or "Root video organization skipped")
+    ctx.progress(stage="finalize", message="Confirmed root video organized")
     return {
         key: value
         for key, value in result.items()
@@ -298,7 +312,6 @@ def confirm_root_video(payload: dict, ctx) -> dict:
 
 
 def analyze_film(payload: dict, ctx) -> dict:
-    ctx.progress(stage="analyzing", message="Running film analysis")
     result = analysis_service.analyze_film(payload["film_id"], ctx=ctx)
     return {
         "status": result["status"],
@@ -312,11 +325,14 @@ def analyze_film(payload: dict, ctx) -> dict:
 
 
 def refresh_film_external_scores(payload: dict, ctx) -> dict:
-    ctx.progress(stage="refreshing", message="Refreshing external scores")
+    ctx.progress(stage="resolve_subject", message="Resolving Film score sources")
+    ctx.progress(stage="fetch", message="Fetching external scores")
     result = external_score_service.refresh_film(
         payload["film_id"],
         force=payload.get("force", False),
     )
+    ctx.progress(stage="persist", message="Persisting external scores")
+    ctx.progress(stage="finalize", message="External score refresh complete")
     return {
         "status": result["status"],
         "film_id": result["film_id"],
@@ -326,6 +342,7 @@ def refresh_film_external_scores(payload: dict, ctx) -> dict:
 
 
 def refresh_library_external_scores(payload: dict, ctx) -> dict:
+    ctx.progress(stage="resolve_subject", message="Resolving Library score scope")
     films = [
         film
         for film in library_manager.list_films()
@@ -338,7 +355,7 @@ def refresh_library_external_scores(payload: dict, ctx) -> dict:
         last_started_at=datetime.now(timezone.utc).isoformat(),
         last_error=None,
     )
-    ctx.progress(stage="refreshing", current=0, total=total, message="Refreshing external scores")
+    ctx.progress(stage="fetch", current=0, total=total, message="Fetching external scores")
 
     try:
         for film in films:
@@ -356,7 +373,7 @@ def refresh_library_external_scores(payload: dict, ctx) -> dict:
             except Exception:
                 result["failed"] += 1
             ctx.progress(
-                stage="refreshing",
+                stage="fetch",
                 current=result["processed"],
                 total=total,
                 message=f"Refreshed {result['processed']} of {total}",
@@ -368,7 +385,9 @@ def refresh_library_external_scores(payload: dict, ctx) -> dict:
             last_finished_at=datetime.now(timezone.utc).isoformat(),
             last_result=result,
         )
+        ctx.progress(stage="persist", current=result["processed"], total=total, message="Persisting score refresh state")
         library_event_bus.publish_library_changed("external_scores_batch_updated", result=result)
+        ctx.progress(stage="finalize", current=result["processed"], total=total, message="External score refresh complete")
         return result
     except Exception as exc:
         if exc.__class__.__name__ == "JobCancelled":

@@ -295,7 +295,7 @@ class LibraryWatcher:
 
     def _enqueue_job(self, job_type: str, payload: dict):
         try:
-            from app.jobs import job_runtime
+            from app.workflows import workflow_runtime
 
             dedupe_key = None
             root = Path(self._status.get("media_dir") or get_media_dir()).resolve()
@@ -320,7 +320,7 @@ class LibraryWatcher:
             elif job_type == "organizer.organize_root":
                 payload = {}
                 dedupe_key = job_type
-            job_runtime.enqueue(job_type, payload, dedupe_key=dedupe_key)
+            workflow_runtime.enqueue(job_type, payload, dedupe_key=dedupe_key)
         except Exception as exc:
             self._record_error(str(exc))
 

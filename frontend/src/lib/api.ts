@@ -9,10 +9,10 @@ const mediaPath = (path: string) => {
 export const API = {
   baseUrl: API_BASE_URL,
 
-  jobs: () => `${API_BASE_URL}/jobs`,
-  job: (id: string) => `${API_BASE_URL}/jobs/${segment(id)}`,
-  jobCancel: (id: string) => `${API_BASE_URL}/jobs/${segment(id)}/cancel`,
-  jobRetry: (id: string) => `${API_BASE_URL}/jobs/${segment(id)}/retry`,
+  workflows: () => `${API_BASE_URL}/workflows`,
+  workflow: (id: string) => `${API_BASE_URL}/workflows/${segment(id)}`,
+  workflowCancel: (id: string) => `${API_BASE_URL}/workflows/${segment(id)}/cancel`,
+  workflowRetry: (id: string) => `${API_BASE_URL}/workflows/${segment(id)}/retry`,
 
   mediaUrl: (path: string) => `${API_BASE_URL}${mediaPath(path)}`,
   providerArtworkUrl: (path: string) => path.startsWith("http://") || path.startsWith("https://")

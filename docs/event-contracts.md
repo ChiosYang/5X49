@@ -18,7 +18,7 @@ Every event has:
 | --- | --- |
 | `id` | Opaque `evt_` ID. |
 | `type` | Stable event type. |
-| `aggregate_type` | `film`, `library_item`, `viewing`, `assertion`, `analysis_run`, `job`, `library`, or `operation`. |
+| `aggregate_type` | `film`, `library_item`, `viewing`, `assertion`, `analysis_run`, `workflow`, `library`, or `operation`. |
 | `aggregate_id` | Stable canonical resource ID. |
 | `payload` | Bounded JSON with allowlisted fields. |
 | `actor_type` | `system`, `user`, or bounded runtime actor. |
@@ -109,9 +109,10 @@ replaced, the original path is occupied or any sidecar state conflicts.
 ## Live events
 
 `GET /library/events` is a separate in-memory/SSE invalidation stream. Its
-events include `connected`, `library_changed`, Job lifecycle notifications and
+events include `connected`, `library_changed`, the sanitized
+`workflow_queued|running|progress|succeeded|failed|cancelled` lifecycle and
 `heartbeat`. The stream is not a durable audit source and follows the same
-privacy boundary.
+privacy boundary. Private Job payloads are never published.
 
 ## Change rules
 

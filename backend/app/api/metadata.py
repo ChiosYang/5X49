@@ -3,8 +3,7 @@ from pathlib import Path
 import requests
 from fastapi import APIRouter, HTTPException, Query
 
-from app.api.common import DEFAULT_MEDIA_DIR, job_response
-from app.jobs import job_runtime
+from app.api.common import DEFAULT_MEDIA_DIR, workflow_response
 from app.services.external_scores import external_score_service
 from app.services.library import library_manager
 from app.services.metadata.models import (
@@ -19,6 +18,7 @@ from app.services.operation_manifests import OperationManifestError, operation_m
 from app.services.metadata.scraper import metadata_scraper
 from app.services.settings import get_media_dir
 from app.utils.security import validate_resource_id
+from app.workflows import workflow_runtime
 
 
 router = APIRouter()
@@ -27,12 +27,12 @@ router = APIRouter()
 @router.post("/library/external-scores/refresh")
 def refresh_library_external_scores(force: bool = Query(default=False)):
     """Start a background refresh of external score sources for available movies."""
-    job = job_runtime.enqueue(
+    workflow = workflow_runtime.enqueue(
         "external_scores.refresh_library",
         {"force": force},
         dedupe_key=f"external_scores.refresh_library:{force}",
     )
-    return job_response(job, "External score refresh queued")
+    return workflow_response(workflow, "External score refresh queued")
 
 
 @router.get("/library/external-scores/status")
@@ -73,12 +73,12 @@ def refresh_film_external_scores(film_id: str, force: bool = Query(default=False
 
     if not library_manager.get_film(film_id):
         raise HTTPException(status_code=404, detail="Film not found")
-    job = job_runtime.enqueue(
+    workflow = workflow_runtime.enqueue(
         "external_scores.refresh_film",
         {"film_id": film_id, "force": force},
         dedupe_key=f"external_scores.refresh_film:{film_id}:{force}",
     )
-    return job_response(job, "Film external score refresh queued")
+    return workflow_response(workflow, "Film external score refresh queued")
 
 
 @router.get("/films/{film_id}/artwork")
@@ -149,12 +149,12 @@ def confirm_film_scrape(film_id: str, tmdb_id: int, options: ScrapeOptions | Non
 @router.post("/library/scrape")
 def scrape_library(options: BatchScrapeOptions | None = None):
     """Start a background metadata scrape for movies matching the requested scope."""
-    job = job_runtime.enqueue(
+    workflow = workflow_runtime.enqueue(
         "metadata.scrape_library",
         {"options": (options or BatchScrapeOptions()).model_dump()},
         dedupe_key=f"metadata.scrape_library:{(options or BatchScrapeOptions()).model_dump_json()}",
     )
-    return job_response(job, "Metadata scrape queued")
+    return workflow_response(workflow, "Metadata scrape queued")
 
 
 @router.get("/library/scrape/status")
@@ -166,14 +166,14 @@ def get_library_scrape_status():
 @router.post("/library/organize-root")
 def organize_root_library_videos(options: RootOrganizeOptions | None = None):
     """Start background organization of direct video files in the media root."""
-    job = job_runtime.enqueue(
+    workflow = workflow_runtime.enqueue(
         "organizer.organize_root",
         {
             "options": options.model_dump() if options else None,
         },
         dedupe_key="organizer.organize_root",
     )
-    return job_response(job, "Root video organization queued")
+    return workflow_response(workflow, "Root video organization queued")
 
 
 @router.post("/library/organize-root/confirm")
@@ -188,7 +188,7 @@ def confirm_root_library_video(payload: RootOrganizeConfirmRequest):
         )
     except OperationManifestError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
-    job = job_runtime.enqueue(
+    workflow = workflow_runtime.enqueue(
         "organizer.confirm_root_video",
         {
             "manifest_ref": manifest_ref,
@@ -197,7 +197,7 @@ def confirm_root_library_video(payload: RootOrganizeConfirmRequest):
         },
         dedupe_key=f"organizer.confirm_root_video:{manifest_ref}",
     )
-    return job_response(job, "Root video confirmation queued")
+    return workflow_response(workflow, "Root video confirmation queued")
 
 
 @router.get("/library/organize/status")

@@ -16,6 +16,11 @@ REMOVED_ROUTES = {
     ("POST", "/library/analyze/{movie_id}"),
     ("GET", "/analyze/{movie_name}"),
     ("POST", "/library/projections/movie/rebuild"),
+    ("GET", "/jobs"),
+    ("GET", "/jobs/{job_id}"),
+    ("POST", "/jobs/{job_id}/cancel"),
+    ("POST", "/jobs/{job_id}/retry"),
+    ("DELETE", "/jobs/{job_id}"),
 }
 
 CANONICAL_ROUTES = {
@@ -37,6 +42,10 @@ CANONICAL_ROUTES = {
     ("GET", "/activity/events"),
     ("GET", "/operations/{snapshot_id}/preview"),
     ("POST", "/operations/{snapshot_id}/restore"),
+    ("GET", "/workflows"),
+    ("GET", "/workflows/{workflow_id}"),
+    ("POST", "/workflows/{workflow_id}/cancel"),
+    ("POST", "/workflows/{workflow_id}/retry"),
 }
 
 
@@ -60,8 +69,8 @@ class ApiRouteContractTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json(), {"status": "healthy"})
 
-    def test_query_validation_rejects_invalid_job_limit(self):
-        response = self.client.get("/jobs?limit=0")
+    def test_query_validation_rejects_invalid_workflow_limit(self):
+        response = self.client.get("/workflows?limit=0")
         self.assertEqual(response.status_code, 422)
 
     def test_missing_film_and_item_return_resource_specific_404(self):

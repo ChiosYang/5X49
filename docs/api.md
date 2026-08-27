@@ -195,11 +195,11 @@ JSON are never stored or returned.
 Lists bounded `EventRecord` objects newest first. Optional filters are
 `aggregate_type`, `aggregate_id`, `type`, `command_id`, `correlation_id`, and
 `limit` (1–500). Canonical aggregate types include `film`, `library_item`,
-`viewing`, `assertion`, `analysis_run`, and `job`.
+`viewing`, `assertion`, `analysis_run`, and `workflow`.
 
 ### `GET /library/events`
 
-Server-Sent Events stream for live invalidation and Job status notifications.
+Server-Sent Events stream for live invalidation and Workflow status notifications.
 
 ### `GET /operations/{snapshot_id}/preview`
 
@@ -217,15 +217,14 @@ Body:
 Returns `409` if the current state has drifted, the token is stale, the snapshot
 was already restored, or a controlled file restore is no longer safe.
 
-## Jobs
+## Durable workflows
 
 | Method | Path | Purpose |
 | --- | --- | --- |
-| `GET` | `/jobs` | List sanitized jobs; optional `status`, `type`, `limit`. |
-| `GET` | `/jobs/{job_id}` | Get one sanitized job. |
-| `POST` | `/jobs/{job_id}/cancel` | Cancel or request cancellation. |
-| `POST` | `/jobs/{job_id}/retry` | Retry a failed/cancelled Job. |
-| `DELETE` | `/jobs/{job_id}` | Delete a terminal Job. |
+| `GET` | `/workflows` | List sanitized workflows; optional `status`, `type`, `limit`. |
+| `GET` | `/workflows/{workflow_id}` | Get a workflow and its ordered steps. |
+| `POST` | `/workflows/{workflow_id}/cancel` | Cancel or request cancellation. |
+| `POST` | `/workflows/{workflow_id}/retry` | Resume from the first failed/cancelled step. |
 
 Long-running commands return:
 
@@ -233,13 +232,14 @@ Long-running commands return:
 {
   "status": "queued",
   "message": "...",
-  "job_id": "job_0123456789abcdef0123456789abcdef",
-  "job": {}
+  "workflow_id": "workflow_0123456789abcdef0123456789abcdef",
+  "workflow": {}
 }
 ```
 
-Public Job representations never include credentials, absolute paths, raw
-model/provider output, titles used as privacy canaries, or full dedupe values.
+Public Workflow/Step representations never include credentials, absolute paths,
+raw model/provider output, titles used as privacy canaries, or full dedupe values.
+The `job` table is an internal single-step execution queue and has no public API.
 
 ## Compatibility policy
 

@@ -26,7 +26,7 @@ Complete:
 - Person, Credit, Country and controlled Concept metadata.
 - Film-level favorite/rating/notes and Viewing-derived watched history.
 - Normalized external scores and refresh state.
-- Background Jobs, sanitized SSE status and Activity events.
+- Durable Workflow/Step status, sanitized SSE and Activity events; Job is private execution state.
 - Bounded OperationSnapshot preview/restore for supported commands.
 - Analysis V2 persistence, entity resolution, Assertions, Evidence and reviews.
 - Fixed 36-case Gate B evaluation tooling and adjudicated dataset.
@@ -57,7 +57,7 @@ gate currently carried forward from W4.
 - Exercise snapshot preview/restore for metadata, artwork, availability and
   controlled file organization.
 - Validate Docker first install when Docker is available.
-- Keep privacy scans for Event, Job, logs and quality reports in CI.
+- Keep privacy scans for Event, Workflow/Job, logs and quality reports in CI.
 
 Exit: fresh first start is deterministic; no removed compatibility symbol or
 table is reachable; media remains untouched during database cutover.
@@ -81,8 +81,8 @@ Exit: factual Graph contract, accessibility, privacy and bounded traversal pass.
 
 ### 4. Durable workflows and constrained Analysis
 
-- move reconcile, metadata and Analysis to persisted Workflow steps;
-- make retries, cancellation and crash recovery idempotent;
+- persisted Workflow steps now own reconcile, metadata and Analysis execution;
+- retries, cancellation and crash recovery preserve completed step state;
 - retain one Historian model call and deterministic resolution/criticism.
 
 Exit: restart and retry cannot duplicate domain or external side effects.

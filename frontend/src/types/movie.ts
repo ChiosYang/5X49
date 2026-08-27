@@ -313,9 +313,9 @@ export interface RootVideo {
   status: "needs_organize" | "waiting_for_stability";
 }
 
-export type JobStatus = "queued" | "running" | "succeeded" | "failed" | "cancelled" | "cancelling";
+export type WorkflowStatus = "queued" | "running" | "succeeded" | "failed" | "cancelled";
 
-export interface JobProgress {
+export interface WorkflowProgress {
   stage?: string;
   current?: number;
   total?: number;
@@ -323,29 +323,42 @@ export interface JobProgress {
   counts?: Record<string, number>;
 }
 
-export interface Job {
+export interface WorkflowStepView {
+  id: string;
+  step_key: string;
+  position: number;
+  status: "pending" | "queued" | "running" | "succeeded" | "failed" | "cancelled";
+  attempt: number;
+  max_attempts: number;
+  result_summary?: string | null;
+  compensation_status: "none" | "pending" | "running" | "succeeded" | "failed";
+  started_at?: string | null;
+  finished_at?: string | null;
+}
+
+export interface WorkflowRunView {
   id: string;
   type: string;
-  status: JobStatus;
-  payload?: Record<string, unknown> | null;
-  progress?: JobProgress | null;
-  result?: Record<string, unknown> | null;
+  definition_version: string;
+  subject_type: "library" | "film" | "library_item" | "system";
+  subject_id?: string | null;
+  status: WorkflowStatus;
+  current_step?: string | null;
+  progress?: WorkflowProgress | null;
   result_summary?: string | null;
-  error?: string | null;
-  attempts: number;
-  max_attempts: number;
-  priority?: number;
-  dedupe_key?: string | null;
+  error_code?: string | null;
+  error_message?: string | null;
   cancel_requested?: boolean;
+  steps: WorkflowStepView[];
   created_at: string;
   updated_at: string;
   started_at?: string | null;
   finished_at?: string | null;
 }
 
-export interface JobAccepted {
+export interface WorkflowAccepted {
   status: "queued";
   message: string;
-  job_id: string;
-  job: Job;
+  workflow_id: string;
+  workflow: WorkflowRunView;
 }

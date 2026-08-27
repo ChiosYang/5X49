@@ -27,23 +27,28 @@ class LibrarySyncService:
         with self._lock:
             return dict(self._status)
 
-    def reconcile(self, media_dir: Optional[str] = None) -> dict:
+    def reconcile(self, media_dir: Optional[str] = None, *, ctx=None) -> dict:
         """Scan the whole library and mark missing local editions."""
         target_dir = Path(media_dir or get_media_dir())
         started_at = datetime.now(timezone.utc).isoformat()
         self._set_status(state="running", last_started_at=started_at, last_error=None)
 
         try:
+            self._progress(ctx, "discover", "Discovering media observations")
             if not target_dir.exists():
                 raise FileNotFoundError(f"Directory not found: {target_dir}")
 
             scanner = NFOScanner(str(target_dir), video_probe_cache=self._video_probe_cache())
             observed_films = scanner.scan_observed()
+            self._progress(ctx, "inspect", "Inspecting discovered media")
             observations = [item.film for item in observed_films]
+            self._progress(ctx, "resolve", "Resolving Film identities")
+            self._progress(ctx, "persist", "Persisting Canonical observations")
             added = library_manager.add_observations(
                 observations,
                 structured_observations=[item.structured_metadata for item in observed_films],
             )
+            self._progress(ctx, "reconcile_missing", "Reconciling missing editions")
             missing = library_manager.mark_missing_not_seen_since(started_at)
 
             result = {
@@ -51,6 +56,7 @@ class LibrarySyncService:
                 "added": added,
                 "missing": missing,
             }
+            self._progress(ctx, "finalize", "Finalizing Library reconcile")
             self._set_status(
                 state="idle",
                 last_finished_at=datetime.now(timezone.utc).isoformat(),
@@ -72,9 +78,10 @@ class LibrarySyncService:
             )
             raise
 
-    def refresh_item(self, library_item_id: str) -> dict:
+    def refresh_item(self, library_item_id: str, *, ctx=None) -> dict:
         """Refresh one local edition from its current video locator."""
-        item = library_manager.get_item(library_item_id)
+        self._progress(ctx, "resolve_subject", "Resolving Library edition")
+        item = library_manager.get_item_operation_context(library_item_id)
         if not item:
             raise LookupError("Library item not found")
 
@@ -84,7 +91,13 @@ class LibrarySyncService:
         if not folder_path:
             raise ValueError("Library item does not have a local video locator")
 
-        updated = self.scan_folder(folder_path, library_item_id=library_item_id)
+        self._progress(ctx, "inspect", "Inspecting Library edition")
+        updated = self.scan_folder(
+            folder_path,
+            library_item_id=library_item_id,
+            ctx=ctx,
+            include_resolution_stage=False,
+        )
         if not updated:
             raise FileNotFoundError("Library item folder or video file not found")
         if updated.get("status") == "pending_relink":
@@ -104,17 +117,23 @@ class LibrarySyncService:
         *,
         command_id: Optional[str] = None,
         correlation_id: Optional[str] = None,
+        ctx=None,
+        include_resolution_stage: bool = True,
     ) -> Optional[dict]:
+        if include_resolution_stage:
+            self._progress(ctx, "resolve_subject", "Resolving scan subject")
         folder = Path(folder_path)
         if not folder.exists() or not folder.is_dir():
             return None
 
         scanner = NFOScanner(str(folder.parent), video_probe_cache=self._video_probe_cache())
+        self._progress(ctx, "inspect", "Inspecting media folder")
         observed_film = scanner.scan_folder_observed(folder)
         if not observed_film:
             return None
         film_data = observed_film.film
 
+        self._progress(ctx, "persist", "Persisting media observation")
         upsert_result = library_manager.upsert_observation(
             film_data,
             library_item_id=library_item_id,
@@ -134,6 +153,7 @@ class LibrarySyncService:
                 film_id=film.get("id"),
                 library_item_id=upsert_result.get("library_item_id"),
             )
+        self._progress(ctx, "finalize", "Finalizing media refresh")
         return film
 
     def mark_path_missing(self, path: str | Path) -> int:
@@ -150,25 +170,31 @@ class LibrarySyncService:
         with self._lock:
             self._status.update(updates)
 
+    @staticmethod
+    def _progress(ctx, stage: str, message: str) -> None:
+        if ctx is not None and hasattr(ctx, "progress"):
+            ctx.progress(stage=stage, message=message)
+        if ctx is not None and hasattr(ctx, "raise_if_cancelled"):
+            ctx.raise_if_cancelled()
+
     def _video_probe_cache(self) -> dict[str, dict]:
         cache: dict[str, dict] = {}
-        for film in library_manager.list_films():
-            video = (film.get("primary_item") or {}).get("video") or {}
-            locator = video.get("locator")
+        for film in library_manager.list_operation_contexts():
+            locator = film.get("media_path")
             if locator:
                 cache[locator] = {
                     "media_path": locator,
-                    "file_size": video.get("file_size"),
-                    "file_mtime": video.get("file_mtime"),
-                    "video_width": video.get("width"),
-                    "video_height": video.get("height"),
-                    "video_codec": video.get("codec"),
-                    "video_bitrate": video.get("bitrate"),
-                    "video_duration": video.get("duration_seconds"),
-                    "video_fps": video.get("fps"),
-                    "video_dynamic_range": video.get("dynamic_range"),
-                    "video_bit_depth": video.get("bit_depth"),
-                    "audio_tracks": video.get("audio_tracks"),
+                    "file_size": film.get("file_size"),
+                    "file_mtime": film.get("file_mtime"),
+                    "video_width": film.get("video_width"),
+                    "video_height": film.get("video_height"),
+                    "video_codec": film.get("video_codec"),
+                    "video_bitrate": film.get("video_bitrate"),
+                    "video_duration": film.get("video_duration"),
+                    "video_fps": film.get("video_fps"),
+                    "video_dynamic_range": film.get("video_dynamic_range"),
+                    "video_bit_depth": film.get("video_bit_depth"),
+                    "audio_tracks": film.get("audio_tracks"),
                 }
         return cache
 

@@ -65,7 +65,7 @@ Analysis → Historian → Resolver → Critic → Evidence → Persistence
 - [x] Read models rebuild to the same digest and never access media or network.
 - [x] Film details expose a bounded factual Graph with no inferred leakage
   before Gate B.
-- [ ] Library, metadata and Analysis long operations resume safely from durable
+- [x] Library, metadata and Analysis long operations resume safely from durable
   Workflow steps.
 - [ ] Analysis candidates pass deterministic resolver and critic policies
   before persistence.
@@ -117,7 +117,7 @@ Status: Complete
 
 ### Slice 4 — Durable Workflow
 
-Status: Pending
+Status: Complete
 
 - Add Schema v3 WorkflowRun/WorkflowStep and link private Jobs to steps.
 - Migrate Library reconcile, metadata refresh and Analysis V2.
@@ -182,12 +182,17 @@ Status: Pending
   rendered the same accepted Genre edge; the 375px viewport had equal document
   client/scroll widths, 2 keyboard-focusable SVG nodes and the accessible
   relation-list fallback. Temporary services were stopped afterward.
+- `python -m unittest test_workflows.py test_api_routes.py test_database_migrations.py -v`
+  — 18 Schema v3, workflow lifecycle, privacy, route and migration tests passed.
+- `npm run typecheck` — passed after the public Job DTO/SSE surface was replaced
+  by WorkflowRun/WorkflowStep.
 
 ## Remaining risks
 
 - Projection fan-out must stay bounded so synchronous writes remain responsive.
-- Workflow recovery must never repeat uncontrolled filesystem or network side
-  effects.
+- Workflow steps use stable input hashes and resume after completed steps;
+  external operations remain at-least-once and therefore must retain their
+  existing domain/file idempotency guards.
 - Gate B remains blocked until the final pipeline has complete live and human
   evidence.
 - A future sync implementation will require a separate conflict and threat

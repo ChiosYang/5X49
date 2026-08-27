@@ -45,6 +45,7 @@ class AnalysisService:
 
     def analyze_film(self, film_id: str, ctx: Any | None = None) -> dict:
         try:
+            self._progress(ctx, "build_input", "Building Canonical analysis input")
             configuration = self.historian.analysis_configuration()
             job_id = self._job_id(ctx, film_id)
             with Session(self.database_engine) as session:
@@ -70,6 +71,7 @@ class AnalysisService:
 
         if start.cached:
             try:
+                self._progress(ctx, "persist", "Restoring persisted analysis result")
                 with Session(self.database_engine) as session:
                     completed = analysis_runtime_persistence.restore_cached_result(
                         session,
@@ -77,6 +79,7 @@ class AnalysisService:
                         job_id=job_id,
                     )
                     session.commit()
+                self._progress(ctx, "finalize", "Analysis workflow complete")
                 return self._result(film_id, completed, cached=True)
             except Exception as exc:
                 logger.error(
@@ -88,6 +91,7 @@ class AnalysisService:
 
         try:
             self._raise_if_cancelled(ctx)
+            self._progress(ctx, "generate", "Generating bounded analysis candidates")
             generation = self.historian.analyze_v2(
                 start.analysis_input,
                 configuration=configuration,
@@ -96,19 +100,23 @@ class AnalysisService:
             if generation.output.subject_film_id != start.film_id:
                 raise AnalysisSubjectMismatch("Analysis output subject does not match input")
 
+            self._progress(ctx, "resolve", "Resolving analysis entities")
             remote_targets, remote_failures = self._prepare_tmdb_targets(
                 generation.output,
                 ctx,
             )
+            self._progress(ctx, "critic", "Applying deterministic analysis policy")
             with Session(self.database_engine) as session:
                 evidence_candidates = analysis_runtime_persistence.evidence_candidates(
                     session,
                     generation.output,
                     remote_targets,
                 )
+            self._progress(ctx, "verify_evidence", "Verifying public Evidence")
             evidence_batch = self.evidence.verify(evidence_candidates)
             self._raise_if_cancelled(ctx)
 
+            self._progress(ctx, "persist", "Persisting analysis facts")
             with Session(self.database_engine) as session:
                 completed = analysis_runtime_persistence.complete(
                     session,
@@ -124,6 +132,7 @@ class AnalysisService:
                     job_id=job_id,
                 )
                 session.commit()
+            self._progress(ctx, "finalize", "Analysis workflow complete")
             return self._result(film_id, completed, cached=False)
         except Exception as exc:
             cancelled = exc.__class__.__name__ == "JobCancelled"
@@ -207,6 +216,12 @@ class AnalysisService:
     def _raise_if_cancelled(ctx: Any | None) -> None:
         if ctx is not None and hasattr(ctx, "raise_if_cancelled"):
             ctx.raise_if_cancelled()
+
+    @staticmethod
+    def _progress(ctx: Any | None, stage: str, message: str) -> None:
+        if ctx is not None and hasattr(ctx, "progress"):
+            ctx.progress(stage=stage, message=message)
+        AnalysisService._raise_if_cancelled(ctx)
 
     @staticmethod
     def _result(film_id: str, completed, *, cached: bool) -> dict:

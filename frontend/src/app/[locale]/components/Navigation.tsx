@@ -1,6 +1,6 @@
 import { Search } from "lucide-react";
 import { Link } from "@/i18n/routing";
-import JobRuntimeStatus from "@/components/JobRuntimeStatus";
+import WorkflowRuntimeStatus from "@/components/WorkflowRuntimeStatus";
 import NavigationMenu from "./NavigationMenu";
 
 export default function Navigation() {
@@ -17,7 +17,7 @@ export default function Navigation() {
       {/* Right: Search and background jobs */}
       <div className="flex items-center gap-4">
         <Search className="w-5 h-5 opacity-0 md:opacity-100 drop-shadow-lg" /> {/* Hidden on mobile or visual only */}
-        <JobRuntimeStatus />
+        <WorkflowRuntimeStatus />
       </div>
     </nav>
   );

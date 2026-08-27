@@ -133,7 +133,7 @@ The predicate registry is immutable reference data. `HAS_GENRE` is factual-only;
 the remaining Analysis predicates are the strict model-output subset described
 in `docs/analysis-v2-contract.md`.
 
-## Events, Jobs and restoration
+## Events, workflows and restoration
 
 `EventRecord` is an append-only audit trail for canonical aggregates. A state
 mutation and its event commit in the same SQL session. Events are not a full
@@ -150,8 +150,13 @@ Preview calculates a state hash and confirmation token. Restore fails on state
 drift, stale token, repeated use, unavailable backup state or unsafe file move.
 File operations reference an opaque Git-ignored manifest.
 
-`Job` owns background execution state. Its public projection is sanitized and
-contains only IDs, counts, booleans, bounded status and truncated hashes.
+`WorkflowRun` and ordered `WorkflowStep` records own product-level background
+execution state. Definitions are code-versioned, steps have stable input/output
+hashes, and retry resumes from the first incomplete step. Public views contain
+only stable IDs, bounded counts/status and safe summaries.
+
+`Job` is a private single-step execution queue linked to a Workflow run/step.
+It has no public route or SSE DTO and is never a domain fact source.
 
 ## Clear semantics
 

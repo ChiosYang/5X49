@@ -6,9 +6,8 @@ from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, Field as PydanticField
 from sqlmodel import Session
 
-from app.api.common import DEFAULT_MEDIA_DIR, job_response
+from app.api.common import DEFAULT_MEDIA_DIR, workflow_response
 from app.database import engine
-from app.jobs import job_runtime
 from app.services.analysis_runtime import analysis_runtime_persistence
 from app.services.event_bus import library_event_bus
 from app.services.graph_query import graph_query_service
@@ -20,6 +19,7 @@ from app.services.settings import get_media_dir
 from app.services.user_state import film_profile_state_manager
 from app.services.watcher import library_watcher
 from app.utils.security import validate_resource_id
+from app.workflows import workflow_runtime
 
 
 router = APIRouter()
@@ -110,12 +110,12 @@ def reconcile_library(media_dir: str = Query(default=None)):
     except OperationManifestError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     target_hash = hashlib.sha256(str(Path(target_dir).resolve()).encode("utf-8")).hexdigest()[:16]
-    job = job_runtime.enqueue(
+    workflow = workflow_runtime.enqueue(
         "library.reconcile",
         {"media_root_ref": path_ref},
         dedupe_key=f"library.reconcile:{target_hash}",
     )
-    return job_response(job, "Library reconcile queued")
+    return workflow_response(workflow, "Library reconcile queued")
 
 
 @router.post("/library/scan-folder")
@@ -130,12 +130,12 @@ def scan_library_folder(folder_path: str):
     except OperationManifestError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     path_hash = hashlib.sha256(str(Path(folder_path).resolve()).encode("utf-8")).hexdigest()[:16]
-    job = job_runtime.enqueue(
+    workflow = workflow_runtime.enqueue(
         "library.scan_folder",
         {"path_ref": path_ref},
         dedupe_key=f"library.scan_folder:{path_hash}",
     )
-    return job_response(job, "Folder scan queued")
+    return workflow_response(workflow, "Folder scan queued")
 
 
 @router.post("/library/items/{library_item_id}/refresh")
@@ -143,12 +143,12 @@ def refresh_library_item(library_item_id: str):
     _validate_id(library_item_id, "library item")
     if library_manager.get_item(library_item_id) is None:
         raise HTTPException(status_code=404, detail="Library item not found")
-    job = job_runtime.enqueue(
+    workflow = workflow_runtime.enqueue(
         "library.refresh_item",
         {"library_item_id": library_item_id},
         dedupe_key=f"library.refresh_item:{library_item_id}",
     )
-    return job_response(job, "Library item refresh queued")
+    return workflow_response(workflow, "Library item refresh queued")
 
 
 @router.post("/library/items/{library_item_id}/ignore")
@@ -175,12 +175,12 @@ def trigger_analysis(film_id: str):
     _validate_id(film_id, "film")
     if library_manager.get_film(film_id) is None:
         raise HTTPException(status_code=404, detail="Film not found")
-    job = job_runtime.enqueue(
+    workflow = workflow_runtime.enqueue(
         "analysis.analyze_film",
         {"film_id": film_id},
         dedupe_key=f"analysis.analyze_film:{film_id}",
     )
-    return job_response(job, f"Analysis queued for {film_id}")
+    return workflow_response(workflow, f"Analysis queued for {film_id}")
 
 
 @router.get("/films/{film_id}/analysis")

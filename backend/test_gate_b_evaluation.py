@@ -376,7 +376,7 @@ class GateBEvaluationTests(unittest.TestCase):
                 version = connection.execute(
                     "SELECT MAX(version) FROM schema_migrations WHERE status='applied'"
                 ).fetchone()[0]
-                self.assertEqual(version, 1)
+                self.assertEqual(version, 3)
                 for case in self.dataset.cases:
                     for provider, external_id in case.input.external_identities.items():
                         entity_id = connection.execute(

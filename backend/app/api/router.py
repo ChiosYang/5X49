@@ -1,11 +1,11 @@
 from fastapi import APIRouter
 
-from app.api import agents, core, events, jobs, library, metadata, settings, system
+from app.api import agents, core, events, library, metadata, settings, system, workflows
 
 
 api_router = APIRouter()
 api_router.include_router(core.router)
-api_router.include_router(jobs.router)
+api_router.include_router(workflows.router)
 api_router.include_router(metadata.router)
 api_router.include_router(events.router)
 api_router.include_router(library.router)

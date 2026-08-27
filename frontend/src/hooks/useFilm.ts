@@ -7,7 +7,7 @@ import type {
   FilmGraphView,
   FilmProfileState,
   FilmProfileStateUpdate,
-  JobAccepted,
+  WorkflowAccepted,
   LibraryFilmDetail,
   OperationRestoreResult,
   OperationSnapshotPreview,
@@ -64,7 +64,7 @@ export function useWatchHistory() {
 export function useAnalyzeFilm(filmId: string) {
   return useSWRMutation(
     filmId ? API.filmAnalysisRuns(filmId) : null,
-    async (): Promise<JobAccepted> => {
+    async (): Promise<WorkflowAccepted> => {
       const response = await fetch(API.filmAnalysisRuns(filmId), { method: "POST" });
       if (!response.ok) throw new Error(await errorMessage(response, "Failed to trigger analysis"));
       return response.json();
@@ -75,7 +75,7 @@ export function useAnalyzeFilm(filmId: string) {
 export function useRefreshLibraryItem(itemId: string) {
   return useSWRMutation(
     itemId ? API.libraryItemRefresh(itemId) : null,
-    async (): Promise<JobAccepted> => {
+    async (): Promise<WorkflowAccepted> => {
       const response = await fetch(API.libraryItemRefresh(itemId), { method: "POST" });
       if (!response.ok) throw new Error(await errorMessage(response, "Failed to refresh edition"));
       return response.json();
@@ -86,7 +86,7 @@ export function useRefreshLibraryItem(itemId: string) {
 export function useRefreshFilmExternalScores(filmId: string) {
   return useSWRMutation(
     filmId ? API.filmExternalScores(filmId) : null,
-    async (): Promise<JobAccepted> => {
+    async (): Promise<WorkflowAccepted> => {
       const response = await fetch(API.filmExternalScores(filmId), { method: "POST" });
       if (!response.ok) throw new Error(await errorMessage(response, "Failed to refresh external scores"));
       return response.json();

@@ -80,12 +80,12 @@ curl -s -X POST http://127.0.0.1:8000/films/<film_id>/analysis-runs
 curl -s http://127.0.0.1:8000/films/<film_id>/analysis
 ```
 
-分析 Job 直接写入 AnalysisRun、Assertion、Evidence 与 resolution review。
+分析 Workflow 直接写入 AnalysisRun、Assertion、Evidence 与 resolution review。
 读取接口返回结构化 `FilmAnalysisView`；不要寻找 raw response、hidden reasoning
 或兼容分析 JSON。模型运行需要现有 OpenRouter/OpenAI-compatible 配置；TMDB Key
 只用于验证尚未存在的精确电影身份。
 
-## Activity、恢复与 Jobs
+## Activity、恢复与 Workflows
 
 ```bash
 curl -s "http://127.0.0.1:8000/activity/events?aggregate_type=film&limit=50"
@@ -93,15 +93,16 @@ curl -s http://127.0.0.1:8000/operations/<snapshot_id>/preview
 curl -s -X POST http://127.0.0.1:8000/operations/<snapshot_id>/restore \
   -H "Content-Type: application/json" \
   -d '{"confirmation_token":"<64 lowercase hex>"}'
-curl -s http://127.0.0.1:8000/jobs
-curl -s http://127.0.0.1:8000/jobs/<job_id>
+curl -s http://127.0.0.1:8000/workflows
+curl -s http://127.0.0.1:8000/workflows/<workflow_id>
 ```
 
 - Activity 可按 `aggregate_type`、`aggregate_id`、`type`、`command_id`、
   `correlation_id` 和 `limit` 过滤。
 - `/library/events` 是实时 SSE，不是持久审计来源。
 - Restore 必须先 preview；状态漂移、旧 token、重复恢复或文件冲突返回 `409`。
-- Job 的公开 payload/result 已脱敏，不暴露路径、标题、密钥、原始模型输出或完整 dedupe key。
+- Workflow/Step 的公开结果已脱敏，不暴露路径、标题、密钥、原始模型输出或完整 dedupe key。
+- Job 仅为内部单步骤执行队列，没有公开 HTTP/SSE DTO。
 
 ## 设置与维护
 
@@ -111,7 +112,7 @@ curl -s http://127.0.0.1:8000/jobs/<job_id>
 - `/library/scrape`、`/library/scrape/status` 管理批量刮削。
 - `/library/external-scores/refresh`、`/library/external-scores/status` 管理全库评分。
 
-所有长任务应保存返回的 `job_id`，再通过 `/jobs/{job_id}` 或 SSE 跟踪。
+所有长任务应保存返回的 `workflow_id`，再通过 `/workflows/{workflow_id}` 或 SSE 跟踪。
 
 ## 已删除接口
 

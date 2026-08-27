@@ -202,8 +202,9 @@ healthcheck Python 命令没有调用 `raise_for_status()`，所以只要请求�
 1. 将电影子目录放在宿主机配置的 `MEDIA_DIR` 下；
 2. 容器内路径保持 `/media`；
 3. 通过 Settings 页触发扫描，或调用 `POST /library/scan`；
-4. API 返回 queued job，而不是同步完成结果；
-5. 使用返回的 job ID 查询 `GET /jobs/{job_id}`，再用 `GET /library` 确认条目。
+4. API 返回 queued workflow，而不是同步完成结果；
+5. 使用返回的 workflow ID 查询 `GET /workflows/{workflow_id}`，再用
+   `GET /library/films` 确认条目。
 
 ### 7.2 实测状态
 

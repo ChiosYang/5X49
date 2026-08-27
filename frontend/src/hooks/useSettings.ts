@@ -426,7 +426,7 @@ export function useClearLibraryData() {
       await Promise.all([
         mutate(API.libraryFilms(), []),
         mutate(API.watchHistory(), []),
-        mutate(API.jobs()),
+        mutate(API.workflows()),
       ]);
       return data;
     }

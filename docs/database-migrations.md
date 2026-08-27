@@ -2,7 +2,7 @@
 
 - Status: Adopted
 - Epoch: `fresh-canonical-v1`
-- Current version: `2`
+- Current version: `3`
 
 ## Baseline decision
 
@@ -39,7 +39,7 @@ Startup behavior:
    without modifying the file.
 6. Bootstrap and verify synchronous read models without filesystem or network
    access.
-7. Start Job workers, watcher and HTTP traffic only after the journal and
+7. Start the private Job worker, watcher and HTTP traffic only after the journal and
    projections reach the current version.
 
 Repeated startup is a no-op for schema and reference data.
@@ -84,6 +84,18 @@ uv run python -m app.projections rebuild --film <film-id>
 Library and detail APIs never silently fall back to live Canonical joins. A
 missing or stale projection returns `503` with code `projection_unavailable`.
 
+## Additive Schema v3
+
+Schema v3 adds durable `workflow_run` and `workflow_step` records and links the
+private `job` execution queue to the active run/step. Workflow definitions stay
+versioned in code. Public long-operation status is read from Workflow/Step;
+Job has no HTTP or SSE representation.
+
+Worker restart moves an interrupted step back to queued when retry budget
+remains. Completed steps retain their hashes and terminal state; cancellation
+and retry resume from the first incomplete step. Public summaries are bounded
+and exclude payloads, paths, provider output and credentials.
+
 ## Old database cutover
 
 An old development database is not upgraded or imported. Cutover is an explicit
@@ -103,7 +115,7 @@ entry point.
 
 ## Future migrations
 
-Future changes resume at version 3. Each migration must have a monotonically
+Future changes resume at version 4. Each migration must have a monotonically
 increasing integer version, stable name, deterministic checksum and one
 transactional upgrade.
 
