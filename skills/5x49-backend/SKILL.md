@@ -117,6 +117,20 @@ curl -s http://127.0.0.1:8000/workflows/<workflow_id>
 
 所有长任务应保存返回的 `workflow_id`，再通过 `/workflows/{workflow_id}` 或 SSE 跟踪。
 
+## Local-first 可移植导出
+
+在 `backend/` 运行：
+
+```powershell
+python -m app.portability export --output data/exports/library-export.zip
+python -m app.portability validate --input data/exports/library-export.zip
+```
+
+`library-export.v1` 只导出 Canonical Film 知识、FilmProfileState、Viewing、
+用户策展元数据及 accepted/rejected Assertion 决定。它不包含媒体、locator、
+Settings/密钥、Job/Workflow/Event、Read Model 或模型原始内容。v1 没有 import、
+设备注册、逻辑时钟、CRDT 或冲突合并能力。
+
 ## 已删除接口
 
 不得调用：

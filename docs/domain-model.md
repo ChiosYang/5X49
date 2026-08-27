@@ -172,3 +172,15 @@ The v1 epoch has no Movie table, per-Movie state table, permanent compatibility
 alias, historical backfill report, compatibility reader, legacy projection
 rebuilder, or raw analysis JSON projection. Old databases are not upgraded into this model;
 they are archived and the application creates an empty Fresh Canonical database.
+
+## Portability boundary
+
+`library-export.v1` is a derived, read-only snapshot. It can contain canonical
+Film identity and portable titles, FilmProfileState, Viewing, user-curated
+metadata and explicit user Assertion decisions. It is not a fact source and
+cannot be used to rebuild Read Models or replay Workflows.
+
+The package excludes LibraryItem/MediaAsset locators, Settings, credentials,
+EventRecord, Job, Workflow, OperationSnapshot, Read Models, source documents
+and raw model/web content. Version 1 reserves null synchronization-version
+fields but defines no import, device, clock or conflict semantics.

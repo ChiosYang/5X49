@@ -64,6 +64,13 @@ live/human/overall strictly blocked and the same frozen dataset hash prefix.
 Production and evaluator now share `genealogy-v2.v3`, `analysis-resolver.v3`,
 `analysis-policy-critic.v1` and the same Analysis Workflow entrypoint.
 
+The final-pipeline preflight on 2026-08-27 found the exact
+`stealth/ox-alpha` model and its matching pricing manifest, but public Evidence
+validation returned the stable blocker `evidence_network_boundary_blocked`.
+No strict 36-case live run or human-review artifact was created. Consequently
+`live_status`, `human_status` and the Gate B conclusion remain **Blocked**, and
+`graph-visibility.v1` continues to hide all inferred edges.
+
 The ignored diagnostic run `w4-s4-pilot-v2-20260826-02` used the pinned free
 model with low reasoning and a bounded output budget. It completed 6/6 cases.
 Aggregate checks recorded resolution accuracy and required recall above policy

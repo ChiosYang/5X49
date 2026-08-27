@@ -113,6 +113,7 @@ acceptance. A quality-gate pass does not automatically ship it.
 
 ### 7. Local-first portability, Diary and Explore
 
+- deterministic `library-export.v1` export and validation are complete;
 - multiple explicit Viewing records and diary editing;
 - Explore by the most reliable dimensions: genre, person, country/decade;
 - explainable Cinema DNA based on accepted facts and user Viewing data;

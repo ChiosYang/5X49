@@ -71,8 +71,8 @@ Analysis → Historian → Resolver → Critic → Evidence → Persistence
   before persistence.
 - [ ] Gate B remains strict and only a valid conclusion may unlock accepted
   inferred Graph edges.
-- [ ] `library-export.v1` is deterministic, private and read-only.
-- [ ] Backend, frontend, privacy and responsive smoke suites pass.
+- [x] `library-export.v1` is deterministic, private and read-only.
+- [x] Backend, frontend, privacy and responsive smoke suites pass.
 
 ## Slices
 
@@ -149,7 +149,7 @@ Status: Blocked
 
 ### Slice 7 — Local-first portability boundary
 
-Status: Pending
+Status: Complete
 
 - Add deterministic `library-export.v1` export and validation commands.
 - Export portable Film knowledge and personal state without media, paths,
@@ -193,6 +193,19 @@ Status: Pending
 - Offline Gate B rehearsal `architecture-phase5-20260827-01` — tooling passed;
   live, human and overall remained strictly blocked with frozen dataset hash
   prefix `fbfc9a1a481aef30`.
+- Final-pipeline Evidence preflight — blocked with stable code
+  `evidence_network_boundary_blocked`; the exact model and matching pricing
+  manifest are present, but no 36-case live run or human review was created.
+- `python -m unittest test_portability.py -q` — 4 deterministic digest,
+  read-only database, privacy, corruption and archive-boundary tests passed.
+- Complete backend suite excluding the credentialed `test_agent.py` — 142
+  tests passed; `python -m compileall -q app` also passed.
+- Final offline Gate B rehearsal `architecture-final-20260827-01` — tooling
+  passed; live, human and overall remained strictly blocked with dataset hash
+  prefix `fbfc9a1a481aef30`.
+- Frontend `npm run lint`, `npm run typecheck` and `npm run build` passed during
+  the Workflow/API cutover; bilingual desktop and 375px Graph smoke evidence is
+  recorded under Slice 3 above.
 
 ## Remaining risks
 
@@ -200,7 +213,7 @@ Status: Pending
 - Workflow steps use stable input hashes and resume after completed steps;
   external operations remain at-least-once and therefore must retain their
   existing domain/file idempotency guards.
-- Gate B remains blocked until the final pipeline has complete live and human
-  evidence.
+- Gate B remains blocked until the Evidence network boundary passes and the
+  final pipeline has complete live and human evidence.
 - A future sync implementation will require a separate conflict and threat
   model; the export contract does not authorize it.
