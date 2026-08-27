@@ -132,6 +132,30 @@ def scrape_film(film_id: str, options: ScrapeOptions | None = None):
     return result.model_dump()
 
 
+@router.get("/films/{film_id}/scrape/candidates")
+def get_film_scrape_candidates(film_id: str, language: str | None = Query(default=None)):
+    """Find TMDB candidates for one Film without changing library state."""
+    if not validate_resource_id(film_id, "film"):
+        raise HTTPException(status_code=400, detail="Invalid Film ID format")
+
+    try:
+        return [
+            candidate.model_dump()
+            for candidate in metadata_scraper.candidates_for_film(film_id, language=language)
+        ]
+    except LookupError:
+        raise HTTPException(status_code=404, detail="Film not found")
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc))
+    except RuntimeError as exc:
+        raise HTTPException(status_code=503, detail=str(exc))
+    except requests.HTTPError as exc:
+        status_code = exc.response.status_code if exc.response is not None else 502
+        raise HTTPException(status_code=status_code, detail=f"TMDB candidate lookup failed: {str(exc)}")
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"TMDB candidate lookup failed: {str(exc)}")
+
+
 @router.post("/films/{film_id}/scrape/confirm")
 def confirm_film_scrape(film_id: str, tmdb_id: int, options: ScrapeOptions | None = None):
     if not validate_resource_id(film_id, "film"):

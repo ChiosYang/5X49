@@ -7,16 +7,17 @@ import {
   CheckCircle2,
   Clock3,
   Circle,
+  FolderClock,
   ListFilter,
   Star,
+  TriangleAlert,
   Type,
 } from "lucide-react";
 import { Link } from "@/i18n/routing";
 import { getLibraryFilms, getRootVideos } from "@/lib/server-api";
 import type { LibraryFilmSummary } from "@/types/movie";
+import { getLibraryAttentionCounts } from "@/lib/library-attention";
 import LibraryMovieCard from "./LibraryMovieCard";
-import LibraryOrganizeRootButton from "./LibraryOrganizeRootButton";
-import LibraryRefreshButton from "./LibraryRefreshButton";
 
 type LibrarySortKey = "title" | "added" | "duration";
 type SortDirection = "asc" | "desc";
@@ -143,6 +144,7 @@ export default async function LibraryPage({ params, searchParams }: LibraryPageP
   const direction = normalizeDirection(firstParam(resolvedSearchParams.dir), sort);
   const filter = normalizeFilter(firstParam(resolvedSearchParams.filter));
   const [films, rootVideos] = await Promise.all([getLibraryFilms(), getRootVideos()]);
+  const attention = getLibraryAttentionCounts(films, rootVideos.length);
   const filteredMovies = films.filter((movie) => {
     const state = movie.profile_state;
     if (filter === "watched") return Boolean(state?.watched);
@@ -165,6 +167,24 @@ export default async function LibraryPage({ params, searchParams }: LibraryPageP
             <span className="hidden text-xs font-bold tracking-widest text-ink-subtle uppercase md:inline-block">
               {filteredMovies.length} FILMS
             </span>
+            {attention.metadataReviews > 0 ? (
+              <Link
+                href="/library/manage#metadata-reviews"
+                className="focus-ring duration-fast inline-flex min-h-10 items-center gap-2 rounded-pill border border-warning/45 bg-warning/10 px-3 type-badge text-warning transition-colors hover:border-warning/75 hover:bg-warning/15"
+              >
+                <TriangleAlert className="h-3.5 w-3.5 shrink-0" />
+                {t("metadataReviewsPending", { count: attention.metadataReviews })}
+              </Link>
+            ) : null}
+            {attention.rootVideos > 0 ? (
+              <Link
+                href="/library/manage#root-video-reviews"
+                className="focus-ring duration-fast inline-flex min-h-10 items-center gap-2 rounded-pill border border-line-strong bg-surface/70 px-3 type-badge text-ink-muted transition-colors hover:border-ink-disabled hover:bg-surface-hover hover:text-ink"
+              >
+                <FolderClock className="h-3.5 w-3.5 shrink-0" />
+                {t("rootVideosPending", { count: attention.rootVideos })}
+              </Link>
+            ) : null}
             <div className="group/filter relative">
               <button
                 type="button"
@@ -245,10 +265,6 @@ export default async function LibraryPage({ params, searchParams }: LibraryPageP
                   })}
                 </div>
               </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <LibraryOrganizeRootButton rootVideos={rootVideos} />
-              <LibraryRefreshButton />
             </div>
           </div>
         </header>

@@ -6,6 +6,7 @@
     "dev": "next dev -p 5549",
     "build": "next build",
     "start": "next start -p 5549",
+    "test:unit": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test --experimental-strip-types",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
     "check": "npm run lint && npm run typecheck && npm run build"

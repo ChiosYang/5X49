@@ -37,6 +37,7 @@ CANONICAL_ROUTES = {
     ("GET", "/films/{film_id}/artwork"),
     ("PUT", "/films/{film_id}/artwork"),
     ("POST", "/films/{film_id}/scrape"),
+    ("GET", "/films/{film_id}/scrape/candidates"),
     ("POST", "/films/{film_id}/scrape/confirm"),
     ("POST", "/films/{film_id}/external-scores/refresh"),
     ("GET", "/activity/events"),
@@ -117,6 +118,40 @@ class ApiRouteContractTests(unittest.TestCase):
             response = self.client.get(f"/films/{film_id}/graph")
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["root"]["id"], film_id)
+
+    def test_scrape_candidate_route_maps_resource_and_service_errors(self):
+        film_id = "film_" + "a" * 32
+        response = self.client.get("/films/not-a-film/scrape/candidates")
+        self.assertEqual(response.status_code, 400)
+
+        with patch(
+            "app.api.metadata.metadata_scraper.candidates_for_film",
+            side_effect=LookupError("Film not found"),
+        ):
+            response = self.client.get(f"/films/{film_id}/scrape/candidates")
+        self.assertEqual(response.status_code, 404)
+
+        with patch(
+            "app.api.metadata.metadata_scraper.candidates_for_film",
+            side_effect=ValueError("Film does not have an available media edition"),
+        ):
+            response = self.client.get(f"/films/{film_id}/scrape/candidates")
+        self.assertEqual(response.status_code, 409)
+
+        with patch(
+            "app.api.metadata.metadata_scraper.candidates_for_film",
+            side_effect=RuntimeError("TMDB API key is not configured"),
+        ):
+            response = self.client.get(f"/films/{film_id}/scrape/candidates")
+        self.assertEqual(response.status_code, 503)
+
+        with patch(
+            "app.api.metadata.metadata_scraper.candidates_for_film",
+            return_value=[],
+        ):
+            response = self.client.get(f"/films/{film_id}/scrape/candidates")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), [])
 
 
 if __name__ == "__main__":

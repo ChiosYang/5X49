@@ -13,7 +13,7 @@ import app.services.operation_snapshots as snapshot_module
 from app.canonical_models import Assertion, Credit, ExternalIdentity, FilmCountry, OperationSnapshot
 from app.database import configure_sqlite_engine
 from app.migrations.runner import run_migrations
-from app.models import EventRecord
+from app.models import EventRecord, Job, WorkflowRun
 from app.services.library import library_manager
 from app.services.library_sync import library_sync_service
 from app.services.metadata.models import ArtworkSelection, ScrapeOptions
@@ -106,6 +106,64 @@ class MetadataScraperIntegrationTests(unittest.TestCase):
         details.assert_not_called()
         refreshed = library_manager.get_film(film["id"])
         self.assertEqual(refreshed["primary_item"]["metadata"]["scrape_status"], "needs_review")
+
+    def test_candidate_lookup_is_bounded_and_does_not_mutate_library_state(self):
+        film = library_sync_service.scan_folder(self.movie_dir)
+        before = library_manager.get_film(film["id"])
+        media_before = {
+            path.name: path.read_bytes()
+            for path in self.movie_dir.iterdir()
+            if path.is_file()
+        }
+        with Session(self.engine) as session:
+            event_count = len(session.exec(select(EventRecord)).all())
+            snapshot_count = len(session.exec(select(OperationSnapshot)).all())
+            job_count = len(session.exec(select(Job)).all())
+            workflow_count = len(session.exec(select(WorkflowRun)).all())
+
+        candidates = [
+            {
+                **self._candidate(),
+                "id": index + 1,
+                "title": f"Candidate {index + 1}",
+            }
+            for index in range(25)
+        ]
+        with patch.object(metadata_scraper.tmdb, "search_movies", return_value=candidates) as search:
+            result = metadata_scraper.candidates_for_film(film["id"], language="en-US")
+
+        self.assertEqual(len(result), 20)
+        search.assert_any_call("The Matrix", year=1999, language="en-US")
+        self.assertEqual(library_manager.get_film(film["id"]), before)
+        self.assertEqual(
+            {
+                path.name: path.read_bytes()
+                for path in self.movie_dir.iterdir()
+                if path.is_file()
+            },
+            media_before,
+        )
+        with Session(self.engine) as session:
+            self.assertEqual(len(session.exec(select(EventRecord)).all()), event_count)
+            self.assertEqual(len(session.exec(select(OperationSnapshot)).all()), snapshot_count)
+            self.assertEqual(len(session.exec(select(Job)).all()), job_count)
+            self.assertEqual(len(session.exec(select(WorkflowRun)).all()), workflow_count)
+
+    def test_candidate_lookup_rejects_missing_or_unavailable_films(self):
+        with self.assertRaises(LookupError):
+            metadata_scraper.candidates_for_film("film_" + "a" * 32)
+
+        film = library_sync_service.scan_folder(self.movie_dir)
+        with patch.object(
+            library_manager,
+            "get_film_operation_context",
+            return_value={
+                "id": film["id"],
+                "library_status": "missing",
+                "media_path": str(self.video),
+            },
+        ), self.assertRaisesRegex(ValueError, "available media edition"):
+            metadata_scraper.candidates_for_film(film["id"])
 
     def test_artwork_selection_updates_canonical_edition(self):
         film = library_sync_service.scan_folder(self.movie_dir)

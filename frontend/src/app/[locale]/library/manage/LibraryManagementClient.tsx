@@ -24,6 +24,8 @@ import {
   useScrapeLibrary,
   useTmdbSettings,
 } from "@/hooks/useSettings";
+import MetadataReviewQueue from "./MetadataReviewQueue";
+import RootVideoReviewQueue from "./RootVideoReviewQueue";
 
 function errorMessage(error: unknown, fallback: string) {
   return error instanceof Error ? error.message : fallback;
@@ -315,6 +317,7 @@ export default function LibraryManagementClient() {
                   : settingsT("externalScoresNow")}
               </Button>
             </ActionCard>
+            <MetadataReviewQueue refreshSignal={scrapeStatus?.last_finished_at} />
           </div>
         </section>
 
@@ -344,6 +347,7 @@ export default function LibraryManagementClient() {
             <ActionCard title={t("librarianAgent")} description={t("librarianAgentDesc")}>
               <Button responsiveWidth onClick={() => setTerminalOpen(true)}>{t("openConsole")}</Button>
             </ActionCard>
+            <RootVideoReviewQueue refreshSignal={organizeStatus?.last_finished_at} />
           </div>
         </section>
 

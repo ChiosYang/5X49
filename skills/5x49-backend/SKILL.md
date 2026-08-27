@@ -62,6 +62,7 @@ curl -s "http://127.0.0.1:8000/metadata/search?query=Inception&year=2010"
 curl -s http://127.0.0.1:8000/metadata/movie/27205
 curl -s -X POST http://127.0.0.1:8000/films/<film_id>/scrape \
   -H "Content-Type: application/json" -d '{}'
+curl -s http://127.0.0.1:8000/films/<film_id>/scrape/candidates
 curl -s http://127.0.0.1:8000/films/<film_id>/artwork
 curl -s -X PUT http://127.0.0.1:8000/films/<film_id>/artwork \
   -H "Content-Type: application/json" \
@@ -72,6 +73,8 @@ curl -s -X POST http://127.0.0.1:8000/films/<film_id>/external-scores/refresh
 TMDB 功能需要 `TMDB_API_KEY` 环境变量或托管设置；读取设置只返回配置状态，
 不会返回明文密钥。低置信度或启用确认策略时，通过
 `POST /films/{film_id}/scrape/confirm?tmdb_id=...` 明确确认。
+`GET /films/{film_id}/scrape/candidates` 只读取可用 Film 版本并返回有界候选，
+不会修改刮削状态、写 Event/NFO、下载图片或自动确认。
 
 ## Analysis V2
 

@@ -109,6 +109,28 @@ class MetadataScraper:
             score=100,
         )
 
+    def candidates_for_film(
+        self,
+        film_id: str,
+        language: Optional[str] = None,
+    ) -> list[MetadataSearchResult]:
+        """Return bounded TMDB candidates without mutating library state."""
+        movie = library_manager.get_film_operation_context(film_id)
+        if not movie:
+            raise LookupError("Film not found")
+        if movie.get("library_status") != "available" or not movie.get("media_path"):
+            raise ValueError("Film does not have an available media edition")
+
+        query, year = self._query_from_movie(movie)
+        if not query.strip():
+            raise ValueError("Film does not have enough metadata to search")
+
+        return self.search(
+            query,
+            year=year or None,
+            language=language,
+        )[:REVIEW_CANDIDATE_LIMIT]
+
     def artwork_options(
         self,
         film_id: str,

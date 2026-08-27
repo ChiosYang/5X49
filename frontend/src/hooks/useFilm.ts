@@ -9,6 +9,7 @@ import type {
   FilmProfileStateUpdate,
   WorkflowAccepted,
   LibraryFilmDetail,
+  MetadataSearchResult,
   OperationRestoreResult,
   OperationSnapshotPreview,
   ScrapeResult,
@@ -106,6 +107,12 @@ export function useScrapeFilm(filmId: string) {
       if (!response.ok) throw new Error(await errorMessage(response, "Failed to scrape metadata"));
       return response.json();
     },
+  );
+}
+
+export function useFilmScrapeCandidates(filmId: string, enabled = true) {
+  return useSWR<MetadataSearchResult[]>(
+    enabled && filmId ? API.filmScrapeCandidates(filmId) : null,
   );
 }
 

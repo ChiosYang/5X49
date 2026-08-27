@@ -1,5 +1,6 @@
 import { getTranslations } from "next-intl/server";
 import { Link } from "@/i18n/routing";
+import { isFilmResourceId } from "@/lib/resource-id";
 import { getLibraryFilm } from "@/lib/server-api";
 import MovieDetailView from "./MovieDetailView";
 
@@ -12,7 +13,7 @@ interface MovieDetailPageProps {
 export default async function MovieDetailPage({ params }: MovieDetailPageProps) {
   const t = await getTranslations("FilmDetail");
   const { id } = await params;
-  const film = await getLibraryFilm(id);
+  const film = isFilmResourceId(id) ? await getLibraryFilm(id) : null;
 
   if (!film) {
     return (

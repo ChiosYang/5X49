@@ -148,6 +148,7 @@ Viewing. Each entry embeds the Film summary and derived profile state.
 | `GET` | `/metadata/search?query=...&year=...&language=...` | Search TMDB candidates. |
 | `GET` | `/metadata/movie/{tmdb_id}` | Load one confirmation candidate. |
 | `POST` | `/films/{film_id}/scrape` | Scrape one Film. |
+| `GET` | `/films/{film_id}/scrape/candidates?language=...` | Find bounded TMDB candidates without changing Film, edition, Event, or file state. |
 | `POST` | `/films/{film_id}/scrape/confirm?tmdb_id=...` | Scrape with an explicit candidate. |
 | `GET` | `/films/{film_id}/artwork` | List TMDB artwork options. |
 | `PUT` | `/films/{film_id}/artwork` | Apply validated poster/backdrop paths. |
@@ -160,6 +161,9 @@ Viewing. Each entry embeds the Film summary and derived profile state.
 TMDB requests require `TMDB_API_KEY` from the environment or managed setting.
 The API never returns the key. External scores are normalized
 `FilmExternalScore` resources rather than JSON stored on a library row.
+Candidate lookup requires an available edition with a present video locator and
+returns an empty array when TMDB has no matches. It never marks the Film as
+reviewed or writes metadata; confirmation remains an explicit `POST`.
 
 ## Root organizer
 

@@ -30,6 +30,7 @@ export const API = {
   filmArtwork: (filmId: string) => `${API_BASE_URL}/films/${segment(filmId)}/artwork`,
   filmExternalScores: (filmId: string) => `${API_BASE_URL}/films/${segment(filmId)}/external-scores/refresh`,
   filmScrape: (filmId: string) => `${API_BASE_URL}/films/${segment(filmId)}/scrape`,
+  filmScrapeCandidates: (filmId: string) => `${API_BASE_URL}/films/${segment(filmId)}/scrape/candidates`,
   filmScrapeConfirm: (filmId: string) => `${API_BASE_URL}/films/${segment(filmId)}/scrape/confirm`,
   libraryItemRefresh: (itemId: string) => `${API_BASE_URL}/library/items/${segment(itemId)}/refresh`,
   libraryItemIgnore: (itemId: string) => `${API_BASE_URL}/library/items/${segment(itemId)}/ignore`,
