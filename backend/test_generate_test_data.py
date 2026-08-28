@@ -1,4 +1,6 @@
 import json
+import shutil
+import subprocess
 import tempfile
 import unittest
 from pathlib import Path
@@ -49,6 +51,42 @@ class FreshCanonicalTestDataGeneratorTests(unittest.TestCase):
         (unowned / "manifest.json").write_text("{}", encoding="utf-8")
         with self.assertRaises(ValueError):
             clean_dataset(unowned)
+
+    @unittest.skipUnless(shutil.which("ffmpeg") and shutil.which("ffprobe"), "FFmpeg is unavailable")
+    def test_valid_video_mode_generates_ffprobe_readable_media(self):
+        output = self.root / "valid"
+        manifest = generate_dataset(
+            output,
+            count=2,
+            seed=549,
+            profile="normal",
+            video_mode="valid",
+        )
+        video = output / "media" / "film-0001" / "film.mp4"
+        probe = subprocess.run(
+            [
+                str(shutil.which("ffprobe")),
+                "-v",
+                "error",
+                "-show_entries",
+                "stream=codec_type,width,height",
+                "-of",
+                "json",
+                str(video),
+            ],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+        streams = json.loads(probe.stdout)["streams"]
+        self.assertEqual(manifest["video_mode"], "valid")
+        self.assertEqual({item["codec_type"] for item in streams}, {"video", "audio"})
+        video_stream = next(item for item in streams if item["codec_type"] == "video")
+        self.assertEqual((video_stream["width"], video_stream["height"]), (320, 180))
+        self.assertNotEqual(
+            video.read_bytes(),
+            (output / "media" / "film-0002" / "film.mp4").read_bytes(),
+        )
 
 
 if __name__ == "__main__":

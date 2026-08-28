@@ -6,6 +6,7 @@ import argparse
 import json
 import re
 import shutil
+import subprocess
 import sys
 import tempfile
 import xml.etree.ElementTree as ET
@@ -21,6 +22,7 @@ DEFAULT_SEED = 549
 DEFAULT_COUNT = 200
 DEFAULT_OUTPUT_DIR = Path(__file__).resolve().parents[1] / "data" / "generated-test-data"
 VIDEO_BYTES = b"5X49_TEST_VIDEO_PLACEHOLDER\n"
+VIDEO_MODES = ("placeholder", "valid")
 DATA_PROFILES = ("mixed", "normal")
 TITLE_PAIRS = (
     ("The Quiet Signal", "静默信号"),
@@ -43,12 +45,15 @@ def generate_dataset(
     count: int = DEFAULT_COUNT,
     seed: int = DEFAULT_SEED,
     profile: str = "mixed",
+    video_mode: str = "placeholder",
     force: bool = False,
 ) -> dict[str, Any]:
     if count < 0:
         raise ValueError("count must be non-negative")
     if profile not in DATA_PROFILES:
         raise ValueError(f"profile must be one of: {', '.join(DATA_PROFILES)}")
+    if video_mode not in VIDEO_MODES:
+        raise ValueError(f"video_mode must be one of: {', '.join(VIDEO_MODES)}")
     output = _safe_output_path(output_dir)
     if output.exists() and not output.is_dir():
         raise ValueError(f"Output path is not a directory: {output}")
@@ -57,6 +62,7 @@ def generate_dataset(
     try:
         media_root = staging / "media"
         media_root.mkdir()
+        video_bytes = _video_bytes(staging, video_mode)
         scenarios: list[dict[str, Any]] = []
         for index in range(count):
             title, localized = TITLE_PAIRS[index % len(TITLE_PAIRS)]
@@ -65,13 +71,24 @@ def generate_dataset(
                 EDGE_SCENARIOS[index % len(EDGE_SCENARIOS)] if index >= max(1, int(count * 0.8)) else "valid_nfo"
             )
             scenarios.append(
-                _write_media_case(media_root, index, title, localized, year, scenario, seed, profile == "normal")
+                _write_media_case(
+                    media_root,
+                    index,
+                    title,
+                    localized,
+                    year,
+                    scenario,
+                    seed,
+                    profile == "normal",
+                    video_bytes,
+                )
             )
 
         manifest = {
             "generator": GENERATOR_NAME,
             "schema_version": SCHEMA_VERSION,
             "profile": profile,
+            "video_mode": video_mode,
             "seed": seed,
             "count": count,
             "media_root": "media",
@@ -109,6 +126,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--count", type=int, default=DEFAULT_COUNT)
     parser.add_argument("--seed", type=int, default=DEFAULT_SEED)
     parser.add_argument("--profile", choices=DATA_PROFILES, default="mixed")
+    parser.add_argument("--video-mode", choices=VIDEO_MODES, default="placeholder")
     parser.add_argument("--output-dir", type=Path, default=DEFAULT_OUTPUT_DIR)
     parser.add_argument("--force", action="store_true")
     parser.add_argument("--clean", action="store_true")
@@ -118,7 +136,14 @@ def main(argv: list[str] | None = None) -> int:
             clean_dataset(args.output_dir)
             print(f"Removed test data: {args.output_dir.resolve()}")
         else:
-            result = generate_dataset(args.output_dir, count=args.count, seed=args.seed, profile=args.profile, force=args.force)
+            result = generate_dataset(
+                args.output_dir,
+                count=args.count,
+                seed=args.seed,
+                profile=args.profile,
+                video_mode=args.video_mode,
+                force=args.force,
+            )
             print(f"Generated {result['count']} Film media fixtures at {args.output_dir.resolve()}")
         return 0
     except ValueError as exc:
@@ -135,22 +160,24 @@ def _write_media_case(
     scenario: str,
     seed: int,
     with_artwork: bool,
+    video_bytes: bytes,
 ) -> dict[str, Any]:
+    item_video_bytes = video_bytes + f"\n5X49_ITEM_{index:04d}\n".encode("ascii")
     if scenario == "root_video":
         path = media_root / f"Root Film {index + 1} ({year}).mp4"
-        path.write_bytes(VIDEO_BYTES)
+        path.write_bytes(item_video_bytes)
         return {"index": index, "scenario": scenario, "path": path.relative_to(media_root.parent).as_posix()}
 
     folder = media_root / f"film-{index + 1:04d}"
     folder.mkdir()
     video = folder / "film.mp4"
     if scenario == "multiple_videos":
-        (folder / "clip-b.mkv").write_bytes(VIDEO_BYTES)
+        (folder / "clip-b.mkv").write_bytes(item_video_bytes + b"SECONDARY\n")
         video = folder / "clip-a.mp4"
     if scenario not in {"no_video", "temporary_video_only"}:
-        video.write_bytes(VIDEO_BYTES)
+        video.write_bytes(item_video_bytes)
     elif scenario == "temporary_video_only":
-        (folder / "film.mp4.part").write_bytes(VIDEO_BYTES)
+        (folder / "film.mp4.part").write_bytes(item_video_bytes)
 
     nfo = folder / "film.nfo"
     if scenario == "corrupt_xml":
@@ -200,6 +227,49 @@ def _write_artwork(path: Path, size: tuple[int, int], index: int, year: int, lab
     draw.rectangle((size[0] * 0.08, size[1] * 0.08, size[0] * 0.92, size[1] * 0.92), outline=(235, 235, 230), width=max(2, size[0] // 120))
     draw.text((size[0] * 0.12, size[1] * 0.13), f"5X49 {label}\n{index + 1:02d} / {year}", fill=(245, 245, 240))
     image.save(path, format="JPEG", quality=88, optimize=True)
+
+
+def _video_bytes(staging: Path, video_mode: str) -> bytes:
+    if video_mode == "placeholder":
+        return VIDEO_BYTES
+    executable = shutil.which("ffmpeg")
+    if not executable:
+        raise ValueError("FFmpeg is required for video_mode=valid")
+    output = staging / ".fixture-video.mp4"
+    command = [
+        executable,
+        "-hide_banner",
+        "-loglevel",
+        "error",
+        "-f",
+        "lavfi",
+        "-i",
+        "color=c=black:s=320x180:r=24:d=1",
+        "-f",
+        "lavfi",
+        "-i",
+        "anullsrc=r=48000:cl=stereo",
+        "-shortest",
+        "-c:v",
+        "libx264",
+        "-preset",
+        "ultrafast",
+        "-pix_fmt",
+        "yuv420p",
+        "-c:a",
+        "aac",
+        "-map_metadata",
+        "-1",
+        "-movflags",
+        "+faststart",
+        "-y",
+        str(output),
+    ]
+    try:
+        subprocess.run(command, check=True, capture_output=True, timeout=30)
+    except (OSError, subprocess.SubprocessError) as exc:
+        raise ValueError("FFmpeg could not generate the valid video fixture") from exc
+    return output.read_bytes()
 
 
 def _safe_output_path(output_dir: str | Path) -> Path:
