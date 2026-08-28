@@ -51,6 +51,9 @@ gate currently carried forward from W4.
 
 ### 1. Fresh Canonical stabilization
 
+Status: **Complete** for the local strict Gate. Docker remains separately
+unavailable and live external smoke remains advisory.
+
 - Complete desktop and 375px bilingual smoke coverage.
 - Exercise scanning, missing/restore, multi-edition ordering and dangerous clear
   against generated media in an isolated database.

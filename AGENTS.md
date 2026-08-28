@@ -164,10 +164,9 @@ Running the two dev servers (commands are in "Common Commands" above):
 
 Non-obvious caveats:
 
-- The frontend dev server hardcodes the backend URL to `http://127.0.0.1:8000`
-  (see `frontend/next.config.ts`), which proxies `/api/*` and `/media/*`. The
-  backend must be running on `8000` for the UI to load data; `BACKEND_URL` only
-  applies to production builds, not `npm run dev`.
+- The frontend proxies `/api/*` and `/media/*` to `BACKEND_URL` when it is set
+  in either development or production. Without it, development defaults to
+  `http://127.0.0.1:8000` and container builds default to `http://backend:8000`.
 - Persistence is embedded SQLite (`backend/data/library.db`, auto-created, git
   ignored). There is no external database, cache, or message broker to start.
 - The app boots and serves the library without any API keys. Only two features
