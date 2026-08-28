@@ -113,18 +113,23 @@ class JobRuntime:
                 if workflow:
                     library_event_bus.publish("workflow_cancelled", {"workflow": workflow})
         except Exception as exc:
+            public_message = str(getattr(exc, "public_message", "Job failed"))[:500]
+            public_code = str(
+                getattr(exc, "error_code", f"{job_type.replace('.', '_')}_failed")
+            )[:80]
             failed = job_store.update(
                 job_id,
                 status="failed",
                 error=exc.__class__.__name__,
-                result_summary="Job failed",
+                result_summary=public_message,
                 finished=True,
             )
             if failed:
                 workflow = workflow_store.fail_job(
                     job_id,
                     cancelled=False,
-                    error_code=f"{job_type.replace('.', '_')}_failed",
+                    error_code=public_code,
+                    error_message=public_message,
                 )
                 if workflow:
                     library_event_bus.publish("workflow_failed", {"workflow": workflow})

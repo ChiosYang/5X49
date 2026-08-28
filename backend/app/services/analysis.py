@@ -12,7 +12,11 @@ from app.services.analysis_runtime import (
     AnalysisSubjectMismatch,
     analysis_runtime_persistence,
 )
-from app.services.historian import FilmHistorian, analysis_prompt_snapshot
+from app.services.historian import (
+    AnalysisProviderConfigurationError,
+    FilmHistorian,
+    analysis_prompt_snapshot,
+)
 from app.services.metadata.tmdb import TMDBClient
 from app.services.settings import get_language
 
@@ -21,7 +25,10 @@ logger = logging.getLogger("analysis")
 
 
 class AnalysisExecutionError(RuntimeError):
-    pass
+    def __init__(self, message: str, *, error_code: str = "analysis_failed"):
+        super().__init__(message)
+        self.public_message = message[:500]
+        self.error_code = error_code[:80]
 
 
 class AnalysisService:
@@ -68,7 +75,7 @@ class AnalysisService:
                 code,
                 exc.__class__.__name__,
             )
-            raise AnalysisExecutionError(message) from None
+            raise AnalysisExecutionError(message, error_code=code) from None
 
         if start.cached:
             try:
@@ -88,7 +95,10 @@ class AnalysisService:
                     film_id,
                     exc.__class__.__name__,
                 )
-                raise AnalysisExecutionError("Analysis persistence failed") from None
+                raise AnalysisExecutionError(
+                    "Analysis persistence failed",
+                    error_code="analysis_persistence_failed",
+                ) from None
 
         try:
             self._raise_if_cancelled(ctx)
@@ -171,7 +181,7 @@ class AnalysisService:
             )
             if cancelled:
                 raise
-            raise AnalysisExecutionError(message) from None
+            raise AnalysisExecutionError(message, error_code=code) from None
 
     def _prepare_tmdb_targets(self, output, ctx) -> tuple[dict[str, dict], dict[str, str]]:
         with Session(self.database_engine) as session:
@@ -208,6 +218,13 @@ class AnalysisService:
     def _safe_failure(exc: Exception, cancelled: bool) -> tuple[str, str, str, bool]:
         if cancelled:
             return "cancelled", "analysis_cancelled", "Analysis cancelled", False
+        if isinstance(exc, AnalysisProviderConfigurationError):
+            return (
+                "configuration",
+                "analysis_provider_not_configured",
+                "Analysis provider is not configured",
+                False,
+            )
         if isinstance(exc, (ValidationError, AnalysisSubjectMismatch, ValueError)):
             return "validation", "analysis_output_invalid", "Analysis output was invalid", True
         if isinstance(exc, AnalysisRuntimeError):

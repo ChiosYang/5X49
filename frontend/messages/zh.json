@@ -182,7 +182,28 @@
     "evidence": "证据",
     "referencesNeedReview": "{count} 条引用待确认"
   },
+  "WorkflowStatus": {
+    "label": "后台工作流",
+    "title": "后台工作流",
+    "noRecent": "暂无最近工作流",
+    "empty": "暂无工作流",
+    "cancel": "取消工作流",
+    "retry": "重试工作流",
+    "types": {
+      "libraryReconcile": "资料库扫描",
+      "folderScan": "文件夹扫描",
+      "missingUpdate": "缺失文件更新",
+      "editionRefresh": "版本刷新",
+      "metadataScrape": "元数据刮削",
+      "rootOrganization": "根目录整理",
+      "rootConfirmation": "根目录确认",
+      "filmAnalysis": "电影分析",
+      "scoreRefresh": "评分刷新"
+    }
+  },
   "Activity": {
+    "title": "活动记录",
+    "eyebrow": "审计轨迹",
     "snapshotPreviewFailed": "操作快照预览失败",
     "before": "操作前",
     "after": "操作后",

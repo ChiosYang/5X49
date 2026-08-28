@@ -15,6 +15,7 @@ from app.jobs.store import job_store
 from app.migrations.runner import run_migrations
 from app.models import Job, WorkflowRun, WorkflowStep
 from app.services.projections import projection_coordinator
+from app.services.analysis import AnalysisExecutionError
 from app.workflows.store import workflow_store
 
 
@@ -123,6 +124,34 @@ class WorkflowRuntimeTests(unittest.TestCase):
         self.assertEqual(cancelled["status"], "cancelled")
         self.assertEqual(cancelled["steps"][0]["status"], "cancelled")
         self.assertTrue(cancelled["cancel_requested"])
+
+    def test_safe_domain_failure_reaches_the_public_workflow_view(self):
+        workflow, _created = workflow_store.create(
+            "analysis.analyze_film",
+            {"film_id": "film_" + "b" * 32},
+            dedupe_key="analysis:not-configured",
+        )
+        job = job_store.claim_next()
+        workflow_store.start_job(job["id"])
+
+        def handler(_payload, _ctx):
+            raise AnalysisExecutionError(
+                "Analysis provider is not configured",
+                error_code="analysis_provider_not_configured",
+            )
+
+        with patch.dict(
+            "app.jobs.runtime.JOB_HANDLERS",
+            {"analysis.analyze_film": handler},
+            clear=False,
+        ):
+            JobRuntime()._execute(job)
+
+        failed = workflow_store.get(workflow["id"])
+        self.assertEqual(failed["status"], "failed")
+        self.assertEqual(failed["error_code"], "analysis_provider_not_configured")
+        self.assertEqual(failed["error_message"], "Analysis provider is not configured")
+        self.assertEqual(failed["steps"][0]["result_summary"], "Analysis provider is not configured")
 
 
 if __name__ == "__main__":

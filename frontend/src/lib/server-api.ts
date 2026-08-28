@@ -3,9 +3,11 @@ import "server-only";
 import type { LibraryFilmDetail, LibraryFilmSummary, RootVideo, WatchHistoryEntry } from "@/types/movie";
 
 const backendUrl = () =>
-  process.env.NODE_ENV === "development"
-    ? "http://127.0.0.1:8000"
-    : process.env.BACKEND_URL || "http://backend:8000";
+  process.env.BACKEND_URL || (
+    process.env.NODE_ENV === "development"
+      ? "http://127.0.0.1:8000"
+      : "http://backend:8000"
+  );
 
 export async function getLibraryFilm(filmId: string): Promise<LibraryFilmDetail | null> {
   const response = await fetch(`${backendUrl()}/library/films/${encodeURIComponent(filmId)}`, {

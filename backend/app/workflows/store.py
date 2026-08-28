@@ -242,7 +242,14 @@ class WorkflowStore:
             session.commit()
             return self.public_view_from_session(session, run.id)
 
-    def fail_job(self, job_id: str, *, cancelled: bool, error_code: str) -> dict[str, Any] | None:
+    def fail_job(
+        self,
+        job_id: str,
+        *,
+        cancelled: bool,
+        error_code: str,
+        error_message: str | None = None,
+    ) -> dict[str, Any] | None:
         with Session(engine) as session:
             job = session.get(Job, job_id)
             if job is None or not job.workflow_run_id:
@@ -255,7 +262,11 @@ class WorkflowStore:
             step = self._current_step(session, run)
             if step is not None:
                 step.status = status
-                step.result_summary = "Workflow cancelled" if cancelled else "Workflow step failed"
+                step.result_summary = (
+                    "Workflow cancelled"
+                    if cancelled
+                    else (error_message or "Workflow step failed")[:500]
+                )
                 step.finished_at = now
                 step.lease_expires_at = None
                 step.updated_at = now
@@ -263,7 +274,11 @@ class WorkflowStore:
             run.status = status
             run.cancel_requested = cancelled or run.cancel_requested
             run.error_code = "workflow_cancelled" if cancelled else error_code[:80]
-            run.error_message = "Workflow cancelled" if cancelled else "Workflow execution failed"
+            run.error_message = (
+                "Workflow cancelled"
+                if cancelled
+                else (error_message or "Workflow execution failed")[:500]
+            )
             run.finished_at = now
             run.updated_at = now
             session.add(run)

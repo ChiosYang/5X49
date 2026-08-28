@@ -30,6 +30,10 @@ def get_client():
 ANALYSIS_PROMPT_VERSION = "genealogy-v2.v3"
 
 
+class AnalysisProviderConfigurationError(RuntimeError):
+    pass
+
+
 @dataclass(frozen=True)
 class AnalysisModelConfiguration:
     provider: str
@@ -75,6 +79,8 @@ class FilmHistorian:
         configuration: AnalysisModelConfiguration | None = None,
     ) -> AnalysisGenerationResult:
         configuration = configuration or self.analysis_configuration()
+        if not os.getenv("OPENROUTER_API_KEY"):
+            raise AnalysisProviderConfigurationError("Analysis provider is not configured")
         schema = GeneratedAnalysisV2Output.model_json_schema()
         prompt = (
             "You are a film historian. Return only one JSON object that validates against the "

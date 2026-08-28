@@ -182,7 +182,28 @@
     "evidence": "Evidence",
     "referencesNeedReview": "{count, plural, one {# reference needs review} other {# references need review}}"
   },
+  "WorkflowStatus": {
+    "label": "Background workflows",
+    "title": "Background Workflows",
+    "noRecent": "No recent workflows",
+    "empty": "No Workflows",
+    "cancel": "Cancel workflow",
+    "retry": "Retry workflow",
+    "types": {
+      "libraryReconcile": "Library scan",
+      "folderScan": "Folder scan",
+      "missingUpdate": "Missing file update",
+      "editionRefresh": "Edition refresh",
+      "metadataScrape": "Metadata scrape",
+      "rootOrganization": "Root organization",
+      "rootConfirmation": "Root confirmation",
+      "filmAnalysis": "Film analysis",
+      "scoreRefresh": "Score refresh"
+    }
+  },
   "Activity": {
+    "title": "Activity",
+    "eyebrow": "Audit trail",
     "snapshotPreviewFailed": "Snapshot preview failed",
     "before": "Before",
     "after": "After",

@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { AlertTriangle, CheckCircle2, Clock3, Layers3, ListRestart, Loader2, X } from "lucide-react";
 import {
   useCancelWorkflow,
@@ -21,21 +22,21 @@ const WORKFLOW_EVENTS = [
   "workflow_cancelled",
 ] as const;
 
-function workflowLabel(type: string) {
+function workflowLabel(type: string, translate: (key: string) => string) {
   const labels: Record<string, string> = {
-    "library.reconcile": "Library scan",
-    "library.scan_folder": "Folder scan",
-    "library.mark_path_missing": "Missing file update",
-    "library.refresh_item": "Edition refresh",
-    "metadata.scrape_library": "Metadata scrape",
-    "organizer.organize_root": "Root organization",
-    "organizer.confirm_root_video": "Root confirmation",
-    "analysis.analyze_film": "Film analysis",
-    "external_scores.refresh_film": "Score refresh",
-    "external_scores.refresh_library": "Score refresh",
+    "library.reconcile": "types.libraryReconcile",
+    "library.scan_folder": "types.folderScan",
+    "library.mark_path_missing": "types.missingUpdate",
+    "library.refresh_item": "types.editionRefresh",
+    "metadata.scrape_library": "types.metadataScrape",
+    "organizer.organize_root": "types.rootOrganization",
+    "organizer.confirm_root_video": "types.rootConfirmation",
+    "analysis.analyze_film": "types.filmAnalysis",
+    "external_scores.refresh_film": "types.scoreRefresh",
+    "external_scores.refresh_library": "types.scoreRefresh",
   };
 
-  return labels[type] || type;
+  return labels[type] ? translate(labels[type]) : type;
 }
 
 function statusIcon(workflow: WorkflowRunView) {
@@ -71,6 +72,7 @@ function progressPercent(workflow: WorkflowRunView) {
 
 export default function WorkflowRuntimeStatus() {
   const router = useRouter();
+  const t = useTranslations("WorkflowStatus");
   const { data: workflows = [] } = useWorkflows();
   const { upsertWorkflow, refreshWorkflows } = useWorkflowCache();
   const { trigger: cancelWorkflow, isMutating: isCancelling } = useCancelWorkflow();
@@ -124,8 +126,8 @@ export default function WorkflowRuntimeStatus() {
       <button
         type="button"
         className="focus-ring duration-standard relative flex h-10 w-10 items-center justify-center text-ink drop-shadow-lg transition-opacity hover:opacity-70"
-        aria-label="Background workflows"
-        title="Background workflows"
+        aria-label={t("label")}
+        title={t("label")}
       >
         {activeWorkflows.length > 0 ? (
           <Loader2 className="h-4 w-4 animate-spin" />
@@ -144,16 +146,16 @@ export default function WorkflowRuntimeStatus() {
       <div className="z-popover pointer-events-none absolute top-full right-0 w-[min(24rem,calc(100vw-2rem))] pt-3 opacity-0 transition-opacity duration-standard group-hover/workflows:pointer-events-auto group-hover/workflows:opacity-100 group-focus-within/workflows:pointer-events-auto group-focus-within/workflows:opacity-100">
         <div className="liquid-glass-popover scrollbar-minimal relative max-h-80 overflow-y-auto border border-line/80 p-2">
           <div className="border-b border-line px-3 py-2">
-            <p className="text-xs font-bold tracking-widest text-ink-muted uppercase">Background Workflows</p>
+            <p className="text-xs font-bold tracking-widest text-ink-muted uppercase">{t("title")}</p>
             <p className="mt-1 truncate text-xs text-ink-disabled">
               {latestWorkflow
-                ? `${workflowLabel(latestWorkflow.type)} - ${resultSummary(latestWorkflow)}`
-                : "No recent workflows"}
+                ? `${workflowLabel(latestWorkflow.type, (key) => t(key as never))} - ${resultSummary(latestWorkflow)}`
+                : t("noRecent")}
             </p>
           </div>
           {workflows.length === 0 ? (
             <div className="px-3 py-6 text-center text-xs font-bold tracking-widest text-ink-disabled uppercase">
-              No Workflows
+              {t("empty")}
             </div>
           ) : (
             <ul className="mt-2 space-y-1">
@@ -162,7 +164,7 @@ export default function WorkflowRuntimeStatus() {
                   <span className="mt-0.5">{statusIcon(workflow)}</span>
                   <span className="min-w-0">
                     <span className="flex min-w-0 items-center justify-between gap-3">
-                      <span className="truncate text-xs font-bold uppercase tracking-widest">{workflowLabel(workflow.type)}</span>
+                      <span className="truncate text-xs font-bold uppercase tracking-widest">{workflowLabel(workflow.type, (key) => t(key as never))}</span>
                       <span className="shrink-0 text-[10px] font-bold tracking-widest text-ink-subtle uppercase">
                         {workflow.status}
                       </span>
@@ -186,8 +188,8 @@ export default function WorkflowRuntimeStatus() {
                         onClick={() => void cancelWorkflow(workflow.id)}
                         disabled={isCancelling}
                         className="focus-ring duration-standard flex h-6 w-6 items-center justify-center text-ink-subtle transition-colors hover:text-ink disabled:opacity-50"
-                        aria-label="Cancel workflow"
-                        title="Cancel"
+                        aria-label={t("cancel")}
+                        title={t("cancel")}
                       >
                         <X className="h-3.5 w-3.5" />
                       </button>
@@ -198,8 +200,8 @@ export default function WorkflowRuntimeStatus() {
                         onClick={() => void retryWorkflow(workflow.id)}
                         disabled={isRetrying}
                         className="focus-ring duration-standard flex h-6 w-6 items-center justify-center text-ink-subtle transition-colors hover:text-ink disabled:opacity-50"
-                        aria-label="Retry workflow"
-                        title="Retry"
+                        aria-label={t("retry")}
+                        title={t("retry")}
                       >
                         <ListRestart className="h-3.5 w-3.5" />
                       </button>
