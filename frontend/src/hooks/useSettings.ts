@@ -1,6 +1,7 @@
 import useSWR, { useSWRConfig } from "swr";
 import useSWRMutation from "swr/mutation";
 import { API } from "@/lib/api";
+import { responseError } from "@/lib/fetcher";
 
 // =====================
 // Queries
@@ -16,8 +17,14 @@ export function useBaseUrl() {
   return useSWR<{ base_url: string }>(API.settingsBaseUrl());
 }
 
+export interface MediaDirectoryStatus {
+  media_dir: string;
+  exists: boolean;
+  readable: boolean;
+}
+
 export function useMediaDir() {
-  return useSWR<{ media_dir: string }>(API.settingsMediaDir());
+  return useSWR<MediaDirectoryStatus>(API.settingsMediaDir());
 }
 
 export function useLanguageSetting() {
@@ -46,7 +53,11 @@ export interface LibrarySyncStatus {
     last_started_at: string | null;
     last_finished_at: string | null;
     last_error: string | null;
-    last_result: Record<string, unknown> | null;
+    last_result: {
+      scanned?: number;
+      added?: number;
+      missing?: number;
+    } | null;
   };
   watcher: LibraryWatchStatus;
 }
@@ -136,9 +147,11 @@ export function useTmdbSettings() {
   return useSWR<TmdbSettings>(API.settingsTmdb());
 }
 
-export function useLibrarySyncStatus() {
+export function useLibrarySyncStatus(
+  refreshInterval: number | ((latestData: LibrarySyncStatus | undefined) => number) = 5000,
+) {
   return useSWR<LibrarySyncStatus>(API.librarySyncStatus(), {
-    refreshInterval: 5000,
+    refreshInterval,
   });
 }
 
@@ -193,15 +206,23 @@ export function useUpdateBaseUrl() {
 }
 
 export function useUpdateMediaDir() {
+  const { mutate } = useSWRConfig();
+
   return useSWRMutation(
     API.settingsMediaDir(),
-    async (url: string, { arg: mediaDir }: { arg: string }) => {
+    async (url: string, { arg: mediaDir }: { arg: string }): Promise<MediaDirectoryStatus & { status: string; message: string }> => {
       const res = await fetch(
         `${url}?media_dir=${encodeURIComponent(mediaDir)}`,
         { method: "PUT" }
       );
-      if (!res.ok) throw new Error("Failed to update media dir");
-      return res.json();
+      if (!res.ok) throw await responseError(res, "Failed to update media directory");
+      const data = await res.json();
+      await mutate(API.settingsMediaDir(), {
+        media_dir: data.media_dir,
+        exists: data.exists,
+        readable: data.readable,
+      }, false);
+      return data;
     }
   );
 }
@@ -332,10 +353,10 @@ export function useTestApiKey() {
 
 export function useScanLibrary() {
   return useSWRMutation(
-    API.systemScanLibrary(),
+    API.libraryScan(),
     async (url: string) => {
       const res = await fetch(url, { method: "POST" });
-      if (!res.ok) throw new Error("Failed to start scan");
+      if (!res.ok) throw await responseError(res, "Failed to start scan");
       return res.json();
     }
   );

@@ -1,8 +1,6 @@
-version: '3.8'
-
 services:
   backend:
-    image: alicolia/5x49-backend:latest
+    image: ${DOCKER_USERNAME:-alicolia}/5x49-backend:latest
     container_name: 5x49-backend
     ports:
       - "11548:8000"
@@ -17,7 +15,7 @@ services:
       - MODEL_NAME=${MODEL_NAME:-openrouter/pony-alpha}
       - API_BASE_URL=${API_BASE_URL:-https://openrouter.ai/api/v1}
       - MEDIA_DIR=/media
-      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-*}
+      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-http://localhost:5549}
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:8000/health')"]
@@ -26,12 +24,12 @@ services:
       retries: 3
 
   frontend:
-    image: alicolia/5x49-frontend:latest
+    image: ${DOCKER_USERNAME:-alicolia}/5x49-frontend:latest
     container_name: 5x49-frontend
     ports:
       - "5549:3000"
     environment:
-      - API_URL=http://backend:8000
+      - BACKEND_URL=http://backend:8000
     depends_on:
       - backend
     restart: unless-stopped

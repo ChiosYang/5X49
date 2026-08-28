@@ -1,4 +1,6 @@
 import unittest
+from pathlib import Path
+from tempfile import TemporaryDirectory
 from unittest.mock import patch
 
 from fastapi.routing import APIRoute
@@ -99,6 +101,91 @@ class ApiRouteContractTests(unittest.TestCase):
             response = self.client.get("/library/root-videos")
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json(), [])
+
+    def test_media_directory_status_reports_only_path_availability(self):
+        with TemporaryDirectory() as media_dir:
+            with patch("app.api.settings.get_media_dir", return_value=media_dir):
+                response = self.client.get("/settings/media-dir")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response.json(),
+            {"media_dir": media_dir, "exists": True, "readable": True},
+        )
+        self.assertNotIn("directories", response.json())
+        self.assertNotIn("tmdb_api_key", response.json())
+
+    def test_media_directory_status_distinguishes_missing_and_unreadable_paths(self):
+        with patch("app.api.settings.get_media_dir", return_value="/definitely/missing/5x49"):
+            response = self.client.get("/settings/media-dir")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["exists"], False)
+        self.assertEqual(response.json()["readable"], False)
+
+        with TemporaryDirectory() as temp_dir:
+            file_path = Path(temp_dir) / "movie.mkv"
+            file_path.write_text("not a directory", encoding="utf-8")
+            with patch("app.api.settings.get_media_dir", return_value=str(file_path)):
+                response = self.client.get("/settings/media-dir")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["exists"], True)
+        self.assertEqual(response.json()["readable"], False)
+
+        with TemporaryDirectory() as media_dir:
+            with (
+                patch("app.api.settings.get_media_dir", return_value=media_dir),
+                patch("app.api.settings.os.access", return_value=False),
+            ):
+                response = self.client.get("/settings/media-dir")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["exists"], True)
+        self.assertEqual(response.json()["readable"], False)
+
+    def test_media_directory_update_returns_validated_status(self):
+        with TemporaryDirectory() as media_dir:
+            with patch("app.api.settings.set_media_dir", return_value=True):
+                response = self.client.put("/settings/media-dir", params={"media_dir": media_dir})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["media_dir"], str(Path(media_dir).resolve()))
+        self.assertEqual(response.json()["exists"], True)
+        self.assertEqual(response.json()["readable"], True)
+        self.assertNotIn("directories", response.json())
+        self.assertNotIn("tmdb_api_key", response.json())
+
+    def test_media_directory_update_rejects_missing_file_and_unreadable_targets(self):
+        missing = self.client.put(
+            "/settings/media-dir",
+            params={"media_dir": "/definitely/missing/5x49"},
+        )
+        self.assertEqual(missing.status_code, 400)
+        self.assertEqual(missing.json(), {"detail": "Media directory does not exist"})
+
+        with TemporaryDirectory() as temp_dir:
+            file_path = f"{temp_dir}/movie.mkv"
+            with open(file_path, "w", encoding="utf-8") as handle:
+                handle.write("not a directory")
+            not_directory = self.client.put(
+                "/settings/media-dir",
+                params={"media_dir": file_path},
+            )
+        self.assertEqual(not_directory.status_code, 400)
+        self.assertEqual(not_directory.json(), {"detail": "Media directory is not readable"})
+
+        with TemporaryDirectory() as media_dir:
+            with patch("app.api.settings.os.access", return_value=False):
+                unreadable = self.client.put(
+                    "/settings/media-dir",
+                    params={"media_dir": media_dir},
+                )
+        self.assertEqual(unreadable.status_code, 400)
+        self.assertEqual(unreadable.json(), {"detail": "Media directory is not readable"})
+
+    def test_library_scan_rejects_a_missing_media_directory_with_actionable_detail(self):
+        with patch("app.api.library.get_media_dir", return_value="/definitely/missing/5x49"):
+            response = self.client.post("/library/scan")
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.json(), {"detail": "Directory not found: /definitely/missing/5x49"})
 
     def test_projection_unavailable_has_stable_503_contract(self):
         with patch(

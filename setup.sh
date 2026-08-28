@@ -16,11 +16,24 @@ echo "This script will help you quickly generate the .env file"
 echo ""
 
 # 默认值
-DEFAULT_MEDIA_DIR="/volume1/video/movies"
+DEFAULT_MEDIA_DIR="./media"
 
 # 1. 媒体目录
 read -r -p "请输入您的媒体文件夹路径 / Enter your media directory path (默认/Default: $DEFAULT_MEDIA_DIR): " MEDIA_DIR
 MEDIA_DIR=${MEDIA_DIR:-$DEFAULT_MEDIA_DIR}
+
+if [ "$MEDIA_DIR" = "$DEFAULT_MEDIA_DIR" ] && [ ! -d "$MEDIA_DIR" ]; then
+    mkdir -p "$MEDIA_DIR"
+    echo -e "${GREEN}已创建默认媒体目录 / Created default media directory: $MEDIA_DIR${NC}"
+elif [ ! -d "$MEDIA_DIR" ]; then
+    echo -e "${YELLOW}错误: 媒体目录不存在 / Error: Media directory does not exist: $MEDIA_DIR${NC}" >&2
+    exit 1
+fi
+
+if [ ! -r "$MEDIA_DIR" ]; then
+    echo -e "${YELLOW}错误: 媒体目录不可读 / Error: Media directory is not readable: $MEDIA_DIR${NC}" >&2
+    exit 1
+fi
 
 # 2. TMDB API Key
 read -r -p "请输入您的 TMDB API Key / Enter your TMDB API Key (选填/Optional): " TMDB_API_KEY
@@ -54,5 +67,5 @@ echo "You can edit the .env file in this directory anytime."
 echo ""
 echo "现在您可以使用以下命令启动服务："
 echo "Now you can start the services using:"
-echo -e "${GREEN}  docker-compose up -d${NC}"
+echo -e "${GREEN}  docker compose up -d${NC}"
 echo -e "${GREEN}=======================================================${NC}"

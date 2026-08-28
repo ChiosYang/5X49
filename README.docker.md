@@ -1,86 +1,89 @@
-# 🐳 Docker 部署指南
+# 5X49 Docker 部署指南
 
-本指南将帮助你使用 Docker 容器化部署 Film Genealogy Agent。
+本指南使用 Docker Hub 上的发布镜像，不从当前仓库构建源代码。源码开发步骤见
+[README.zh-CN.md](README.zh-CN.md#从源码开发)。
 
-## 前置要求
+## 启动
 
-- [Docker](https://www.docker.com/get-started)
-- [Docker Compose](https://docs.docker.com/compose/install/)
-
-## 🚀 快速开始
-
-1. **环境配置**
-
-   复制环境变量模板：
-   ```bash
-   cp backend/.env.example backend/.env
-   cp frontend/.env.example frontend/.env
-   ```
-
-   编辑 `backend/.env` 填入你的 API Key：
-   ```bash
-   TMDB_API_KEY=your_key
-   OPENROUTER_API_KEY=your_key
-   ```
-
-2. **启动服务**
-
-   ```bash
-   docker-compose up -d --build
-   ```
-
-3. **访问应用**
-
-   - 前端: http://localhost:5549
-   - 后端 API: http://localhost:8000
-   - API 文档: http://localhost:8000/docs
-
-## 📁 数据持久化
-
-Docker 部署会自动创建以下 Volume 保持数据：
-
-- `backend_data`: 后端数据库、设置和模型缓存
-- `./media`: 你的电影 NFO 目录（默认映射到宿主机的 `./media`，可在 `docker-compose.yml` 中修改）
-
-## 🛠️ 常用命令
+要求 Docker Desktop/Engine 和 Docker Compose v2。
 
 ```bash
-# 查看日志
-docker-compose logs -f
-
-# 停止服务
-docker-compose down
-
-# 重启服务
-docker-compose restart
-
-# 重建镜像
-docker-compose up -d --build
+cp .env.example .env
+docker compose up -d
 ```
 
-## 🌐 生产环境部署建议
+PowerShell 复制环境模板：
 
-1. 修改 `docker-compose.yml` 中的端口映射
-2. 使用 Nginx 反向代理处理 HTTPS
-3. 在 `backend/.env` 中更新 `ALLOWED_ORIGINS`
-4. 在 `frontend/.env` 中更新 `NEXT_PUBLIC_API_URL`
+```powershell
+Copy-Item .env.example .env
+docker compose up -d
+```
 
-## 📦 发布到 Docker Hub
+默认地址：
 
-如果你想将应用发布给他人使用（开箱即用）：
+- 前端：`http://localhost:5549`
+- 后端 API：`http://localhost:11548`
+- OpenAPI：`http://localhost:11548/docs`
 
-1. **构建并推送镜像**
+`docker-compose.yml` 是普通用户的规范部署文件；
+`docker-compose.release.yml` 保留相同的端口、环境变量和镜像行为，供已有发布流程使用。
 
-   编辑 `publish.sh` 确认你的 Docker Hub 用户名，然后运行：
-   ```bash
-   ./publish.sh
-   ```
+## 媒体目录
 
-2. **用户部署**
+`.env` 中的 `MEDIA_DIR` 是宿主机路径，Compose 会将其挂载为后端容器中的
+`/media`：
 
-   用户只需要 `docker-compose.release.yml` 和 `.env`文件即可部署，无需源代码。
-   
-   ```bash
-   # 使用发布版配置启动
-   docker-compose -f docker-compose.release.yml up -d
-   ```
+```dotenv
+# 仓库相对目录
+MEDIA_DIR=./media
+
+# Linux / NAS 示例
+# MEDIA_DIR=/volume1/video/movies
+
+# Windows Docker Desktop 示例
+# MEDIA_DIR=D:/Movies
+```
+
+首次打开页面时，Docker 用户应保持应用内媒体目录为 `/media`。页面会检查这个
+容器内目录是否存在且可读。修改宿主机映射后需要重新创建容器：
+
+```bash
+docker compose up -d --force-recreate
+```
+
+## 可选密钥
+
+```dotenv
+TMDB_API_KEY=
+OPENROUTER_API_KEY=
+```
+
+两项都可留空。本地扫描和资料库浏览不依赖它们；TMDB Key 启用在线元数据与
+图片刮削，OpenRouter Key 启用 AI 谱系分析。
+
+## 持久化与维护
+
+- `backend_data`：SQLite 数据库、设置和运行状态。
+- `${MEDIA_DIR}:/media`：只由用户选择的宿主机目录提供媒体。
+
+常用命令：
+
+```bash
+docker compose ps
+docker compose logs -f backend frontend
+docker compose restart
+docker compose pull
+docker compose up -d
+docker compose down
+```
+
+`docker compose down -v` 会删除 `backend_data`，仅在明确不需要数据库和设置时使用。
+
+## 排错
+
+- 前端无法读取资料库：检查 `docker compose ps` 和 `docker compose logs backend`。
+- `/media` 不可读：检查宿主机目录存在、共享权限以及 Docker Desktop 文件访问权限。
+- 扫描结果为零：确认每部电影位于一级子目录，且包含受支持的视频或 NFO。
+- Key 测试失败：不会影响基础资料库；确认环境变量后重新创建 backend 容器。
+
+本部署路径使用远程 `latest` 镜像。镜像 digest 固定和可复现构建不在当前部署契约内。

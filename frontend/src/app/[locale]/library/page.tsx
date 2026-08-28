@@ -17,7 +17,9 @@ import { Link } from "@/i18n/routing";
 import { getLibraryFilms, getRootVideos } from "@/lib/server-api";
 import type { LibraryFilmSummary } from "@/types/movie";
 import { getLibraryAttentionCounts } from "@/lib/library-attention";
+import { getLibraryEmptyState } from "@/lib/library-onboarding";
 import LibraryMovieCard from "./LibraryMovieCard";
+import LibraryOnboarding from "./LibraryOnboarding";
 
 type LibrarySortKey = "title" | "added" | "duration";
 type SortDirection = "asc" | "desc";
@@ -153,10 +155,11 @@ export default async function LibraryPage({ params, searchParams }: LibraryPageP
     return true;
   });
   const sortedMovies = sortMovies(filteredMovies, sort, direction, locale);
+  const emptyState = getLibraryEmptyState(films.length, filteredMovies.length);
 
   return (
     <div className="page-x min-h-screen bg-canvas py-6 text-ink selection:bg-inverse selection:text-inverse-ink md:py-12">
-      <div className="w-full space-y-20 pt-32">
+      <div className="w-full pt-32">
         <header className="flex flex-col gap-6 border-b border-line pb-8 md:flex-row md:items-end md:justify-between">
           <div>
             <h1 className="type-display-editorial">
@@ -185,6 +188,8 @@ export default async function LibraryPage({ params, searchParams }: LibraryPageP
                 {t("rootVideosPending", { count: attention.rootVideos })}
               </Link>
             ) : null}
+            {films.length > 0 ? (
+              <>
             <div className="group/filter relative">
               <button
                 type="button"
@@ -266,15 +271,25 @@ export default async function LibraryPage({ params, searchParams }: LibraryPageP
                 </div>
               </div>
             </div>
+              </>
+            ) : null}
           </div>
         </header>
 
-        {filteredMovies.length === 0 ? (
-          <div className="space-y-4 py-24 text-center">
-            <p className="font-serif text-xl text-ink-subtle italic">{t("empty")}</p>
+        {emptyState === "onboarding" ? (
+          <LibraryOnboarding rootVideoCount={rootVideos.length} />
+        ) : emptyState === "filtered-empty" ? (
+          <div className="mt-20 space-y-4 py-24 text-center">
+            <p className="font-serif text-xl text-ink-subtle italic">{t("emptyFiltered")}</p>
+            <Link
+              href={libraryHref(sort, direction, "all")}
+              className="focus-ring inline-flex min-h-10 items-center border border-line-strong px-4 text-xs font-medium tracking-widest text-ink-muted uppercase hover:border-ink-disabled hover:text-ink"
+            >
+              {t("resetFilter")}
+            </Link>
           </div>
         ) : (
-          <div className="grid grid-cols-1 gap-x-5 gap-y-12 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 xl:gap-x-6 xl:gap-y-14 2xl:grid-cols-5">
+          <div className="mt-20 grid grid-cols-1 gap-x-5 gap-y-12 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 xl:gap-x-6 xl:gap-y-14 2xl:grid-cols-5">
             {sortedMovies.map((movie, i) => (
               <LibraryMovieCard
                 key={movie.id}

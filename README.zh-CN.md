@@ -2,125 +2,180 @@
 
 [English](README.md) | [简体中文](README.zh-CN.md)
 
-> 一个现代化的、由 AI 驱动的电影库管理工具，具备深度的“电影家谱”分析功能，并采用类似 A24 的高级极简美学设计。
+> 面向本地电影收藏的资料库管理与电影谱系探索工具。
 
-![Library Grid](docs/images/library_grid.png)
+![资料库](docs/images/library_grid.png)
 
-## ✨ 简介
+5X49 扫描本地电影文件夹和 NFO 元数据，以暗色电影化界面呈现收藏；可选的
+TMDB 集成用于补全元数据与图片，可选的 OpenRouter 集成用于生成电影谱系分析。
 
-**5X49** 不仅仅是一个媒体服务器；它是一个电影探索工具。管理你的本地电影收藏从未如此赏心悦目。它会扫描你的元数据，在一个令人惊叹的暗色模式界面中呈现你的电影，并利用先进的 AI 分析电影的“家谱”——通过主题、导演、视觉风格和历史背景将它们联系起来。
+## 功能概览
 
-界面采用**高级的极简主义美学**设计，灵感来自 A24，完全专注于电影艺术本身。
+- 扫描 TinyMediaManager/Kodi 风格的电影目录和 NFO。
+- 管理影片版本、观看状态、收藏、元数据与图片。
+- 监听媒体目录并运行可追踪的后台扫描、整理和刮削工作流。
+- 使用可选的大语言模型分析主题、风格与电影史关系。
+- 提供 FastAPI REST 接口，详见 [API 文档](docs/api.md)。
 
-## 🚀 核心功能
+## 快速开始：运行发布镜像
 
-### 📚 沉浸式媒体库
-自动扫描基于 NFO 的本地收藏（兼容 TinyMediaManager），并在一个响应式且视觉丰富的网格中呈现。
-![Menu Navigation](docs/images/menu_open.png)
+普通用户推荐直接运行已经发布的 Docker 镜像。此流程不会从当前 checkout
+构建源代码。
 
-### 🧠 AI 驱动分析
-利用大型语言模型（LLMs）对每部电影进行深度挖掘，生成“家谱报告”，并以精美的 Markdown 格式呈现。探索你从未发觉的电影关联。
-![Detail Page](docs/images/detail_page.png)
-![Detail Page 2](docs/images/detail_page2.png)
-![Film Genealogy](docs/images/film_genealogy.png)
+### 要求
 
-### 🤖 智能图书管理员 Agent (LangGraph/ReAct)
-包含一个由 **LangGraph** 和 **LangChain** 驱动的后台自主智能体。该 Agent 监控传入的 `inbox` 文件夹，通过*函数调用 (Function Calling)* 处理混乱的文件名，搜索元数据，并自主重命名和将媒体归档到库中。
-在实时的 Librarian Console 中，通过服务器发送事件 (SSE) 观察 Agent 的逐步推理过程。
+- Docker Desktop 或 Docker Engine
+- Docker Compose v2（命令为 `docker compose`）
+- 一个包含本地电影的目录；API Key 均非启动必需
 
-### 🔌 丰富的 API 与 Agent 扩展能力
-提供完整的 RESTful API（详见[API 文档](docs/api.md)），方便与其他服务集成。内置 **OpenClaw 技能插件** (`skills/5x49-backend`)，允许外部 AI 智能体直接调用你的后端接口，实现原生管理媒体库、触发扫描等高级自动化操作。
+### 1. 获取部署文件
 
-### 📂 轻松管理
-- **文件浏览器**：可视化选择媒体目录——无需手动输入路径。
-- **手动扫描**：无需重启服务器即可按需触发媒体库更新。
-![Settings & Scan](docs/images/settings_scan.png)
-
-### 🐳 支持 Docker
-从一开始就为容器化构建。可以在任何系统上使用 Docker Compose 轻松部署，现已全面支持 **多架构（AMD64 & ARM64）**。前端自动代理 API 流量，彻底避开了本地 NAS 部署中的 IP 配置困扰。
-
-## 🛠️ 技术栈
-
-- **前端**: Next.js 16, Tailwind CSS, Framer Motion, SWR
-- **后端**: FastAPI, SQLModel (SQLite), Pydantic
-- **AI 集成**: OpenAI/OpenRouter API
-- **基础设施**: Docker, Docker Compose, uv
-
-## 🏁 快速开始 (Docker)
-
-推荐通过 Docker 运行 5X49。
-
-### 1. 环境要求
-- 已安装 Docker & Docker Compose
-- 一个 OpenRouter（或 OpenAI/Anthropic）的 API Key
-
-### 2. 快速部署
-将以下内容保存为 `docker-compose.yml` (如果你是完全新手，推荐跳过手动编写环境变量，看第3步):
-
-```yaml
-services:
-  backend:
-    image: alicolia/5x49-backend:latest
-    ports:
-      - "8000:8000"
-    environment:
-      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
-      - MEDIA_DIR=/media
-    volumes:
-      - backend_data:/app/data
-      - ${MEDIA_DIR:-./media}:/media  # Map your local movie folder here
-
-  frontend:
-    image: alicolia/5x49-frontend:latest
-    ports:
-      - "5549:3000"
-    depends_on:
-      - backend
-
-volumes:
-  backend_data:
-```
-
-### 3. 初始化配置 (推荐)
-为了降低部署门槛，你可以下载并运行我们提供的一键化引导脚本。此脚本会交互式地询问你的配置，并自动在当前目录生成 `.env` 文件：
 ```bash
-bash <(curl -sL https://raw.githubusercontent.com/chiosyang/5x49/main/setup.sh)
+git clone https://github.com/ChiosYang/5X49.git
+cd 5X49
 ```
 
-### 4. 运行服务
-运行容器:
+复制环境模板：
+
 ```bash
-docker-compose up -d
+cp .env.example .env
 ```
 
-然后在浏览器访问 [http://localhost:5549](http://localhost:5549)。
+PowerShell 使用：
 
-## 💻 本地开发
+```powershell
+Copy-Item .env.example .env
+```
 
-如果你想贡献代码或进行修改：
+编辑 `.env` 中的宿主机媒体目录。默认 `./media` 可直接用于空白试装：
 
-### 后端
+```dotenv
+MEDIA_DIR=./media
+TMDB_API_KEY=
+OPENROUTER_API_KEY=
+```
+
+Linux/NAS 可使用 `/volume1/video/movies` 一类绝对路径；Windows Docker Desktop
+可使用 `D:/Movies`。Compose 会把这个宿主机目录映射为后端容器内的 `/media`。
+
+在 Bash 环境中也可以运行交互式配置脚本；它会验证自定义目录，或创建默认的
+`./media`：
+
+```bash
+./setup.sh
+```
+
+### 2. 启动
+
+```bash
+docker compose up -d
+```
+
+- 前端：[http://localhost:5549](http://localhost:5549)
+- 后端 API：[http://localhost:11548](http://localhost:11548)
+- OpenAPI：[http://localhost:11548/docs](http://localhost:11548/docs)
+
+### 3. 完成首次扫描
+
+首次打开空资料库时，页面会显示内嵌引导：
+
+1. Docker 部署保持容器内路径 `/media`；本地开发使用电影目录绝对路径。
+2. 确认页面显示目录存在且可读。
+3. 点击“开始首次扫描”，等待扫描完成。
+4. 扫描成功后资料库会自动刷新。
+
+每部电影应位于媒体根目录下的一级子目录中：
+
+```text
+Movies/
+└── Film Title (2024)/
+    ├── Film Title (2024).mkv
+    └── movie.nfo  # 可选
+```
+
+支持 MP4、MKV、AVI、MOV、WMV、M4V、TS 和 ISO。直接放在媒体根目录下的视频
+需要在“资料库管理”中先整理。
+
+## 可选集成
+
+| 配置 | 是否必需 | 启用能力 |
+| --- | --- | --- |
+| `TMDB_API_KEY` | 否 | 在线匹配、元数据刮削、图片下载与 NFO 生成 |
+| `OPENROUTER_API_KEY` | 否 | AI 电影谱系分析和模型目录刷新 |
+
+不配置 Key 时，本地扫描、资料库浏览、观看状态、活动记录和本地 SQLite 持久化
+仍然可用。TMDB Key 可以稍后在应用设置中补充；OpenRouter Key 通过环境变量提供。
+
+## 常用 Docker 操作
+
+```bash
+docker compose ps
+docker compose logs -f backend frontend
+docker compose restart
+docker compose down
+```
+
+`backend_data` volume 保存数据库和设置。`docker compose down -v` 会删除该
+volume，请勿在需要保留资料库数据时使用。
+
+更多部署说明见 [Docker 指南](README.docker.md)。
+
+## 从源码开发
+
+要求 Node.js 20、Python 3.13 和 [uv](https://docs.astral.sh/uv/)。基础启动不需要
+TMDB 或 OpenRouter Key。
+
+后端：
+
 ```bash
 cd backend
+uv sync
 uv run uvicorn app.main:app --reload
 ```
 
-### 前端
+后端运行在 `http://127.0.0.1:8000`。
+
+前端另开终端：
+
 ```bash
 cd frontend
 npm install
 npm run dev
 ```
 
-## ⚙️ 配置项
+前端运行在 `http://127.0.0.1:5549`，开发模式默认代理到
+`http://127.0.0.1:8000`。
 
-| 变量 | 描述 | 默认值 |
-| :--- | :--- | :--- |
-| `OPENROUTER_API_KEY` | 用于 LLM 分析的 API Key | **必填** |
-| `MEDIA_DIR` | 你的电影收藏路径 (NFOs) | `/media` (Docker) |
-| `API_BASE_URL` | LLM API 端点 | `https://openrouter.ai/api/v1` |
-| `ALLOWED_ORIGINS` | 允许的 CORS 来源 | `http://localhost:5549` |
+验证命令：
 
----
+```bash
+cd frontend
+npm run test:unit
+npm run lint
+npm run typecheck
+npm run build
+```
 
-*Crafted with 🖤 for film lovers. (为电影爱好者精心打造 🖤)*
+后端测试使用 `unittest`；针对改动运行最小相关测试，例如：
+
+```bash
+cd backend
+uv run python -m unittest test_api_routes.ApiRouteContractTests
+```
+
+## 首次启动排错
+
+- 页面提示后端不可用：运行 `docker compose ps` 和
+  `docker compose logs backend`。
+- `/media` 不可读：确认 `.env` 中的宿主机 `MEDIA_DIR` 存在，并允许 Docker
+  Desktop/Engine 读取。
+- 扫描为零：确认电影位于一级子目录中，且包含受支持的视频文件或可解析 NFO。
+- TMDB/AI 操作不可用：这是未配置相应可选 Key 时的预期降级，不影响本地资料库。
+
+## 项目结构
+
+- `frontend/`：Next.js 16、React 19、TypeScript、Tailwind CSS。
+- `backend/`：Python 3.13、FastAPI、SQLModel、LangGraph/LangChain。
+- `docs/`：API、领域模型、安装基线和功能文档。
+
+*Crafted with 🖤 for film lovers.*

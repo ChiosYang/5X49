@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { X } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useDirectories } from "@/hooks/useDirectories";
 import { Button, IconButton } from "@/components/ui/Button";
 import { Dialog } from "@/components/ui/Dialog";
@@ -15,6 +16,7 @@ interface FileBrowserProps {
 }
 
 export default function FileBrowser({ initialPath, onSelect, onCancel, isOpen }: FileBrowserProps) {
+  const t = useTranslations("FileBrowser");
   const [currentPath, setCurrentPath] = useState(initialPath || "/");
   const { data, error, isLoading } = useDirectories(currentPath, isOpen);
 
@@ -22,7 +24,7 @@ export default function FileBrowser({ initialPath, onSelect, onCancel, isOpen }:
     <Dialog
       open={isOpen}
       onClose={onCancel}
-      closeLabel="Close directory browser"
+      closeLabel={t("close")}
       closeOnBackdrop={false}
       closeOnEscape={false}
       lockScroll={false}
@@ -31,12 +33,12 @@ export default function FileBrowser({ initialPath, onSelect, onCancel, isOpen }:
     >
       <div className="flex items-center justify-between border-b border-line-strong bg-canvas/35 p-4">
         <h3 id="file-browser-title" className="text-lg font-bold tracking-widest text-ink uppercase">
-          Select Directory
+          {t("title")}
         </h3>
         <IconButton
           variant="ghost"
           onClick={onCancel}
-          aria-label="Close directory browser"
+          aria-label={t("close")}
           icon={<X className="h-4 w-4" />}
           className="h-8 w-8"
         />
@@ -48,7 +50,7 @@ export default function FileBrowser({ initialPath, onSelect, onCancel, isOpen }:
           onClick={() => data?.parent_path && setCurrentPath(data.parent_path)}
           disabled={!data?.parent_path}
         >
-          ⬆ Up
+          ⬆ {t("up")}
         </Button>
         <div className="min-w-0 flex-1 break-all border border-line-strong bg-canvas/35 px-3 py-2 font-mono text-sm text-ink-muted">
           {data?.current_path || currentPath}
@@ -57,11 +59,11 @@ export default function FileBrowser({ initialPath, onSelect, onCancel, isOpen }:
 
       <div className="min-h-[300px] flex-1 overflow-y-auto bg-canvas/25 p-2">
         {isLoading ? (
-          <StateMessage state="loading" className="h-full border-0 bg-transparent">Loading...</StateMessage>
+          <StateMessage state="loading" className="h-full border-0 bg-transparent">{t("loading")}</StateMessage>
         ) : error ? (
-          <StateMessage state="error" className="h-full border-0 bg-transparent">{error.message}</StateMessage>
+          <StateMessage state="error" className="h-full border-0 bg-transparent">{t("loadFailed")}</StateMessage>
         ) : !data?.directories?.length ? (
-          <StateMessage className="h-full border-0 bg-transparent italic">No subdirectories found</StateMessage>
+          <StateMessage className="h-full border-0 bg-transparent italic">{t("empty")}</StateMessage>
         ) : (
           <div className="grid grid-cols-1 gap-1">
             {data.directories.map((dir) => (
@@ -80,9 +82,9 @@ export default function FileBrowser({ initialPath, onSelect, onCancel, isOpen }:
       </div>
 
       <div className="flex justify-end gap-3 border-t border-line-strong bg-canvas/25 p-4">
-        <Button variant="ghost" onClick={onCancel}>Cancel</Button>
+        <Button variant="ghost" onClick={onCancel}>{t("cancel")}</Button>
         <Button variant="primary" onClick={() => onSelect(data?.current_path || currentPath)}>
-          Select Current Folder
+          {t("selectCurrent")}
         </Button>
       </div>
     </Dialog>

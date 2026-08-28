@@ -1,11 +1,9 @@
-version: '3.8'
-
 services:
   backend:
     image: ${DOCKER_USERNAME:-alicolia}/5x49-backend:latest
     container_name: 5x49-backend
     ports:
-      - "8000:8000"
+      - "11548:8000"
     volumes:
       - backend_data:/app/data
       - ${MEDIA_DIR:-./media}:/media
@@ -31,7 +29,7 @@ services:
     ports:
       - "5549:3000"
     environment:
-      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://localhost:8000}
+      - BACKEND_URL=http://backend:8000
     depends_on:
       - backend
     restart: unless-stopped

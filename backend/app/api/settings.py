@@ -37,6 +37,26 @@ class TmdbApiKeyUpdate(BaseModel):
     api_key: str = ""
 
 
+def _media_directory_status(media_dir: str | None) -> dict:
+    path_value = media_dir or ""
+    if not path_value:
+        return {"media_dir": path_value, "exists": False, "readable": False}
+
+    try:
+        path = Path(path_value).expanduser()
+        exists = path.exists()
+        readable = exists and path.is_dir() and os.access(path, os.R_OK)
+    except (OSError, RuntimeError, ValueError):
+        exists = False
+        readable = False
+
+    return {
+        "media_dir": path_value,
+        "exists": exists,
+        "readable": readable,
+    }
+
+
 @router.get("/settings")
 def get_settings():
     """Get current system settings"""
@@ -68,7 +88,7 @@ def update_model_setting(model_name: str):
 
 @router.get("/settings/media-dir")
 def get_media_directory():
-    return {"media_dir": get_media_dir()}
+    return _media_directory_status(get_media_dir())
 
 
 @router.put("/settings/media-dir")
@@ -88,8 +108,8 @@ def update_media_directory(media_dir: str):
     if success:
         return {
             "status": "success",
-            "media_dir": normalized_media_dir,
             "message": "Media directory updated and is available immediately.",
+            **_media_directory_status(normalized_media_dir),
         }
     else:
         raise HTTPException(status_code=500, detail="Failed to save settings")

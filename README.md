@@ -1,123 +1,178 @@
 # 🎬 5X49
 
 [English](README.md) | [简体中文](README.zh-CN.md)
-> A modern, AI-powered film library manager with deep genealogy analysis and a premium A24-inspired aesthetic.
 
-![Library Grid](docs/images/library_grid.png)
+> A local-first Film Library manager and cinematic genealogy explorer.
 
-## ✨ Introduction
+![Library](docs/images/library_grid.png)
 
-**5X49** is not just a media server; it's a cinematic exploration tool. Managing your local film collection has never been this beautiful. It scans your metadata, presents your films in a stunning dark-mode interface, and uses advanced AI to analyze the "genealogy" of films—connecting them by themes, directors, visual styles, and historical context.
+5X49 scans local Film folders and NFO metadata and presents the collection in a
+cinematic dark interface. Optional TMDB integration enriches metadata and
+artwork; optional OpenRouter integration generates Film genealogy analysis.
 
-## 🚀 Key Features
+## Highlights
 
-### 📚 Immersive Library
-Automatically scans your local NFO-based collection (compatible with TinyMediaManager) and presents it in a responsive, visually rich grid.
-![Menu Navigation](docs/images/menu_open.png)
+- Scan TinyMediaManager/Kodi-style Film folders and NFO files.
+- Manage Film editions, watch state, favorites, metadata, and artwork.
+- Observe background scan, organization, and scraping workflows.
+- Analyze themes, styles, and Film-history relationships with an optional LLM.
+- Integrate through the FastAPI REST interface documented in [docs/api.md](docs/api.md).
 
-### 🧠 AI-Powered Analysis
-Deep dives into each film using Large Language Models (LLMs) to generate "genealogy reports," formatted in beautiful markdown. Explore connections you never knew existed.
-![Detail Page](docs/images/detail_page.png)
-![Detail Page 2](docs/images/detail_page2.png)
-![Film Genealogy](docs/images/film_genealogy.png)
+## Quick Start: Published Images
 
-### 🤖 Intelligent Librarian Agent (LangGraph/ReAct)
-Featuring an autonomous background agent powered by **LangGraph** and **LangChain**. The agent monitors an incoming `inbox` folder, handles chaotic filenames using *Function Calling*, searches for metadata, and autonomously renames and files media into the library. 
-Watch the agent's Step-by-Step reasoning via Server-Sent Events (SSE) in the real-time Librarian Console.
+Published Docker images are the recommended path for regular users. This flow
+does not build source code from the current checkout.
 
-### 🔌 Extensible API & Agent Skills
-Fully documented RESTful API (see [API Documentation](docs/api.md)) allowing easy integration with other services. Includes a ready-to-use **OpenClaw Skill** (`skills/5x49-backend`) so external AI agents can natively manage your library and trigger analysis.
+### Requirements
 
-### 📂 Easy Management
-- **File Browser**: Select your media directory visually—no manual path typing required.
-- **Manual Scan**: Trigger library updates on demand without restarting the server.
-![Settings & Scan](docs/images/settings_scan.png)
+- Docker Desktop or Docker Engine
+- Docker Compose v2 (`docker compose`)
+- A directory for local Films; no API key is required to start
 
-### 🐳 Docker Ready
-Built for containerization from day one. Deploy easily with Docker Compose on any system, now with full **Multi-Architecture support (AMD64 & ARM64)** out of the box. The frontend automatically proxies API traffic to avoid IP configuration hassles on local NAS setups.
+### 1. Get the deployment files
 
-## 🛠️ Tech Stack
-
-- **Frontend**: Next.js 16, Tailwind CSS, Framer Motion, SWR
-- **Backend**: FastAPI, SQLModel (SQLite), Pydantic
-- **AI Integration**: OpenAI/OpenRouter API
-- **Infrastructure**: Docker, Docker Compose, uv
-
-## 🏁 Getting Started (Docker)
-
-The recommended way to run Film Genealogy is via Docker.
-
-### 1. Requirements
-- Docker & Docker Compose installed
-- An API Key for OpenRouter (or OpenAI/Anthropic)
-
-### 2. Quick Deploy
-Save the following as `docker-compose.yml`:
-
-```yaml
-services:
-  backend:
-    image: alicolia/5x49-backend:latest
-    ports:
-      - "8000:8000"
-    environment:
-      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
-      - MEDIA_DIR=/media
-    volumes:
-      - backend_data:/app/data
-      - ${MEDIA_DIR:-./media}:/media  # Map your local movie folder here
-
-  frontend:
-    image: alicolia/5x49-frontend:latest
-    ports:
-      - "5549:3000"
-    depends_on:
-      - backend
-
-volumes:
-  backend_data:
-```
-
-### 3. Setup Configuration (Optional but Recommended)
-For the easiest deployment experience, you can download and run our interactive setup script. This will automatically generate a `.env` file with your preferences:
 ```bash
-bash <(curl -sL https://raw.githubusercontent.com/chiosyang/5x49/main/setup.sh)
+git clone https://github.com/ChiosYang/5X49.git
+cd 5X49
+cp .env.example .env
 ```
 
-### 4. Run it
-Run the containers:
+PowerShell:
+
+```powershell
+Copy-Item .env.example .env
+```
+
+Edit the host media directory in `.env`. The default `./media` is suitable for
+an empty trial installation:
+
+```dotenv
+MEDIA_DIR=./media
+TMDB_API_KEY=
+OPENROUTER_API_KEY=
+```
+
+Linux/NAS users can use an absolute path such as `/volume1/video/movies`.
+Windows Docker Desktop accepts a path such as `D:/Movies`. Compose mounts this
+host directory as `/media` inside the backend container.
+
+In a Bash environment, the optional interactive script validates a custom
+directory or creates the default `./media` directory:
+
 ```bash
-docker-compose up -d
+./setup.sh
 ```
 
-Access the app at [http://localhost:5549](http://localhost:5549).
+### 2. Start 5X49
 
-## 💻 Local Development
+```bash
+docker compose up -d
+```
 
-If you want to contribute or modify the code:
+- Frontend: [http://localhost:5549](http://localhost:5549)
+- Backend API: [http://localhost:11548](http://localhost:11548)
+- OpenAPI: [http://localhost:11548/docs](http://localhost:11548/docs)
 
-### Backend
+### 3. Complete the first scan
+
+An empty Library opens an inline first-run guide:
+
+1. Keep the container path `/media` for Docker; use an absolute Film path for local development.
+2. Confirm that the directory is reported as existing and readable.
+3. Select **Start First Scan** and wait for completion.
+4. The Library refreshes automatically when Films are found.
+
+Each Film belongs in a first-level folder below the media root:
+
+```text
+Movies/
+└── Film Title (2024)/
+    ├── Film Title (2024).mkv
+    └── movie.nfo  # optional
+```
+
+Supported video types are MP4, MKV, AVI, MOV, WMV, M4V, TS, and ISO. Videos
+placed directly in the media root can be organized from Library Management.
+
+## Optional Integrations
+
+| Setting | Required | Enables |
+| --- | --- | --- |
+| `TMDB_API_KEY` | No | Online matching, metadata/artwork scraping, and NFO generation |
+| `OPENROUTER_API_KEY` | No | AI Film genealogy analysis and model-catalog refresh |
+
+Without keys, local scanning, Library browsing, watch state, Activity, and
+SQLite persistence remain available. A TMDB key can be added later in Settings;
+the OpenRouter key is supplied through the environment.
+
+## Common Docker Operations
+
+```bash
+docker compose ps
+docker compose logs -f backend frontend
+docker compose restart
+docker compose down
+```
+
+The `backend_data` volume stores the database and settings. Do not run
+`docker compose down -v` when that data must be preserved.
+
+See [README.docker.md](README.docker.md) for additional deployment guidance.
+
+## Source Development
+
+Install Node.js 20, Python 3.13, and [uv](https://docs.astral.sh/uv/). TMDB and
+OpenRouter keys are not required for the base application.
+
+Backend:
+
 ```bash
 cd backend
+uv sync
 uv run uvicorn app.main:app --reload
 ```
 
-### Frontend
+The backend listens on `http://127.0.0.1:8000`.
+
+Frontend, in another terminal:
+
 ```bash
 cd frontend
 npm install
 npm run dev
 ```
 
-## ⚙️ Configuration
+The frontend listens on `http://127.0.0.1:5549` and proxies to the development
+backend at `http://127.0.0.1:8000` by default.
 
-| Variable | Description | Default |
-| :--- | :--- | :--- |
-| `OPENROUTER_API_KEY` | API Key for LLM analysis | **Required** |
-| `MEDIA_DIR` | Path to your movie collection (NFOs) | `/media` (Docker) |
-| `API_BASE_URL` | LLM API Endpoint | `https://openrouter.ai/api/v1` |
-| `ALLOWED_ORIGINS` | CORS allowed origins | `http://localhost:5549` |
+Frontend verification:
 
----
+```bash
+cd frontend
+npm run test:unit
+npm run lint
+npm run typecheck
+npm run build
+```
+
+Backend tests use `unittest`; run the smallest relevant module, for example:
+
+```bash
+cd backend
+uv run python -m unittest test_api_routes.ApiRouteContractTests
+```
+
+## First-run Troubleshooting
+
+- Backend unavailable: run `docker compose ps` and `docker compose logs backend`.
+- `/media` unreadable: confirm that the host `MEDIA_DIR` exists and Docker can access it.
+- Zero Films found: verify the first-level folder layout and supported video/NFO files.
+- TMDB/AI actions unavailable: this is expected without the relevant optional key.
+
+## Repository Layout
+
+- `frontend/`: Next.js 16, React 19, TypeScript, and Tailwind CSS.
+- `backend/`: Python 3.13, FastAPI, SQLModel, and LangGraph/LangChain.
+- `docs/`: API, domain, installation-baseline, and feature documentation.
 
 *Crafted with 🖤 for film lovers.*

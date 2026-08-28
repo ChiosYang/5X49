@@ -1,28 +1,25 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useTranslations } from "next-intl";
-import FileBrowser from "@/components/FileBrowser";
+import MediaDirectoryControl from "@/components/settings/MediaDirectoryControl";
 import {
   DisclosurePanel,
   SectionIntro,
   SettingRow,
   SettingsPanel,
 } from "@/components/settings/SettingsPrimitives";
-import { Button } from "@/components/ui/Button";
 import { InlineFeedback } from "@/components/ui/Feedback";
-import { TextInput, ToggleSwitch } from "@/components/ui/FormControls";
+import { ToggleSwitch } from "@/components/ui/FormControls";
 import {
   type ArtworkLanguage,
   useArtworkLanguageSetting,
   useAutoOrganizeRootSetting,
   useLibraryWatchSetting,
-  useMediaDir,
   useScrapeConfirmationSetting,
   useUpdateArtworkLanguage,
   useUpdateAutoOrganizeRoot,
   useUpdateLibraryWatch,
-  useUpdateMediaDir,
   useUpdateScrapeConfirmation,
 } from "@/hooks/useSettings";
 
@@ -36,20 +33,12 @@ function useTransientMutationResult(result: unknown, reset: () => void) {
 
 export default function LibrarySettings() {
   const t = useTranslations("Settings");
-  const { data: mediaDirData, mutate: refreshMediaDir } = useMediaDir();
   const { data: artworkLanguageData } = useArtworkLanguageSetting();
   const { data: libraryWatchData, mutate: refreshLibraryWatch } = useLibraryWatchSetting();
   const { data: autoOrganizeData, mutate: refreshAutoOrganize } = useAutoOrganizeRootSetting();
   const { data: scrapeConfirmationData, mutate: refreshScrapeConfirmation } =
     useScrapeConfirmationSetting();
 
-  const {
-    trigger: updateMediaDir,
-    isMutating: mediaDirSaving,
-    data: mediaDirSaveResult,
-    error: mediaDirSaveError,
-    reset: resetMediaDirSave,
-  } = useUpdateMediaDir();
   const {
     trigger: updateArtworkLanguage,
     isMutating: artworkLanguageSaving,
@@ -79,34 +68,17 @@ export default function LibrarySettings() {
     reset: resetScrapeConfirmationSave,
   } = useUpdateScrapeConfirmation();
 
-  const [mediaDirDraft, setMediaDirDraft] = useState<string>();
-  const [fileBrowserOpen, setFileBrowserOpen] = useState(false);
-
-  useTransientMutationResult(mediaDirSaveResult, resetMediaDirSave);
   useTransientMutationResult(artworkLanguageSaveResult, resetArtworkLanguageSave);
   useTransientMutationResult(watchSaveResult, resetWatchSave);
   useTransientMutationResult(autoOrganizeSaveResult, resetAutoOrganizeSave);
   useTransientMutationResult(scrapeConfirmationSaveResult, resetScrapeConfirmationSave);
 
-  const mediaDirValue = mediaDirDraft ?? mediaDirData?.media_dir ?? "";
-  const mediaDirDirty =
-    mediaDirDraft !== undefined && mediaDirDraft.trim() !== (mediaDirData?.media_dir ?? "");
   const artworkLanguageOptions: Array<{ value: ArtworkLanguage; label: string }> = [
     { value: "metadata", label: t("artworkLanguageMetadata") },
     { value: "zh", label: t("artworkLanguageZh") },
     { value: "en", label: t("artworkLanguageEn") },
     { value: "none", label: t("artworkLanguageNone") },
   ];
-
-  const handleMediaDirSave = async () => {
-    try {
-      await updateMediaDir(mediaDirValue.trim());
-      await refreshMediaDir();
-      setMediaDirDraft(undefined);
-    } catch {
-      // Mutation state renders the localized error in the row.
-    }
-  };
 
   const handleArtworkLanguageChange = async (language: ArtworkLanguage) => {
     if (language === (artworkLanguageData?.artwork_language ?? "metadata")) return;
@@ -164,53 +136,10 @@ export default function LibrarySettings() {
         <SettingRow
           title={t("mediaDir")}
           description={t("mediaDirDesc")}
-          feedback={
-            mediaDirSaveError ? (
-              <InlineFeedback tone="error">{t("mediaDirSaveFailed")}</InlineFeedback>
-            ) : mediaDirSaveResult ? (
-              <InlineFeedback tone="success">{t("saved")}</InlineFeedback>
-            ) : (
-              <InlineFeedback>{t("noteRestart")}</InlineFeedback>
-            )
-          }
         >
-          <div className="flex flex-col gap-3 md:flex-row">
-            <TextInput
-              type="text"
-              value={mediaDirValue}
-              onChange={(event) => setMediaDirDraft(event.target.value)}
-              aria-label={t("mediaDir")}
-              placeholder="/path/to/movies"
-            />
-            <Button
-              onClick={() => setFileBrowserOpen(true)}
-            >
-              {t("browse")}
-            </Button>
-            <Button
-              onClick={handleMediaDirSave}
-              disabled={!mediaDirDirty || !mediaDirValue.trim() || mediaDirSaving}
-              busy={mediaDirSaving}
-              variant="primary"
-            >
-              {mediaDirSaving ? t("saving") : t("save")}
-            </Button>
-          </div>
-          <p className="mt-3 text-xs leading-5 text-ink-disabled">{t("noteDocker")}</p>
+          <MediaDirectoryControl showDockerNote />
         </SettingRow>
       </SettingsPanel>
-
-      {fileBrowserOpen && (
-        <FileBrowser
-          isOpen={fileBrowserOpen}
-          initialPath={mediaDirValue}
-          onSelect={(path) => {
-            setMediaDirDraft(path);
-            setFileBrowserOpen(false);
-          }}
-          onCancel={() => setFileBrowserOpen(false)}
-        />
-      )}
 
       <SettingsPanel title={t("metadataPreferences")} description={t("metadataPreferencesDesc")}>
         <SettingRow

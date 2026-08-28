@@ -28,7 +28,7 @@ sources. Invalid resource IDs return `400`; missing resources return `404`.
 | `GET` | `/` | Service information. |
 | `GET` | `/settings` | Combined non-secret settings. |
 | `GET/PUT` | `/settings/model` | Analysis model selection. |
-| `GET/PUT` | `/settings/media-dir` | Local media root. `PUT` requires an existing readable directory and applies immediately without an application restart. |
+| `GET/PUT` | `/settings/media-dir` | Local media root and non-secret availability. `PUT` requires an existing readable directory and applies immediately without an application restart. |
 | `GET` | `/media/{relative_path}` | Serve a file from the current media root with traversal and symlink-escape protection. |
 | `GET/PUT` | `/settings/language` | Application language. |
 | `GET/PUT` | `/settings/artwork-language` | Preferred artwork language. |
@@ -40,6 +40,22 @@ sources. Invalid resource IDs return `400`; missing resources return `404`.
 | `GET/PUT` | `/settings/base-url` | OpenAI-compatible endpoint setting. |
 | `POST` | `/settings/models/refresh` | Refresh model catalog. |
 | `GET` | `/settings/test-api-key` | Test the configured analysis provider. |
+
+`GET /settings/media-dir` returns the configured path without enumerating its
+contents or exposing settings secrets:
+
+```json
+{
+  "media_dir": "/media",
+  "exists": true,
+  "readable": true
+}
+```
+
+`readable` is true only when the path exists, is a directory, and is readable by
+the backend process. A successful `PUT` includes the same three fields plus its
+existing `status` and `message` fields. Invalid targets return `400` with an
+actionable `detail` string.
 
 ## Library Films
 

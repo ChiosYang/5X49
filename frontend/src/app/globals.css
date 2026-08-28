@@ -32,6 +32,35 @@ body {
   line-height: 1rem;
 }
 
+/* The first-run cover is server-rendered so onboarding never flashes before hydration. */
+[data-first-run-intro] {
+  animation: first-run-intro-fallback 1.3s linear forwards;
+}
+
+html[data-first-run-intro-state="skip"]
+  [data-first-run-intro][data-first-run-intro-bootstrap] {
+  display: none;
+}
+
+@keyframes first-run-intro-fallback {
+  0%,
+  78% {
+    opacity: 1;
+    visibility: visible;
+  }
+
+  100% {
+    opacity: 0;
+    visibility: hidden;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-first-run-intro] {
+    display: none;
+  }
+}
+
 *,
 .scrollbar-minimal {
   scrollbar-width: thin;

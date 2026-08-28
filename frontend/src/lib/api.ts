@@ -60,6 +60,7 @@ export const API = {
   libraryOrganizeRootConfirm: () => `${API_BASE_URL}/library/organize-root/confirm`,
   libraryOrganizeStatus: () => `${API_BASE_URL}/library/organize/status`,
   libraryRootVideos: () => `${API_BASE_URL}/library/root-videos`,
+  libraryScan: () => `${API_BASE_URL}/library/scan`,
   libraryReconcile: () => `${API_BASE_URL}/library/reconcile`,
   libraryCleanupMissing: () => `${API_BASE_URL}/library/missing`,
   librarySyncStatus: () => `${API_BASE_URL}/library/sync/status`,
@@ -79,7 +80,6 @@ export const API = {
   settingsTestApiKey: () => `${API_BASE_URL}/settings/test-api-key`,
   settingsModelsRefresh: () => `${API_BASE_URL}/settings/models/refresh`,
   systemListDirs: () => `${API_BASE_URL}/sys/list-dirs`,
-  systemScanLibrary: () => `${API_BASE_URL}/sys/scan-library`,
 };
 
 export default API;
