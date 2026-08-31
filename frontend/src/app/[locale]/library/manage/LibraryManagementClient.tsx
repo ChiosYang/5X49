@@ -18,7 +18,6 @@ import {
   useLibraryScrapeStatus,
   useLibrarySyncStatus,
   useOrganizeRootVideos,
-  useReconcileLibrary,
   useRefreshLibraryExternalScores,
   useScanLibrary,
   useScrapeLibrary,
@@ -49,12 +48,6 @@ export default function LibraryManagementClient() {
     data: scanResult,
     error: scanError,
   } = useScanLibrary();
-  const {
-    trigger: reconcileLibrary,
-    isMutating: isReconciling,
-    data: reconcileResult,
-    error: reconcileError,
-  } = useReconcileLibrary();
   const {
     trigger: scrapeLibrary,
     isMutating: isScraping,
@@ -105,14 +98,6 @@ export default function LibraryManagementClient() {
     ? errorMessage(scanError, t("scanFailed"))
     : scanResult
       ? t("scanStarted")
-      : undefined;
-  const reconcileMessage = reconcileError
-    ? errorMessage(reconcileError, t("reconcileFailed"))
-    : reconcileResult
-      ? t("reconcileSummary", {
-          scanned: reconcileResult.scanned ?? 0,
-          missing: reconcileResult.missing ?? 0,
-        })
       : undefined;
   const scrapeMessage = scrapeError
     ? errorMessage(scrapeError, t("scrapeFailed"))
@@ -247,30 +232,20 @@ export default function LibraryManagementClient() {
             <h2 className="type-section-title text-ink">{t("scanGroup")}</h2>
             <p className="mt-1 text-xs leading-5 text-ink-disabled">{t("scanGroupDesc")}</p>
           </div>
-          <div className="grid gap-4 md:grid-cols-2">
+          <div className="grid gap-4">
             <ActionCard
               title={settingsT("manualScan")}
               description={settingsT("manualScanDesc")}
-              status={scanMessage}
-              statusTone={scanError ? "error" : scanResult ? "success" : "neutral"}
-            >
-              <Button responsiveWidth busy={isScanning} onClick={() => void run(() => scanLibrary())}>
-                {isScanning ? settingsT("scanning") : settingsT("scanNow")}
-              </Button>
-            </ActionCard>
-            <ActionCard
-              title={settingsT("reconcileLibrary")}
-              description={settingsT("reconcileLibraryDesc")}
               meta={
                 syncStatus?.sync.last_finished_at
                   ? `${t("lastRun")}: ${formatDate(syncStatus.sync.last_finished_at)}`
                   : undefined
               }
-              status={reconcileMessage}
-              statusTone={reconcileError ? "error" : reconcileResult ? "success" : "neutral"}
+              status={scanMessage}
+              statusTone={scanError ? "error" : scanResult ? "success" : "neutral"}
             >
-              <Button responsiveWidth busy={isReconciling} onClick={() => void run(() => reconcileLibrary())}>
-                {isReconciling ? settingsT("scanning") : settingsT("reconcileNow")}
+              <Button responsiveWidth busy={isScanning} onClick={() => void run(() => scanLibrary())}>
+                {isScanning ? settingsT("scanning") : settingsT("scanNow")}
               </Button>
             </ActionCard>
           </div>
