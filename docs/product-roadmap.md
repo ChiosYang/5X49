@@ -1,6 +1,6 @@
 # 5X49 Product Roadmap
 
-- Updated: 2026-08-26
+- Updated: 2026-08-31
 - Product: self-hosted personal cinema knowledge and viewing system
 - Current architecture: Fresh Canonical v1
 
@@ -31,6 +31,9 @@ Complete:
 - Analysis V2 persistence, entity resolution, Assertions, Evidence and reviews.
 - Fixed 36-case Gate B evaluation tooling and adjudicated dataset.
 - Fresh Canonical database epoch and resource API; historical compatibility is retired.
+- Inline first-run media-directory setup, scanning and recovery for an empty Library.
+- Reviewable root/inbox file organization with exact preview, confirmation and restore boundaries.
+- Fresh Canonical local strict stabilization Gate with bilingual desktop and mobile evidence.
 
 ## Active quality gate
 
@@ -49,87 +52,55 @@ gate currently carried forward from W4.
 
 ## Next delivery sequence
 
-### 1. Fresh Canonical stabilization
+### 1. Continuous integration baseline
 
-Status: **Complete** for the local strict Gate. Docker remains separately
-unavailable and live external smoke remains advisory.
+- Run deterministic backend unittest discovery and compile checks on every
+  `main` push and pull request.
+- Run frontend unit, lint, typecheck and production-build checks independently.
+- Keep credentials, Docker, live external services and browser Gates outside
+  the mandatory baseline.
 
-- Complete desktop and 375px bilingual smoke coverage.
-- Exercise scanning, missing/restore, multi-edition ordering and dangerous clear
-  against generated media in an isolated database.
-- Exercise snapshot preview/restore for metadata, artwork, availability and
-  controlled file organization.
-- Validate Docker first install when Docker is available.
-- Keep privacy scans for Event, Workflow/Job, logs and quality reports in CI.
+Exit: both CI jobs pass on `main`, with locked backend and frontend dependencies.
 
-Exit: fresh first start is deterministic; no removed compatibility symbol or
-table is reachable; media remains untouched during database cutover.
+### 2. Viewing Diary
 
-### 2. Provenance and synchronous read models
+- Add explicit create, edit and delete operations for multiple Viewing records.
+- Provide a bilingual diary timeline while preserving the derived watched and
+  latest-per-Film Watch History contracts.
+- Keep Film-level favorite, rating and notes separate from individual Viewings.
 
-- centralize deterministic metadata selection and conflict reporting;
-- add transactional Library, Detail, Search and Graph read models;
-- provide offline projection verify/rebuild and strict stale-state handling.
+Exit: repeated viewings remain independent, editable facts and cannot be
+silently removed by the manual watched toggle.
 
-Exit: product reads are reproducible, projection rebuild digests match and no
-read model is treated as durable truth.
+### 3. Factual Explore
 
-### 3. Factual Film Graph
+- Explore the local Library by accepted genre, person, country and decade facts.
+- Reuse synchronous read models and factual Graph visibility; do not require a
+  model call or expose inferred edges.
+- Make active filters and provenance understandable and deterministic.
 
-- expose accepted factual Assertions and selected Credits on Film detail;
-- ship a bounded accessible SVG plus list fallback;
-- keep every inferred edge server-side hidden before Gate B.
+Exit: a user can move from a trusted fact or Graph node to a reproducible Film
+set without silently relaxed constraints.
 
-Exit: factual Graph contract, accessibility, privacy and bounded traversal pass.
+### 4. Ask MVP
 
-### 4. Durable workflows and constrained Analysis
+- Let the model structure intent while the database and Graph perform strict
+  filtering and entity lookup.
+- Explain already selected results and the constraints that produced them.
+- Exclude private paths, notes and secrets from provider input by default.
 
-- persisted Workflow steps now own reconcile, metadata and Analysis execution;
-- retries, cancellation and crash recovery preserve completed step state;
-- one Historian call now feeds deterministic resolution, policy criticism and
-  Evidence verification shared by production and Gate B.
+Exit: Ask is a bounded interface over trusted local facts, not an autonomous
+database or filesystem agent.
 
-Exit: restart and retry cannot duplicate domain or external side effects.
+### Parallel quality track — Finish Gate B
 
-### 5. Finish Gate B
-
-- Resolve the public Evidence network preflight or document an approved product
-  policy that changes the Evidence requirement.
-- Run all 36 adjudicated cases with a pinned exact model and pricing manifest.
-- Fill `analysis-eval-human-review.v1` for every successful case and new relation.
+- Resolve the public Evidence network preflight without weakening the SSRF boundary.
+- Run all 36 adjudicated cases with one pinned model and pricing manifest.
+- Complete human review, restore, idempotency, cost and privacy evidence.
 - Run strict `conclude` and publish only the redacted quality summary.
 
-Exit: every `gate-b-policy` threshold passes and Gate B is explicitly recorded
-as Passed.
-
-### 6. Reviewed inferred Graph
-
-Only after Gate B passes:
-
-- film detail graph using accepted factual and reviewed inferred Assertions;
-- relation Evidence and review-state inspection;
-- clear distinction between owned and non-owned Films;
-- bounded traversal and accessible non-graph fallback.
-
-Graph UI is additionally subject to its own product/accessibility/performance
-acceptance. A quality-gate pass does not automatically ship it.
-
-### 7. Local-first portability, Diary and Explore
-
-- deterministic `library-export.v1` export and validation are complete;
-- multiple explicit Viewing records and diary editing;
-- Explore by the most reliable dimensions: genre, person, country/decade;
-- explainable Cinema DNA based on accepted facts and user Viewing data;
-- local-first export/backup and setup health.
-- keep multi-device synchronization out of scope until a separate conflict and
-  security contract exists.
-
-### 8. Ask MVP
-
-- database/graph performs strict filtering and entity lookup;
-- the model structures intent and explains already selected results;
-- constraints are never silently relaxed;
-- private paths, notes and secrets are excluded from provider input by default.
+Only a Passed conclusion may release accepted inferred Graph edges. Gate B does
+not block Diary, factual Explore, export or deterministic local queries.
 
 ## Engineering principles
 

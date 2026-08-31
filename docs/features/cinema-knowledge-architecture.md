@@ -1,7 +1,7 @@
 # Provenance-Driven Cinema Knowledge Architecture
 
-Status: In Progress
-Last updated: 2026-08-27
+Status: Blocked
+Last updated: 2026-08-31
 Related: `docs/product-roadmap.md`, `docs/domain-model.md`,
 `docs/features/analysis-v2-persistence.md`
 
@@ -75,6 +75,10 @@ Analysis → Historian → Resolver → Critic → Evidence → Persistence
 - [x] Backend, frontend, privacy and responsive smoke suites pass.
 
 ## Slices
+
+The core architecture and product-facing factual surfaces are complete. The
+overall feature remains Blocked only because Slice 6 requires live Evidence,
+cost and human-review results before inferred Graph visibility can be released.
 
 ### Slice 0 — Architecture handoff
 
