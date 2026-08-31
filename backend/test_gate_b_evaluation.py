@@ -1,7 +1,9 @@
 import hashlib
+import json
 import os
 import shutil
 import sqlite3
+import tempfile
 import unittest
 import uuid
 from contextlib import closing
@@ -314,18 +316,47 @@ class GateBEvaluationTests(unittest.TestCase):
             shutil.rmtree(run_dir, ignore_errors=True)
 
     def test_live_preflight_blocks_when_evidence_network_is_unavailable(self):
-        run_dir = self._new_run_dir("evidence-preflight")
-        pricing_path = BACKEND_ROOT / "data" / "analysis-v2" / "gate-b" / "input" / "pricing.json"
-        try:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            isolated_root = Path(temporary_directory)
+            fixture_root = isolated_root / "fixtures" / "analysis_v2"
+            fixture_root.mkdir(parents=True)
+            dataset_path = fixture_root / DATASET_PATH.name
+            policy_path = fixture_root / POLICY_PATH.name
+            shutil.copy2(DATASET_PATH, dataset_path)
+            shutil.copy2(POLICY_PATH, policy_path)
+            pricing_path = isolated_root / "data" / "analysis-v2" / "gate-b" / "input" / "pricing.json"
+            pricing_path.parent.mkdir(parents=True)
+            pricing_path.write_text(
+                json.dumps({
+                    "format_version": "gate-b-pricing.v1",
+                    "provider": "openrouter",
+                    "model": "stealth/ox-alpha",
+                    "currency": "USD",
+                    "input_usd_per_million": 0,
+                    "output_usd_per_million": 0,
+                    "effective_at": "2026-08-26T06:39:28Z",
+                    "source_uri": "https://openrouter.ai/stealth/ox-alpha",
+                }),
+                encoding="utf-8",
+            )
+            run_dir = (
+                isolated_root
+                / "data"
+                / "analysis-v2"
+                / "gate-b"
+                / "runs"
+                / "test-evidence-preflight"
+            )
             with (
                 patch.dict(os.environ, {"OPENROUTER_API_KEY": "test-only"}),
+                patch("app.evaluation.gate_b._backend_root", return_value=isolated_root),
                 patch(
                     "app.evaluation.gate_b.evidence_retriever.preflight",
                     return_value="evidence_network_boundary_blocked",
                 ),
             ):
                 report = run_live(
-                    DATASET_PATH,
+                    dataset_path,
                     run_dir,
                     provider="openrouter",
                     model="stealth/ox-alpha",
@@ -338,8 +369,6 @@ class GateBEvaluationTests(unittest.TestCase):
                 "live-preflight-evidence-network-boundary-blocked",
                 {item["id"] for item in report["checks"]},
             )
-        finally:
-            shutil.rmtree(run_dir, ignore_errors=True)
 
     def test_pilot_is_always_marked_as_diagnostic(self):
         expected = {"overall_status": "blocked", "diagnostic_status": "passed"}
