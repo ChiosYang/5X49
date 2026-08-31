@@ -3,24 +3,32 @@
 import type { ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { Dialog } from "@/components/ui/Dialog";
+import MovieDetailReturn from "./MovieDetailReturn";
 
-export default function MovieDetailOverlay({ children }: { children: ReactNode }) {
+interface MovieDetailOverlayProps {
+  children: ReactNode;
+  dialogLabel: string;
+  returnLabel: string;
+}
+
+export default function MovieDetailOverlay({ children, dialogLabel, returnLabel }: MovieDetailOverlayProps) {
   const router = useRouter();
 
   return (
     <Dialog
       open
       onClose={() => router.back()}
-      closeLabel="Close movie details"
+      closeLabel={returnLabel}
       closeOnBackdrop={false}
       closeOnEscape
       lockScroll
       glass={false}
       scrim={false}
       size="fullscreen"
-      ariaLabel="Movie details"
+      ariaLabel={dialogLabel}
       panelClassName="overflow-y-auto"
     >
+      <MovieDetailReturn behavior="history" label={returnLabel} />
       {children}
     </Dialog>
   );

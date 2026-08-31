@@ -1,5 +1,4 @@
 import { getTranslations } from "next-intl/server";
-import { Link } from "@/i18n/routing";
 import { isFilmResourceId } from "@/lib/resource-id";
 import { getLibraryFilm } from "@/lib/server-api";
 import MovieDetailView from "../../[id]/MovieDetailView";
@@ -20,19 +19,16 @@ export default async function InterceptedMovieDetailPage({ params }: Intercepted
 
   if (!film) {
     return (
-      <MovieDetailOverlay>
+      <MovieDetailOverlay dialogLabel={t("dialogLabel")} returnLabel={t("return")}>
         <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center space-y-4">
           <h1 className="text-4xl font-serif font-bold">{t("notFound")}</h1>
-          <Link href="/library" className="text-neutral-400 hover:text-white underline">
-            {t("return")}
-          </Link>
         </div>
       </MovieDetailOverlay>
     );
   }
 
   return (
-    <MovieDetailOverlay>
+    <MovieDetailOverlay dialogLabel={t("dialogLabel")} returnLabel={t("return")}>
       <MovieDetailView film={film} />
     </MovieDetailOverlay>
   );

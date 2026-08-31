@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { type MouseEvent, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Check, Globe2, Loader2, Star } from "lucide-react";
@@ -298,31 +298,12 @@ export default function LibraryMovieCard({ movie, priority = false }: LibraryMov
     }
   };
 
-  const handleMovieLinkClick = (event: MouseEvent<HTMLAnchorElement>) => {
-    if (
-      event.defaultPrevented ||
-      event.button !== 0 ||
-      event.metaKey ||
-      event.altKey ||
-      event.ctrlKey ||
-      event.shiftKey
-    ) {
-      return;
-    }
-
-    const href = event.currentTarget.getAttribute("href");
-    if (!href) return;
-
-    event.preventDefault();
-    router.push(href, { scroll: false });
-  };
-
   return (
     <div className="block">
       <div className="space-y-4">
         {/* Landscape Still */}
         <div className="peer/card group z-content hover:z-inspector relative aspect-video w-full bg-surface-raised">
-          <Link href={`/library/${movie.id}`} scroll={false} onClick={handleMovieLinkClick} className="focus-ring block h-full cursor-pointer rounded-media">
+          <Link href={`/library/${movie.id}`} scroll={false} className="focus-ring block h-full cursor-pointer rounded-media">
             <div className="relative h-full w-full overflow-hidden rounded-media">
               {backdropSrc ? (
                 <Image
@@ -478,9 +459,9 @@ export default function LibraryMovieCard({ movie, priority = false }: LibraryMov
         </div>
 
         {/* Title & Info */}
-        <Link href={`/library/${movie.id}`} scroll={false} onClick={handleMovieLinkClick} className="focus-ring duration-standard flex cursor-pointer items-start justify-between transition-opacity delay-0 peer-hover/card:pointer-events-none peer-hover/card:opacity-0 peer-hover/card:delay-inspection">
+        <Link href={`/library/${movie.id}`} scroll={false} className="focus-ring duration-standard flex cursor-pointer items-start justify-between transition-opacity delay-0 peer-hover/card:pointer-events-none peer-hover/card:opacity-0 peer-hover/card:delay-inspection">
           <div className="space-y-1">
-            <h3 className="text-xl leading-none font-bold tracking-tight uppercase md:text-2xl">
+            <h3 className="text-xl md:text-2xl font-bold uppercase leading-none tracking-tight">
               {title}
             </h3>
             {metadataBadge && (

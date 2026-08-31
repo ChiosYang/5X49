@@ -111,6 +111,7 @@
   },
   "FilmDetail": {
     "notFound": "MOVIE NOT FOUND",
+    "dialogLabel": "Movie details",
     "return": "Return to Library",
     "directedBy": "Directed By",
     "released": "Released",

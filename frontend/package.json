@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev -p 5549",
+    "dev": "next dev --webpack -p 5549",
     "build": "next build",
     "start": "next start -p 5549",
     "test:unit": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test --experimental-strip-types",

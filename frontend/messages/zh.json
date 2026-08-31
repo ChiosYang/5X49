@@ -111,6 +111,7 @@
   },
   "FilmDetail": {
     "notFound": "未找到影片",
+    "dialogLabel": "影片详情",
     "return": "返回资料库",
     "directedBy": "导演",
     "released": "上映时间",
