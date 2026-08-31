@@ -4,6 +4,7 @@ import shutil
 import sqlite3
 import unittest
 import uuid
+from contextlib import closing
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
@@ -372,7 +373,7 @@ class GateBEvaluationTests(unittest.TestCase):
             self.assertEqual(report["operational_metrics"]["privacy_leak_count"], 0)
 
             database_path = run_dir / "work" / "gate-b.db"
-            with sqlite3.connect(database_path) as connection:
+            with closing(sqlite3.connect(database_path)) as connection:
                 version = connection.execute(
                     "SELECT MAX(version) FROM schema_migrations WHERE status='applied'"
                 ).fetchone()[0]

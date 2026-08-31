@@ -1,6 +1,7 @@
 import sqlite3
 import tempfile
 import unittest
+from contextlib import closing
 from pathlib import Path
 
 from sqlalchemy import inspect, text
@@ -66,7 +67,7 @@ class FreshCanonicalMigrationTests(unittest.TestCase):
 
     def test_database_entrypoint_rejects_pre_epoch_database_without_mutation(self):
         path, engine = self._engine("old.db")
-        with sqlite3.connect(path) as connection:
+        with closing(sqlite3.connect(path)) as connection:
             connection.execute("CREATE TABLE movie (id TEXT PRIMARY KEY, title TEXT NOT NULL)")
             connection.execute("INSERT INTO movie VALUES ('old', 'sentinel')")
             connection.commit()

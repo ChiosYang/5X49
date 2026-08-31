@@ -1,12 +1,14 @@
+import asyncio
 import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
-from unittest.mock import patch
+from unittest.mock import MagicMock, call, patch
 
 from fastapi.routing import APIRoute
 from fastapi.testclient import TestClient
 
-from app.main import app
+import app.database as database_module
+from app.main import app, lifespan
 from app.services.projections import ProjectionUnavailable
 
 
@@ -60,9 +62,87 @@ REMOVED_ROUTES.update({
 })
 
 
+class ApplicationLifespanTests(unittest.TestCase):
+    def test_lifespan_disposes_engine_after_normal_shutdown(self):
+        async def exercise():
+            shutdown = MagicMock()
+            with (
+                patch("app.main.create_db_and_tables") as create_database,
+                patch("app.main.get_watch_library", return_value=False),
+                patch("app.main.job_runtime.start") as start_jobs,
+                patch("app.main.job_runtime.stop") as stop_jobs,
+                patch("app.main.library_watcher.start") as start_watcher,
+                patch("app.main.library_watcher.stop") as stop_watcher,
+                patch("app.main.engine.dispose") as dispose_engine,
+            ):
+                shutdown.attach_mock(stop_watcher, "stop_watcher")
+                shutdown.attach_mock(stop_jobs, "stop_jobs")
+                shutdown.attach_mock(dispose_engine, "dispose_engine")
+
+                async with lifespan(app):
+                    create_database.assert_called_once_with()
+                    start_jobs.assert_called_once_with()
+                    start_watcher.assert_not_called()
+
+                self.assertEqual(
+                    shutdown.mock_calls,
+                    [call.stop_watcher(), call.stop_jobs(), call.dispose_engine()],
+                )
+
+        asyncio.run(exercise())
+
+    def test_lifespan_disposes_engine_after_exceptional_shutdown(self):
+        async def exercise():
+            with (
+                patch("app.main.create_db_and_tables"),
+                patch("app.main.get_watch_library", return_value=True),
+                patch("app.main.job_runtime.start"),
+                patch("app.main.job_runtime.stop") as stop_jobs,
+                patch("app.main.library_watcher.start") as start_watcher,
+                patch("app.main.library_watcher.stop") as stop_watcher,
+                patch("app.main.engine.dispose") as dispose_engine,
+            ):
+                with self.assertRaisesRegex(RuntimeError, "lifespan failure"):
+                    async with lifespan(app):
+                        raise RuntimeError("lifespan failure")
+
+                start_watcher.assert_called_once_with()
+                stop_watcher.assert_called_once_with()
+                stop_jobs.assert_called_once_with()
+                dispose_engine.assert_called_once_with()
+
+        asyncio.run(exercise())
+
+    def test_lifespan_disposes_engine_when_watcher_shutdown_fails(self):
+        async def exercise():
+            with (
+                patch("app.main.create_db_and_tables"),
+                patch("app.main.get_watch_library", return_value=False),
+                patch("app.main.job_runtime.start"),
+                patch("app.main.job_runtime.stop") as stop_jobs,
+                patch(
+                    "app.main.library_watcher.stop",
+                    side_effect=RuntimeError("watcher shutdown failed"),
+                ),
+                patch("app.main.engine.dispose") as dispose_engine,
+            ):
+                with self.assertRaisesRegex(RuntimeError, "watcher shutdown failed"):
+                    async with lifespan(app):
+                        pass
+
+                stop_jobs.assert_called_once_with()
+                dispose_engine.assert_called_once_with()
+
+        asyncio.run(exercise())
+
+
 class ApiRouteContractTests(unittest.TestCase):
     def setUp(self):
         self.client = TestClient(app)
+
+    def tearDown(self):
+        self.client.close()
+        database_module.engine.dispose()
 
     def test_canonical_resource_routes_replace_movie_compatibility_routes(self):
         routes = [route for route in app.routes if isinstance(route, APIRoute)]
