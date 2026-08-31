@@ -15,6 +15,7 @@ class FilmProfileStateManager:
         return {
             "film_id": film_id,
             "watched": False,
+            "manual_watched": False,
             "watched_at": None,
             "rating": None,
             "favorite": False,
@@ -72,8 +73,10 @@ class FilmProfileStateManager:
 
     def watch_history(self) -> list[dict]:
         with Session(engine) as session:
+            profile_id = canonical_runtime_writer.local_profile_id(session)
             active = session.exec(
                 select(Viewing)
+                .where(Viewing.profile_id == profile_id)
                 .where(Viewing.review_status == "confirmed")
                 .where(Viewing.deleted_at.is_(None))
                 .order_by(Viewing.watched_at.desc(), Viewing.updated_at.desc(), Viewing.id.desc())
@@ -120,6 +123,15 @@ class FilmProfileStateManager:
             .where(Viewing.deleted_at.is_(None))
             .order_by(Viewing.watched_at.desc(), Viewing.updated_at.desc(), Viewing.id.desc())
         ).first()
+        manual = session.exec(
+            select(Viewing)
+            .where(Viewing.profile_id == profile_id)
+            .where(Viewing.film_id == film_id)
+            .where(Viewing.source == "manual")
+            .where(Viewing.source_record_id == film_id)
+            .where(Viewing.review_status == "confirmed")
+            .where(Viewing.deleted_at.is_(None))
+        ).first()
         updated_values = [
             value
             for value in (state.updated_at if state else None, viewing.updated_at if viewing else None)
@@ -128,6 +140,7 @@ class FilmProfileStateManager:
         return {
             "film_id": film_id,
             "watched": viewing is not None,
+            "manual_watched": manual is not None,
             "watched_at": viewing.watched_at if viewing else None,
             "rating": state.rating if state else None,
             "favorite": bool(state.favorite) if state else False,

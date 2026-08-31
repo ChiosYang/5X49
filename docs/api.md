@@ -137,6 +137,7 @@ Returns one `FilmProfileState` with:
   "rating": null,
   "notes": null,
   "watched": false,
+  "manual_watched": false,
   "watched_at": null,
   "updated_at": null
 }
@@ -151,11 +152,37 @@ characters), `watched`, and `watched_at`.
 - `watched=false` revokes only the manual Viewing.
 - Other confirmed sources, including future Diary entries, are preserved.
 - Derived `watched` is true when any active confirmed Viewing exists.
+- Derived `manual_watched` is true only while the singleton quick-toggle Viewing
+  is active. Clients use it to avoid overwriting Diary-only watched state.
+
+### Viewing Diary
+
+| Method | Path | Purpose |
+| --- | --- | --- |
+| `GET` | `/profile/viewings?limit=100&offset=0&film_id=...` | Return a paginated profile timeline; `film_id` is optional. |
+| `GET` | `/films/{film_id}/viewings` | Return every active confirmed Viewing for one Film. |
+| `POST` | `/films/{film_id}/viewings` | Create a new confirmed Diary Viewing. |
+| `PATCH` | `/viewings/{viewing_id}` | Change only the Viewing date/precision. |
+| `DELETE` | `/viewings/{viewing_id}` | Idempotently soft-delete one editable Viewing. |
+
+Create and update requests use `{"watched_at": ...}`. Accepted values are an
+exact `YYYY-MM-DD` date, a four-digit year, a timezone-aware RFC 3339 timestamp,
+or `null` for unknown. Duplicate dates remain independent records. Manual and
+Diary sources are editable; other sources return `409` with code
+`viewing_read_only`.
+
+`GET /profile/viewings` returns `items`, `total`, `limit`, `offset`, and
+`next_offset`. Each timeline item contains the Viewing, a lightweight Film
+identity with `in_library`, and the derived Film profile state. Known dates sort
+descending, unknown dates sort last, and the default/maximum page sizes are
+100/200.
 
 ### `GET /profile/watch-history`
 
 Returns at most one entry per Film, ordered by the latest active confirmed
-Viewing. Each entry embeds the Film summary and derived profile state.
+Viewing for the current LocalProfile. Each entry embeds the Film summary and
+derived profile state. It is a read-only summary; per-record management belongs
+to the Viewing Diary endpoints.
 
 ## Metadata, artwork and external scores
 

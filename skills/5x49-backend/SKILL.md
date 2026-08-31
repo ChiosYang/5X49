@@ -49,11 +49,24 @@ curl -s -X PUT http://127.0.0.1:8000/films/<film_id>/profile-state \
   -H "Content-Type: application/json" \
   -d '{"watched":true,"rating":5,"favorite":true,"notes":"..."}'
 curl -s http://127.0.0.1:8000/profile/watch-history
+curl -s "http://127.0.0.1:8000/profile/viewings?limit=100&offset=0"
+curl -s http://127.0.0.1:8000/films/<film_id>/viewings
+curl -s -X POST http://127.0.0.1:8000/films/<film_id>/viewings \
+  -H "Content-Type: application/json" -d '{"watched_at":"2026-08-31"}'
+curl -s -X PATCH http://127.0.0.1:8000/viewings/<viewing_id> \
+  -H "Content-Type: application/json" -d '{"watched_at":"2026"}'
+curl -s -X DELETE http://127.0.0.1:8000/viewings/<viewing_id>
 ```
 
 `watched=true` 创建或恢复 manual confirmed Viewing；`watched=false` 只撤销
 manual Viewing，不删除 Diary 等其他来源。最终 watched 由任意 active confirmed
-Viewing 推导。
+Viewing 推导；`manual_watched` 只表示快捷开关对应的 manual Viewing 是否存在。
+
+Viewing Diary 的 POST 每次都创建一条独立 `source=diary` 记录，同日记录也不合并。
+日期接受 `YYYY-MM-DD`、`YYYY`、带时区的 RFC 3339 timestamp 或 `null`。manual
+与 diary 来源可 PATCH/DELETE；外部来源返回 `409 viewing_read_only`。DELETE 是
+幂等软删除。`/profile/watch-history` 仍只读返回每部 Film 最新一条，逐条管理使用
+`/profile/viewings` 或 `/films/{film_id}/viewings`。
 
 ## TMDB、Artwork 与外部评分
 
