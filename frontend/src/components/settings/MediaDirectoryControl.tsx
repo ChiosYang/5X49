@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState, type FocusEvent, type KeyboardEvent } from "react";
 import { useTranslations } from "next-intl";
-import { CheckCircle2 } from "lucide-react";
+import { CheckCircle2, Loader2, TriangleAlert } from "lucide-react";
 import FileBrowser from "@/components/FileBrowser";
 import { Button } from "@/components/ui/Button";
 import { InlineFeedback } from "@/components/ui/Feedback";
@@ -11,13 +11,14 @@ import {
   useMediaDir,
   useUpdateMediaDir,
 } from "@/hooks/useSettings";
-import { cn } from "@/lib/cn";
 import { isMediaDirectoryReady } from "@/lib/library-onboarding";
 
 export default function MediaDirectoryControl({
+  autoSave = false,
   inlineStatus = false,
   showDockerNote = false,
 }: {
+  autoSave?: boolean;
   inlineStatus?: boolean;
   showDockerNote?: boolean;
 }) {
@@ -32,6 +33,7 @@ export default function MediaDirectoryControl({
   } = useUpdateMediaDir();
   const [draft, setDraft] = useState<string>();
   const [fileBrowserOpen, setFileBrowserOpen] = useState(false);
+  const browseButtonRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     if (!saveResult) return;
@@ -41,9 +43,14 @@ export default function MediaDirectoryControl({
 
   const value = draft ?? data?.media_dir ?? "";
   const dirty = draft !== undefined && draft.trim() !== (data?.media_dir ?? "");
-  const ready = isMediaDirectoryReady(data);
-  const showReadyInInput =
-    inlineStatus && ready && !dirty && !isLoading && !loadError && !saveError && !saveResult;
+  const ready = isMediaDirectoryReady(saveResult ?? data);
+  const inlineIconState = (() => {
+    if (!inlineStatus) return null;
+    if (saving || isLoading) return "loading";
+    if (loadError || saveError) return "error";
+    if (ready && !dirty) return "ready";
+    return null;
+  })();
   const saveErrorMessage = (() => {
     if (!(saveError instanceof Error)) return t("mediaDirSaveFailed");
     if (saveError.message === "Media directory cannot be empty") return t("mediaDirEmpty");
@@ -52,18 +59,34 @@ export default function MediaDirectoryControl({
     return saveError.message;
   })();
 
-  const handleSave = async () => {
+  const saveMediaDirectory = async (nextValue: string) => {
+    const trimmedValue = nextValue.trim();
+    if (!trimmedValue || saving) return;
+
     try {
-      await updateMediaDir(value.trim());
+      await updateMediaDir(trimmedValue);
       setDraft(undefined);
     } catch {
       // Mutation state renders the backend validation detail below.
     }
   };
 
+  const handleSave = () => saveMediaDirectory(value);
+
   const handleDraftChange = (nextValue: string) => {
     resetSave();
     setDraft(nextValue);
+  };
+
+  const handleInputBlur = (event: FocusEvent<HTMLInputElement>) => {
+    if (!autoSave || !dirty || event.relatedTarget === browseButtonRef.current) return;
+    void saveMediaDirectory(value);
+  };
+
+  const handleInputKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+    if (!autoSave || event.key !== "Enter" || !dirty) return;
+    event.preventDefault();
+    void saveMediaDirectory(value);
   };
 
   return (
@@ -74,48 +97,67 @@ export default function MediaDirectoryControl({
             type="text"
             value={value}
             onChange={(event) => handleDraftChange(event.target.value)}
+            onBlur={handleInputBlur}
+            onKeyDown={handleInputKeyDown}
             aria-label={t("mediaDir")}
             placeholder="/path/to/movies"
             className={inlineStatus ? "pr-12" : undefined}
           />
-          {showReadyInInput ? (
-            <CheckCircle2
+          {inlineIconState === "loading" ? (
+            <Loader2
+              aria-label={t("mediaDirChecking")}
+              role="status"
+              className="absolute top-1/2 right-4 h-4 w-4 -translate-y-1/2 animate-spin text-ink-muted"
+            />
+          ) : inlineIconState === "error" ? (
+            <TriangleAlert
               aria-hidden="true"
+              className="absolute top-1/2 right-4 h-4 w-4 -translate-y-1/2 text-danger"
+            />
+          ) : inlineIconState === "ready" ? (
+            <CheckCircle2
+              aria-label={t("mediaDirReady")}
+              role="status"
               className="absolute top-1/2 right-4 h-4 w-4 -translate-y-1/2 text-success"
             />
           ) : null}
         </div>
-        <Button onClick={() => setFileBrowserOpen(true)}>
+        <Button
+          ref={browseButtonRef}
+          onClick={() => setFileBrowserOpen(true)}
+          disabled={autoSave && saving}
+        >
           {t("browse")}
         </Button>
-        <Button
-          onClick={handleSave}
-          disabled={!dirty || !value.trim() || saving}
-          busy={saving}
-          variant="primary"
-        >
-          {saving ? t("saving") : t("save")}
-        </Button>
+        {!autoSave ? (
+          <Button
+            onClick={handleSave}
+            disabled={!dirty || !value.trim() || saving}
+            busy={saving}
+            variant="primary"
+          >
+            {saving ? t("saving") : t("save")}
+          </Button>
+        ) : null}
       </div>
 
-      <div
-        className={cn("mt-3 min-h-5", showReadyInInput && "sr-only")}
-        aria-live="polite"
-      >
-        {loadError ? (
-          <InlineFeedback tone="error">{t("mediaDirLoadFailed")}</InlineFeedback>
-        ) : saveError ? (
-          <InlineFeedback tone="error">{saveErrorMessage}</InlineFeedback>
-        ) : saveResult ? (
-          <InlineFeedback tone="success">{t("mediaDirSavedReady")}</InlineFeedback>
-        ) : isLoading ? (
-          <InlineFeedback>{t("mediaDirChecking")}</InlineFeedback>
-        ) : ready ? (
-          <InlineFeedback tone="success">{t("mediaDirReady")}</InlineFeedback>
-        ) : (
-          <InlineFeedback tone="warning">{t("mediaDirUnavailable")}</InlineFeedback>
-        )}
-      </div>
+      {!inlineStatus || loadError || saveError ? (
+        <div className="mt-3 min-h-5" aria-live="polite">
+          {loadError ? (
+            <InlineFeedback tone="error">{t("mediaDirLoadFailed")}</InlineFeedback>
+          ) : saveError ? (
+            <InlineFeedback tone="error">{saveErrorMessage}</InlineFeedback>
+          ) : saveResult ? (
+            <InlineFeedback tone="success">{t("mediaDirSavedReady")}</InlineFeedback>
+          ) : isLoading ? (
+            <InlineFeedback>{t("mediaDirChecking")}</InlineFeedback>
+          ) : ready ? (
+            <InlineFeedback tone="success">{t("mediaDirReady")}</InlineFeedback>
+          ) : (
+            <InlineFeedback tone="warning">{t("mediaDirUnavailable")}</InlineFeedback>
+          )}
+        </div>
+      ) : null}
 
       {showDockerNote ? (
         <p className="mt-3 text-xs leading-5 text-ink-disabled">{t("noteDocker")}</p>
@@ -128,6 +170,7 @@ export default function MediaDirectoryControl({
           onSelect={(path) => {
             handleDraftChange(path);
             setFileBrowserOpen(false);
+            if (autoSave) void saveMediaDirectory(path);
           }}
           onCancel={() => setFileBrowserOpen(false)}
         />

@@ -1,7 +1,7 @@
 # First-run Onboarding
 
 Status: Done
-Last updated: 2026-08-28
+Last updated: 2026-08-31
 Related: `README.md`, `README.zh-CN.md`, `docs/install-baseline.md`
 
 ## Goal
@@ -73,6 +73,9 @@ Settings and Library Management routes.
 - Match the empty-Library layout to Figma node `17:3`: a 40px transition from
   the Library header, a borderless onboarding section, a 1.35/0.65 desktop
   split, indented scan actions, and inline ready-state feedback in the path field.
+- In empty-Library onboarding, selecting a directory saves it immediately and
+  the path field owns loading/success/error icon feedback; only actionable
+  errors render below the field. Library Settings retains its explicit Save action.
 
 ## Open questions
 
@@ -158,6 +161,9 @@ Status: Complete
   938px path field, and 56px scan-action indent; the Figma node exposed no motion tracks.
 - Responsive browser smoke at 375 × 812 — the revised onboarding had no document
   or body horizontal overflow and retained the stacked controls and readable sidebar.
+- Empty-Library directory-control smoke — the onboarding rendered no Save action
+  or passive status line; selecting the current directory issued one media-directory
+  PUT, closed the browser, and restored the success icon without console warnings.
 - Temporary browser tab, backend/frontend processes, database, and media fixture
   were removed after the smoke.
 

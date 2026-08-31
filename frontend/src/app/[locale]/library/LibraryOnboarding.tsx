@@ -122,7 +122,7 @@ export default function LibraryOnboarding({ rootVideoCount }: { rootVideoCount: 
                   <h3 className="mt-1 text-lg font-medium text-ink">{t("directoryTitle")}</h3>
                 </div>
               </div>
-              <MediaDirectoryControl inlineStatus />
+              <MediaDirectoryControl autoSave inlineStatus />
             </article>
 
             <article className="flex items-start gap-4">
