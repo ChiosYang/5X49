@@ -1,5 +1,6 @@
 import useSWR from "swr";
 import useSWRMutation from "swr/mutation";
+import { mutate } from "swr";
 
 import { API } from "@/lib/api";
 import type {
@@ -13,12 +14,21 @@ import type {
   OperationRestoreResult,
   OperationSnapshotPreview,
   ScrapeResult,
+  ViewingDeleteResult,
+  ViewingPage,
+  ViewingView,
   WatchHistoryEntry,
 } from "@/types/movie";
 
 const errorMessage = async (response: Response, fallback: string) => {
-  const body = await response.json().catch(() => null) as { detail?: unknown } | null;
+  const body = await response.json().catch(() => null) as {
+    detail?: unknown | { message?: unknown };
+  } | null;
   if (typeof body?.detail === "string") return body.detail;
+  if (body?.detail && typeof body.detail === "object" && "message" in body.detail) {
+    const message = body.detail.message;
+    if (typeof message === "string") return message;
+  }
   return fallback;
 };
 
@@ -60,6 +70,75 @@ export function useUpdateFilmProfileState(filmId: string) {
 
 export function useWatchHistory() {
   return useSWR<WatchHistoryEntry[]>(API.watchHistory());
+}
+
+export function useProfileViewings(
+  limit = 100,
+  offset = 0,
+  filmId?: string,
+  enabled = true,
+) {
+  return useSWR<ViewingPage>(enabled ? API.profileViewings({ limit, offset, filmId }) : null);
+}
+
+export function useFilmViewings(filmId: string) {
+  return useSWR<ViewingView[]>(filmId ? API.filmViewings(filmId) : null);
+}
+
+export function useCreateFilmViewing(filmId: string) {
+  return useSWRMutation(
+    filmId ? API.filmViewings(filmId) : null,
+    async (_key: string, { arg }: { arg: { watched_at: string | null } }): Promise<ViewingView> => {
+      const response = await fetch(API.filmViewings(filmId), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(arg),
+      });
+      if (!response.ok) throw new Error(await errorMessage(response, "Failed to create Viewing"));
+      return response.json();
+    },
+  );
+}
+
+export function useUpdateViewing(viewingId?: string | null) {
+  return useSWRMutation(
+    viewingId ? API.viewing(viewingId) : null,
+    async (_key: string, { arg }: { arg: { watched_at: string | null } }): Promise<ViewingView> => {
+      const response = await fetch(API.viewing(viewingId || ""), {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(arg),
+      });
+      if (!response.ok) throw new Error(await errorMessage(response, "Failed to update Viewing"));
+      return response.json();
+    },
+  );
+}
+
+export function useDeleteViewing(viewingId?: string | null) {
+  return useSWRMutation(
+    viewingId ? API.viewing(viewingId) : null,
+    async (): Promise<ViewingDeleteResult> => {
+      const response = await fetch(API.viewing(viewingId || ""), { method: "DELETE" });
+      if (!response.ok) throw new Error(await errorMessage(response, "Failed to delete Viewing"));
+      return response.json();
+    },
+  );
+}
+
+export async function invalidateViewingCaches(filmId: string) {
+  await Promise.all([
+    mutate(API.filmViewings(filmId)),
+    mutate(API.filmProfileState(filmId)),
+    mutate(API.libraryFilm(filmId)),
+    mutate(API.libraryFilms()),
+    mutate(API.watchHistory()),
+    mutate(
+      (key) => typeof key === "string" && key.startsWith(API.profileViewings()),
+      undefined,
+      { revalidate: true },
+    ),
+  ]);
 }
 
 export function useAnalyzeFilm(filmId: string) {

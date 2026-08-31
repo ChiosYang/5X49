@@ -2,13 +2,12 @@
 
 import Image from "next/image";
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Check, Globe2, Loader2, Star } from "lucide-react";
-import { mutate } from "swr";
-import { Link } from "@/i18n/routing";
+import { Link, useRouter } from "@/i18n/routing";
 import { API } from "@/lib/api";
-import { useUpdateFilmProfileState } from "@/hooks/useFilm";
+import { invalidateViewingCaches, useUpdateFilmProfileState } from "@/hooks/useFilm";
+import { watchedActionFor } from "@/lib/viewing-diary";
 import type { AudioTrack, LibraryFilmSummary } from "@/types/movie";
 import ExternalScoreStrip from "../components/ExternalScoreStrip";
 
@@ -245,10 +244,10 @@ export default function LibraryMovieCard({ movie, priority = false }: LibraryMov
   const t = useTranslations("Library");
   const router = useRouter();
   const { trigger, isMutating } = useUpdateFilmProfileState(movie.id);
-  const profileState = movie.profile_state;
   const artwork = movie.primary_item.artwork;
-  const [watched, setWatched] = useState(Boolean(profileState.watched));
-  const [favorite, setFavorite] = useState(Boolean(profileState.favorite));
+  const [profileState, setProfileState] = useState(movie.profile_state);
+  const watched = Boolean(profileState.watched);
+  const favorite = Boolean(profileState.favorite);
   const artworkVersion = movie.primary_item.metadata.updated_at
     ? `?v=${encodeURIComponent(movie.primary_item.metadata.updated_at)}`
     : "";
@@ -272,29 +271,35 @@ export default function LibraryMovieCard({ movie, priority = false }: LibraryMov
     .filter(Boolean)
     .slice(0, 3);
 
-  const updateUserState = async (next: { watched?: boolean; favorite?: boolean }) => {
-    const previousWatched = watched;
-    const previousFavorite = favorite;
-    const nextWatched = next.watched ?? watched;
-    const nextFavorite = next.favorite ?? favorite;
-    setWatched(nextWatched);
-    setFavorite(nextFavorite);
+  const updateFavorite = async () => {
+    const previous = profileState;
+    setProfileState({ ...profileState, favorite: !favorite });
     try {
-      await trigger({
-        watched: nextWatched,
-        watched_at: nextWatched ? profileState.watched_at || todayDateValue() : null,
-        favorite: nextFavorite,
-      });
-      await Promise.all([
-        mutate(API.filmProfileState(movie.id)),
-        mutate(API.libraryFilm(movie.id)),
-        mutate(API.libraryFilms()),
-        mutate(API.watchHistory()),
-      ]);
+      const saved = await trigger({ favorite: !favorite });
+      setProfileState(saved);
+      await invalidateViewingCaches(movie.id);
       router.refresh();
     } catch {
-      setWatched(previousWatched);
-      setFavorite(previousFavorite);
+      setProfileState(previous);
+    }
+  };
+
+  const handleWatched = async () => {
+    const action = watchedActionFor(profileState);
+    if (action === "open_diary") {
+      router.push(`/diary?film=${movie.id}`);
+      return;
+    }
+    try {
+      const saved = await trigger({
+        watched: action === "mark_watched",
+        watched_at: action === "mark_watched" ? profileState.watched_at || todayDateValue() : null,
+      });
+      setProfileState(saved);
+      await invalidateViewingCaches(movie.id);
+      router.refresh();
+    } catch {
+      // Keep the last confirmed server state when the command fails.
     }
   };
 
@@ -347,22 +352,22 @@ export default function LibraryMovieCard({ movie, priority = false }: LibraryMov
               <div className="flex items-center gap-3">
                 <button
                   type="button"
-                  onClick={() => updateUserState({ watched: !watched })}
+                  onClick={handleWatched}
                   disabled={isMutating}
                   className={`focus-ring duration-standard inline-flex h-10 items-center gap-2 rounded-pill px-4 text-sm font-black tracking-wide uppercase transition-colors ${
                     watched
                       ? "bg-inverse text-inverse-ink group-hover:bg-neutral-200"
                       : "border border-ink/55 text-ink hover:border-ink hover:bg-inverse hover:text-inverse-ink"
                   } disabled:cursor-not-allowed disabled:opacity-60`}
-                  aria-label={watched ? t("markUnwatched") : t("markWatched")}
-                  title={watched ? t("markUnwatched") : t("markWatched")}
+                  aria-label={watched && !profileState.manual_watched ? t("viewDiary") : watched ? t("markUnwatched") : t("markWatched")}
+                  title={watched && !profileState.manual_watched ? t("viewDiary") : watched ? t("markUnwatched") : t("markWatched")}
                 >
                   {isMutating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
-                  {watched ? t("watched") : t("markWatched")}
+                  {watched && !profileState.manual_watched ? t("viewDiary") : watched ? t("watched") : t("markWatched")}
                 </button>
                 <button
                   type="button"
-                  onClick={() => updateUserState({ favorite: !favorite })}
+                  onClick={updateFavorite}
                   disabled={isMutating}
                   className={`focus-ring duration-standard flex h-8 w-8 items-center justify-center rounded-pill border transition-colors ${
                     favorite

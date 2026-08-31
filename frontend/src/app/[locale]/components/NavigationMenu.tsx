@@ -66,6 +66,13 @@ export default function NavigationMenu() {
             {t("activity")}
           </Link>
           <Link
+            href="/diary"
+            onClick={closeMenu}
+            className="focus-ring duration-standard block text-5xl font-bold tracking-tighter text-ink transition-colors hover:text-ink-muted md:text-7xl"
+          >
+            {t("diary")}
+          </Link>
+          <Link
             href="/watch-history"
             onClick={closeMenu}
             className="focus-ring duration-standard block text-5xl font-bold tracking-tighter text-ink transition-colors hover:text-ink-muted md:text-7xl"
