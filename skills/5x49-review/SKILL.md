@@ -20,7 +20,7 @@ Use this skill in review mode. Prioritize findings over summaries.
 
 - Backend endpoint or response-shape changes must update `docs/api.md` and `skills/5x49-backend/SKILL.md`.
 - Frontend source changes should have `npm run lint` and `npm run typecheck`; routing/runtime changes usually need `npm run build`.
-- Backend app changes should run the smallest relevant backend check, usually `uv run python test_agent.py`.
+- Backend app changes should run the smallest relevant `unittest` modules for the affected service or API.
 - Docker changes should run the affected Docker build or explain why not.
 - `.env`, `.env.local`, media files, generated databases, and user data should not be modified.
 - Existing uncommitted changes may be user work; do not recommend reverting unrelated changes casually.

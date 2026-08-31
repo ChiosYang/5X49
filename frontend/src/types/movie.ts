@@ -313,6 +313,48 @@ export interface RootVideo {
   status: "needs_organize" | "waiting_for_stability";
 }
 
+export interface OrganizationCandidate {
+  source_path: string;
+  source_location: "root" | "legacy_inbox";
+  filename: string;
+  size: number;
+  mtime: number;
+  stable: boolean;
+  parsed_title: string;
+  parsed_year: number;
+  status: "needs_organize" | "waiting_for_stability";
+}
+
+export interface OrganizationPreview {
+  source: {
+    source_path: string;
+    filename: string;
+    size: number;
+    source_location: "root" | "legacy_inbox";
+  };
+  match: MetadataSearchResult;
+  target: {
+    folder_name: string;
+    video_name: string;
+  };
+  rename_style: "preserve_stem" | "title_year";
+  sidecars: Array<{
+    source_name: string;
+    target_name: string;
+    conflict: boolean;
+  }>;
+  post_actions: {
+    write_nfo: boolean;
+    download_artwork: boolean;
+  };
+  conflicts: Array<{
+    kind: "video" | "sidecar";
+    name: string;
+  }>;
+  can_confirm: boolean;
+  confirmation_token: string;
+}
+
 export type WorkflowStatus = "queued" | "running" | "succeeded" | "failed" | "cancelled";
 
 export interface WorkflowProgress {

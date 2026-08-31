@@ -231,7 +231,7 @@ Inter carries structural information, navigation, controls, and technical metada
 - `editorial-lead` is serif and italic; it is not a replacement for ordinary body text.
 - `body` is the default explanatory and form-description style.
 - `label`, `meta`, and `badge` are uppercase roles with intentionally wider tracking.
-- `mono` uses the system monospace stack for Librarian and diagnostic output. JetBrains Mono is not required unless it is explicitly added to the application font dependencies.
+- `mono` uses the system monospace stack for diagnostic output. JetBrains Mono is not required unless it is explicitly added to the application font dependencies.
 
 Avoid constructing the same typography role repeatedly from unrelated font-size, weight, line-height, tracking, and uppercase classes. Prefer composite semantic utilities such as `type-display-ui`, `type-section-title`, and `type-label`.
 
@@ -337,7 +337,7 @@ Use the named layer scale instead of introducing arbitrary `z-index` values:
 - `overlay` — page scrims.
 - `navigation` — global sidebar and app chrome.
 - `popover` — dropdowns and contextual panels above navigation content.
-- `modal` — blocking dialogs and full-screen consoles.
+- `modal` — blocking dialogs and full-screen inspection surfaces.
 - `toast` — transient feedback above all application surfaces.
 
 A child component must not escalate above `modal` to solve a local clipping problem. Fix the containing block or portal boundary instead.
@@ -412,13 +412,6 @@ All important controls should provide an approximately 44px minimum interaction 
 - Keyboard focus remains trapped in blocking modals and returns to the trigger on close.
 - Escape closes non-destructive overlays when safe.
 
-### Librarian console
-
-- Uses the system monospace role.
-- Standard glass belongs to the panel; the stronger blur belongs to the backdrop.
-- Logs use ink hierarchy and functional state colors.
-- Reasoning paths and long output wrap without forcing page overflow.
-
 ## 14. Accessibility requirements
 
 - Primary text and actionable controls must meet WCAG AA contrast.
@@ -457,4 +450,3 @@ Do not remove Tailwind's default scale during the first migration. Numeric utili
 - Token migration should produce no intentional visual change unless the change is separately reviewed.
 - Exceptions are documented near the component and reviewed before becoming new global rules.
 - The design-system document and runtime token file are reviewed together when a shared visual rule changes.
-

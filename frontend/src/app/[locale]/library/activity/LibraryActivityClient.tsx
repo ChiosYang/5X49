@@ -29,6 +29,7 @@ function SnapshotRestore({ event }: { event: EventRecord }) {
   const snapshotId = event.operation_snapshot_id;
   const { data: preview, error } = useOperationPreview(snapshotId);
   const restore = useRestoreOperation(snapshotId);
+  const restoresFileLocation = event.type === "RootVideoOrganized";
   if (!snapshotId) return null;
 
   return (
@@ -43,7 +44,8 @@ function SnapshotRestore({ event }: { event: EventRecord }) {
           </div>
           <Button
             onClick={async () => {
-              if (!preview.confirmation_token || !window.confirm(t("restoreConfirm"))) return;
+              const confirmation = restoresFileLocation ? t("restoreFileLocationConfirm") : t("restoreConfirm");
+              if (!preview.confirmation_token || !window.confirm(confirmation)) return;
               await restore.trigger({ confirmation_token: preview.confirmation_token });
               await mutate(API.activityEvents());
             }}
@@ -52,7 +54,7 @@ function SnapshotRestore({ event }: { event: EventRecord }) {
             variant="danger"
           >
             <RotateCcw className="h-4 w-4" />
-            {t("restore")}
+            {restoresFileLocation ? t("restoreFileLocation") : t("restore")}
           </Button>
           {restore.error && <InlineFeedback tone="error">{t("restoreConflict")}</InlineFeedback>}
         </>

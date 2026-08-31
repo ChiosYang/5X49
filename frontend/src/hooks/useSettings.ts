@@ -404,26 +404,6 @@ export function useRefreshLibraryExternalScores() {
   );
 }
 
-export function useOrganizeRootVideos() {
-  return useSWRMutation(
-    API.libraryOrganizeRoot(),
-    async (url: string) => {
-      const res = await fetch(url, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          rename_style: "preserve_stem",
-          overwrite: false,
-          write_nfo: true,
-          download_artwork: true,
-        }),
-      });
-      if (!res.ok) throw new Error("Failed to organize root videos");
-      return res.json();
-    }
-  );
-}
-
 export function useCleanupMissingMovies() {
   return useSWRMutation(
     API.libraryCleanupMissing(),

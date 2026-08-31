@@ -1,3 +1,5 @@
+import hashlib
+import json
 import re
 import shutil
 import time
@@ -48,28 +50,146 @@ class RootVideoOrganizer:
 
         videos = []
         for path in self._root_videos(root):
-            lower_name = path.name.lower()
-            if lower_name.endswith(self.ignored_suffixes):
-                continue
-            try:
-                stat = path.stat()
-            except OSError:
-                continue
-            if stat.st_size <= 0:
-                continue
-            parsed_title, parsed_year = parse_title_year(path.name)
-            stable = self._is_usable_root_video(path, root)
-            videos.append({
-                "path": str(path.resolve()),
-                "filename": path.name,
-                "size": stat.st_size,
-                "mtime": stat.st_mtime,
-                "stable": stable,
-                "parsed_title": parsed_title,
-                "parsed_year": parsed_year,
-                "status": "needs_organize" if stable else "waiting_for_stability",
-            })
+            video = self._video_view(path, root, source_location="root", include_absolute_path=True)
+            if video:
+                videos.append(video)
         return videos
+
+    def list_organization_candidates(self, media_dir: Optional[str] = None) -> list[dict]:
+        root = Path(media_dir or get_media_dir()).resolve()
+        if not root.exists() or not root.is_dir():
+            raise FileNotFoundError(f"Directory not found: {root}")
+
+        candidates = []
+        for path in self._root_videos(root):
+            video = self._video_view(path, root, source_location="root")
+            if video:
+                candidates.append(video)
+
+        inbox = (root / "inbox").resolve()
+        if inbox.is_dir():
+            for path in self._videos_in_directory(inbox):
+                video = self._video_view(path, root, source_location="legacy_inbox")
+                if video:
+                    candidates.append(video)
+
+        return sorted(
+            candidates,
+            key=lambda item: (
+                0 if item["source_location"] == "root" else 1,
+                item["filename"].lower(),
+            ),
+        )
+
+    def preview_organization(
+        self,
+        media_dir: str | Path,
+        source_path: str,
+        tmdb_id: int,
+        rename_style: str = "preserve_stem",
+    ) -> dict:
+        root = Path(media_dir).resolve()
+        source = self._resolve_candidate_source(root, source_path)
+        if not self._is_usable_pending_video(source, root):
+            raise ValueError("Source video is not stable or cannot be organized")
+        if rename_style not in {"preserve_stem", "title_year"}:
+            raise ValueError("Unsupported organization rename style")
+
+        candidate = metadata_scraper.get_candidate(tmdb_id)
+        parsed_title, parsed_year = parse_title_year(source.name)
+        target_year = candidate.year or parsed_year
+        target_dir = self._target_dir(root, candidate.title, target_year)
+        target_video_name = self._target_video_name(
+            source,
+            candidate.title,
+            target_year,
+            rename_style,
+        )
+        target_video = target_dir / target_video_name
+        sidecars = self._sidecar_plan(source, target_dir, target_video_name, rename_style)
+        conflicts = []
+        if target_video.exists():
+            conflicts.append({"kind": "video", "name": target_video.name})
+        conflicts.extend(
+            {"kind": "sidecar", "name": item["target_name"]}
+            for item in sidecars
+            if item["conflict"]
+        )
+
+        stat = source.stat()
+        source_relative = source.relative_to(root).as_posix()
+        token_payload = {
+            "source_path": source_relative,
+            "size": stat.st_size,
+            "mtime_ns": stat.st_mtime_ns,
+            "tmdb_id": candidate.tmdb_id,
+            "title": candidate.title,
+            "year": target_year,
+            "rename_style": rename_style,
+            "target_folder": target_dir.name,
+            "target_file": target_video.name,
+            "sidecars": [
+                {
+                    "source_name": item["source_name"],
+                    "target_name": item["target_name"],
+                    "conflict": item["conflict"],
+                }
+                for item in sidecars
+            ],
+            "conflicts": conflicts,
+        }
+        confirmation_token = hashlib.sha256(
+            json.dumps(
+                token_payload,
+                ensure_ascii=False,
+                sort_keys=True,
+                separators=(",", ":"),
+            ).encode("utf-8")
+        ).hexdigest()
+        return {
+            "source": {
+                "source_path": source_relative,
+                "filename": source.name,
+                "size": stat.st_size,
+                "source_location": "legacy_inbox" if source.parent == (root / "inbox").resolve() else "root",
+            },
+            "match": candidate.model_dump(),
+            "target": {
+                "folder_name": target_dir.name,
+                "video_name": target_video.name,
+            },
+            "rename_style": rename_style,
+            "sidecars": [
+                {
+                    "source_name": item["source_name"],
+                    "target_name": item["target_name"],
+                    "conflict": item["conflict"],
+                }
+                for item in sidecars
+            ],
+            "post_actions": {
+                "write_nfo": True,
+                "download_artwork": True,
+            },
+            "conflicts": conflicts,
+            "can_confirm": not conflicts,
+            "confirmation_token": confirmation_token,
+        }
+
+    def validate_organization_confirmation(
+        self,
+        media_dir: str | Path,
+        source_path: str,
+        tmdb_id: int,
+        rename_style: str,
+        confirmation_token: str,
+    ) -> dict:
+        preview = self.preview_organization(media_dir, source_path, tmdb_id, rename_style)
+        if preview["confirmation_token"] != confirmation_token:
+            raise RuntimeError("Organization preview is stale")
+        if not preview["can_confirm"]:
+            raise RuntimeError("Organization target has conflicts")
+        return preview
 
     def organize_root(self, media_dir: Optional[str] = None, options: Optional[RootOrganizeOptions] = None) -> dict:
         options = options or RootOrganizeOptions(rename_style=get_organize_rename_style())
@@ -175,31 +295,16 @@ class RootVideoOrganizer:
         tmdb_id: int,
         options: RootOrganizeOptions,
         *,
+        candidate: MetadataSearchResult | None = None,
         manifest_ref: str | None = None,
     ) -> dict:
         command_id = self._new_command_id("root_organize")
         video_path = video_path.resolve()
-        if not self._is_usable_root_video(video_path, root):
+        if not self._is_usable_pending_video(video_path, root):
             return {"status": "skipped", "source_name": video_path.name, "message": "Not a stable root video"}
 
         _, year = parse_title_year(video_path.name)
-        details = metadata_scraper.tmdb.movie_details(
-            tmdb_id,
-            language=metadata_scraper._language(options.language),
-            artwork_language=metadata_scraper._artwork_language(options.artwork_language),
-        )
-        release_year = self._release_year(details.get("release_date"))
-        candidate = MetadataSearchResult(
-            tmdb_id=tmdb_id,
-            title=details.get("title") or details.get("original_title") or f"TMDB {tmdb_id}",
-            original_title=details.get("original_title"),
-            year=release_year,
-            overview=details.get("overview") or "",
-            poster_path=details.get("poster_path"),
-            backdrop_path=details.get("backdrop_path"),
-            popularity=float(details.get("popularity") or 0),
-            score=100,
-        )
+        candidate = candidate or metadata_scraper.get_candidate(tmdb_id, options.language)
         return self._organize_matched_file(
             video_path,
             root,
@@ -207,6 +312,7 @@ class RootVideoOrganizer:
             year,
             options,
             command_id=command_id,
+            block_sidecar_conflicts=True,
             manifest_ref=manifest_ref,
         )
 
@@ -219,10 +325,10 @@ class RootVideoOrganizer:
         options: RootOrganizeOptions,
         *,
         command_id: str,
+        block_sidecar_conflicts: bool = False,
         manifest_ref: str | None = None,
     ) -> dict:
         target_dir = self._target_dir(root, candidate.title, candidate.year or parsed_year)
-        target_dir.mkdir(parents=True, exist_ok=True)
         target_video = target_dir / self._target_video_name(
             video_path,
             candidate.title,
@@ -235,9 +341,33 @@ class RootVideoOrganizer:
                 "source_name": video_path.name,
                 "message": "Target video already exists",
             }
+        if block_sidecar_conflicts and not options.overwrite:
+            sidecar_conflicts = [
+                item["target_name"]
+                for item in self._sidecar_plan(
+                    video_path,
+                    target_dir,
+                    target_video.name,
+                    options.rename_style,
+                )
+                if item["conflict"]
+            ]
+            if sidecar_conflicts:
+                return {
+                    "status": "failed",
+                    "source_name": video_path.name,
+                    "message": "Target sidecar already exists",
+                }
 
         manifest_ref = manifest_ref or operation_manifest_store.create(root, video_path)
-        moved_sidecars, sidecar_moves = self._move_sidecars(video_path, target_dir, options.overwrite)
+        target_dir.mkdir(parents=True, exist_ok=True)
+        moved_sidecars, sidecar_moves = self._move_sidecars(
+            video_path,
+            target_dir,
+            target_video.name,
+            options.rename_style,
+            options.overwrite,
+        )
         shutil.move(str(video_path), str(target_video))
         operation_manifest_store.finalize(
             manifest_ref,
@@ -300,9 +430,12 @@ class RootVideoOrganizer:
         }
 
     def _root_videos(self, root: Path) -> list[Path]:
+        return self._videos_in_directory(root)
+
+    def _videos_in_directory(self, directory: Path) -> list[Path]:
         videos = []
         try:
-            entries = root.iterdir()
+            entries = directory.iterdir()
             for path in entries:
                 try:
                     is_video_file = path.is_file() and path.suffix.lower() in self.video_extensions
@@ -312,11 +445,22 @@ class RootVideoOrganizer:
                     videos.append(path)
         except OSError as exc:
             reason = exc.strerror or str(exc)
-            raise PermissionError(f"Cannot read media directory: {root}: {reason}") from exc
+            raise PermissionError(f"Cannot read media directory: {directory}: {reason}") from exc
         return sorted(videos, key=lambda path: path.name.lower())
 
     def _is_usable_root_video(self, path: Path, root: Path) -> bool:
         if path.parent.resolve() != root:
+            return False
+        return self._is_stable_video(path)
+
+    def _is_usable_pending_video(self, path: Path, root: Path) -> bool:
+        allowed_parents = {root.resolve(), (root / "inbox").resolve()}
+        if path.parent.resolve() not in allowed_parents:
+            return False
+        return self._is_stable_video(path)
+
+    def _is_stable_video(self, path: Path) -> bool:
+        if path.suffix.lower() not in self.video_extensions:
             return False
         lower_name = path.name.lower()
         if lower_name.endswith(self.ignored_suffixes):
@@ -330,6 +474,61 @@ class RootVideoOrganizer:
         stable_seconds = get_media_file_stable_seconds()
         return stable_seconds <= 0 or stat.st_mtime <= time.time() - stable_seconds
 
+    def _video_view(
+        self,
+        path: Path,
+        root: Path,
+        *,
+        source_location: str,
+        include_absolute_path: bool = False,
+    ) -> dict | None:
+        lower_name = path.name.lower()
+        if lower_name.endswith(self.ignored_suffixes):
+            return None
+        try:
+            stat = path.stat()
+        except OSError:
+            return None
+        if stat.st_size <= 0:
+            return None
+        parsed_title, parsed_year = parse_title_year(path.name)
+        stable = self._is_usable_pending_video(path, root)
+        try:
+            source_path = path.resolve().relative_to(root).as_posix()
+        except ValueError:
+            return None
+        view = {
+            "source_path": source_path,
+            "source_location": source_location,
+            "filename": path.name,
+            "size": stat.st_size,
+            "mtime": stat.st_mtime,
+            "stable": stable,
+            "parsed_title": parsed_title,
+            "parsed_year": parsed_year,
+            "status": "needs_organize" if stable else "waiting_for_stability",
+        }
+        if include_absolute_path:
+            view["path"] = str(path.resolve())
+        return view
+
+    def _resolve_candidate_source(self, root: Path, source_path: str) -> Path:
+        if not source_path or Path(source_path).is_absolute():
+            raise ValueError("Organization source path must be relative")
+        source = (root / source_path).resolve()
+        allowed_parents = {root.resolve(), (root / "inbox").resolve()}
+        if source.parent not in allowed_parents:
+            raise ValueError("Organization source path is outside the pending-file locations")
+        try:
+            source.relative_to(root)
+        except ValueError as exc:
+            raise ValueError("Organization source path escapes the media root") from exc
+        if not source.exists() or not source.is_file():
+            raise FileNotFoundError("Organization source video was not found")
+        if source.suffix.lower() not in self.video_extensions:
+            raise ValueError("Organization source is not a supported video")
+        return source
+
     def _target_dir(self, root: Path, title: str, year: int) -> Path:
         base = self._safe_name(f"{title} ({year})" if year else title)
         return root / (base or "Unknown Movie")
@@ -340,13 +539,43 @@ class RootVideoOrganizer:
             return f"{base or source.stem}{source.suffix}"
         return source.name
 
-    def _move_sidecars(self, source: Path, target_dir: Path, overwrite: bool) -> tuple[list[str], list[dict]]:
-        moved = []
-        sidecar_moves = []
+    def _sidecar_plan(
+        self,
+        source: Path,
+        target_dir: Path,
+        target_video_name: str,
+        rename_style: str,
+    ) -> list[dict]:
+        plans = []
+        target_stem = Path(target_video_name).stem
         for sidecar in sorted(source.parent.glob(f"{source.stem}.*"), key=lambda path: path.name.lower()):
             if sidecar == source or sidecar.suffix.lower() not in self.sidecar_extensions:
                 continue
-            target = target_dir / sidecar.name
+            suffix = sidecar.name[len(source.stem):]
+            target_name = f"{target_stem}{suffix}" if rename_style == "title_year" else sidecar.name
+            target = target_dir / target_name
+            plans.append({
+                "source": sidecar,
+                "target": target,
+                "source_name": sidecar.name,
+                "target_name": target.name,
+                "conflict": target.exists(),
+            })
+        return plans
+
+    def _move_sidecars(
+        self,
+        source: Path,
+        target_dir: Path,
+        target_video_name: str,
+        rename_style: str,
+        overwrite: bool,
+    ) -> tuple[list[str], list[dict]]:
+        moved = []
+        sidecar_moves = []
+        for item in self._sidecar_plan(source, target_dir, target_video_name, rename_style):
+            sidecar = item["source"]
+            target = item["target"]
             if target.exists() and not overwrite:
                 continue
             shutil.move(str(sidecar), str(target))

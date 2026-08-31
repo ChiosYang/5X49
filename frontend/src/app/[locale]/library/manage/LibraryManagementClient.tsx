@@ -1,10 +1,8 @@
 "use client";
 
-import { useState } from "react";
 import { ArrowUpRight } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { Link } from "@/i18n/routing";
-import LibrarianTerminal from "@/components/LibrarianTerminal";
 import {
   ActionCard,
   StatusTile,
@@ -17,7 +15,6 @@ import {
   useLibraryOrganizeStatus,
   useLibraryScrapeStatus,
   useLibrarySyncStatus,
-  useOrganizeRootVideos,
   useRefreshLibraryExternalScores,
   useScanLibrary,
   useScrapeLibrary,
@@ -34,8 +31,6 @@ export default function LibraryManagementClient() {
   const t = useTranslations("LibraryManagement");
   const settingsT = useTranslations("Settings");
   const locale = useLocale();
-  const [terminalOpen, setTerminalOpen] = useState(false);
-
   const { data: tmdbData } = useTmdbSettings();
   const { data: syncStatus } = useLibrarySyncStatus();
   const { data: scrapeStatus } = useLibraryScrapeStatus();
@@ -60,12 +55,6 @@ export default function LibraryManagementClient() {
     data: externalScoresResult,
     error: externalScoresError,
   } = useRefreshLibraryExternalScores();
-  const {
-    trigger: organizeRootVideos,
-    isMutating: isOrganizing,
-    data: organizeResult,
-    error: organizeError,
-  } = useOrganizeRootVideos();
   const {
     trigger: cleanupMissing,
     isMutating: isCleaning,
@@ -117,16 +106,6 @@ export default function LibraryManagementClient() {
         ? settingsT("externalScoresSummary", {
             updated: externalScoresStatus.last_result.updated ?? 0,
             skipped: externalScoresStatus.last_result.skipped ?? 0,
-          })
-        : undefined;
-  const organizeMessage = organizeError
-    ? errorMessage(organizeError, t("organizeFailed"))
-    : organizeResult
-      ? t("organizeStarted")
-      : organizeStatus?.last_result
-        ? t("organizeSummary", {
-            organized: organizeStatus.last_result.organized ?? 0,
-            review: organizeStatus.last_result.needs_review ?? 0,
           })
         : undefined;
   const cleanupMessage = cleanupError
@@ -301,27 +280,7 @@ export default function LibraryManagementClient() {
             <h2 className="type-section-title text-ink">{t("organizationGroup")}</h2>
             <p className="mt-1 text-xs leading-5 text-ink-disabled">{t("organizationGroupDesc")}</p>
           </div>
-          <div className="grid gap-4 md:grid-cols-2">
-            <ActionCard
-              title={settingsT("organizeRoot")}
-              description={settingsT("organizeRootDesc")}
-              meta={organizeStatus?.last_error}
-              status={organizeMessage}
-              statusTone={organizeError ? "error" : organizeResult ? "success" : "neutral"}
-            >
-              <Button
-                responsiveWidth
-                busy={isOrganizing || organizeStatus?.state === "running"}
-                onClick={() => void run(() => organizeRootVideos())}
-              >
-                {isOrganizing || organizeStatus?.state === "running"
-                  ? settingsT("organizing")
-                  : settingsT("organizeNow")}
-              </Button>
-            </ActionCard>
-            <ActionCard title={t("librarianAgent")} description={t("librarianAgentDesc")}>
-              <Button responsiveWidth onClick={() => setTerminalOpen(true)}>{t("openConsole")}</Button>
-            </ActionCard>
+          <div>
             <RootVideoReviewQueue refreshSignal={organizeStatus?.last_finished_at} />
           </div>
         </section>
@@ -358,8 +317,6 @@ export default function LibraryManagementClient() {
         </section>
         </section>
       </div>
-
-      <LibrarianTerminal isOpen={terminalOpen} onClose={() => setTerminalOpen(false)} />
     </div>
   );
 }

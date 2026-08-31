@@ -79,7 +79,7 @@ def get_watch_history():
     return film_profile_state_manager.watch_history()
 
 
-@router.get("/library/root-videos")
+@router.get("/library/root-videos", deprecated=True)
 def get_library_root_videos():
     try:
         return root_video_organizer.list_root_videos(get_media_dir() or DEFAULT_MEDIA_DIR)

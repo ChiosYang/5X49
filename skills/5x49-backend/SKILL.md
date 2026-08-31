@@ -118,8 +118,11 @@ curl -s http://127.0.0.1:8000/workflows/<workflow_id>
 - `PUT /settings/media-dir` 只接受存在且可读的目录；保存后 `/media/*`
   立即使用新根目录，无需重启后端。媒体路由不得接受绝对路径、路径穿越或
   逃逸到根目录外的符号链接。
-- `/library/root-videos`、`/library/organize-root`、
-  `/library/organize-root/confirm` 与 `/library/organize/status` 管理根目录散片。
+- `/library/organization/candidates` 同时列出媒体根目录与旧 `inbox` 的待整理文件，
+  只返回相对 `source_path`；手动操作必须依次调用
+  `/library/organization/preview` 与 `/library/organization/confirm`。
+- `/library/organize-root` 与 `/library/organize/status` 仅管理显式启用的根目录自动整理；
+  `/library/root-videos` 是一个兼容期只读接口。
 - `/library/scrape`、`/library/scrape/status` 管理批量刮削。
 - `/library/external-scores/refresh`、`/library/external-scores/status` 管理全库评分。
 

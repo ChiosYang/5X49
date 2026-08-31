@@ -10,11 +10,11 @@ from app.services.analysis import analysis_service
 from app.services.external_scores import external_score_service
 from app.services.library import library_manager
 from app.services.library_sync import library_sync_service
-from app.services.metadata.models import BatchScrapeOptions, RootOrganizeOptions, ScrapeOptions
+from app.services.metadata.models import BatchScrapeOptions, MetadataSearchResult, RootOrganizeOptions, ScrapeOptions
 from app.services.metadata.organizer import root_video_organizer
 from app.services.metadata.scraper import metadata_scraper
 from app.services.operation_manifests import operation_manifest_store
-from app.services.settings import get_media_dir, get_tmdb_scrape_concurrency
+from app.services.settings import get_media_dir, get_organize_rename_style, get_tmdb_scrape_concurrency
 from app.workflows.analysis import execute_analysis_workflow
 
 
@@ -216,7 +216,11 @@ def scrape_library(payload: dict, ctx) -> dict:
 
 def organize_root(payload: dict, ctx) -> dict:
     options_payload = payload.get("options") or {}
-    options = RootOrganizeOptions(**options_payload) if options_payload else RootOrganizeOptions()
+    options = (
+        RootOrganizeOptions(**options_payload)
+        if options_payload
+        else RootOrganizeOptions(rename_style=get_organize_rename_style())
+    )
     ctx.progress(stage="resolve_subject", message="Resolving media root")
     root = Path(_media_dir(payload)).resolve()
     if not root.exists() or not root.is_dir():
@@ -292,12 +296,25 @@ def confirm_root_video(payload: dict, ctx) -> dict:
     manifest_ref = payload["manifest_ref"]
     manifest = operation_manifest_store.load(manifest_ref)
     ctx.progress(stage="inspect", message="Inspecting confirmed root video")
+    preview = root_video_organizer.validate_organization_confirmation(
+        manifest["media_root"],
+        payload["source_path"],
+        payload["tmdb_id"],
+        payload["rename_style"],
+        payload["confirmation_token"],
+    )
     ctx.progress(stage="persist", message="Organizing confirmed root video")
     result = root_video_organizer.organize_file_confirmed(
         Path(manifest["source"]),
         Path(manifest["media_root"]),
         payload["tmdb_id"],
-        RootOrganizeOptions(**(payload.get("options") or {})),
+        RootOrganizeOptions(
+            rename_style=payload["rename_style"],
+            overwrite=False,
+            write_nfo=True,
+            download_artwork=True,
+        ),
+        candidate=MetadataSearchResult.model_validate(preview["match"]),
         manifest_ref=manifest_ref,
     )
     if result.get("status") == "failed":

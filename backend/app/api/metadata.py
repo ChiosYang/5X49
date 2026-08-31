@@ -9,7 +9,8 @@ from app.services.library import library_manager
 from app.services.metadata.models import (
     ArtworkSelection,
     BatchScrapeOptions,
-    RootOrganizeConfirmRequest,
+    OrganizationConfirmRequest,
+    OrganizationPreviewRequest,
     RootOrganizeOptions,
     ScrapeOptions,
 )
@@ -187,6 +188,73 @@ def get_library_scrape_status():
     return metadata_scraper.get_status()
 
 
+@router.get("/library/organization/candidates")
+def get_library_organization_candidates():
+    """List direct-root and legacy-inbox videos without exposing absolute paths."""
+    try:
+        return root_video_organizer.list_organization_candidates(get_media_dir() or DEFAULT_MEDIA_DIR)
+    except FileNotFoundError:
+        return []
+    except PermissionError as exc:
+        raise HTTPException(status_code=400, detail="Media directory cannot be read") from exc
+
+
+def _preview_organization(payload: OrganizationPreviewRequest) -> dict:
+    try:
+        return root_video_organizer.preview_organization(
+            get_media_dir() or DEFAULT_MEDIA_DIR,
+            payload.source_path,
+            payload.tmdb_id,
+            payload.rename_style,
+        )
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except RuntimeError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    except requests.HTTPError as exc:
+        status_code = exc.response.status_code if exc.response is not None else 502
+        raise HTTPException(status_code=status_code, detail="TMDB movie lookup failed") from exc
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail="Organization preview failed") from exc
+
+
+@router.post("/library/organization/preview")
+def preview_library_organization(payload: OrganizationPreviewRequest):
+    """Preview one user-selected organization plan without changing media files."""
+    return _preview_organization(payload)
+
+
+@router.post("/library/organization/confirm")
+def confirm_library_organization(payload: OrganizationConfirmRequest):
+    """Queue one organization plan after revalidating its preview token."""
+    preview = _preview_organization(payload)
+    if preview["confirmation_token"] != payload.confirmation_token:
+        raise HTTPException(status_code=409, detail="Organization preview is stale")
+    if not preview["can_confirm"]:
+        raise HTTPException(status_code=409, detail="Organization target has conflicts")
+
+    root = Path(get_media_dir() or DEFAULT_MEDIA_DIR).resolve()
+    source = (root / preview["source"]["source_path"]).resolve()
+    try:
+        manifest_ref = operation_manifest_store.create(root, source)
+    except OperationManifestError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    workflow = workflow_runtime.enqueue(
+        "organizer.confirm_root_video",
+        {
+            "manifest_ref": manifest_ref,
+            "source_path": preview["source"]["source_path"],
+            "tmdb_id": payload.tmdb_id,
+            "rename_style": payload.rename_style,
+            "confirmation_token": payload.confirmation_token,
+        },
+        dedupe_key=f"organizer.confirm_root_video:{payload.confirmation_token}",
+    )
+    return workflow_response(workflow, "File organization confirmation queued")
+
+
 @router.post("/library/organize-root")
 def organize_root_library_videos(options: RootOrganizeOptions | None = None):
     """Start background organization of direct video files in the media root."""
@@ -198,30 +266,6 @@ def organize_root_library_videos(options: RootOrganizeOptions | None = None):
         dedupe_key="organizer.organize_root",
     )
     return workflow_response(workflow, "Root video organization queued")
-
-
-@router.post("/library/organize-root/confirm")
-def confirm_root_library_video(payload: RootOrganizeConfirmRequest):
-    """Organize one root video using a user-confirmed TMDB ID."""
-    if not Path(payload.path).exists():
-        raise HTTPException(status_code=404, detail="Root video file not found")
-    try:
-        manifest_ref = operation_manifest_store.create(
-            Path(get_media_dir() or DEFAULT_MEDIA_DIR),
-            Path(payload.path),
-        )
-    except OperationManifestError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
-    workflow = workflow_runtime.enqueue(
-        "organizer.confirm_root_video",
-        {
-            "manifest_ref": manifest_ref,
-            "tmdb_id": payload.tmdb_id,
-            "options": (payload.options or RootOrganizeOptions()).model_dump(),
-        },
-        dedupe_key=f"organizer.confirm_root_video:{manifest_ref}",
-    )
-    return workflow_response(workflow, "Root video confirmation queued")
 
 
 @router.get("/library/organize/status")

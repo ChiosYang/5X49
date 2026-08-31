@@ -31,7 +31,7 @@ Use this skill when an API surface or its consumers may change.
 For backend API or service changes, run the smallest relevant backend check from `backend/`, usually:
 
 ```bash
-uv run python test_agent.py
+uv run python -m unittest test_api_routes.py -q
 ```
 
 For frontend client changes caused by API edits, also run from `frontend/`:

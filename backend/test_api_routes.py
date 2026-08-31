@@ -42,6 +42,9 @@ CANONICAL_ROUTES = {
     ("GET", "/films/{film_id}/scrape/candidates"),
     ("POST", "/films/{film_id}/scrape/confirm"),
     ("POST", "/films/{film_id}/external-scores/refresh"),
+    ("GET", "/library/organization/candidates"),
+    ("POST", "/library/organization/preview"),
+    ("POST", "/library/organization/confirm"),
     ("GET", "/activity/events"),
     ("GET", "/operations/{snapshot_id}/preview"),
     ("POST", "/operations/{snapshot_id}/restore"),
@@ -50,6 +53,11 @@ CANONICAL_ROUTES = {
     ("POST", "/workflows/{workflow_id}/cancel"),
     ("POST", "/workflows/{workflow_id}/retry"),
 }
+
+REMOVED_ROUTES.update({
+    ("GET", "/api/agents/clean-inbox"),
+    ("POST", "/library/organize-root/confirm"),
+})
 
 
 class ApiRouteContractTests(unittest.TestCase):
@@ -66,6 +74,14 @@ class ApiRouteContractTests(unittest.TestCase):
         self.assertTrue(CANONICAL_ROUTES.issubset(actual))
         self.assertTrue(REMOVED_ROUTES.isdisjoint(actual))
         self.assertEqual(len(actual), len(set(actual)))
+
+    def test_root_video_compatibility_route_is_deprecated(self):
+        route = next(
+            route
+            for route in app.routes
+            if isinstance(route, APIRoute) and route.path == "/library/root-videos"
+        )
+        self.assertTrue(route.deprecated)
 
     def test_health_endpoint_responds(self):
         response = self.client.get("/health")
@@ -101,6 +117,33 @@ class ApiRouteContractTests(unittest.TestCase):
             response = self.client.get("/library/root-videos")
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json(), [])
+
+        with patch(
+            "app.api.metadata.root_video_organizer.list_organization_candidates",
+            side_effect=FileNotFoundError("media root is not configured"),
+        ):
+            response = self.client.get("/library/organization/candidates")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), [])
+
+    def test_organization_confirmation_rejects_a_stale_preview(self):
+        preview = {
+            "source": {"source_path": "Film.mkv"},
+            "can_confirm": True,
+            "confirmation_token": "fresh-token",
+        }
+        with patch("app.api.metadata._preview_organization", return_value=preview):
+            response = self.client.post(
+                "/library/organization/confirm",
+                json={
+                    "source_path": "Film.mkv",
+                    "tmdb_id": 603,
+                    "rename_style": "preserve_stem",
+                    "confirmation_token": "b" * 64,
+                },
+            )
+        self.assertEqual(response.status_code, 409)
+        self.assertEqual(response.json(), {"detail": "Organization preview is stale"})
 
     def test_media_directory_status_reports_only_path_availability(self):
         with TemporaryDirectory() as media_dir:

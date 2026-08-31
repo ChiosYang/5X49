@@ -175,7 +175,7 @@ uv run python -m unittest test_api_routes.ApiRouteContractTests
 ## 项目结构
 
 - `frontend/`：Next.js 16、React 19、TypeScript、Tailwind CSS。
-- `backend/`：Python 3.13、FastAPI、SQLModel、LangGraph/LangChain。
+- `backend/`：Python 3.13、FastAPI、SQLModel，以及基于 OpenAI 的 Analysis V2。
 - `docs/`：API、领域模型、安装基线和功能文档。
 
 *Crafted with 🖤 for film lovers.*

@@ -1,6 +1,6 @@
 from typing import Literal, Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class MetadataSearchResult(BaseModel):
@@ -71,10 +71,14 @@ class RootOrganizeOptions(BaseModel):
     artwork_language: Optional[Literal["metadata", "zh", "en", "none"]] = None
 
 
-class RootOrganizeConfirmRequest(BaseModel):
-    path: str
-    tmdb_id: int
-    options: Optional[RootOrganizeOptions] = None
+class OrganizationPreviewRequest(BaseModel):
+    source_path: str = Field(min_length=1, max_length=1024)
+    tmdb_id: int = Field(gt=0)
+    rename_style: Literal["preserve_stem", "title_year"] = "preserve_stem"
+
+
+class OrganizationConfirmRequest(OrganizationPreviewRequest):
+    confirmation_token: str = Field(pattern=r"^[0-9a-f]{64}$")
 
 
 class ScrapeResult(BaseModel):

@@ -181,18 +181,39 @@ Candidate lookup requires an available edition with a present video locator and
 returns an empty array when TMDB has no matches. It never marks the Film as
 reviewed or writes metadata; confirmation remains an explicit `POST`.
 
-## Root organizer
+## File organization
 
 | Method | Path | Purpose |
 | --- | --- | --- |
-| `GET` | `/library/root-videos` | List videos directly under the media root. |
-| `POST` | `/library/organize-root` | Queue automatic organization. |
-| `POST` | `/library/organize-root/confirm` | Confirm one path and TMDB identity. |
+| `GET` | `/library/organization/candidates` | List direct-root and legacy-inbox videos using relative source paths. |
+| `POST` | `/library/organization/preview` | Resolve one TMDB identity and preview the exact file plan without writes. |
+| `POST` | `/library/organization/confirm` | Revalidate a preview token and queue one confirmed file plan. |
+| `GET` | `/library/root-videos` | Deprecated compatibility view for direct-root videos. |
+| `POST` | `/library/organize-root` | Queue explicitly enabled automatic root-only organization. |
 | `GET` | `/library/organize/status` | Latest organizer status. |
 
-File moves are bounded by the configured media root. Restorable moves reference
-a private controlled manifest; the Event and OperationSnapshot store only its
-opaque reference.
+`POST /library/organization/preview` accepts:
+
+```json
+{"source_path":"inbox/Messy.Name.1999.mkv","tmdb_id":603,"rename_style":"preserve_stem"}
+```
+
+The response contains the source summary, selected TMDB candidate, target folder
+and video name, sidecar plan, post-actions, conflicts, `can_confirm`, and a
+64-character `confirmation_token`. It never returns an absolute source path and
+does not create directories, move files, or write metadata.
+
+Confirmation repeats the preview body and adds its token. A stale source,
+changed identity or rename style, or a new target conflict returns `409` before
+enqueue. The Workflow validates the same token again before moving anything.
+Unsupported, nested, or escaping paths return `400`; a missing source returns
+`404`. Manual confirmation never overwrites target video or sidecar files.
+
+Confirmed files may come directly from the media root or its direct `inbox`
+child. Automatic organization remains root-only. Restorable moves reference a
+private controlled manifest; the Event and OperationSnapshot store only its
+opaque reference. File-location restore covers the video, associated sidecars,
+and database locator; generated NFO and artwork files remain.
 
 ## Analysis V2
 

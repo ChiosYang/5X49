@@ -8,8 +8,8 @@ the relevant verification commands before handing work back.
 
 - `frontend/`: Next.js 16 app using React 19, TypeScript, Tailwind CSS 4,
   next-intl, SWR, and Framer Motion.
-- `backend/`: Python 3.13 FastAPI service using SQLModel, LangGraph/LangChain,
-  and OpenAI/OpenRouter integrations.
+- `backend/`: Python 3.13 FastAPI service using SQLModel plus OpenAI/OpenRouter
+  integrations for Analysis V2.
 - `docs/api.md`: REST API documentation. Update it when backend endpoints or
   response shapes change.
 - `skills/5x49-backend/SKILL.md`: External agent skill documentation. Keep it
@@ -44,7 +44,7 @@ Backend:
 cd backend
 uv sync
 uv run uvicorn app.main:app --reload
-uv run python test_agent.py
+uv run python -m unittest test_api_routes.py -q
 ```
 
 Docker:
@@ -66,9 +66,8 @@ the user explicitly asks for a release.
 
 - Frontend code changes: run `npm run lint`, `npm run typecheck`, and, when the
   change can affect runtime behavior or routing, `npm run build`.
-- Backend API or service changes: run the smallest relevant backend check
-  available. At present, this project has a manual integration-style script at
-  `backend/test_agent.py`, not a formal pytest suite.
+- Backend API or service changes: run the smallest relevant `unittest` modules
+  available under `backend/`. This project does not use pytest.
 - Docker changes: run the affected Docker build or explain why it was not run.
 - Documentation-only changes: no build is required unless examples or commands
   were changed in a way that should be validated.
@@ -179,5 +178,5 @@ Non-obvious caveats:
   whose subfolders each contain a movie `.nfo` (TinyMediaManager/Kodi format),
   then `POST /library/scan`. `POST /library/seed` inserts sample rows without any
   media.
-- There is no pytest suite. `backend/test_agent.py` is a manual, LLM-driven
-  integration script that requires `OPENROUTER_API_KEY`.
+- There is no pytest suite. Backend coverage uses deterministic `unittest`
+  modules that should be selected according to the affected service or API.

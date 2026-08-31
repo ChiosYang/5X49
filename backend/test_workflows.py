@@ -7,6 +7,7 @@ from sqlalchemy import inspect
 from sqlmodel import Session, create_engine, select
 
 import app.database as database
+import app.jobs.actors as actors_module
 import app.jobs.store as job_store_module
 import app.workflows.store as workflow_store_module
 from app.database import configure_sqlite_engine
@@ -152,6 +153,32 @@ class WorkflowRuntimeTests(unittest.TestCase):
         self.assertEqual(failed["error_code"], "analysis_provider_not_configured")
         self.assertEqual(failed["error_message"], "Analysis provider is not configured")
         self.assertEqual(failed["steps"][0]["result_summary"], "Analysis provider is not configured")
+
+    def test_confirmed_organization_revalidates_preview_before_file_changes(self):
+        class Context:
+            def progress(self, **_values):
+                return None
+
+        payload = {
+            "manifest_ref": "manifest_" + "a" * 32,
+            "source_path": "Film.mkv",
+            "tmdb_id": 603,
+            "rename_style": "preserve_stem",
+            "confirmation_token": "stale-token",
+        }
+        manifest = {"source": "C:/media/Film.mkv", "media_root": "C:/media"}
+        with (
+            patch.object(actors_module.operation_manifest_store, "load", return_value=manifest),
+            patch.object(
+                actors_module.root_video_organizer,
+                "validate_organization_confirmation",
+                side_effect=RuntimeError("Organization preview is stale"),
+            ),
+            patch.object(actors_module.root_video_organizer, "organize_file_confirmed") as organize,
+        ):
+            with self.assertRaisesRegex(RuntimeError, "stale"):
+                actors_module.confirm_root_video(payload, Context())
+        organize.assert_not_called()
 
 
 if __name__ == "__main__":

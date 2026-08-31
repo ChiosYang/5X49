@@ -172,7 +172,7 @@ uv run python -m unittest test_api_routes.ApiRouteContractTests
 ## Repository Layout
 
 - `frontend/`: Next.js 16, React 19, TypeScript, and Tailwind CSS.
-- `backend/`: Python 3.13, FastAPI, SQLModel, and LangGraph/LangChain.
+- `backend/`: Python 3.13, FastAPI, SQLModel, and OpenAI-powered Analysis V2.
 - `docs/`: API, domain, installation-baseline, and feature documentation.
 
 *Crafted with 🖤 for film lovers.*

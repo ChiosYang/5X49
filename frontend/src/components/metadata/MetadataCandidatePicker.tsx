@@ -6,28 +6,13 @@ import { Button } from "@/components/ui/Button";
 import { TextInput } from "@/components/ui/FormControls";
 import { Spinner } from "@/components/ui/Feedback";
 import type { MetadataSearchResult } from "@/types/movie";
+export {
+  parseMetadataSearchInput,
+  parseTmdbId,
+  prependMetadataCandidate,
+} from "@/lib/metadata-search";
 
 const DEFAULT_VISIBLE_CANDIDATES = 5;
-
-export function parseTmdbId(value: string) {
-  const match = value.trim().match(/(?:movie\/)?(\d+)/);
-  return match ? Number(match[1]) : null;
-}
-
-export function parseMetadataSearchInput(value: string) {
-  const yearMatch = value.match(/\b(19\d{2}|20\d{2})\b/);
-  return {
-    query: value.replace(/\b(19\d{2}|20\d{2})\b/, "").trim() || value.trim(),
-    year: yearMatch ? Number(yearMatch[1]) : null,
-  };
-}
-
-export function prependMetadataCandidate(
-  candidates: MetadataSearchResult[],
-  candidate: MetadataSearchResult,
-) {
-  return [candidate, ...candidates.filter((item) => item.tmdb_id !== candidate.tmdb_id)];
-}
 
 export function MetadataCandidatePicker({
   busyCandidateId,
