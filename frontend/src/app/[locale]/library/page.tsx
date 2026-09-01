@@ -292,7 +292,7 @@ export default async function LibraryPage({ params, searchParams }: LibraryPageP
           <div className="mt-20 grid grid-cols-1 gap-x-5 gap-y-12 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 xl:gap-x-6 xl:gap-y-14 2xl:grid-cols-5">
             {sortedMovies.map((movie, i) => (
               <LibraryMovieCard
-                key={movie.id}
+                key={`${movie.id}:${movie.profile_state.updated_at || "initial"}`}
                 movie={movie}
                 priority={i === 0}
               />

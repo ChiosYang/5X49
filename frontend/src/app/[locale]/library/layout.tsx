@@ -2,10 +2,10 @@ import type { ReactNode } from "react";
 
 export default function LibraryLayout({
   children,
-  detail = null,
+  detail,
 }: {
   children: ReactNode;
-  detail?: ReactNode;
+  detail: ReactNode;
 }) {
   return (
     <>

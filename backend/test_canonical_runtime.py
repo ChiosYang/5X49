@@ -9,6 +9,7 @@ import app.services.event_store as event_store_module
 import app.services.library as library_module
 import app.services.operation_snapshots as snapshots_module
 import app.services.user_state as user_state_module
+import app.services.viewings as viewings_module
 from app.canonical_models import (
     AssertionPredicate,
     Concept,
@@ -24,6 +25,7 @@ from app.services.library import library_manager
 from app.services.operation_snapshots import operation_snapshot_service
 from app.services.canonical_runtime import canonical_runtime_writer
 from app.services.user_state import film_profile_state_manager
+from app.services.viewings import viewing_manager
 
 
 class FreshCanonicalRuntimeTests(unittest.TestCase):
@@ -42,6 +44,7 @@ class FreshCanonicalRuntimeTests(unittest.TestCase):
                 library_module,
                 snapshots_module,
                 user_state_module,
+                viewings_module,
             )
         }
         for module in self._engines:
@@ -128,7 +131,8 @@ class FreshCanonicalRuntimeTests(unittest.TestCase):
             diary = session.exec(select(Viewing).where(Viewing.source == "diary")).one()
             self.assertIsNotNone(manual.deleted_at)
             self.assertIsNone(diary.deleted_at)
-        self.assertEqual(len(film_profile_state_manager.watch_history()), 1)
+        recent = viewing_manager.list_profile(view="recent")
+        self.assertEqual(recent["total"], 1)
 
     def test_normal_clear_preserves_film_state_and_rescan_restores_same_item(self):
         path = self._video("restore.mkv", b"restore")

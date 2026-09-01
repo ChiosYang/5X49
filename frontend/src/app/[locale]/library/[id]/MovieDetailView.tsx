@@ -12,6 +12,7 @@ import {
 } from "./MovieArtworkProvider";
 import MovieHeroTitle from "./MovieHeroTitle";
 import MovieRefreshButton from "./MovieRefreshButton";
+import MovieViewingSection from "./MovieViewingSection";
 
 function formatResolution(width?: number | null, height?: number | null) {
   return width && height ? `${width} × ${height}` : null;
@@ -81,7 +82,10 @@ export default async function MovieDetailView({ film }: { film: LibraryFilmDetai
             <span className="type-label block text-ink-subtle">{t("released")}</span>
             <span className="block font-serif text-xl text-ink italic md:text-2xl">{film.year || "—"}</span>
           </div>
-          <MovieRefreshButton film={film} />
+          <MovieRefreshButton
+            key={`${film.id}:${film.profile_state.updated_at || "initial"}`}
+            film={film}
+          />
         </div>
 
         <div className="grid grid-cols-1 gap-12 border-b border-line-strong p-8 md:p-16 lg:grid-cols-3">
@@ -125,6 +129,8 @@ export default async function MovieDetailView({ film }: { film: LibraryFilmDetai
             </div>
           </section>
         )}
+
+        <MovieViewingSection filmId={film.id} filmTitle={film.title} />
 
         <FilmGraphPanel filmId={film.id} />
 

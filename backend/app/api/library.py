@@ -1,6 +1,7 @@
 import os
 import hashlib
 from pathlib import Path
+from typing import Literal
 
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, Field as PydanticField
@@ -17,6 +18,13 @@ from app.services.metadata.organizer import root_video_organizer
 from app.services.operation_manifests import OperationManifestError, operation_manifest_store
 from app.services.settings import get_media_dir
 from app.services.user_state import film_profile_state_manager
+from app.services.viewings import (
+    ViewingDateError,
+    ViewingNotFound,
+    ViewingReadOnly,
+    normalize_watched_at,
+    viewing_manager,
+)
 from app.services.watcher import library_watcher
 from app.utils.security import validate_resource_id
 from app.workflows import workflow_runtime
@@ -31,6 +39,10 @@ class FilmProfileStateUpdate(BaseModel):
     rating: int | None = PydanticField(default=None, ge=1, le=5)
     favorite: bool | None = None
     notes: str | None = PydanticField(default=None, max_length=10_000)
+
+
+class ViewingDateRequest(BaseModel):
+    watched_at: str | None
 
 
 @router.get("/library/films")
@@ -59,10 +71,16 @@ def get_film_profile_state(film_id: str):
 @router.put("/films/{film_id}/profile-state")
 def update_film_profile_state(film_id: str, request: FilmProfileStateUpdate):
     _validate_id(film_id, "film")
+    watched_at = request.watched_at
+    if "watched_at" in request.model_fields_set:
+        try:
+            watched_at, _precision = normalize_watched_at(request.watched_at)
+        except ViewingDateError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
     state = film_profile_state_manager.upsert(
         film_id,
         watched=request.watched,
-        watched_at=request.watched_at,
+        watched_at=watched_at,
         rating=request.rating,
         favorite=request.favorite,
         notes=request.notes,
@@ -74,9 +92,73 @@ def update_film_profile_state(film_id: str, request: FilmProfileStateUpdate):
     return state
 
 
-@router.get("/profile/watch-history")
-def get_watch_history():
-    return film_profile_state_manager.watch_history()
+@router.get("/profile/viewings")
+def get_profile_viewings(
+    limit: int = Query(default=100, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
+    film_id: str | None = Query(default=None),
+    view: Literal["timeline", "recent"] = Query(default="timeline"),
+):
+    if film_id is not None:
+        _validate_id(film_id, "film")
+    return viewing_manager.list_profile(limit=limit, offset=offset, film_id=film_id, view=view)
+
+
+@router.get("/films/{film_id}/viewings")
+def get_film_viewings(film_id: str):
+    _validate_id(film_id, "film")
+    viewings = viewing_manager.list_film(film_id)
+    if viewings is None:
+        raise HTTPException(status_code=404, detail="Film not found")
+    return viewings
+
+
+@router.post("/films/{film_id}/viewings")
+def create_film_viewing(film_id: str, request: ViewingDateRequest):
+    _validate_id(film_id, "film")
+    try:
+        viewing = viewing_manager.create(film_id, request.watched_at)
+    except ViewingDateError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    if viewing is None:
+        raise HTTPException(status_code=404, detail="Film not found")
+    library_event_bus.publish_library_changed("viewing_created", film_id=film_id)
+    return viewing
+
+
+@router.patch("/viewings/{viewing_id}")
+def update_viewing(viewing_id: str, request: ViewingDateRequest):
+    _validate_id(viewing_id, "viewing")
+    try:
+        viewing = viewing_manager.update(viewing_id, request.watched_at)
+    except ViewingDateError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except ViewingNotFound as exc:
+        raise HTTPException(status_code=404, detail="Viewing not found") from exc
+    except ViewingReadOnly as exc:
+        raise HTTPException(
+            status_code=409,
+            detail={"code": exc.code, "message": str(exc)},
+        ) from exc
+    library_event_bus.publish_library_changed("viewing_updated", film_id=viewing["film_id"])
+    return viewing
+
+
+@router.delete("/viewings/{viewing_id}")
+def delete_viewing(viewing_id: str):
+    _validate_id(viewing_id, "viewing")
+    try:
+        result = viewing_manager.delete(viewing_id)
+    except ViewingNotFound as exc:
+        raise HTTPException(status_code=404, detail="Viewing not found") from exc
+    except ViewingReadOnly as exc:
+        raise HTTPException(
+            status_code=409,
+            detail={"code": exc.code, "message": str(exc)},
+        ) from exc
+    if result["changed"]:
+        library_event_bus.publish_library_changed("viewing_deleted", film_id=result["film_id"])
+    return {"status": result["status"], "viewing_id": result["viewing_id"]}
 
 
 @router.get("/library/root-videos", deprecated=True)
@@ -224,6 +306,6 @@ def cleanup_missing_library_items():
 
 
 def _validate_id(value: str, label: str) -> None:
-    prefix = "film" if label == "film" else "lib"
+    prefix = {"film": "film", "library item": "lib", "viewing": "view"}[label]
     if not validate_resource_id(value, prefix):
         raise HTTPException(status_code=400, detail=f"Invalid {label} ID format")

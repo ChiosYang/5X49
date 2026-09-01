@@ -7,7 +7,6 @@ from app.database import engine
 from app.models import utc_now_iso
 from app.services.canonical_runtime import canonical_runtime_writer
 from app.services.event_store import event_store
-from app.services.library import library_manager
 
 
 class FilmProfileStateManager:
@@ -15,6 +14,7 @@ class FilmProfileStateManager:
         return {
             "film_id": film_id,
             "watched": False,
+            "manual_watched": False,
             "watched_at": None,
             "rating": None,
             "favorite": False,
@@ -70,45 +70,6 @@ class FilmProfileStateManager:
             session.commit()
             return after
 
-    def watch_history(self) -> list[dict]:
-        with Session(engine) as session:
-            active = session.exec(
-                select(Viewing)
-                .where(Viewing.review_status == "confirmed")
-                .where(Viewing.deleted_at.is_(None))
-                .order_by(Viewing.watched_at.desc(), Viewing.updated_at.desc(), Viewing.id.desc())
-            ).all()
-            latest_by_film: dict[str, Viewing] = {}
-            for viewing in active:
-                latest_by_film.setdefault(viewing.film_id, viewing)
-
-        entries = []
-        for viewing in latest_by_film.values():
-            film = library_manager.get_film(viewing.film_id)
-            if film is None:
-                continue
-            entries.append(
-                {
-                    "film": film,
-                    "viewing": {
-                        "id": viewing.id,
-                        "film_id": viewing.film_id,
-                        "watched_at": viewing.watched_at,
-                        "watched_at_precision": viewing.watched_at_precision,
-                        "source": viewing.source,
-                    },
-                    "profile_state": film["profile_state"],
-                }
-            )
-        return sorted(
-            entries,
-            key=lambda entry: (
-                entry["viewing"].get("watched_at") or "",
-                entry["viewing"]["id"],
-            ),
-            reverse=True,
-        )
-
     def _view(self, session: Session, film_id: str) -> dict:
         profile_id = canonical_runtime_writer.local_profile_id(session)
         state = session.get(FilmProfileState, (profile_id, film_id))
@@ -120,6 +81,15 @@ class FilmProfileStateManager:
             .where(Viewing.deleted_at.is_(None))
             .order_by(Viewing.watched_at.desc(), Viewing.updated_at.desc(), Viewing.id.desc())
         ).first()
+        manual = session.exec(
+            select(Viewing)
+            .where(Viewing.profile_id == profile_id)
+            .where(Viewing.film_id == film_id)
+            .where(Viewing.source == "manual")
+            .where(Viewing.source_record_id == film_id)
+            .where(Viewing.review_status == "confirmed")
+            .where(Viewing.deleted_at.is_(None))
+        ).first()
         updated_values = [
             value
             for value in (state.updated_at if state else None, viewing.updated_at if viewing else None)
@@ -128,6 +98,7 @@ class FilmProfileStateManager:
         return {
             "film_id": film_id,
             "watched": viewing is not None,
+            "manual_watched": manual is not None,
             "watched_at": viewing.watched_at if viewing else None,
             "rating": state.rating if state else None,
             "favorite": bool(state.favorite) if state else False,

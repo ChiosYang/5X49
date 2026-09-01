@@ -34,7 +34,16 @@ export const API = {
   filmScrapeConfirm: (filmId: string) => `${API_BASE_URL}/films/${segment(filmId)}/scrape/confirm`,
   libraryItemRefresh: (itemId: string) => `${API_BASE_URL}/library/items/${segment(itemId)}/refresh`,
   libraryItemIgnore: (itemId: string) => `${API_BASE_URL}/library/items/${segment(itemId)}/ignore`,
-  watchHistory: () => `${API_BASE_URL}/profile/watch-history`,
+  profileViewings: (params: { limit?: number; offset?: number; filmId?: string; view?: "timeline" | "recent" } = {}) => {
+    const query = new URLSearchParams();
+    if (params.limit !== undefined) query.set("limit", String(params.limit));
+    if (params.offset !== undefined) query.set("offset", String(params.offset));
+    if (params.filmId) query.set("film_id", params.filmId);
+    if (params.view) query.set("view", params.view);
+    return `${API_BASE_URL}/profile/viewings${query.size ? `?${query}` : ""}`;
+  },
+  filmViewings: (filmId: string) => `${API_BASE_URL}/films/${segment(filmId)}/viewings`,
+  viewing: (viewingId: string) => `${API_BASE_URL}/viewings/${segment(viewingId)}`,
   activityEvents: (params: {
     aggregate_type?: string;
     aggregate_id?: string;

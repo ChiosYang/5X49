@@ -300,6 +300,16 @@ class CanonicalRuntimeWriter:
             .order_by(Viewing.watched_at.desc(), Viewing.updated_at.desc(), Viewing.id.desc())
         ).all()
         confirmed = next((item for item in viewings if item.review_status == "confirmed"), None)
+        manual = next(
+            (
+                item
+                for item in viewings
+                if item.review_status == "confirmed"
+                and item.source == "manual"
+                and item.source_record_id == film_id
+            ),
+            None,
+        )
         updated_values = [
             value
             for value in (
@@ -311,6 +321,7 @@ class CanonicalRuntimeWriter:
         return {
             "film_id": film_id,
             "watched": confirmed is not None,
+            "manual_watched": manual is not None,
             "watched_at": confirmed.watched_at if confirmed else None,
             "rating": profile_state.rating if profile_state else None,
             "favorite": bool(profile_state.favorite) if profile_state else False,

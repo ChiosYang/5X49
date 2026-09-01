@@ -25,11 +25,49 @@ export interface ExternalScore {
 export interface FilmProfileState {
   film_id: string;
   watched: boolean;
+  manual_watched: boolean;
   watched_at?: string | null;
   rating?: number | null;
   favorite: boolean;
   notes?: string | null;
   updated_at?: string | null;
+}
+
+export type ViewingPrecision = "timestamp" | "date" | "year" | "unknown";
+
+export interface ViewingView {
+  id: string;
+  film_id: string;
+  watched_at?: string | null;
+  watched_at_precision: ViewingPrecision;
+  source: string;
+  editable: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ViewingTimelineEntry {
+  viewing: ViewingView;
+  film: {
+    id: string;
+    title: string;
+    year?: number | null;
+    in_library: boolean;
+  };
+  profile_state: FilmProfileState;
+}
+
+export interface ViewingPage {
+  items: ViewingTimelineEntry[];
+  total: number;
+  limit: number;
+  offset: number;
+  next_offset?: number | null;
+}
+
+export interface ViewingDeleteResult {
+  status: "deleted";
+  viewing_id: string;
 }
 
 export interface FilmProfileStateUpdate {
@@ -196,18 +234,6 @@ export interface FilmGraphView {
   truncated: boolean;
   visibility_policy: "graph-visibility.v1" | "graph-visibility.v2";
   projection_version: string;
-}
-
-export interface WatchHistoryEntry {
-  film: LibraryFilmSummary;
-  viewing: {
-    id: string;
-    film_id: string;
-    watched_at?: string | null;
-    watched_at_precision: "timestamp" | "date" | "year" | "unknown";
-    source: string;
-  };
-  profile_state: FilmProfileState;
 }
 
 export interface MetadataSearchResult {

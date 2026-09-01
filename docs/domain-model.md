@@ -97,12 +97,20 @@ provenance; unknown genres remain reviewable.
 ## Profile state and Viewing
 
 `FilmProfileState` stores one profile's `favorite`, `rating` and `notes` for a
-Film. Viewing is a fact, not a boolean state.
+Film. Viewing is a fact, not a boolean state. A Film can have any number of
+active confirmed Viewings, including multiple records on the same day.
 
 - Manual `watched=true` creates/restores one confirmed manual Viewing.
 - Manual `watched=false` revokes only that manual Viewing.
-- Diary or other Viewing sources are not removed.
-- `watched` and `watched_at` are derived from active confirmed Viewings.
+- Diary creation always appends a new confirmed Viewing. A viewing date has
+  `date`, `year`, `timestamp`, or `unknown` precision.
+- Manual and Diary Viewings are user-editable and soft-deletable. Imported
+  sources are shown in the Diary but remain read-only.
+- Diary or other Viewing sources are never removed by the manual watched toggle.
+- `watched` and `watched_at` are derived from all active confirmed Viewings;
+  `manual_watched` reports only the quick-toggle's singleton manual Viewing.
+- Diary is the only viewing-history product surface. Its `timeline` view returns
+  every confirmed Viewing; its `recent` view derives one latest Viewing per Film.
 
 `LocalProfile` remains a single local profile; account, authentication and
 multi-profile behavior are outside v1.

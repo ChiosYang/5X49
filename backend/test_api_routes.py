@@ -10,11 +10,13 @@ from fastapi.testclient import TestClient
 import app.database as database_module
 from app.main import app, lifespan
 from app.services.projections import ProjectionUnavailable
+from app.services.viewings import ViewingDateError, ViewingNotFound, ViewingReadOnly
 
 
 REMOVED_ROUTES = {
     ("GET", "/library"),
     ("GET", "/watch-history"),
+    ("GET", "/profile/watch-history"),
     ("GET", "/library/user-states"),
     ("GET", "/library/{movie_id}"),
     ("POST", "/library/analyze/{movie_id}"),
@@ -32,7 +34,11 @@ CANONICAL_ROUTES = {
     ("GET", "/library/films/{film_id}"),
     ("GET", "/films/{film_id}/profile-state"),
     ("PUT", "/films/{film_id}/profile-state"),
-    ("GET", "/profile/watch-history"),
+    ("GET", "/profile/viewings"),
+    ("GET", "/films/{film_id}/viewings"),
+    ("POST", "/films/{film_id}/viewings"),
+    ("PATCH", "/viewings/{viewing_id}"),
+    ("DELETE", "/viewings/{viewing_id}"),
     ("POST", "/library/items/{library_item_id}/refresh"),
     ("POST", "/library/items/{library_item_id}/ignore"),
     ("POST", "/films/{film_id}/analysis-runs"),
@@ -328,6 +334,68 @@ class ApiRouteContractTests(unittest.TestCase):
             response = self.client.get(f"/films/{film_id}/graph")
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["root"]["id"], film_id)
+
+    def test_viewing_routes_validate_resources_dates_and_read_only_sources(self):
+        film_id = "film_" + "a" * 32
+        viewing_id = "view_" + "b" * 32
+        response = self.client.patch("/viewings/not-a-viewing", json={"watched_at": "2026"})
+        self.assertEqual(response.status_code, 400)
+
+        with patch(
+            "app.api.library.viewing_manager.create",
+            side_effect=ViewingDateError("watched_at date is invalid"),
+        ):
+            response = self.client.post(
+                f"/films/{film_id}/viewings",
+                json={"watched_at": "2026-02-30"},
+            )
+        self.assertEqual(response.status_code, 422)
+
+        with patch(
+            "app.api.library.viewing_manager.update",
+            side_effect=ViewingReadOnly("Viewing source is read-only"),
+        ):
+            response = self.client.patch(
+                f"/viewings/{viewing_id}",
+                json={"watched_at": "2026"},
+            )
+        self.assertEqual(response.status_code, 409)
+        self.assertEqual(response.json()["detail"]["code"], "viewing_read_only")
+
+        with patch(
+            "app.api.library.viewing_manager.delete",
+            side_effect=ViewingNotFound("Viewing not found"),
+        ):
+            response = self.client.delete(f"/viewings/{viewing_id}")
+        self.assertEqual(response.status_code, 404)
+
+        response = self.client.put(
+            f"/films/{film_id}/profile-state",
+            json={"watched": True, "watched_at": "2026-02-30"},
+        )
+        self.assertEqual(response.status_code, 422)
+
+    def test_viewing_pagination_contract_is_bounded(self):
+        response = self.client.get("/profile/viewings?limit=201")
+        self.assertEqual(response.status_code, 422)
+        with patch(
+            "app.api.library.viewing_manager.list_profile",
+            return_value={
+                "items": [],
+                "total": 0,
+                "limit": 25,
+                "offset": 0,
+                "next_offset": None,
+            },
+        ) as list_profile:
+            response = self.client.get("/profile/viewings?view=recent&limit=25&offset=0")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["next_offset"], None)
+        list_profile.assert_called_once_with(limit=25, offset=0, film_id=None, view="recent")
+        response = self.client.get("/profile/viewings?film_id=not-a-film")
+        self.assertEqual(response.status_code, 400)
+        response = self.client.get("/profile/viewings?view=not-a-view")
+        self.assertEqual(response.status_code, 422)
 
     def test_scrape_candidate_route_maps_resource_and_service_errors(self):
         film_id = "film_" + "a" * 32

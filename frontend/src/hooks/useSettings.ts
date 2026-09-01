@@ -426,7 +426,11 @@ export function useClearLibraryData() {
       const data = await res.json();
       await Promise.all([
         mutate(API.libraryFilms(), []),
-        mutate(API.watchHistory(), []),
+        mutate(
+          (key) => typeof key === "string" && key.startsWith(API.profileViewings()),
+          undefined,
+          { revalidate: true },
+        ),
         mutate(API.workflows()),
       ]);
       return data;

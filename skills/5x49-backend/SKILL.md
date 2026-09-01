@@ -41,19 +41,32 @@ curl -s -X POST http://127.0.0.1:8000/library/items/lib_0123456789abcdef01234567
 
 不要从 Event/Job 中查找绝对路径；路径只存在于受控、Git ignored 的私有 manifest。
 
-## Profile State 与观看历史
+## Profile State 与 Diary
 
 ```bash
 curl -s http://127.0.0.1:8000/films/<film_id>/profile-state
 curl -s -X PUT http://127.0.0.1:8000/films/<film_id>/profile-state \
   -H "Content-Type: application/json" \
   -d '{"watched":true,"rating":5,"favorite":true,"notes":"..."}'
-curl -s http://127.0.0.1:8000/profile/watch-history
+curl -s "http://127.0.0.1:8000/profile/viewings?limit=100&offset=0"
+curl -s "http://127.0.0.1:8000/profile/viewings?view=recent&limit=100&offset=0"
+curl -s http://127.0.0.1:8000/films/<film_id>/viewings
+curl -s -X POST http://127.0.0.1:8000/films/<film_id>/viewings \
+  -H "Content-Type: application/json" -d '{"watched_at":"2026-08-31"}'
+curl -s -X PATCH http://127.0.0.1:8000/viewings/<viewing_id> \
+  -H "Content-Type: application/json" -d '{"watched_at":"2026"}'
+curl -s -X DELETE http://127.0.0.1:8000/viewings/<viewing_id>
 ```
 
 `watched=true` 创建或恢复 manual confirmed Viewing；`watched=false` 只撤销
 manual Viewing，不删除 Diary 等其他来源。最终 watched 由任意 active confirmed
-Viewing 推导。
+Viewing 推导；`manual_watched` 只表示快捷开关对应的 manual Viewing 是否存在。
+
+Diary 的 POST 每次都创建一条独立 `source=diary` 记录，同日记录也不合并。
+日期接受 `YYYY-MM-DD`、`YYYY`、带时区的 RFC 3339 timestamp 或 `null`。manual
+与 diary 来源可 PATCH/DELETE；外部来源返回 `409 viewing_read_only`。DELETE 是
+幂等软删除。`/profile/viewings?view=timeline` 返回完整时间线，`view=recent` 在分页
+前为每部 Film 选择最新一条；逐片管理也可使用 `/films/{film_id}/viewings`。
 
 ## TMDB、Artwork 与外部评分
 
@@ -146,7 +159,7 @@ Settings/密钥、Job/Workflow/Event、Read Model 或模型原始内容。v1 没
 
 不得调用：
 
-- `/library/{movie_id}`、`/library/user-states`、`/watch-history`；
+- `/library/{movie_id}`、`/library/user-states`、`/watch-history`、`/profile/watch-history`；
 - `/library/analyze/{movie_id}`、`/analyze/{movie_name}`；
 - Movie audit/timeline、projection rebuild、event backfill；
 - 任何基于 Legacy ID、alias 或可选 read source 的接口。

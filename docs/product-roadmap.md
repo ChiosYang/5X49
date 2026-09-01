@@ -34,6 +34,14 @@ Complete:
 - Inline first-run media-directory setup, scanning and recovery for an empty Library.
 - Reviewable root/inbox file organization with exact preview, confirmation and restore boundaries.
 - Fresh Canonical local strict stabilization Gate with bilingual desktop and mobile evidence.
+- GitHub Actions backend and frontend checks on `main` pushes and pull requests.
+
+## In delivery
+
+Diary is complete on its feature branch: multiple independent Viewing facts,
+bilingual timeline, and latest-per-Film recent-view semantics
+have passed local backend, frontend, and browser checks. It moves into the
+completed baseline after the authorized `main` push passes both CI jobs.
 
 ## Active quality gate
 
@@ -52,27 +60,7 @@ gate currently carried forward from W4.
 
 ## Next delivery sequence
 
-### 1. Continuous integration baseline
-
-- Run deterministic backend unittest discovery and compile checks on every
-  `main` push and pull request.
-- Run frontend unit, lint, typecheck and production-build checks independently.
-- Keep credentials, Docker, live external services and browser Gates outside
-  the mandatory baseline.
-
-Exit: both CI jobs pass on `main`, with locked backend and frontend dependencies.
-
-### 2. Viewing Diary
-
-- Add explicit create, edit and delete operations for multiple Viewing records.
-- Provide a bilingual diary timeline while preserving the derived watched and
-  latest-per-Film Watch History contracts.
-- Keep Film-level favorite, rating and notes separate from individual Viewings.
-
-Exit: repeated viewings remain independent, editable facts and cannot be
-silently removed by the manual watched toggle.
-
-### 3. Factual Explore
+### 1. Factual Explore
 
 - Explore the local Library by accepted genre, person, country and decade facts.
 - Reuse synchronous read models and factual Graph visibility; do not require a
@@ -82,7 +70,7 @@ silently removed by the manual watched toggle.
 Exit: a user can move from a trusted fact or Graph node to a reproducible Film
 set without silently relaxed constraints.
 
-### 4. Ask MVP
+### 2. Ask MVP
 
 - Let the model structure intent while the database and Graph perform strict
   filtering and entity lookup.

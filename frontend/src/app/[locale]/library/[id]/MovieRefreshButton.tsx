@@ -2,7 +2,6 @@
 
 import { Award, Check, Clapperboard, EyeOff, RefreshCw, Star } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { mutate } from "swr";
 
@@ -16,6 +15,7 @@ import { IconButton } from "@/components/ui/Button";
 import { InlineFeedback } from "@/components/ui/Feedback";
 import {
   useConfirmScrapeFilm,
+  invalidateViewingCaches,
   useIgnoreLibraryItem,
   useRefreshFilmExternalScores,
   useRefreshLibraryItem,
@@ -23,6 +23,7 @@ import {
   useUpdateFilmProfileState,
 } from "@/hooks/useFilm";
 import { API } from "@/lib/api";
+import { useRouter } from "@/i18n/routing";
 import type { LibraryFilmDetail, MetadataSearchResult } from "@/types/movie";
 import MovieArtworkPicker from "./MovieArtworkPicker";
 
@@ -53,10 +54,10 @@ export default function MovieRefreshButton({ film }: { film: LibraryFilmDetail }
 
   const refreshViews = async () => {
     await Promise.all([
+      invalidateViewingCaches(filmId),
       mutate(API.libraryFilm(filmId)),
       mutate(API.libraryFilms()),
       mutate(API.filmProfileState(filmId)),
-      mutate(API.watchHistory()),
     ]);
     router.refresh();
   };
@@ -66,6 +67,17 @@ export default function MovieRefreshButton({ film }: { film: LibraryFilmDetail }
     setState(saved);
     setMessage(t("saved"));
     await refreshViews();
+  };
+
+  const handleWatched = async () => {
+    if (state.watched && !state.manual_watched) {
+      router.push(`/diary?film=${filmId}`);
+      return;
+    }
+    await updateProfile({
+      watched: !state.manual_watched,
+      watched_at: !state.manual_watched ? state.watched_at || todayDateValue() : null,
+    });
   };
 
   const handleScrape = async () => {
@@ -125,12 +137,12 @@ export default function MovieRefreshButton({ film }: { film: LibraryFilmDetail }
       </div>
       <div className="flex max-w-full flex-wrap items-center gap-2 sm:shrink-0">
         <IconButton
-          onClick={() => updateProfile({ watched: !state.watched, watched_at: !state.watched ? state.watched_at || todayDateValue() : null })}
+          onClick={handleWatched}
           disabled={busy}
           busy={profile.isMutating}
           variant={state.watched ? "primary" : "secondary"}
-          aria-label={state.watched ? t("markUnwatched") : t("markWatched")}
-          title={state.watched ? t("markUnwatched") : t("markWatched")}
+          aria-label={state.watched && !state.manual_watched ? t("viewDiary") : state.manual_watched ? t("markUnwatched") : t("markWatched")}
+          title={state.watched && !state.manual_watched ? t("viewDiary") : state.manual_watched ? t("markUnwatched") : t("markWatched")}
           icon={<Check className="h-4 w-4" />}
         />
         <IconButton
