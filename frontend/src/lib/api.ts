@@ -22,6 +22,16 @@ export const API = {
   metadataMovie: (tmdbId: number) => `${API_BASE_URL}/metadata/movie/${tmdbId}`,
 
   libraryFilms: () => `${API_BASE_URL}/library/films`,
+  exploreOverview: () => `${API_BASE_URL}/explore`,
+  exploreContext: (params: URLSearchParams) => `${API_BASE_URL}/explore/context?${params}`,
+  exploreFacets: (dimension: string, params: { q?: string; limit?: number; offset?: number } = {}) => {
+    const query = new URLSearchParams();
+    if (params.q) query.set("q", params.q);
+    if (params.limit !== undefined) query.set("limit", String(params.limit));
+    if (params.offset !== undefined) query.set("offset", String(params.offset));
+    return `${API_BASE_URL}/explore/facets/${segment(dimension)}${query.size ? `?${query}` : ""}`;
+  },
+  exploreFilms: (params: URLSearchParams) => `${API_BASE_URL}/explore/films${params.size ? `?${params}` : ""}`,
   libraryFilm: (filmId: string) => `${API_BASE_URL}/library/films/${segment(filmId)}`,
   filmProfileState: (filmId: string) => `${API_BASE_URL}/films/${segment(filmId)}/profile-state`,
   filmAnalysis: (filmId: string) => `${API_BASE_URL}/films/${segment(filmId)}/analysis`,

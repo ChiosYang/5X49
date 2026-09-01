@@ -45,6 +45,13 @@ export default function NavigationMenu() {
             {t("library")}
           </Link>
           <Link
+            href="/explore"
+            onClick={closeMenu}
+            className="focus-ring duration-standard block text-5xl font-bold tracking-tighter text-ink transition-colors hover:text-ink-muted md:text-7xl"
+          >
+            {t("explore")}
+          </Link>
+          <Link
             href="/search"
             onClick={closeMenu}
             className="focus-ring duration-standard block text-5xl font-bold tracking-tighter text-ink transition-colors hover:text-ink-muted md:text-7xl"

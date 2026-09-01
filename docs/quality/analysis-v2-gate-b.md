@@ -1,7 +1,7 @@
 # Analysis V2 Gate B quality summary
 
 - Evidence date: 2026-08-27
-- Database target: `fresh-canonical-v1` / version 3
+- Database target: `fresh-canonical-v1` / version 4
 - Dataset contract: `analysis-eval.v1`
 - Dataset size: 36 public cases
 - Dataset language split: 12 / 12 / 12

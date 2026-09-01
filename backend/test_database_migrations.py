@@ -36,8 +36,8 @@ class FreshCanonicalMigrationTests(unittest.TestCase):
             first = run_migrations(engine, path, app_version="test", backup_required=False)
             before = self._digest(engine)
             second = run_migrations(engine, path, app_version="test", backup_required=False)
-            self.assertEqual(first.current_version, 3)
-            self.assertEqual(first.applied_versions, (1, 2, 3))
+            self.assertEqual(first.current_version, 4)
+            self.assertEqual(first.applied_versions, (1, 2, 3, 4))
             self.assertEqual(second.applied_versions, ())
             self.assertIsNone(second.backup)
             self.assertEqual(before, self._digest(engine))
@@ -94,6 +94,36 @@ class FreshCanonicalMigrationTests(unittest.TestCase):
             )
             with self.assertRaisesRegex(MigrationError, "checksum"):
                 run_migrations(engine, path, migrations=(changed,), app_version="test", backup_required=False)
+        finally:
+            engine.dispose()
+
+    def test_v3_to_v4_upgrade_creates_verified_backup_and_explore_tables(self):
+        path, engine = self._engine("v3-upgrade.db")
+        backup_dir = self.root / "backups"
+        try:
+            first = run_migrations(
+                engine,
+                path,
+                migrations=MIGRATIONS[:3],
+                app_version="test",
+                backup_required=False,
+            )
+            self.assertEqual(first.current_version, 3)
+            report = run_migrations(
+                engine,
+                path,
+                app_version="test",
+                backup_required=True,
+                backup_dir=backup_dir,
+            )
+            self.assertEqual(report.current_version, 4)
+            self.assertEqual(report.applied_versions, (4,))
+            self.assertIsNotNone(report.backup)
+            self.assertTrue(report.backup.database_path.is_file())
+            self.assertTrue(report.backup.manifest_path.is_file())
+            tables = set(inspect(engine).get_table_names())
+            self.assertIn("explore_film_read_model", tables)
+            self.assertIn("explore_facet_read_model", tables)
         finally:
             engine.dispose()
 

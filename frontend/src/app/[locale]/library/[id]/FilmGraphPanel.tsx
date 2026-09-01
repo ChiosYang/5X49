@@ -3,9 +3,10 @@
 import { useMemo } from "react";
 import { useTranslations } from "next-intl";
 
-import { useRouter } from "@/i18n/routing";
+import { Link, useRouter } from "@/i18n/routing";
 import { useFilmGraph } from "@/hooks/useFilm";
-import type { GraphEdge, GraphNode } from "@/types/movie";
+import { graphNodeHref } from "@/lib/explore";
+import type { GraphEdge } from "@/types/movie";
 
 
 const point = (index: number, count: number) => {
@@ -44,11 +45,6 @@ export default function FilmGraphPanel({ filmId }: { filmId: string }) {
   }
 
   const nodeById = new Map(data.nodes.map((node) => [node.id, node]));
-  const activate = (node: GraphNode) => {
-    if (node.entity_type === "film" && node.in_library && node.id !== filmId) {
-      router.push(`/library/${node.id}`);
-    }
-  };
   const relationTarget = (edge: GraphEdge) => nodeById.get(
     edge.subject_id === filmId ? edge.object_id : edge.subject_id,
   );
@@ -76,23 +72,10 @@ export default function FilmGraphPanel({ filmId }: { filmId: string }) {
               const position = layout.get(node.id);
               if (!position) return null;
               const isRoot = node.id === data.root.id;
-              const interactive = node.entity_type === "film" && node.in_library && !isRoot;
-              return (
-                <g
-                  key={node.id}
-                  transform={`translate(${position.x} ${position.y})`}
-                  tabIndex={0}
-                  role={interactive ? "link" : "group"}
-                  aria-label={`${node.display_label}${node.release_year ? `, ${node.release_year}` : ""}`}
-                  onClick={() => activate(node)}
-                  onKeyDown={(event) => {
-                    if ((event.key === "Enter" || event.key === " ") && interactive) {
-                      event.preventDefault();
-                      activate(node);
-                    }
-                  }}
-                  className={`focus:outline-none focus:[&>circle]:stroke-ink ${interactive ? "cursor-pointer" : ""}`}
-                >
+              const href = graphNodeHref(node, filmId);
+              const label = `${node.display_label}${node.release_year ? `, ${node.release_year}` : ""}`;
+              const nodeGraphic = (
+                <g transform={`translate(${position.x} ${position.y})`}>
                   <circle
                     r={isRoot ? 8.5 : 5.6}
                     fill={isRoot ? "var(--color-inverse)" : "var(--color-surface-raised)"}
@@ -114,6 +97,25 @@ export default function FilmGraphPanel({ filmId }: { filmId: string }) {
                   )}
                 </g>
               );
+              if (!href) {
+                return <g key={node.id} role="group" aria-label={label}>{nodeGraphic}</g>;
+              }
+              return (
+                <Link
+                  key={node.id}
+                  href={href}
+                  aria-label={label}
+                  className="cursor-pointer focus:outline-none focus:[&>g>circle]:stroke-ink"
+                  onKeyDown={(event) => {
+                    if (event.key === " ") {
+                      event.preventDefault();
+                      router.push(href);
+                    }
+                  }}
+                >
+                  {nodeGraphic}
+                </Link>
+              );
             })}
           </svg>
         </div>
@@ -124,22 +126,35 @@ export default function FilmGraphPanel({ filmId }: { filmId: string }) {
             {data.edges.map((edge) => {
               const target = relationTarget(edge);
               if (!target) return null;
-              const interactive = target.entity_type === "film" && target.in_library;
+              const href = graphNodeHref(target, filmId);
+              const content = (
+                <>
+                  <span className="type-badge block text-ink-subtle">{t(`relationsMap.${edge.relation}` as never)}</span>
+                  <span className="mt-1 block break-words font-bold text-ink">{target.display_label}</span>
+                  <span className="type-meta mt-1 block text-ink-subtle">
+                    {t("source", { source: edge.source_kinds.join(" · ") || t("structured") })}
+                    {edge.active_evidence_count > 0 ? ` · ${t("evidence", { count: edge.active_evidence_count })}` : ""}
+                  </span>
+                </>
+              );
               return (
                 <li key={edge.id} className="py-4">
-                  <button
-                    type="button"
-                    disabled={!interactive}
-                    onClick={() => activate(target)}
-                    className="focus-ring w-full min-w-0 text-left disabled:cursor-default"
-                  >
-                    <span className="type-badge block text-ink-subtle">{t(`relationsMap.${edge.relation}` as never)}</span>
-                    <span className="mt-1 block break-words font-bold text-ink">{target.display_label}</span>
-                    <span className="type-meta mt-1 block text-ink-subtle">
-                      {t("source", { source: edge.source_kinds.join(" · ") || t("structured") })}
-                      {edge.active_evidence_count > 0 ? ` · ${t("evidence", { count: edge.active_evidence_count })}` : ""}
-                    </span>
-                  </button>
+                  {href ? (
+                    <Link
+                      href={href}
+                      className="focus-ring block w-full min-w-0 text-left"
+                      onKeyDown={(event) => {
+                        if (event.key === " ") {
+                          event.preventDefault();
+                          router.push(href);
+                        }
+                      }}
+                    >
+                      {content}
+                    </Link>
+                  ) : (
+                    <div className="w-full min-w-0 text-left">{content}</div>
+                  )}
                 </li>
               );
             })}

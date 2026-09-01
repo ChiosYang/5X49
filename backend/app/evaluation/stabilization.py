@@ -393,7 +393,7 @@ def _worker(mode: str, run_dir: Path, media_dir: Path, output: Path) -> dict[str
     legacy_tables = {"movie", "movie_user_state", "legacy_movie_alias", "canonical_backfill_run"}
     checks.extend((
         _check(f"{mode}-fresh-epoch", epoch == "fresh-canonical-v1"),
-        _check(f"{mode}-schema-version", _schema_version(engine) == 3),
+        _check(f"{mode}-schema-version", _schema_version(engine) == 4),
         _check(f"{mode}-predicate-reference-rows", predicate_count == 9),
         _check(f"{mode}-genre-reference-rows", genre_count == 19),
         _check(f"{mode}-legacy-tables-absent", not (tables & legacy_tables)),
@@ -410,7 +410,7 @@ def _worker(mode: str, run_dir: Path, media_dir: Path, output: Path) -> dict[str
         with Session(engine) as session:
             setting_preserved = session.get(Setting, "stabilization_marker") is not None
             predicate_preserved = int(session.exec(text("SELECT COUNT(*) FROM assertion_predicate")).one()[0]) == 9
-            journal_preserved = _schema_version(engine) == 3
+            journal_preserved = _schema_version(engine) == 4
         checks.extend((
             _check("clear-copy-had-domain-data", before["film"] > 0),
             _check("clear-copy-domain-empty", all(after[name] == 0 for name in after)),

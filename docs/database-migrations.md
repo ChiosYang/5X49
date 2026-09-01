@@ -2,7 +2,7 @@
 
 - Status: Adopted
 - Epoch: `fresh-canonical-v1`
-- Current version: `3`
+- Current version: `4`
 
 ## Baseline decision
 
@@ -96,6 +96,29 @@ remains. Completed steps retain their hashes and terminal state; cancellation
 and retry resume from the first incomplete step. Public summaries are bounded
 and exclude payloads, paths, provider output and credentials.
 
+## Additive Schema v4
+
+Schema v4 adds disposable synchronous CQRS projections for deterministic
+Factual Explore:
+
+- `explore_film_read_model` stores visible Film sort/year/watched state;
+- `explore_facet_read_model` stores Genre, Person, Country and derived Decade
+  membership, eligibility, conflict state and a bounded public payload.
+
+It does not migrate or reinterpret Canonical user facts. On an existing v3
+database, startup first creates and verifies an online SQLite backup, applies
+the additive DDL transactionally, then rebuilds all synchronous projections.
+New or version-mismatched Explore projection state is not served during this
+process. Rebuild reads only Canonical SQLite rows and does not access media,
+network services, model providers or credentials.
+
+The registered states are `explore_films=factual-explore-film.v1` and
+`explore_facets=factual-explore-facet.v1`. Domain and Viewing mutations refresh
+affected Explore rows in the same transaction; any projection failure rolls
+back the originating write. Public Explore queries never fall back to live
+Canonical joins and return `503 projection_unavailable` while state is absent,
+failed or stale.
+
 ## Old database cutover
 
 An old development database is not upgraded or imported. Cutover is an explicit
@@ -115,7 +138,7 @@ entry point.
 
 ## Future migrations
 
-Future changes resume at version 4. Each migration must have a monotonically
+Future changes resume at version 5. Each migration must have a monotonically
 increasing integer version, stable name, deterministic checksum and one
 transactional upgrade.
 
