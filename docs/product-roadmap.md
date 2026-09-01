@@ -38,13 +38,14 @@ Complete:
 
 ## In delivery
 
-Factual Explore is in delivery on `feat/factual-explore`: Schema v4 synchronous
+Factual Explore is ready for PR on `feat/factual-explore`: Schema v4 synchronous
 read models and strict four-dimension semantics now drive a progressive Explore
 Lens experience—one factual entry, an explicit OR/AND query sentence, a Film
 stage, deterministic next-step clue counts and a single Fact Finder. URL/history
 semantics and Film Graph entry links remain compatible. Local evidence is
-recorded in `docs/features/factual-explore.md`; it moves into the completed
-baseline after final review and CI.
+recorded in `docs/features/factual-explore.md` and the 200/1,000-Film engineering
+gate is Passed. It moves into the completed baseline only after final review,
+push and CI; real-library and Alpha evidence remain separate product gates.
 
 ## Active quality gate
 

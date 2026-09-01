@@ -1,6 +1,6 @@
 # Factual Explore and Explore Lens
 
-Status: Done
+Status: Ready for PR
 Last updated: 2026-09-01
 Related: Product Roadmap — Factual Explore
 
@@ -70,7 +70,11 @@ rebuildable query surface; Canonical rows remain the sole source of truth.
 
 ## Open questions
 
-- None. Final CI is external evidence after review/merge.
+- Engineering scope and the four-dimension Beta contract are frozen. Final CI
+  remains external evidence after review/push.
+- Representative real-library coverage, external Alpha comprehension and
+  repeat-use evidence remain product-gate work; this engineering handoff does
+  not claim those results.
 
 ## Slices
 
@@ -108,7 +112,7 @@ Status: Complete
 
 ### Slice 5 — Handoff, roadmap and CI
 
-Status: Complete
+Status: Ready for PR
 
 - API, backend Skill, database lifecycle, Domain Model and roadmap are synchronized.
 - Local production build, complete backend suite and final diff review passed.
@@ -131,16 +135,21 @@ Status: Complete
 
 ## Verification evidence
 
-- `.venv\\Scripts\\python.exe -X utf8 -m unittest $testModules -q` with all
-  `test_*.py` modules except credential-dependent `test_agent.py` — 201 tests
-  passed, 1 skipped.
-- `.venv\\Scripts\\python.exe -m compileall -q app` — passed.
-- `.venv\Scripts\python.exe -X utf8 -m unittest test_explore_query.py
-  test_api_routes.py -q` — 33 tests passed, including contextual AND/OR counts,
-  deterministic preview, fixed statement count and route validation.
-- `.venv\Scripts\python.exe -X utf8 -m unittest $testModules -q` with all
-  `test_*.py` modules except credential-dependent `test_agent.py` — 205 tests
-  passed, 1 skipped.
+- `uv run python -m app.evaluation.factual_explore --run-id
+  w7-engineering-20260901-01 --seed 549 --count 200 --scale-count 1000` —
+  Passed against commit `d6d594208210`. All four dimension partitions, strict
+  AND/OR and Viewing semantics, fail-closed unresolved/conflicted filters,
+  deterministic rebuild, public payload privacy and the 10-statement context
+  ceiling passed. The 1,000-Film context used 9 SQL statements; timings are
+  informational. Git-safe evidence is recorded in
+  `docs/quality/factual-explore.md`; raw artifacts remain ignored.
+- `uv run python -X utf8 -m unittest test_factual_explore_evaluation.py
+  test_explore_query.py test_api_routes.py -q` — 36 tests passed, including
+  deterministic evaluation, failure exit, privacy summary, contextual AND/OR
+  counts, fixed statement count and route validation.
+- `uv run python -X utf8 -m unittest discover -s . -p "test_*.py" -q` —
+  208 tests passed, 1 skipped.
+- `uv run python -m compileall -q app` — passed.
 - `npm run test:unit` — 34 tests passed, including Explore URL,
   hydration-safe localization and Graph-target coverage.
 - `npm run lint` — passed with no errors or warnings.
@@ -162,18 +171,22 @@ Status: Complete
   without transform/transition. A final fresh tab produced no console errors.
   Its isolated database, media directory, copied frontend build, logs and server
   processes were removed after the run.
+- W7 closure browser replay — used the deterministic 200-Film behavior fixture
+  with an isolated SQLite database and media directory. Chinese/English desktop
+  and 375x812 mobile flows passed without horizontal overflow. A 100-Film Genre
+  result advanced from `1–40 / 100` to `41–80 / 100`; completion focused the
+  result heading and returning to page one preserved its result-stage scroll
+  position. Viewing and sort changes preserved their control-stage position,
+  and browser back/forward plus refresh restored the URL state. The operator
+  separately confirmed Chrome Tab/Enter navigation for the SVG Genre and Person
+  links after the in-app browser keyboard dispatcher proved unsuitable for that
+  input replay.
 - `git diff --check` — passed; only the repository's existing LF-to-CRLF notices
   were emitted.
 
 ## Remaining risks
 
-- The isolated Lens fixture contained three Films, so the result-pagination
-  focus/scroll branch was verified by unit contract and production build rather
-  than a 41+ Film browser replay. Re-run that single high-volume interaction in
-  CI/manual release review if browser-level pagination evidence is mandatory.
-- The final in-app replay of the SVG keyboard navigation timed out after the
-  link-wrapper adjustment; the same Person/Genre targets are covered by unit
-  tests and the production build, and the earlier isolated Graph API returned
-  the matching node IDs. Re-run this single interaction in CI/manual review if
-  browser-level keyboard evidence is required for release sign-off.
+- The engineering fixtures are deterministic and synthetic. Representative
+  real-library coverage/correctness, Alpha comprehension and repeat-use evidence
+  are intentionally unverified product gates.
 - CI has not run on the unpushed feature branch.
