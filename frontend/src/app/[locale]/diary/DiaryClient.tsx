@@ -1,17 +1,17 @@
 "use client";
 
-import { CalendarDays, Edit3, Heart, Info, Plus, Star } from "lucide-react";
+import { CalendarDays, Edit3, Heart, Info, Star } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 
-import ViewingEditorDialog from "@/components/viewings/ViewingEditorDialog";
+import ViewingInlineEditor, { ViewingQuickAdd } from "@/components/viewings/ViewingInlineEditor";
 import { Button } from "@/components/ui/Button";
 import { StateMessage } from "@/components/ui/Feedback";
 import { useProfileViewings } from "@/hooks/useFilm";
 import { Link } from "@/i18n/routing";
 import { API } from "@/lib/api";
-import { diaryViewFromQuery, groupViewingEntries } from "@/lib/diary";
+import { diaryEditorFilmId, diaryViewFromQuery, groupViewingEntries } from "@/lib/diary";
 import { isFilmResourceId } from "@/lib/resource-id";
 import type { ViewingPage, ViewingTimelineEntry, ViewingView } from "@/types/movie";
 
@@ -53,7 +53,6 @@ export default function DiaryClient() {
   } | null>(null);
   const [loadingMore, setLoadingMore] = useState(false);
   const [loadMoreError, setLoadMoreError] = useState("");
-  const [editorOpen, setEditorOpen] = useState(false);
   const [selectedViewing, setSelectedViewing] = useState<ViewingView | null>(null);
 
   const entries = useMemo(() => {
@@ -69,6 +68,7 @@ export default function DiaryClient() {
     : data?.next_offset ?? null;
   const groups = useMemo(() => groupViewingEntries(entries), [entries]);
   const filteredFilm = entries[0]?.film;
+  const editorFilmId = diaryEditorFilmId(filmId, selectedViewing);
 
   const loadMore = async () => {
     if (nextOffset === null) return;
@@ -142,13 +142,10 @@ export default function DiaryClient() {
             <p className="type-label text-ink-subtle">{t("filtered")}</p>
             <p className="mt-1 truncate text-lg font-bold text-ink">{filteredFilm?.title || t("filmFallback")}</p>
           </div>
-          <Button
-            variant="primary"
-            icon={<Plus className="h-4 w-4" />}
-            onClick={() => { setSelectedViewing(null); setEditorOpen(true); }}
-          >
-            {t("recordViewing")}
-          </Button>
+          <ViewingQuickAdd
+            filmId={filmId}
+            onSaved={async () => { setContinuation(null); await mutate(); }}
+          />
         </div>
       ) : null}
 
@@ -190,7 +187,10 @@ export default function DiaryClient() {
                       className="focus-ring duration-fast flex h-9 w-9 shrink-0 items-center justify-center border border-line text-ink-muted transition-colors hover:border-line-strong hover:text-ink"
                       aria-label={entry.viewing.editable ? t("editViewing") : t("viewViewing")}
                       title={entry.viewing.editable ? t("editViewing") : t("viewViewing")}
-                      onClick={() => { setSelectedViewing(entry.viewing); setEditorOpen(true); }}
+                      aria-expanded={selectedViewing?.id === entry.viewing.id}
+                      onClick={() => setSelectedViewing((current) =>
+                        current?.id === entry.viewing.id ? null : entry.viewing
+                      )}
                     >
                       {entry.viewing.editable ? <Edit3 className="h-4 w-4" /> : <Info className="h-4 w-4" />}
                     </button>
@@ -219,6 +219,15 @@ export default function DiaryClient() {
                       {t("viewAll")}
                     </Link>
                   ) : null}
+                  {selectedViewing?.id === entry.viewing.id && editorFilmId ? (
+                    <ViewingInlineEditor
+                      key={entry.viewing.id}
+                      filmId={editorFilmId}
+                      viewing={entry.viewing}
+                      onCancel={() => setSelectedViewing(null)}
+                      onSaved={async () => { setContinuation(null); await mutate(); }}
+                    />
+                  ) : null}
                 </article>
               ))}
             </div>
@@ -231,18 +240,6 @@ export default function DiaryClient() {
           <Button busy={loadingMore} onClick={loadMore}>{t("loadMore")}</Button>
           <div aria-live="polite" className="min-h-5 text-sm text-danger">{loadMoreError}</div>
         </div>
-      ) : null}
-
-      {filmId ? (
-        <ViewingEditorDialog
-          key={`${selectedViewing?.id || "new"}:${editorOpen ? "open" : "closed"}`}
-          open={editorOpen}
-          onClose={() => setEditorOpen(false)}
-          onSaved={async () => { setContinuation(null); await mutate(); }}
-          filmId={filmId}
-          filmTitle={filteredFilm?.title}
-          viewing={selectedViewing}
-        />
       ) : null}
     </div>
   );

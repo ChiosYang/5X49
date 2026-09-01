@@ -2,9 +2,14 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  createViewingDateDraft,
+  diaryEditorFilmId,
   diaryViewFromQuery,
   groupViewingEntries,
   todayLocalDate,
+  viewingDateDraftDirty,
+  viewingDateDraftValid,
+  viewingDraftWatchedAt,
   viewingDateMode,
   watchedActionFor,
 } from "./diary.ts";
@@ -52,9 +57,41 @@ test("Diary query mode defaults safely and Film filters always show the full tim
   assert.equal(diaryViewFromQuery("recent", `film_${"a".repeat(32)}`), "timeline");
 });
 
+test("Diary editor targets the selected Viewing before the page Film filter", () => {
+  const pageFilmId = `film_${"a".repeat(32)}`;
+  const selectedFilmId = `film_${"b".repeat(32)}`;
+
+  assert.equal(diaryEditorFilmId(undefined, { film_id: selectedFilmId }), selectedFilmId);
+  assert.equal(diaryEditorFilmId(pageFilmId, { film_id: selectedFilmId }), selectedFilmId);
+  assert.equal(diaryEditorFilmId(pageFilmId, null), pageFilmId);
+  assert.equal(diaryEditorFilmId(undefined, null), undefined);
+});
+
 test("editor mode and local date defaults are deterministic", () => {
   assert.equal(viewingDateMode(entry("one", "2026", "year").viewing), "year");
   assert.equal(viewingDateMode(entry("one", null, "unknown").viewing), "unknown");
   assert.equal(viewingDateMode(entry("one", "2026-08-31T20:00:00Z", "timestamp").viewing), "date");
   assert.equal(todayLocalDate(new Date(2026, 7, 31, 23, 59)), "2026-08-31");
+});
+
+test("Viewing date drafts normalize payloads and validate supported precision", () => {
+  const now = new Date(2026, 7, 31, 23, 59);
+  const draft = createViewingDateDraft(null, now);
+
+  assert.deepEqual(draft, { mode: "date", dateValue: "2026-08-31", yearValue: "2026" });
+  assert.equal(viewingDraftWatchedAt(draft), "2026-08-31");
+  assert.equal(viewingDraftWatchedAt({ ...draft, mode: "year", yearValue: "2025" }), "2025");
+  assert.equal(viewingDraftWatchedAt({ ...draft, mode: "unknown" }), null);
+  assert.equal(viewingDateDraftValid({ ...draft, mode: "year", yearValue: "2027" }, now), false);
+  assert.equal(viewingDateDraftValid({ ...draft, mode: "year", yearValue: "2026" }, now), true);
+});
+
+test("Viewing date drafts detect meaningful changes without rewriting timestamps", () => {
+  const viewing = entry("one", "2026-08-31T20:00:00Z", "timestamp").viewing;
+  const draft = createViewingDateDraft(viewing, new Date(2026, 7, 31));
+
+  assert.equal(viewingDateDraftDirty(draft, viewing), false);
+  assert.equal(viewingDateDraftDirty({ ...draft, dateValue: "2026-08-30" }, viewing), true);
+  assert.equal(viewingDateDraftDirty({ ...draft, mode: "unknown" }, viewing), true);
+  assert.equal(viewingDateDraftDirty(draft, null), true);
 });
