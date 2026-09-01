@@ -38,8 +38,8 @@ Complete:
 
 ## In delivery
 
-Viewing Diary is complete on its feature branch: multiple independent Viewing
-facts, bilingual Diary timeline, and latest-per-Film Watch History semantics
+Diary is complete on its feature branch: multiple independent Viewing facts,
+bilingual timeline, and latest-per-Film recent-view semantics
 have passed local backend, frontend, and browser checks. It moves into the
 completed baseline after the authorized `main` push passes both CI jobs.
 

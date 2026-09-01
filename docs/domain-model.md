@@ -109,8 +109,8 @@ active confirmed Viewings, including multiple records on the same day.
 - Diary or other Viewing sources are never removed by the manual watched toggle.
 - `watched` and `watched_at` are derived from all active confirmed Viewings;
   `manual_watched` reports only the quick-toggle's singleton manual Viewing.
-- Diary is the complete profile timeline. Watch History is a read-only summary
-  containing the latest confirmed Viewing for each Film.
+- Diary is the only viewing-history product surface. Its `timeline` view returns
+  every confirmed Viewing; its `recent` view derives one latest Viewing per Film.
 
 `LocalProfile` remains a single local profile; account, authentication and
 multi-profile behavior are outside v1.
