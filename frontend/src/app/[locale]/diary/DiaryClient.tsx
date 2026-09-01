@@ -11,7 +11,7 @@ import { StateMessage } from "@/components/ui/Feedback";
 import { useProfileViewings } from "@/hooks/useFilm";
 import { Link } from "@/i18n/routing";
 import { API } from "@/lib/api";
-import { groupViewingEntries } from "@/lib/viewing-diary";
+import { diaryViewFromQuery, groupViewingEntries } from "@/lib/diary";
 import { isFilmResourceId } from "@/lib/resource-id";
 import type { ViewingPage, ViewingTimelineEntry, ViewingView } from "@/types/movie";
 
@@ -37,13 +37,15 @@ export default function DiaryClient() {
   const requestedFilmId = searchParams.get("film");
   const validFilmFilter = !requestedFilmId || isFilmResourceId(requestedFilmId);
   const filmId = requestedFilmId && validFilmFilter ? requestedFilmId : undefined;
+  const view = diaryViewFromQuery(searchParams.get("view"), filmId);
   const { data, error, isLoading, mutate } = useProfileViewings(
     PAGE_SIZE,
     0,
     filmId,
     validFilmFilter,
+    view,
   );
-  const scopeKey = filmId || "all";
+  const scopeKey = `${filmId || "all"}:${view}`;
   const [continuation, setContinuation] = useState<{
     scopeKey: string;
     items: ViewingTimelineEntry[];
@@ -77,6 +79,7 @@ export default function DiaryClient() {
         limit: PAGE_SIZE,
         offset: nextOffset,
         filmId,
+        view,
       }));
       if (!response.ok) throw new Error(t("loadMoreFailed"));
       const page = await response.json() as ViewingPage;
@@ -106,6 +109,33 @@ export default function DiaryClient() {
 
   return (
     <div className="space-y-10">
+      {!filmId ? (
+        <nav aria-label={t("viewMode")} className="flex w-full gap-2 overflow-x-auto border-y border-line py-3">
+          <Link
+            href="/diary"
+            aria-current={view === "timeline" ? "page" : undefined}
+            className={`focus-ring duration-fast min-h-10 shrink-0 border px-4 py-2 type-badge transition-colors ${
+              view === "timeline"
+                ? "border-ink bg-inverse text-inverse-ink"
+                : "border-line text-ink-muted hover:border-line-strong hover:text-ink"
+            }`}
+          >
+            {t("timelineView")}
+          </Link>
+          <Link
+            href="/diary?view=recent"
+            aria-current={view === "recent" ? "page" : undefined}
+            className={`focus-ring duration-fast min-h-10 shrink-0 border px-4 py-2 type-badge transition-colors ${
+              view === "recent"
+                ? "border-ink bg-inverse text-inverse-ink"
+                : "border-line text-ink-muted hover:border-line-strong hover:text-ink"
+            }`}
+          >
+            {t("recentView")}
+          </Link>
+        </nav>
+      ) : null}
+
       {filmId ? (
         <div className="flex flex-col gap-4 border-y border-line py-5 sm:flex-row sm:items-center sm:justify-between">
           <div className="min-w-0">
@@ -181,6 +211,14 @@ export default function DiaryClient() {
                       </span>
                     ) : null}
                   </div>
+                  {view === "recent" ? (
+                    <Link
+                      href={`/diary?film=${entry.film.id}`}
+                      className="focus-ring duration-fast mt-4 inline-flex min-h-9 items-center border border-line px-3 type-badge text-ink-muted transition-colors hover:border-line-strong hover:text-ink"
+                    >
+                      {t("viewAll")}
+                    </Link>
+                  ) : null}
                 </article>
               ))}
             </div>

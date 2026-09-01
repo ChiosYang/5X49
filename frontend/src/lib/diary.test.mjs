@@ -2,11 +2,12 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  diaryViewFromQuery,
   groupViewingEntries,
   todayLocalDate,
   viewingDateMode,
   watchedActionFor,
-} from "./viewing-diary.ts";
+} from "./diary.ts";
 
 const entry = (id, watchedAt, precision) => ({
   viewing: {
@@ -41,6 +42,14 @@ test("derived watched action never creates a manual Viewing over a Diary-only st
   assert.equal(watchedActionFor({ watched: false, manual_watched: false }), "mark_watched");
   assert.equal(watchedActionFor({ watched: true, manual_watched: true }), "mark_unwatched");
   assert.equal(watchedActionFor({ watched: true, manual_watched: false }), "open_diary");
+});
+
+test("Diary query mode defaults safely and Film filters always show the full timeline", () => {
+  assert.equal(diaryViewFromQuery(null), "timeline");
+  assert.equal(diaryViewFromQuery("timeline"), "timeline");
+  assert.equal(diaryViewFromQuery("recent"), "recent");
+  assert.equal(diaryViewFromQuery("invalid"), "timeline");
+  assert.equal(diaryViewFromQuery("recent", `film_${"a".repeat(32)}`), "timeline");
 });
 
 test("editor mode and local date defaults are deterministic", () => {

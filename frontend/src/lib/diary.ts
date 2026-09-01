@@ -1,6 +1,7 @@
 import type { FilmProfileState, ViewingTimelineEntry, ViewingView } from "@/types/movie";
 
 export type WatchedAction = "mark_watched" | "mark_unwatched" | "open_diary";
+export type DiaryView = "timeline" | "recent";
 
 export interface ViewingGroup {
   key: string;
@@ -13,6 +14,11 @@ export interface ViewingGroup {
 export function watchedActionFor(state: Pick<FilmProfileState, "watched" | "manual_watched">): WatchedAction {
   if (!state.watched) return "mark_watched";
   return state.manual_watched ? "mark_unwatched" : "open_diary";
+}
+
+export function diaryViewFromQuery(value: string | null, filmId?: string): DiaryView {
+  if (filmId) return "timeline";
+  return value === "recent" ? "recent" : "timeline";
 }
 
 export function groupViewingEntries(entries: ViewingTimelineEntry[]): ViewingGroup[] {

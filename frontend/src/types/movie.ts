@@ -236,18 +236,6 @@ export interface FilmGraphView {
   projection_version: string;
 }
 
-export interface WatchHistoryEntry {
-  film: LibraryFilmSummary;
-  viewing: {
-    id: string;
-    film_id: string;
-    watched_at?: string | null;
-    watched_at_precision: ViewingPrecision;
-    source: string;
-  };
-  profile_state: FilmProfileState;
-}
-
 export interface MetadataSearchResult {
   tmdb_id: number;
   title: string;

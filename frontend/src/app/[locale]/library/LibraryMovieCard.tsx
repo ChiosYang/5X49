@@ -7,7 +7,7 @@ import { Check, Globe2, Loader2, Star } from "lucide-react";
 import { Link, useRouter } from "@/i18n/routing";
 import { API } from "@/lib/api";
 import { invalidateViewingCaches, useUpdateFilmProfileState } from "@/hooks/useFilm";
-import { watchedActionFor } from "@/lib/viewing-diary";
+import { watchedActionFor } from "@/lib/diary";
 import type { AudioTrack, LibraryFilmSummary } from "@/types/movie";
 import ExternalScoreStrip from "../components/ExternalScoreStrip";
 

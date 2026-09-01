@@ -1,6 +1,7 @@
 import os
 import hashlib
 from pathlib import Path
+from typing import Literal
 
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, Field as PydanticField
@@ -91,20 +92,16 @@ def update_film_profile_state(film_id: str, request: FilmProfileStateUpdate):
     return state
 
 
-@router.get("/profile/watch-history")
-def get_watch_history():
-    return film_profile_state_manager.watch_history()
-
-
 @router.get("/profile/viewings")
 def get_profile_viewings(
     limit: int = Query(default=100, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
     film_id: str | None = Query(default=None),
+    view: Literal["timeline", "recent"] = Query(default="timeline"),
 ):
     if film_id is not None:
         _validate_id(film_id, "film")
-    return viewing_manager.list_profile(limit=limit, offset=offset, film_id=film_id)
+    return viewing_manager.list_profile(limit=limit, offset=offset, film_id=film_id, view=view)
 
 
 @router.get("/films/{film_id}/viewings")

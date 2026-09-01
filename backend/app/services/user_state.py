@@ -7,7 +7,6 @@ from app.database import engine
 from app.models import utc_now_iso
 from app.services.canonical_runtime import canonical_runtime_writer
 from app.services.event_store import event_store
-from app.services.library import library_manager
 
 
 class FilmProfileStateManager:
@@ -70,47 +69,6 @@ class FilmProfileStateManager:
             )
             session.commit()
             return after
-
-    def watch_history(self) -> list[dict]:
-        with Session(engine) as session:
-            profile_id = canonical_runtime_writer.local_profile_id(session)
-            active = session.exec(
-                select(Viewing)
-                .where(Viewing.profile_id == profile_id)
-                .where(Viewing.review_status == "confirmed")
-                .where(Viewing.deleted_at.is_(None))
-                .order_by(Viewing.watched_at.desc(), Viewing.updated_at.desc(), Viewing.id.desc())
-            ).all()
-            latest_by_film: dict[str, Viewing] = {}
-            for viewing in active:
-                latest_by_film.setdefault(viewing.film_id, viewing)
-
-        entries = []
-        for viewing in latest_by_film.values():
-            film = library_manager.get_film(viewing.film_id)
-            if film is None:
-                continue
-            entries.append(
-                {
-                    "film": film,
-                    "viewing": {
-                        "id": viewing.id,
-                        "film_id": viewing.film_id,
-                        "watched_at": viewing.watched_at,
-                        "watched_at_precision": viewing.watched_at_precision,
-                        "source": viewing.source,
-                    },
-                    "profile_state": film["profile_state"],
-                }
-            )
-        return sorted(
-            entries,
-            key=lambda entry: (
-                entry["viewing"].get("watched_at") or "",
-                entry["viewing"]["id"],
-            ),
-            reverse=True,
-        )
 
     def _view(self, session: Session, film_id: str) -> dict:
         profile_id = canonical_runtime_writer.local_profile_id(session)

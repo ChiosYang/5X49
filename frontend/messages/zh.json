@@ -5,7 +5,6 @@
     "search": "搜索",
     "activity": "活动记录",
     "diary": "观影日记",
-    "watchHistory": "观影历史",
     "settings": "设置",
     "television": "电视剧",
     "notes": "笔记",
@@ -212,16 +211,6 @@
       "VISUALLY_SIMILAR_TO": "视觉相似"
     }
   },
-  "WatchHistory": {
-    "title": "观影历史",
-    "subtitle": "按影片汇总最近一次已确认的观看记录，只读展示。",
-    "loading": "读取观影历史",
-    "error": "观影历史读取失败",
-    "empty": "还没有标记已看的电影。",
-    "unknownDate": "未知日期",
-    "favorite": "收藏",
-    "viewAll": "查看全部观看"
-  },
   "Diary": {
     "eyebrow": "个人时间线",
     "title": "观影日记",
@@ -234,6 +223,9 @@
     "empty": "还没有观看记录。",
     "emptyFilm": "这部影片还没有观看记录。",
     "filtered": "当前影片",
+    "viewMode": "观影日记视图",
+    "timelineView": "时间线",
+    "recentView": "最近观看",
     "filmFallback": "所选影片",
     "unknownDate": "日期未知",
     "yearUnknown": "年份未知",
@@ -275,7 +267,7 @@
     "filmSectionEyebrow": "个人观看",
     "filmSectionTitle": "观看记录",
     "viewingCount": "共 {count} 次已确认观看",
-    "viewAll": "查看全部"
+    "viewAll": "查看全部观看"
   },
   "Genealogy": {
     "title": "5X49",

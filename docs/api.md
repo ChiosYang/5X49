@@ -155,11 +155,11 @@ characters), `watched`, and `watched_at`.
 - Derived `manual_watched` is true only while the singleton quick-toggle Viewing
   is active. Clients use it to avoid overwriting Diary-only watched state.
 
-### Viewing Diary
+### Diary
 
 | Method | Path | Purpose |
 | --- | --- | --- |
-| `GET` | `/profile/viewings?limit=100&offset=0&film_id=...` | Return a paginated profile timeline; `film_id` is optional. |
+| `GET` | `/profile/viewings?view=timeline|recent&limit=100&offset=0&film_id=...` | Return the complete timeline or one latest Viewing per Film; `film_id` is optional. |
 | `GET` | `/films/{film_id}/viewings` | Return every active confirmed Viewing for one Film. |
 | `POST` | `/films/{film_id}/viewings` | Create a new confirmed Diary Viewing. |
 | `PATCH` | `/viewings/{viewing_id}` | Change only the Viewing date/precision. |
@@ -172,17 +172,11 @@ Diary sources are editable; other sources return `409` with code
 `viewing_read_only`.
 
 `GET /profile/viewings` returns `items`, `total`, `limit`, `offset`, and
-`next_offset`. Each timeline item contains the Viewing, a lightweight Film
-identity with `in_library`, and the derived Film profile state. Known dates sort
-descending, unknown dates sort last, and the default/maximum page sizes are
-100/200.
-
-### `GET /profile/watch-history`
-
-Returns at most one entry per Film, ordered by the latest active confirmed
-Viewing for the current LocalProfile. Each entry embeds the Film summary and
-derived profile state. It is a read-only summary; per-record management belongs
-to the Viewing Diary endpoints.
+`next_offset`. Each item contains the Viewing, a lightweight Film identity with
+`in_library`, and the derived Film profile state. `view=timeline` is the default
+and returns every active confirmed Viewing. `view=recent` selects the latest
+Viewing for each Film before pagination. Known dates sort descending, unknown
+dates sort last, and the default/maximum page sizes are 100/200.
 
 ## Metadata, artwork and external scores
 
@@ -317,6 +311,7 @@ This is a deliberate breaking baseline. The following endpoints do not exist:
 - `/library/{movie_id}`
 - `/library/user-states`
 - `/watch-history`
+- `/profile/watch-history`
 - `/library/analyze/{movie_id}`
 - `/analyze/{movie_name}`
 - Movie timeline, projection rebuild and historical backfill endpoints

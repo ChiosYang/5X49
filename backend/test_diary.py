@@ -41,7 +41,7 @@ class ViewingDateContractTests(unittest.TestCase):
                 normalize_watched_at(value)
 
 
-class ViewingDiaryServiceTests(unittest.TestCase):
+class DiaryServiceTests(unittest.TestCase):
     def setUp(self):
         self._tmp = tempfile.TemporaryDirectory()
         self.root = Path(self._tmp.name)
@@ -93,6 +93,44 @@ class ViewingDiaryServiceTests(unittest.TestCase):
         self.assertIsNone(last_page["next_offset"])
         filtered = viewing_manager.list_profile(limit=100, offset=0, film_id=self.film_id)
         self.assertEqual(filtered["total"], 3)
+
+    def test_recent_view_selects_one_per_film_before_pagination(self):
+        viewing_manager.create(self.film_id, "2024-01-01")
+        latest = viewing_manager.create(self.film_id, "2026-08-31")
+        viewing_manager.create(self.film_id, None)
+        second_root = self.root / "second-film"
+        second_root.mkdir()
+        second_media = second_root / "second.mkv"
+        second_media.write_bytes(b"second")
+        library_manager.add_observations([{
+            "title": "Second Diary Film",
+            "year": 2025,
+            "media_path": str(second_media.resolve()),
+            "video_file": second_media.name,
+            "folder_path": str(second_root.resolve()),
+            "folder_name": second_root.name,
+            "file_size": second_media.stat().st_size,
+            "file_mtime": second_media.stat().st_mtime,
+            "library_status": "available",
+            "metadata_source": "filename",
+            "scrape_status": "pending",
+        }])
+        second_film_id = next(
+            film["id"] for film in library_manager.list_films() if film["id"] != self.film_id
+        )
+        second_latest = viewing_manager.create(second_film_id, "2025")
+
+        first_page = viewing_manager.list_profile(view="recent", limit=1, offset=0)
+        second_page = viewing_manager.list_profile(view="recent", limit=1, offset=1)
+        filtered = viewing_manager.list_profile(view="recent", film_id=self.film_id)
+
+        self.assertEqual(first_page["total"], 2)
+        self.assertEqual(first_page["next_offset"], 1)
+        self.assertEqual(first_page["items"][0]["viewing"]["id"], latest["id"])
+        self.assertEqual(second_page["items"][0]["viewing"]["id"], second_latest["id"])
+        self.assertIsNone(second_page["next_offset"])
+        self.assertEqual(filtered["total"], 1)
+        self.assertEqual(filtered["items"][0]["viewing"]["id"], latest["id"])
 
     def test_create_update_delete_write_bounded_events_and_delete_is_idempotent(self):
         created = viewing_manager.create(self.film_id, "2026")
@@ -160,7 +198,7 @@ class ViewingDiaryServiceTests(unittest.TestCase):
         viewing_manager.delete(diary["id"])
         self.assertFalse(film_profile_state_manager.get(self.film_id)["watched"])
 
-    def test_watch_history_is_scoped_to_the_local_profile(self):
+    def test_recent_view_is_scoped_to_the_local_profile(self):
         viewing_manager.create(self.film_id, "2026-08-31")
         with Session(self.engine) as session:
             other = LocalProfile(
@@ -183,9 +221,9 @@ class ViewingDiaryServiceTests(unittest.TestCase):
             )
             session.commit()
 
-        history = film_profile_state_manager.watch_history()
-        self.assertEqual(len(history), 1)
-        self.assertEqual(history[0]["viewing"]["watched_at"], "2026-08-31")
+        recent = viewing_manager.list_profile(view="recent")
+        self.assertEqual(recent["total"], 1)
+        self.assertEqual(recent["items"][0]["viewing"]["watched_at"], "2026-08-31")
 
     def test_event_failure_rolls_back_viewing_and_projection(self):
         before = library_manager.get_film(self.film_id)["profile_state"]
@@ -226,6 +264,9 @@ class ViewingDiaryServiceTests(unittest.TestCase):
         page = viewing_manager.list_profile()
         self.assertEqual(page["total"], 1)
         self.assertFalse(page["items"][0]["film"]["in_library"])
+        recent = viewing_manager.list_profile(view="recent")
+        self.assertEqual(recent["total"], 1)
+        self.assertFalse(recent["items"][0]["film"]["in_library"])
 
         library_manager.clear_all_data()
         self.assertEqual(viewing_manager.list_profile()["total"], 0)

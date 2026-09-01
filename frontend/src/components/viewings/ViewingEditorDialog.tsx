@@ -13,7 +13,7 @@ import {
   useDeleteViewing,
   useUpdateViewing,
 } from "@/hooks/useFilm";
-import { todayLocalDate, viewingDateMode } from "@/lib/viewing-diary";
+import { todayLocalDate, viewingDateMode } from "@/lib/diary";
 import type { ViewingView } from "@/types/movie";
 
 type DateMode = "date" | "year" | "unknown";

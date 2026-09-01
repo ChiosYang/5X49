@@ -58,7 +58,6 @@ export default function MovieRefreshButton({ film }: { film: LibraryFilmDetail }
       mutate(API.libraryFilm(filmId)),
       mutate(API.libraryFilms()),
       mutate(API.filmProfileState(filmId)),
-      mutate(API.watchHistory()),
     ]);
     router.refresh();
   };

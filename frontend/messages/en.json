@@ -5,7 +5,6 @@
     "search": "Search",
     "activity": "Activity",
     "diary": "Diary",
-    "watchHistory": "Watch History",
     "settings": "Settings",
     "television": "Television",
     "notes": "Notes",
@@ -211,28 +210,21 @@
       "VISUALLY_SIMILAR_TO": "Visually similar to"
     }
   },
-  "WatchHistory": {
-    "title": "Watch History",
-    "subtitle": "A read-only summary of the latest confirmed viewing for each Film.",
-    "loading": "Loading watch history",
-    "error": "Failed to load watch history",
-    "empty": "No watched movies yet.",
-    "unknownDate": "Unknown date",
-    "favorite": "Favorite",
-    "viewAll": "View all viewings"
-  },
   "Diary": {
     "eyebrow": "Personal Timeline",
-    "title": "Viewing Diary",
+    "title": "Diary",
     "subtitle": "Every confirmed viewing, kept as an independent moment in your film life.",
-    "loading": "Loading viewing diary",
+    "loading": "Loading Diary",
     "loadingFilm": "Loading viewing records",
-    "error": "The viewing diary could not be loaded.",
+    "error": "The Diary could not be loaded.",
     "errorFilm": "Viewing records could not be loaded.",
     "invalidFilm": "This Film filter is invalid.",
     "empty": "No viewing records yet.",
     "emptyFilm": "No viewings have been recorded for this Film.",
     "filtered": "Filtered Film",
+    "viewMode": "Diary view",
+    "timelineView": "Timeline",
+    "recentView": "Recent viewings",
     "filmFallback": "Selected Film",
     "unknownDate": "Unknown date",
     "yearUnknown": "Year unknown",
@@ -245,7 +237,7 @@
     "sourceLabel": "Source: {source}",
     "sources": {
       "manual": "Quick watched toggle",
-      "diary": "Viewing Diary",
+      "diary": "Diary",
       "external": "External · {source}"
     },
     "recordViewing": "Record a viewing",
@@ -274,7 +266,7 @@
     "filmSectionEyebrow": "Personal Viewing",
     "filmSectionTitle": "Viewing Records",
     "viewingCount": "{count, plural, one {# confirmed viewing} other {# confirmed viewings}}",
-    "viewAll": "View all"
+    "viewAll": "View all viewings"
   },
   "Genealogy": {
     "title": "5X49",

@@ -72,6 +72,7 @@ class ViewingManager:
         limit: int = 100,
         offset: int = 0,
         film_id: str | None = None,
+        view: str = "timeline",
     ) -> dict:
         with Session(engine) as session:
             profile_id = canonical_runtime_writer.local_profile_id(session)
@@ -81,16 +82,24 @@ class ViewingManager:
                 Viewing.updated_at.desc(),
                 Viewing.id.desc(),
             )
-            count_statement = (
-                select(func.count()).select_from(Viewing)
-                .where(Viewing.profile_id == profile_id)
-                .where(Viewing.review_status == "confirmed")
-                .where(Viewing.deleted_at.is_(None))
-            )
-            if film_id:
-                count_statement = count_statement.where(Viewing.film_id == film_id)
-            total = session.exec(count_statement).one()
-            rows = session.exec(statement.offset(offset).limit(limit)).all()
+            if view == "recent":
+                latest_by_film: dict[str, Viewing] = {}
+                for viewing in session.exec(statement).all():
+                    latest_by_film.setdefault(viewing.film_id, viewing)
+                recent_rows = list(latest_by_film.values())
+                total = len(recent_rows)
+                rows = recent_rows[offset:offset + limit]
+            else:
+                count_statement = (
+                    select(func.count()).select_from(Viewing)
+                    .where(Viewing.profile_id == profile_id)
+                    .where(Viewing.review_status == "confirmed")
+                    .where(Viewing.deleted_at.is_(None))
+                )
+                if film_id:
+                    count_statement = count_statement.where(Viewing.film_id == film_id)
+                total = session.exec(count_statement).one()
+                rows = session.exec(statement.offset(offset).limit(limit)).all()
             items = [self._timeline_entry(session, profile_id, row) for row in rows]
             next_offset = offset + len(items) if offset + len(items) < total else None
             return {

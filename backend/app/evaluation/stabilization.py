@@ -29,7 +29,7 @@ REQUIRED_BROWSER_CHECKS = (
     "filter-sort-profile-state",
     "management-review-anchors",
     "workflow-status",
-    "watch-history-search-activity-settings",
+    "diary-recent-search-activity-settings",
     "factual-graph",
     "snapshot-preview-restore",
     "no-key-degradation",

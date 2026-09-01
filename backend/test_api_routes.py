@@ -16,6 +16,7 @@ from app.services.viewings import ViewingDateError, ViewingNotFound, ViewingRead
 REMOVED_ROUTES = {
     ("GET", "/library"),
     ("GET", "/watch-history"),
+    ("GET", "/profile/watch-history"),
     ("GET", "/library/user-states"),
     ("GET", "/library/{movie_id}"),
     ("POST", "/library/analyze/{movie_id}"),
@@ -33,7 +34,6 @@ CANONICAL_ROUTES = {
     ("GET", "/library/films/{film_id}"),
     ("GET", "/films/{film_id}/profile-state"),
     ("PUT", "/films/{film_id}/profile-state"),
-    ("GET", "/profile/watch-history"),
     ("GET", "/profile/viewings"),
     ("GET", "/films/{film_id}/viewings"),
     ("POST", "/films/{film_id}/viewings"),
@@ -387,12 +387,15 @@ class ApiRouteContractTests(unittest.TestCase):
                 "offset": 0,
                 "next_offset": None,
             },
-        ):
-            response = self.client.get("/profile/viewings?limit=25&offset=0")
+        ) as list_profile:
+            response = self.client.get("/profile/viewings?view=recent&limit=25&offset=0")
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["next_offset"], None)
+        list_profile.assert_called_once_with(limit=25, offset=0, film_id=None, view="recent")
         response = self.client.get("/profile/viewings?film_id=not-a-film")
         self.assertEqual(response.status_code, 400)
+        response = self.client.get("/profile/viewings?view=not-a-view")
+        self.assertEqual(response.status_code, 422)
 
     def test_scrape_candidate_route_maps_resource_and_service_errors(self):
         film_id = "film_" + "a" * 32

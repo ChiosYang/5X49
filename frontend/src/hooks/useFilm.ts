@@ -17,7 +17,6 @@ import type {
   ViewingDeleteResult,
   ViewingPage,
   ViewingView,
-  WatchHistoryEntry,
 } from "@/types/movie";
 
 const errorMessage = async (response: Response, fallback: string) => {
@@ -68,17 +67,14 @@ export function useUpdateFilmProfileState(filmId: string) {
   );
 }
 
-export function useWatchHistory() {
-  return useSWR<WatchHistoryEntry[]>(API.watchHistory());
-}
-
 export function useProfileViewings(
   limit = 100,
   offset = 0,
   filmId?: string,
   enabled = true,
+  view: "timeline" | "recent" = "timeline",
 ) {
-  return useSWR<ViewingPage>(enabled ? API.profileViewings({ limit, offset, filmId }) : null);
+  return useSWR<ViewingPage>(enabled ? API.profileViewings({ limit, offset, filmId, view }) : null);
 }
 
 export function useFilmViewings(filmId: string) {
@@ -132,7 +128,6 @@ export async function invalidateViewingCaches(filmId: string) {
     mutate(API.filmProfileState(filmId)),
     mutate(API.libraryFilm(filmId)),
     mutate(API.libraryFilms()),
-    mutate(API.watchHistory()),
     mutate(
       (key) => typeof key === "string" && key.startsWith(API.profileViewings()),
       undefined,

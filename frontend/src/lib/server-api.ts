@@ -1,6 +1,6 @@
 import "server-only";
 
-import type { LibraryFilmDetail, LibraryFilmSummary, RootVideo, WatchHistoryEntry } from "@/types/movie";
+import type { LibraryFilmDetail, LibraryFilmSummary, RootVideo } from "@/types/movie";
 
 const backendUrl = () =>
   process.env.BACKEND_URL || (
@@ -21,12 +21,6 @@ export async function getLibraryFilm(filmId: string): Promise<LibraryFilmDetail 
 export async function getLibraryFilms(): Promise<LibraryFilmSummary[]> {
   const response = await fetch(`${backendUrl()}/library/films`, { cache: "no-store" });
   if (!response.ok) throw new Error(`Failed to fetch library: ${response.status}`);
-  return response.json();
-}
-
-export async function getWatchHistory(): Promise<WatchHistoryEntry[]> {
-  const response = await fetch(`${backendUrl()}/profile/watch-history`, { cache: "no-store" });
-  if (!response.ok) throw new Error(`Failed to fetch watch history: ${response.status}`);
   return response.json();
 }
 
