@@ -50,6 +50,12 @@ def get_library_films(q: str | None = Query(default=None, max_length=200)):
     return library_manager.list_films(query=q)
 
 
+@router.get("/library/missing")
+def get_missing_library_items():
+    items = library_manager.list_missing_items()
+    return {"count": len(items), "items": items}
+
+
 @router.get("/library/films/{film_id}")
 def get_library_film(film_id: str):
     _validate_id(film_id, "film")

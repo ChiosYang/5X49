@@ -30,7 +30,7 @@ function filmsNeedingReview(films: LibraryFilmSummary[], locale: string) {
     ));
 }
 
-function ActiveMetadataReview({
+export function MetadataReviewInspector({
   film,
   onConfirmed,
 }: {
@@ -252,7 +252,7 @@ export default function MetadataReviewQueue({ refreshSignal }: { refreshSignal?:
       </div>
 
       {activeFilm ? (
-        <ActiveMetadataReview
+        <MetadataReviewInspector
           key={activeFilm.id}
           film={activeFilm}
           onConfirmed={handleConfirmed}

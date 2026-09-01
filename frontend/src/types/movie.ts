@@ -150,6 +150,20 @@ export interface LibraryFilmSummary {
   resolved_sources?: Record<string, ResolvedSource>;
 }
 
+export interface MissingLibraryItemSummary {
+  library_item_id: string;
+  film_id: string;
+  title: string;
+  year?: number | null;
+  display_name?: string | null;
+  missing_since?: string | null;
+}
+
+export interface MissingLibraryItemsResponse {
+  count: number;
+  items: MissingLibraryItemSummary[];
+}
+
 export interface LibraryFilmDetail extends LibraryFilmSummary {
   editions: LibraryEdition[];
 }

@@ -115,6 +115,7 @@ the shared Film metadata/profile/analysis are unchanged.
 | `POST` | `/library/reconcile` | Alias of the canonical reconcile command. |
 | `POST` | `/library/scan-folder?folder_path=...` | Queue one controlled folder/file scan. |
 | `GET` | `/library/sync/status` | Reconcile and watcher state. |
+| `GET` | `/library/missing` | List path-safe summaries for every missing LibraryItem. |
 | `DELETE` | `/library/missing` | Retire missing LibraryItems. |
 | `DELETE` | `/library` | Retire all LibraryItems but preserve Film-level data. |
 | `DELETE` | `/library/data` | Delete domain data while retaining settings, migration journal and fixed references. |
@@ -123,6 +124,11 @@ the shared Film metadata/profile/analysis are unchanged.
 Scan and organizer Job payloads expose only stable IDs, counts and controlled
 manifest references. Absolute paths are held in Git-ignored private manifests,
 not public Job/Event payloads.
+
+`GET /library/missing` returns `{ count, items }`. Each item contains only
+`library_item_id`, `film_id`, selected Film title/year, `display_name`, and
+`missing_since`, sorted by missing time, title, and LibraryItem ID. It never
+returns a source key, media locator, or absolute path.
 
 ## Profile state and Viewing
 

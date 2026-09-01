@@ -217,7 +217,10 @@ export default function LibraryOnboarding({ rootVideoCount }: { rootVideoCount: 
                 <Link className="focus-ring text-xs text-ink-subtle hover:text-ink" href="/library/activity">
                   {t("viewActivity")}
                 </Link>
-                <Link className="focus-ring text-xs text-ink-subtle hover:text-ink" href="/library/manage">
+                <Link
+                  className="focus-ring text-xs text-ink-subtle hover:text-ink"
+                  href={rootVideoCount > 0 ? "/library?view=inbox" : "/settings?section=library"}
+                >
                   {rootVideoCount > 0 ? t("organizeRootCount", { count: rootVideoCount }) : t("openManagement")}
                 </Link>
               </div>

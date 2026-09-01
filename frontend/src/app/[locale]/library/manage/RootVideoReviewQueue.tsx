@@ -2,7 +2,7 @@
 
 import { ArrowRight, Clock3, FileText, FolderInput, FolderOutput, ImageIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import useSWR from "swr";
 
 import {
@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/Button";
 import { InlineFeedback, Spinner, StateMessage } from "@/components/ui/Feedback";
 import { ToggleSwitch } from "@/components/ui/FormControls";
 import { useWorkflowCache, useWorkflows } from "@/hooks/useWorkflows";
+import { useRouter } from "@/i18n/routing";
 import { API } from "@/lib/api";
 import type {
   MetadataSearchResult,
@@ -33,11 +34,16 @@ function defaultSearchInput(video: OrganizationCandidate) {
 
 export default function RootVideoReviewQueue({
   refreshSignal,
+  selectedPath,
+  compact = false,
 }: {
   refreshSignal?: string | null;
+  selectedPath?: string | null;
+  compact?: boolean;
 }) {
   const t = useTranslations("LibraryManagement");
   const libraryT = useTranslations("Library");
+  const router = useRouter();
   const { data, error, isLoading, mutate } = useSWR<OrganizationCandidate[]>(
     API.libraryOrganizationCandidates(),
   );
@@ -59,14 +65,24 @@ export default function RootVideoReviewQueue({
   } | null>(null);
 
   const pendingFiles = useMemo(
-    () => (data ?? []).filter((video) => {
-      const workflowId = workflowPaths[video.source_path];
-      if (!workflowId) return true;
-      const workflow = workflows.find((item) => item.id === workflowId);
-      return workflow?.status === "failed" || workflow?.status === "cancelled";
-    }),
+    () => (data ?? [])
+      .filter((video) => {
+        const workflowId = workflowPaths[video.source_path];
+        if (!workflowId) return true;
+        const workflow = workflows.find((item) => item.id === workflowId);
+        return workflow?.status === "failed" || workflow?.status === "cancelled";
+      })
+      .sort((left, right) => (
+        Number(right.stable) - Number(left.stable)
+        || left.mtime - right.mtime
+        || left.parsed_title.localeCompare(right.parsed_title)
+        || left.source_path.localeCompare(right.source_path)
+      )),
     [data, workflowPaths, workflows],
   );
+  const visibleFiles = selectedPath
+    ? pendingFiles.filter((video) => video.source_path === selectedPath)
+    : pendingFiles;
 
   useEffect(() => {
     if (!refreshSignal) return;
@@ -85,9 +101,10 @@ export default function RootVideoReviewQueue({
         setWorkflowPaths((current) => Object.fromEntries(
           Object.entries(current).filter(([sourcePath]) => !completedPaths.has(sourcePath)),
         ));
+        router.refresh();
       }).catch(() => undefined);
     }
-  }, [mutate, workflowPaths, workflows]);
+  }, [mutate, router, workflowPaths, workflows]);
 
   const clearSelection = (sourcePath: string) => {
     setSelectedByPath((current) => {
@@ -219,8 +236,8 @@ export default function RootVideoReviewQueue({
   };
 
   return (
-    <article id="file-organization-reviews" className="scroll-mt-32 border-y border-line py-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+    <article id="file-organization-reviews" className={compact ? "min-w-0" : "scroll-mt-32 border-y border-line py-6"}>
+      {!compact ? <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-3">
             <h3 className="text-sm font-medium tracking-widest text-ink uppercase">
@@ -234,7 +251,7 @@ export default function RootVideoReviewQueue({
             {t("organizationQueueDesc")}
           </p>
         </div>
-      </div>
+      </div> : null}
 
       <div className="mt-5 min-h-5" aria-live="polite">
         {feedback ? <InlineFeedback tone={feedback.tone}>{feedback.message}</InlineFeedback> : null}
@@ -248,14 +265,21 @@ export default function RootVideoReviewQueue({
 
       {!isLoading && !error && pendingFiles.length > 0 ? (
         <ul className="mt-5 divide-y divide-line border-t border-line">
-          {pendingFiles.map((video) => {
+          {visibleFiles.map((video, index) => {
             const candidates = candidatesByPath[video.source_path] ?? [];
             const selected = selectedByPath[video.source_path];
             const preview = previewsByPath[video.source_path];
             const renameStyle = renameStyles[video.source_path] ?? "preserve_stem";
             const busy = confirmingPath === video.source_path;
+            const startsGroup = index === 0 || visibleFiles[index - 1]?.stable !== video.stable;
             return (
-              <li key={video.source_path} className="min-w-0 py-6">
+              <Fragment key={video.source_path}>
+              {startsGroup ? (
+                <li className="bg-surface/35 py-3 type-label text-ink-subtle">
+                  {video.stable ? libraryT("rootReady") : libraryT("rootWaitingForStability")}
+                </li>
+              ) : null}
+              <li className="min-w-0 py-6">
                 <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
@@ -410,6 +434,7 @@ export default function RootVideoReviewQueue({
                   </div>
                 ) : null}
               </li>
+              </Fragment>
             );
           })}
         </ul>

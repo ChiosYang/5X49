@@ -1,5 +1,6 @@
 "use client";
 
+import { ArrowUpRight } from "lucide-react";
 import { useEffect } from "react";
 import { useTranslations } from "next-intl";
 import MediaDirectoryControl from "@/components/settings/MediaDirectoryControl";
@@ -11,6 +12,7 @@ import {
 } from "@/components/settings/SettingsPrimitives";
 import { InlineFeedback } from "@/components/ui/Feedback";
 import { ToggleSwitch } from "@/components/ui/FormControls";
+import { Link } from "@/i18n/routing";
 import {
   type ArtworkLanguage,
   useArtworkLanguageSetting,
@@ -22,6 +24,7 @@ import {
   useUpdateLibraryWatch,
   useUpdateScrapeConfirmation,
 } from "@/hooks/useSettings";
+import LibraryDangerZone from "./LibraryDangerZone";
 
 function useTransientMutationResult(result: unknown, reset: () => void) {
   useEffect(() => {
@@ -242,7 +245,21 @@ export default function LibrarySettings() {
             ) : null
           }
         />
+        <SettingRow
+          title={t("librarySystemStatus")}
+          description={t("librarySystemStatusDesc")}
+        >
+          <Link
+            href="/library/manage"
+            className="focus-ring inline-flex min-h-10 items-center gap-2 border border-line-strong px-4 type-label text-ink-muted hover:border-ink-disabled hover:text-ink"
+          >
+            {t("openLibrarySystemStatus")}
+            <ArrowUpRight className="h-3.5 w-3.5" />
+          </Link>
+        </SettingRow>
       </DisclosurePanel>
+
+      <LibraryDangerZone />
     </div>
   );
 }

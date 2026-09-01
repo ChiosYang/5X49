@@ -345,6 +345,34 @@ class LibraryManager:
                 return None
             return self._edition_view(session, item)
 
+    def list_missing_items(self) -> list[dict[str, Any]]:
+        """Return path-safe summaries for every currently missing edition."""
+        with Session(engine) as session:
+            rows = session.exec(
+                select(LibraryItem, Film)
+                .join(Film, Film.id == LibraryItem.film_id)
+                .where(LibraryItem.availability_status == "missing")
+            ).all()
+        summaries = [
+            {
+                "library_item_id": item.id,
+                "film_id": film.id,
+                "title": film.canonical_title,
+                "year": film.release_year,
+                "display_name": item.display_name,
+                "missing_since": item.missing_since,
+            }
+            for item, film in rows
+        ]
+        return sorted(
+            summaries,
+            key=lambda item: (
+                item["missing_since"] or "",
+                item["title"].casefold(),
+                item["library_item_id"],
+            ),
+        )
+
     def get_item_operation_context(self, library_item_id: str) -> dict[str, Any] | None:
         """Return one edition with its private locator for command services only."""
         with Session(engine) as session:
