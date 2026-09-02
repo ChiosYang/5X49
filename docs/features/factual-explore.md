@@ -70,8 +70,8 @@ rebuildable query surface; Canonical rows remain the sole source of truth.
 
 ## Open questions
 
-- Engineering scope and the four-dimension Beta contract are frozen. Final CI
-  remains external evidence after review/push.
+- Engineering scope and the four-dimension Beta contract are frozen. PR #4 CI
+  passed on the pushed feature branch; review and merge remain external steps.
 - Representative real-library coverage, external Alpha comprehension and
   repeat-use evidence remain product-gate work; this engineering handoff does
   not claim those results.
@@ -155,6 +155,8 @@ Status: Complete
 - `npm run lint` — passed with no errors or warnings.
 - `npm run typecheck` — passed.
 - `npm run build` — passed; Next.js emitted the locale-aware `/[locale]/explore` route.
+- GitHub Actions CI on PR #4 — Backend and Frontend checks passed against
+  `042322fe54b2`; the PR remains open and unmerged.
 - Original Factual Explore isolated browser smoke — verified four-dimension coverage and top facets,
   Genre OR plus cross-dimension AND, watched/unwatched, Person search and role
   labels, canonical URL/history/refresh behavior, unresolved conflict handling,
@@ -189,4 +191,5 @@ Status: Complete
 - The engineering fixtures are deterministic and synthetic. Representative
   real-library coverage/correctness, Alpha comprehension and repeat-use evidence
   are intentionally unverified product gates.
-- CI has not run on the unpushed feature branch.
+- PR #4 remains open and unmerged; the roadmap baseline must not move until the
+  review and merge step is complete.
