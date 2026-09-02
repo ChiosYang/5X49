@@ -1,7 +1,7 @@
 # Diary MVP
 
-Status: In Progress
-Last updated: 2026-09-01
+Status: Done
+Last updated: 2026-09-02
 Related: Product Roadmap — Diary
 
 ## Goal
@@ -41,7 +41,7 @@ its recent view selects the latest confirmed Viewing for each Film.
 - [x] Diary works in Chinese and English at desktop and narrow viewports.
 - [x] Local backend and frontend verification passes.
 - [x] The consolidated Diary and removed Watch History routes pass final local verification.
-- [ ] GitHub Actions passes after the feature is authorized for merge and push.
+- [x] GitHub Actions passes against the current `main` baseline.
 
 ## Decisions
 
@@ -92,7 +92,7 @@ Status: Done
 
 ### Slice 4 — Handoff
 
-Status: In Progress
+Status: Done
 
 - Intended behavior: synchronize Domain Model and Roadmap, record actual evidence,
   and leave a clean reviewable feature branch.
@@ -108,12 +108,14 @@ Status: In Progress
 - `npm run lint` — passed.
 - `npm run typecheck` — passed after correcting the Next parallel-slot layout contract found by generated development types.
 - `npm run build` — passed; the localized Diary route is included in the production route manifest.
+- Diary entered `main` through merge commit `8a50abd`. GitHub Actions CI run
+  [33580430791](https://github.com/ChiosYang/5X49/actions/runs/33580430791)
+  later passed its Backend and Frontend jobs against the current `main` baseline,
+  which includes the Diary implementation.
 - Isolated browser smoke on ports 8765/5550 — English and Chinese timeline/recent switching, URL restore, one-latest-per-Film behavior, per-Film full timeline, invalid-view fallback, removed-route 404, removed navigation item, and 375px overflow checks passed.
 - The isolated database, media directory, services, browser tab, and runtime files were removed after the smoke test; the active application database and media were not used.
 
 ## Remaining risks
 
-- GitHub Actions cannot run until the user authorizes merge and push. The feature
-  remains `In Progress` until both repository CI jobs pass on `main`.
 - Live multi-profile behavior is outside the MVP; the current product still has
   one LocalProfile.
