@@ -250,6 +250,122 @@ export interface FilmGraphView {
   projection_version: string;
 }
 
+export type ExploreDimension = "genre" | "person" | "country" | "decade";
+export type ExploreView = "all" | "watched" | "unwatched";
+export type ExploreSort = "title" | "year";
+export type ExploreDirection = "asc" | "desc";
+
+export interface ExploreCoverage {
+  total_films: number;
+  covered_films: number;
+  conflicted_films: number;
+  missing_films: number;
+}
+
+export interface ExploreFacetSummary {
+  dimension: ExploreDimension;
+  key: string;
+  label: string;
+  roles: Array<"actor" | "director">;
+  source_kinds: string[];
+  owned_count: number;
+  watched_count: number;
+  unwatched_count: number;
+}
+
+export interface ExploreOverview {
+  visibility_policy: "factual-explore.v1";
+  projection_version: string;
+  projection_versions: { films: string; facets: string };
+  total_films: number;
+  dimensions: Array<{
+    dimension: ExploreDimension;
+    coverage: ExploreCoverage;
+    items: ExploreFacetSummary[];
+  }>;
+}
+
+export interface ExploreFacetPage {
+  visibility_policy: "factual-explore.v1";
+  projection_version: string;
+  projection_versions: { films: string; facets: string };
+  dimension: ExploreDimension;
+  coverage: ExploreCoverage;
+  items: ExploreFacetSummary[];
+  total: number;
+  limit: number;
+  offset: number;
+  next_offset: number | null;
+}
+
+export interface ExplorePreviewFilm {
+  id: string;
+  title: string;
+  year?: number | null;
+  artwork: LibraryEdition["artwork"];
+}
+
+export interface ExploreContextItem {
+  dimension: ExploreDimension;
+  key: string;
+  label: string;
+  roles: Array<"actor" | "director">;
+  source_kinds: string[];
+  result_count: number;
+  additional_count: number;
+  preview_film?: ExplorePreviewFilm | null;
+}
+
+export interface ExploreContext {
+  visibility_policy: "factual-explore.v1";
+  projection_version: string;
+  projection_versions: { films: string; facets: string };
+  strict: true;
+  current_total: number;
+  dimensions: Array<{
+    dimension: ExploreDimension;
+    operator: "and" | "or";
+    has_more: boolean;
+    items: ExploreContextItem[];
+  }>;
+}
+
+export interface ExploreFilterRef {
+  dimension: ExploreDimension;
+  key: string;
+  label: string;
+  roles?: Array<"actor" | "director">;
+  resolved?: boolean;
+}
+
+export interface ExploreMatchedFact extends ExploreFilterRef {
+  source_kind?: string | null;
+  policy_version?: string | null;
+  derivation?: string | null;
+}
+
+export interface ExploreFilmPage {
+  visibility_policy: "factual-explore.v1";
+  projection_version: string;
+  projection_versions: { films: string; facets: string };
+  strict: true;
+  active_filters: Record<ExploreDimension, string[]> & {
+    view: ExploreView;
+    sort: ExploreSort;
+    dir: ExploreDirection;
+  };
+  filters: ExploreFilterRef[];
+  unresolved_filters: ExploreFilterRef[];
+  items: Array<{
+    film: LibraryFilmSummary;
+    matched_facts: ExploreMatchedFact[];
+  }>;
+  total: number;
+  limit: number;
+  offset: number;
+  next_offset: number | null;
+}
+
 export interface MetadataSearchResult {
   tmdb_id: number;
   title: string;

@@ -2,7 +2,7 @@
 
 - Status: Adopted
 - Database epoch: `fresh-canonical-v1`
-- Schema version: `1`
+- Schema version: `4`
 
 ## Boundaries
 
@@ -37,7 +37,8 @@ Fresh Canonical remains the sole source of truth while the product grows four
 explicit derived layers:
 
 1. provenance resolution selects current display values and reports conflicts;
-2. synchronous CQRS read models serve Library, Detail, Search and Graph;
+2. synchronous CQRS read models serve Library, Detail, Search, factual Explore
+   and Graph;
 3. durable workflows coordinate long-running external and filesystem work;
 4. the constrained Analysis pipeline proposes reviewable knowledge.
 
@@ -45,6 +46,15 @@ Read models, Workflow state and portable exports are not domain facts. They
 cannot overwrite Canonical records and must not be used as fallback truth.
 EventRecord remains audit-only. The staged contract is maintained in
 `docs/features/cinema-knowledge-architecture.md`.
+
+Factual Explore has two rebuildable Schema v4 projections. The Film projection
+contains only visible Library membership, stable sorting fields, release year
+and Viewing-derived watched state. The facet projection contains Resolver-
+selected accepted factual Genre, Director/Actor Person, ISO Country, and Decade
+derived from release year. Resolver-conflicted collection facts remain
+countable for review coverage but are ineligible for public facet/result
+queries. These rows are not portable facts and may always be discarded and
+rebuilt from Canonical state.
 
 ## Graph identity
 

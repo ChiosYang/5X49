@@ -18,6 +18,8 @@ from app.canonical_models import (
     Concept,
     Credit,
     CreditProvenance,
+    ExploreFacetReadModel,
+    ExploreFilmReadModel,
     ExternalIdentity,
     ExternalScoreRefreshState,
     Film,
@@ -48,6 +50,8 @@ PROJECTION_VERSIONS = {
     "library": "library-film.v1",
     "detail": "film-detail.v1",
     "search": "film-search.v1",
+    "explore_films": "factual-explore-film.v1",
+    "explore_facets": "factual-explore-facet.v1",
     "graph_nodes": "graph-node.v1",
     "graph_edges": "graph-edge.v1",
 }
@@ -55,6 +59,8 @@ _TABLES = {
     "library": LibraryFilmReadModel,
     "detail": FilmDetailReadModel,
     "search": FilmSearchReadModel,
+    "explore_films": ExploreFilmReadModel,
+    "explore_facets": ExploreFacetReadModel,
     "graph_nodes": GraphNodeReadModel,
     "graph_edges": GraphEdgeReadModel,
 }
@@ -122,6 +128,10 @@ class ProjectionCoordinator:
             self._upsert_library(session, film_id, summary_payload, visible=summary is not None)
             self._upsert_detail(session, film_id, detail)
             self._upsert_search(session, film_id, detail)
+            if summary is None or film is None:
+                self._delete_explore_views(session, film_id)
+            else:
+                self._refresh_explore(session, film, summary_payload, resolved)
         if film is None or film.lifecycle_status != "active":
             session.exec(delete(GraphEdgeReadModel).where(GraphEdgeReadModel.subject_entity_id == film_id))
             session.exec(delete(GraphNodeReadModel).where(GraphNodeReadModel.entity_id == film_id))
@@ -135,6 +145,8 @@ class ProjectionCoordinator:
         session.info["skip_projection_hook"] = True
         try:
             for model in (
+                ExploreFacetReadModel,
+                ExploreFilmReadModel,
                 GraphEdgeReadModel,
                 GraphNodeReadModel,
                 FilmSearchReadModel,
@@ -365,6 +377,164 @@ class ProjectionCoordinator:
                 payload=payload,
             )
 
+    def _refresh_explore(
+        self,
+        session: Session,
+        film: Film,
+        summary: dict[str, Any],
+        resolved,
+    ) -> None:
+        self._delete_explore_views(session, film.id)
+        sort_title = normalize_metadata_text(str(summary.get("title") or ""))
+        watched = bool((summary.get("profile_state") or {}).get("watched"))
+        film_source = {
+            "sort_title": sort_title,
+            "release_year": film.release_year,
+            "watched": watched,
+        }
+        session.add(
+            ExploreFilmReadModel(
+                film_id=film.id,
+                sort_title=sort_title,
+                release_year=film.release_year,
+                watched=watched,
+                source_hash=_hash(film_source),
+                projection_version=PROJECTION_VERSIONS["explore_films"],
+                projected_at=_now(),
+            )
+        )
+
+        genre_names = set(resolved.genres.value)
+        genre_assertions = session.exec(
+            select(Assertion)
+            .where(Assertion.subject_entity_id == film.id)
+            .where(Assertion.predicate == "HAS_GENRE")
+            .where(Assertion.source_scope == "factual")
+            .where(Assertion.review_status == "accepted")
+            .where(Assertion.superseded_at.is_(None))
+            .order_by(Assertion.object_entity_id, Assertion.id)
+        ).all()
+        genres: dict[str, Concept] = {}
+        for assertion in genre_assertions:
+            concept = session.get(Concept, assertion.object_entity_id)
+            if (
+                concept is not None
+                and concept.kind == "genre"
+                and concept.lifecycle_status == "active"
+                and concept.canonical_name in genre_names
+            ):
+                genres[concept.id] = concept
+        for concept in genres.values():
+            self._add_explore_facet(
+                session,
+                dimension="genre",
+                facet_key=concept.id,
+                film_id=film.id,
+                display_label=concept.canonical_name,
+                conflicted=resolved.genres.conflicted,
+                payload={
+                    "source_kind": resolved.genres.source_kind,
+                    "observed_at": resolved.genres.observed_at,
+                    "policy_version": resolved.genres.policy_version,
+                },
+            )
+
+        people: dict[str, dict[str, Any]] = {}
+        for credit_id in resolved.credits.value:
+            credit = session.get(Credit, credit_id)
+            if credit is None:
+                continue
+            role = None
+            if (credit.department, credit.job) == ("Directing", "Director"):
+                role = "director"
+            elif (credit.department, credit.job) == ("Acting", "Actor"):
+                role = "actor"
+            if role is None:
+                continue
+            person = session.get(Person, credit.person_id)
+            if person is None or person.lifecycle_status != "active":
+                continue
+            item = people.setdefault(person.id, {"person": person, "roles": set()})
+            item["roles"].add(role)
+        for person_id in sorted(people):
+            person = people[person_id]["person"]
+            self._add_explore_facet(
+                session,
+                dimension="person",
+                facet_key=person_id,
+                film_id=film.id,
+                display_label=person.canonical_name,
+                conflicted=resolved.credits.conflicted,
+                payload={
+                    "source_kind": resolved.credits.source_kind,
+                    "observed_at": resolved.credits.observed_at,
+                    "policy_version": resolved.credits.policy_version,
+                    "roles": sorted(people[person_id]["roles"]),
+                },
+            )
+
+        for country_code in resolved.countries.value:
+            self._add_explore_facet(
+                session,
+                dimension="country",
+                facet_key=country_code,
+                film_id=film.id,
+                display_label=country_code,
+                conflicted=resolved.countries.conflicted,
+                payload={
+                    "source_kind": resolved.countries.source_kind,
+                    "observed_at": resolved.countries.observed_at,
+                    "policy_version": resolved.countries.policy_version,
+                },
+            )
+
+        if film.release_year is not None:
+            decade = film.release_year // 10 * 10
+            self._add_explore_facet(
+                session,
+                dimension="decade",
+                facet_key=str(decade),
+                film_id=film.id,
+                display_label=f"{decade}s",
+                conflicted=False,
+                payload={
+                    "source_kind": "canonical",
+                    "policy_version": "release-year-decade.v1",
+                    "derivation": "release_year",
+                },
+            )
+
+    def _add_explore_facet(
+        self,
+        session: Session,
+        *,
+        dimension: str,
+        facet_key: str,
+        film_id: str,
+        display_label: str,
+        conflicted: bool,
+        payload: dict[str, Any],
+    ) -> None:
+        safe_payload = self._safe_payload(payload)
+        source = {
+            "dimension": dimension,
+            "facet_key": facet_key,
+            "film_id": film_id,
+            "display_label": display_label,
+            "normalized_label": normalize_metadata_text(display_label),
+            "eligible": not conflicted,
+            "conflicted": conflicted,
+            "payload": safe_payload,
+        }
+        session.add(
+            ExploreFacetReadModel(
+                **source,
+                source_hash=_hash(source),
+                projection_version=PROJECTION_VERSIONS["explore_facets"],
+                projected_at=_now(),
+            )
+        )
+
     def _upsert_graph_node(self, session: Session, entity_id: str) -> None:
         graph = session.get(GraphEntity, entity_id)
         if graph is None or graph.lifecycle_status != "active":
@@ -466,8 +636,19 @@ class ProjectionCoordinator:
 
     @staticmethod
     def _delete_film_views(session: Session, film_id: str) -> None:
-        for model in (LibraryFilmReadModel, FilmDetailReadModel, FilmSearchReadModel):
+        for model in (
+            ExploreFacetReadModel,
+            ExploreFilmReadModel,
+            LibraryFilmReadModel,
+            FilmDetailReadModel,
+            FilmSearchReadModel,
+        ):
             session.exec(delete(model).where(model.film_id == film_id))
+
+    @staticmethod
+    def _delete_explore_views(session: Session, film_id: str) -> None:
+        session.exec(delete(ExploreFacetReadModel).where(ExploreFacetReadModel.film_id == film_id))
+        session.exec(delete(ExploreFilmReadModel).where(ExploreFilmReadModel.film_id == film_id))
 
     def _safe_payload(self, payload: dict[str, Any]) -> dict[str, Any]:
         copied = json.loads(_canonical_json(payload))
@@ -489,6 +670,8 @@ class ProjectionCoordinator:
 
     @staticmethod
     def _row_id(row: Any) -> str:
+        if isinstance(row, ExploreFacetReadModel):
+            return f"{row.dimension}:{row.facet_key}:{row.film_id}"
         for field in ("film_id", "entity_id", "edge_id", "name"):
             if hasattr(row, field):
                 return str(getattr(row, field))
@@ -504,6 +687,27 @@ class ProjectionCoordinator:
                     "normalized_title": row.normalized_title,
                     "release_year": row.release_year,
                     "search_text": row.search_text,
+                }
+            )
+        if isinstance(row, ExploreFilmReadModel):
+            return _hash(
+                {
+                    "sort_title": row.sort_title,
+                    "release_year": row.release_year,
+                    "watched": row.watched,
+                }
+            )
+        if isinstance(row, ExploreFacetReadModel):
+            return _hash(
+                {
+                    "dimension": row.dimension,
+                    "facet_key": row.facet_key,
+                    "film_id": row.film_id,
+                    "display_label": row.display_label,
+                    "normalized_label": row.normalized_label,
+                    "eligible": row.eligible,
+                    "conflicted": row.conflicted,
+                    "payload": row.payload,
                 }
             )
         if isinstance(row, GraphNodeReadModel):
@@ -620,7 +824,16 @@ def _affected_film_ids(session: Session) -> set[str]:
     film_ids: set[str] = set()
     with session.no_autoflush:
         for value in values:
-            if isinstance(value, (ProjectionState, LibraryFilmReadModel, FilmDetailReadModel, FilmSearchReadModel, GraphNodeReadModel, GraphEdgeReadModel)):
+            if isinstance(value, (
+                ProjectionState,
+                LibraryFilmReadModel,
+                FilmDetailReadModel,
+                FilmSearchReadModel,
+                ExploreFilmReadModel,
+                ExploreFacetReadModel,
+                GraphNodeReadModel,
+                GraphEdgeReadModel,
+            )):
                 continue
             if isinstance(value, Film):
                 film_ids.add(value.id)

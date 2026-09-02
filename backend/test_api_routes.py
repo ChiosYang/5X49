@@ -44,6 +44,10 @@ CANONICAL_ROUTES = {
     ("POST", "/films/{film_id}/analysis-runs"),
     ("GET", "/films/{film_id}/analysis"),
     ("GET", "/films/{film_id}/graph"),
+    ("GET", "/explore"),
+    ("GET", "/explore/context"),
+    ("GET", "/explore/facets/{dimension}"),
+    ("GET", "/explore/films"),
     ("GET", "/films/{film_id}/artwork"),
     ("PUT", "/films/{film_id}/artwork"),
     ("POST", "/films/{film_id}/scrape"),
@@ -334,6 +338,40 @@ class ApiRouteContractTests(unittest.TestCase):
             response = self.client.get(f"/films/{film_id}/graph")
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["root"]["id"], film_id)
+
+    def test_explore_routes_validate_strict_filter_contracts(self):
+        response = self.client.get("/explore/films?genre=not-a-concept")
+        self.assertEqual(response.status_code, 422)
+        response = self.client.get("/explore/films?country=Japan")
+        self.assertEqual(response.status_code, 422)
+        response = self.client.get("/explore/films?decade=1995")
+        self.assertEqual(response.status_code, 422)
+        response = self.client.get("/explore/facets/person?limit=101")
+        self.assertEqual(response.status_code, 422)
+        response = self.client.get("/explore/context?limit=13")
+        self.assertEqual(response.status_code, 422)
+
+        suffix = "a" * 32
+        with patch(
+            "app.api.explore.explore_query_service.list_films",
+            return_value={"items": [], "total": 0},
+        ) as list_films:
+            response = self.client.get(
+                f"/explore/films?genre=concept_{suffix}&genre=con_{suffix}"
+            )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(list_films.call_args.kwargs["filters"]["genre"], [f"con_{suffix}"])
+
+        with patch(
+            "app.api.explore.explore_query_service.context",
+            return_value={"current_total": 0, "dimensions": []},
+        ) as context:
+            response = self.client.get(
+                f"/explore/context?genre=concept_{suffix}&genre=con_{suffix}&view=watched"
+            )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(context.call_args.kwargs["filters"]["genre"], [f"con_{suffix}"])
+        self.assertEqual(context.call_args.kwargs["view"], "watched")
 
     def test_viewing_routes_validate_resources_dates_and_read_only_sources(self):
         film_id = "film_" + "a" * 32

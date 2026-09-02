@@ -117,7 +117,7 @@ class StructuredMetadataSchemaTests(unittest.TestCase):
     def test_schema_version_tables_indexes_and_seeded_vocabulary_are_available(self):
         inspector = inspect(self.engine)
         tables = set(inspector.get_table_names())
-        self.assertEqual(MIGRATIONS[-1].version, 3)
+        self.assertEqual(MIGRATIONS[-1].version, 4)
         self.assertTrue(set(STRUCTURED_TABLES).issubset(tables))
         with self.engine.connect() as connection:
             self.assertEqual(connection.execute(text("SELECT COUNT(*) FROM concept")).scalar_one(), 19)

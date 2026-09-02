@@ -54,7 +54,7 @@ Import → Understand → Explore → Remember → Ask
 - **数据基础与安全**：Film / LibraryItem 身份分离；Person、Concept、Credit、Assertion、Evidence、AnalysisRun、Viewing 边界；版本化迁移；升级前备份与恢复路径。
 - **Import**：Local Folder / NFO 导入、稳定外部身份、幂等扫描、匹配复核和多版本 Film 资料库。
 - **Understand**：Analysis V2 结构化输出、来源与生成记录、去重与错误恢复；单电影 Graph、证据侧栏和列表回退。
-- **Explore**：只选择质量达标的 2–3 个维度，展示 Owned / Watched / Unwatched、覆盖率和可回溯列表。
+- **Explore**：固定使用 Genre、Person、Country、Decade 四个事实维度，展示 Owned / Watched / Unwatched、覆盖率和可回溯列表。Genre、Person、Country 只使用 Resolver 选择的事实，Decade 只从上映年份确定性派生；不接入 Theme、Style、相似度、LLM、自动放宽或 inferred Graph edge。
 - **Remember**：多次 Viewing、旧状态迁移、Diary 时间线和稳定导出。
 - **Cinema DNA**：区分 exposure 与 preference，展示样本量、计算依据和贡献 Film / Viewing。
 - **Ask**：受约束 Query Plan、数据库严格过滤、可解释排序、条件回显和无 LLM 表单回退。
@@ -243,13 +243,12 @@ Beta 是否继续、收缩或调整，依据激活、信任、重复核心行为
 
 1. **指标阈值**：安装、导入、Graph 激活、Graph 质量、首次价值时间和 W2 留存的最终目标值、样本窗口与最小样本量。
 2. **首次价值口径**：有 AI Key 与无 AI Key 是否采用不同激活事件，以及如何在同一漏斗中报告。
-3. **Explore 维度**：由 W4 数据质量决定 Beta 采用的 2–3 个维度及最低覆盖率。
-4. **实体与关系语义**：全局 Entity ID、别名/去重规则、Assertion 正式展示阈值和用户审核交互。
-5. **迁移工具与保留策略**：是否采用 Alembic，以及备份格式、命名、保留数量和恢复 UX。
-6. **Cinema DNA 公式**：最低样本量、重复观看上限、评分归一化和有限 recency adjustment。
-7. **Ask 支持面**：Beta 首批 Query Plan 意图、可放宽条件规则和隐私上下文字段白名单。
-8. **Alpha 执行**：招募渠道、候选人、访谈提纲和测试环境；目前不声明已有候选人或访谈结果。
-9. **Beta 决策规则**：继续、聚焦、延迟或停止的综合判定方式，以及由谁在何时做出决定。
+3. **实体与关系语义**：全局 Entity ID、别名/去重规则、Assertion 正式展示阈值和用户审核交互。
+4. **迁移工具与保留策略**：是否采用 Alembic，以及备份格式、命名、保留数量和恢复 UX。
+5. **Cinema DNA 公式**：最低样本量、重复观看上限、评分归一化和有限 recency adjustment。
+6. **Ask 支持面**：Beta 首批 Query Plan 意图、可放宽条件规则和隐私上下文字段白名单。
+7. **Alpha 执行**：招募渠道、候选人、访谈提纲和测试环境；目前不声明已有候选人或访谈结果。
+8. **Beta 决策规则**：继续、聚焦、延迟或停止的综合判定方式，以及由谁在何时做出决定。
 
 ## 14. 本 Spec 的完成定义
 

@@ -1,6 +1,6 @@
 # 5X49 Product Roadmap
 
-- Updated: 2026-08-31
+- Updated: 2026-09-01
 - Product: self-hosted personal cinema knowledge and viewing system
 - Current architecture: Fresh Canonical v1
 
@@ -38,10 +38,14 @@ Complete:
 
 ## In delivery
 
-Diary is complete on its feature branch: multiple independent Viewing facts,
-bilingual timeline, and latest-per-Film recent-view semantics
-have passed local backend, frontend, and browser checks. It moves into the
-completed baseline after the authorized `main` push passes both CI jobs.
+Factual Explore is ready for PR on `feat/factual-explore`: Schema v4 synchronous
+read models and strict four-dimension semantics now drive a progressive Explore
+Lens experience—one factual entry, an explicit OR/AND query sentence, a Film
+stage, deterministic next-step clue counts and a single Fact Finder. URL/history
+semantics and Film Graph entry links remain compatible. Local evidence is
+recorded in `docs/features/factual-explore.md` and the 200/1,000-Film engineering
+gate is Passed. It moves into the completed baseline only after final review,
+push and CI; real-library and Alpha evidence remain separate product gates.
 
 ## Active quality gate
 
@@ -60,17 +64,7 @@ gate currently carried forward from W4.
 
 ## Next delivery sequence
 
-### 1. Factual Explore
-
-- Explore the local Library by accepted genre, person, country and decade facts.
-- Reuse synchronous read models and factual Graph visibility; do not require a
-  model call or expose inferred edges.
-- Make active filters and provenance understandable and deterministic.
-
-Exit: a user can move from a trusted fact or Graph node to a reproducible Film
-set without silently relaxed constraints.
-
-### 2. Ask MVP
+### 1. Ask MVP
 
 - Let the model structure intent while the database and Graph perform strict
   filtering and entity lookup.

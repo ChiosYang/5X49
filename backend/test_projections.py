@@ -83,7 +83,7 @@ class ProjectionTests(unittest.TestCase):
     def test_projection_failure_rolls_back_domain_write(self):
         with patch.object(
             projection_coordinator,
-            "_upsert_detail",
+            "_refresh_explore",
             side_effect=RuntimeError("projection failed"),
         ):
             with self.assertRaisesRegex(RuntimeError, "projection failed"):

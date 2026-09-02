@@ -214,7 +214,7 @@ class AnalysisPersistenceSchemaTests(unittest.TestCase):
         self._tmp.cleanup()
 
     def test_fresh_v1_analysis_schema_and_reference_rows_are_available(self):
-        self.assertEqual(MIGRATIONS[-1].version, 3)
+        self.assertEqual(MIGRATIONS[-1].version, 4)
         inspector = inspect(self.engine)
         self.assertTrue(set(ANALYSIS_TABLES).issubset(inspector.get_table_names()))
         with self.engine.connect() as connection:

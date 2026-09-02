@@ -98,6 +98,80 @@ other-fact/Actor priority, and reports `truncated`, `visibility_policy` and
 edges expose public source kinds, review status, active Evidence count and
 conflict state, never internal provenance references.
 
+## Factual Explore
+
+All Explore routes read only the synchronous Schema v4 Explore projections and
+use visibility policy `factual-explore.v1`. They never invoke a model, generate
+similar results, relax constraints, or fall back to Canonical live joins. A
+missing or stale Library/Explore projection returns `503` with stable code
+`projection_unavailable`.
+
+| Method | Path | Purpose |
+| --- | --- | --- |
+| `GET` | `/explore` | Return visible Film total, per-dimension coverage and the top 12 facets. |
+| `GET` | `/explore/context` | Return deterministic next-step factual clues for the current strict query. |
+| `GET` | `/explore/facets/{dimension}` | Search and paginate one `genre`, `person`, `country`, or `decade` facet set. |
+| `GET` | `/explore/films` | Return the reproducible strict intersection selected by repeated fact filters. |
+
+`GET /explore` separates each dimension into `covered_films`,
+`conflicted_films`, and `missing_films`. Each facet includes owned, watched and
+unwatched Film counts, merged Person roles, and safe source kinds. Top facets
+sort by Film count descending, normalized label ascending, then stable facet
+key. Responses identify both registered projections
+(`factual-explore-film.v1` and `factual-explore-facet.v1`).
+
+`GET /explore/context` accepts the same repeated Genre, Person, Country and
+Decade filters as `/explore/films`, plus `view=all|watched|unwatched` and
+`limit` (default 6 per dimension, 1–12). It returns `current_total` and one
+entry for each dimension:
+
+- when that dimension is empty, `operator=and` and each clue's `result_count`
+  is the exact strict total after adding it;
+- when that dimension already has a selected value, `operator=or` and
+  `additional_count` is the number of Films newly admitted by that clue;
+- selected and ineligible facets are excluded, ordering is deterministic, and
+  `has_more` indicates that Fact Finder can reveal more than the returned
+  clues.
+
+Each clue may include one deterministic `preview_film` drawn from the clue's
+actual contribution set. OR clues prefer a newly added Film. Preview selection
+prefers safe local thumbnails, then provider artwork, then a stable no-artwork
+fallback. The response copies only public Film identity and the existing
+Library read model's six safe artwork fields. Context calculation performs
+fixed bulk reads rather than one query per facet, and preserves the same
+unresolved, conflict, privacy and `503 projection_unavailable` semantics as the
+other Explore endpoints.
+
+`GET /explore/facets/{dimension}` accepts optional `q` (at most 100
+characters), `limit` (default 30, 1–100), and non-negative `offset`. The
+response includes `total`, `next_offset`, and the complete coverage summary for
+that dimension. Person Directors and Actors share one facet collection; roles
+are returned as `director` and/or `actor`.
+
+`GET /explore/films` accepts repeated Canonical `genre=con_<id>` (and
+normalizes the longer `concept_<id>` spelling),
+`person=person_<id>`, `country=<ISO alpha-2>`, and `decade=<four-digit decade>`
+parameters, with at most 20 unique values per dimension. It also accepts:
+
+- `view=all|watched|unwatched` (default `all`);
+- `sort=title|year` (default `title`);
+- `dir=asc|desc` (default `asc` for title and `desc` for year);
+- `limit` (default 40, 1–100) and non-negative `offset`.
+
+Values are deduplicated and sorted. Values within one dimension are ORed;
+non-empty dimensions and the Viewing-derived watched state are ANDed. Empty
+release years never match a decade. Malformed values return `422`. A validly
+formatted but missing, deleted, conflicted, or otherwise unavailable facet is
+preserved in `unresolved_filters`. A dimension containing only unresolved
+values therefore matches zero Films; it is never removed from the query.
+
+The Film response includes normalized `active_filters`, display-ready filter
+details, `unresolved_filters`, strict total/pagination fields, public
+`LibraryFilmSummary` rows, and each Film's actually matched facts. Matched facts
+expose only dimension, stable key, label, Person roles, safe source kind and
+selection policy, or `release-year-decade.v1` derivation. Sorting always uses
+Film ID as the final tie-breaker.
+
 ### `POST /library/items/{library_item_id}/refresh`
 
 Queues `library.refresh_item`. The response is an accepted Job envelope.

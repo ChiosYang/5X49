@@ -208,7 +208,7 @@ class PortabilityTests(unittest.TestCase):
         self.assertEqual(before, after)
         validated = validate_package(self.root / "first.zip")
         self.assertEqual(validated["status"], "passed")
-        self.assertEqual(validated["schema_version"], 3)
+        self.assertEqual(validated["schema_version"], 4)
 
     def test_package_excludes_media_settings_operational_state_and_source_refs(self):
         export_package(self.root / "portable.zip", database_engine=self.engine)

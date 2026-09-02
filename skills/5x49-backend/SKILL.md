@@ -1,6 +1,6 @@
 ---
 name: 5x49-backend
-description: 5X49 Fresh Canonical FastAPI 的 Film、LibraryItem、Viewing、Analysis 与运维接口调用指南
+description: 5X49 Fresh Canonical FastAPI 的 Film、LibraryItem、Factual Explore、Viewing、Analysis 与运维接口调用指南
 ---
 
 # 5X49 Backend API
@@ -42,6 +42,37 @@ curl -s -X POST http://127.0.0.1:8000/library/items/lib_0123456789abcdef01234567
 - `DELETE /library/data` 彻底删除领域数据，但保留设置、迁移 journal 和固定词表。
 
 不要从 Event/Job 中查找绝对路径；路径只存在于受控、Git ignored 的私有 manifest。
+
+## Factual Explore
+
+```bash
+curl -s http://127.0.0.1:8000/explore
+curl -s "http://127.0.0.1:8000/explore/context?genre=con_0123456789abcdef0123456789abcdef&view=all&limit=6"
+curl -s "http://127.0.0.1:8000/explore/facets/person?q=kurosawa&limit=30&offset=0"
+curl -s "http://127.0.0.1:8000/explore/films?genre=con_0123456789abcdef0123456789abcdef&country=JP&decade=1950&view=unwatched&sort=year"
+```
+
+- `GET /explore` 返回四维覆盖率与每维前 12 个事实。
+- `GET /explore/context` 复用四类重复事实参数和 `view`，并接受每维
+  `limit=1..12`（默认 6）。目标维度为空时以 AND 计算 `result_count`；已有值时
+  以 OR 计算精确 `additional_count`。已选和 conflicted 事实不会作为线索返回。
+  `preview_film` 必须来自该线索的实际贡献集合，OR 优先新增影片；只含公开 Film
+  身份与安全 artwork 字段。实现是固定批量读取，不得按 facet 发起 N+1 查询。
+- `GET /explore/facets/{dimension}` 分页查询 `genre|person|country|decade`；
+  Person 的导演/演员统一返回，并在 `roles` 中标识。
+- `GET /explore/films` 支持每维最多 20 个重复参数；同维 OR、跨维 AND，再与
+  `view=all|watched|unwatched` 做 AND。默认每页 40、最大 100。
+- URL 中 Genre 使用 Canonical `con_` ID（`concept_` 输入会归一化），Person
+  使用 `person_` ID，Country 使用 ISO alpha-2，
+  Decade 使用四位且以 0 结尾的 key。畸形输入返回 `422`。
+- 格式合法但缺失、删除、冲突或不可用的事实保留在 `unresolved_filters`；若该维
+  全部 unresolved，结果严格为零，不会静默放宽。
+- 响应只来自 Schema v4 同步 Read Model，visibility policy 为
+  `factual-explore.v1`。投影缺失或版本不符返回 `503 projection_unavailable`，
+  不回退到 Canonical live join，也不会调用模型或网络。
+- `matched_facts` 只包含安全来源种类/策略或
+  `release-year-decade.v1` 派生说明，不包含 source ref、路径、provider payload
+  或凭据。
 
 ## Profile State 与 Diary
 

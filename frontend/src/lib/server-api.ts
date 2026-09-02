@@ -1,12 +1,16 @@
 import "server-only";
 
 import type {
+  ExploreContext,
+  ExploreFilmPage,
+  ExploreOverview,
   LibraryFilmDetail,
   LibraryFilmSummary,
   MissingLibraryItemsResponse,
   OrganizationCandidate,
   RootVideo,
 } from "@/types/movie";
+import { buildExploreContextSearchParams, buildExploreSearchParams, type ExploreQueryState } from "@/lib/explore";
 
 const backendUrl = () =>
   process.env.BACKEND_URL || (
@@ -27,6 +31,27 @@ export async function getLibraryFilm(filmId: string): Promise<LibraryFilmDetail 
 export async function getLibraryFilms(): Promise<LibraryFilmSummary[]> {
   const response = await fetch(`${backendUrl()}/library/films`, { cache: "no-store" });
   if (!response.ok) throw new Error(`Failed to fetch library: ${response.status}`);
+  return response.json();
+}
+
+export async function getExploreOverview(): Promise<ExploreOverview> {
+  const response = await fetch(`${backendUrl()}/explore`, { cache: "no-store" });
+  if (!response.ok) throw new Error(`Failed to fetch Explore overview: ${response.status}`);
+  return response.json();
+}
+
+export async function getExploreFilms(query: ExploreQueryState): Promise<ExploreFilmPage> {
+  const params = buildExploreSearchParams(query);
+  params.set("limit", "40");
+  const response = await fetch(`${backendUrl()}/explore/films?${params}`, { cache: "no-store" });
+  if (!response.ok) throw new Error(`Failed to fetch Explore Films: ${response.status}`);
+  return response.json();
+}
+
+export async function getExploreContext(query: ExploreQueryState): Promise<ExploreContext> {
+  const params = buildExploreContextSearchParams(query);
+  const response = await fetch(`${backendUrl()}/explore/context?${params}`, { cache: "no-store" });
+  if (!response.ok) throw new Error(`Failed to fetch Explore context: ${response.status}`);
   return response.json();
 }
 

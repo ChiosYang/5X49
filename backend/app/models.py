@@ -160,6 +160,8 @@ from app.canonical_models import (  # noqa: E402, F401
     ExternalIdentity,
     ExternalScoreRefreshState,
     Evidence,
+    ExploreFacetReadModel,
+    ExploreFilmReadModel,
     Film,
     FilmCountry,
     FilmCountryProvenance,

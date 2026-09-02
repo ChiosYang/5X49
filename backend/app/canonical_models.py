@@ -138,6 +138,79 @@ class FilmSearchReadModel(SQLModel, table=True):
     projected_at: str = Field(default_factory=canonical_utc_now_iso)
 
 
+class ExploreFilmReadModel(SQLModel, table=True):
+    __tablename__ = "explore_film_read_model"
+    __table_args__ = (
+        Index("ix_explore_film_watched_sort", "watched", "sort_title", "film_id"),
+        Index("ix_explore_film_year_sort", "release_year", "sort_title", "film_id"),
+        CheckConstraint(
+            "length(source_hash) = 64 AND source_hash NOT GLOB '*[^0-9a-f]*'",
+            name="ck_explore_film_read_hash",
+        ),
+    )
+
+    film_id: str = Field(
+        primary_key=True,
+        foreign_key="film.id",
+        ondelete="CASCADE",
+    )
+    sort_title: str = Field(index=True)
+    release_year: int | None = Field(default=None, index=True)
+    watched: bool = Field(default=False, index=True)
+    source_hash: str
+    projection_version: str
+    projected_at: str = Field(default_factory=canonical_utc_now_iso)
+
+
+class ExploreFacetReadModel(SQLModel, table=True):
+    __tablename__ = "explore_facet_read_model"
+    __table_args__ = (
+        CheckConstraint(
+            "dimension IN ('genre', 'person', 'country', 'decade')",
+            name="ck_explore_facet_dimension",
+        ),
+        CheckConstraint(
+            "conflicted = 0 OR eligible = 0",
+            name="ck_explore_facet_conflict_eligibility",
+        ),
+        CheckConstraint(
+            "length(source_hash) = 64 AND source_hash NOT GLOB '*[^0-9a-f]*'",
+            name="ck_explore_facet_read_hash",
+        ),
+        Index(
+            "ix_explore_facet_dimension_label",
+            "dimension",
+            "eligible",
+            "normalized_label",
+            "facet_key",
+        ),
+        Index(
+            "ix_explore_facet_dimension_key",
+            "dimension",
+            "facet_key",
+            "eligible",
+            "film_id",
+        ),
+        Index("ix_explore_facet_film_dimension", "film_id", "dimension"),
+    )
+
+    dimension: str = Field(primary_key=True)
+    facet_key: str = Field(primary_key=True)
+    film_id: str = Field(
+        primary_key=True,
+        foreign_key="film.id",
+        ondelete="CASCADE",
+    )
+    display_label: str
+    normalized_label: str
+    eligible: bool = Field(default=True, index=True)
+    conflicted: bool = Field(default=False, index=True)
+    payload: dict[str, Any] = Field(default_factory=dict, sa_column=Column(JSON, nullable=False))
+    source_hash: str
+    projection_version: str
+    projected_at: str = Field(default_factory=canonical_utc_now_iso)
+
+
 class GraphNodeReadModel(SQLModel, table=True):
     __tablename__ = "graph_node_read_model"
     __table_args__ = (
