@@ -1,6 +1,6 @@
 # 5X49 Product Roadmap
 
-- Updated: 2026-09-01
+- Updated: 2026-09-02
 - Product: self-hosted personal cinema knowledge and viewing system
 - Current architecture: Fresh Canonical v1
 
@@ -34,18 +34,14 @@ Complete:
 - Inline first-run media-directory setup, scanning and recovery for an empty Library.
 - Reviewable root/inbox file organization with exact preview, confirmation and restore boundaries.
 - Fresh Canonical local strict stabilization Gate with bilingual desktop and mobile evidence.
+- Factual Explore Schema v4 read models, strict Genre/Person/Country/Decade
+  semantics, progressive Lens UI and the Passed 200/1,000-Film engineering gate.
 - GitHub Actions backend and frontend checks on `main` pushes and pull requests.
 
 ## In delivery
 
-Factual Explore is ready for PR on `feat/factual-explore`: Schema v4 synchronous
-read models and strict four-dimension semantics now drive a progressive Explore
-Lens experience—one factual entry, an explicit OR/AND query sentence, a Film
-stage, deterministic next-step clue counts and a single Fact Finder. URL/history
-semantics and Film Graph entry links remain compatible. Local evidence is
-recorded in `docs/features/factual-explore.md` and the 200/1,000-Film engineering
-gate is Passed. It moves into the completed baseline only after final review,
-push and CI; real-library and Alpha evidence remain separate product gates.
+None. The next committed delivery is W9 Cinema DNA V1; implementation starts
+only after its formula and evidence contract are frozen.
 
 ## Active quality gate
 
@@ -64,7 +60,19 @@ gate currently carried forward from W4.
 
 ## Next delivery sequence
 
-### 1. Ask MVP
+### 1. W9 — Cinema DNA V1
+
+- Compute exposure and preference from accepted local facts, Film state and
+  confirmed Viewings with a deterministic, versioned formula.
+- Show sample size, calculation basis and contributing Films/Viewings; report
+  insufficient evidence instead of presenting a false-precision profile.
+- Keep the baseline available without an AI key and do not use an LLM or Agent
+  to calculate or mutate Cinema DNA.
+
+Exit: Cinema DNA is a transparent, reproducible local statistic whose inputs
+and limitations remain visible to the user.
+
+### 2. W10 — Ask MVP
 
 - Let the model structure intent while the database and Graph perform strict
   filtering and entity lookup.
@@ -73,6 +81,26 @@ gate currently carried forward from W4.
 
 Exit: Ask is a bounded interface over trusted local facts, not an autonomous
 database or filesystem agent.
+
+### 3. W11 — RC stabilization
+
+- Freeze feature expansion and verify upgrade, backup, restore preview, complete
+  restore, diagnostics and projection rebuild behavior.
+- Exercise no-key, read-only directory, low-disk and external-provider failure
+  paths; clear blocker and high-priority defects before release candidacy.
+
+Exit: core data and the Import → Understand → Explore → Remember → Ask loop
+remain reliable through supported failures and upgrades.
+
+### 4. W12 — Public Beta and validation
+
+- Open recruitment only after the Beta Ready gate passes, with installation,
+  privacy, diagnostics and known-issue guidance in place.
+- Use real activation, trust, repeated-core-behavior and safety evidence to
+  decide whether to continue, focus, delay or contract the product.
+
+Exit: Beta is an evidence-based product decision, not a date-driven launch;
+W13–W14 retention tracking is prepared without claiming results early.
 
 ### Parallel quality track — Finish Gate B
 

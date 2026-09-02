@@ -1,7 +1,7 @@
 # Factual Explore and Explore Lens
 
-Status: Ready for PR
-Last updated: 2026-09-01
+Status: Done
+Last updated: 2026-09-02
 Related: Product Roadmap — Factual Explore
 
 ## Goal
@@ -70,8 +70,8 @@ rebuildable query surface; Canonical rows remain the sole source of truth.
 
 ## Open questions
 
-- Engineering scope and the four-dimension Beta contract are frozen. PR #4 CI
-  passed on the pushed feature branch; review and merge remain external steps.
+- Engineering scope and the four-dimension Beta contract are frozen. PR #4 was
+  merged into `main` as `07d89530f110` after its required CI passed.
 - Representative real-library coverage, external Alpha comprehension and
   repeat-use evidence remain product-gate work; this engineering handoff does
   not claim those results.
@@ -112,11 +112,11 @@ Status: Complete
 
 ### Slice 5 — Handoff, roadmap and CI
 
-Status: Ready for PR
+Status: Done
 
 - API, backend Skill, database lifecycle, Domain Model and roadmap are synchronized.
 - Local production build, complete backend suite and final diff review passed.
-- CI remains merge-time external evidence and is not available on the unpushed branch.
+- PR and post-merge `main` Backend/Frontend CI passed.
 
 ### Slice 6 — Explore Lens interaction model
 
@@ -155,8 +155,10 @@ Status: Complete
 - `npm run lint` — passed with no errors or warnings.
 - `npm run typecheck` — passed.
 - `npm run build` — passed; Next.js emitted the locale-aware `/[locale]/explore` route.
-- GitHub Actions CI on PR #4 — Backend and Frontend checks passed against
-  `042322fe54b2`; the PR remains open and unmerged.
+- GitHub Actions CI on PR #4 — Backend and Frontend checks passed against final
+  PR HEAD `1192f79d5e4b`. PR #4 was merged as `07d89530f110`; post-merge
+  [main CI run 33580430791](https://github.com/ChiosYang/5X49/actions/runs/33580430791)
+  also passed its Backend and Frontend jobs.
 - Original Factual Explore isolated browser smoke — verified four-dimension coverage and top facets,
   Genre OR plus cross-dimension AND, watched/unwatched, Person search and role
   labels, canonical URL/history/refresh behavior, unresolved conflict handling,
@@ -191,5 +193,3 @@ Status: Complete
 - The engineering fixtures are deterministic and synthetic. Representative
   real-library coverage/correctness, Alpha comprehension and repeat-use evidence
   are intentionally unverified product gates.
-- PR #4 remains open and unmerged; the roadmap baseline must not move until the
-  review and merge step is complete.
