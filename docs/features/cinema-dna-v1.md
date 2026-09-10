@@ -82,9 +82,13 @@ Diary, with contributing Films and Viewings available for inspection.
 - Final review covered privacy fields, historical-Film independence, shared
   Explore semantics, SQL bounds, same-transaction refresh and API/Skill alignment.
 - `git diff --check` — passed.
+- Implementation commit `555298ff2110` was fast-forward merged into `main` and
+  pushed on 2026-09-10. GitHub Actions
+  [CI run 34435205359](https://github.com/ChiosYang/5X49/actions/runs/34435205359)
+  passed both Backend and Frontend jobs against that exact commit.
 
 ## Remaining risks
 
 - Representative real-library usefulness and Alpha comprehension are unverified.
 - Gate B remains separate; no inferred Graph visibility is changed.
-- Implementation is local and unmerged. No feature-branch remote CI or release is claimed.
+- This handoff merges source code; a production release was not requested.

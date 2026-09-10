@@ -36,15 +36,16 @@ Complete:
 - Fresh Canonical local strict stabilization Gate with bilingual desktop and mobile evidence.
 - Factual Explore Schema v4 read models, strict Genre/Person/Country/Decade
   semantics, progressive Lens UI and the Passed 200/1,000-Film engineering gate.
+- Cinema DNA V1 Schema v5 historical-viewing projection and bilingual Diary
+  statistics: four factual dimensions, explicit ratings, 10/3 sample thresholds,
+  contributing Films and Viewings. Commit `555298ff2110` is merged into `main`;
+  both CI jobs passed. Evidence is in `docs/features/cinema-dna-v1.md`.
 - GitHub Actions backend and frontend checks on `main` pushes and pull requests.
 
 ## In delivery
 
-W9 Cinema DNA V1 is in delivery on `feat/cinema-dna-v1`. The formula and
-evidence contract are frozen in `docs/features/cinema-dna-v1.md`: all-time
-confirmed viewing history, four factual dimensions, explicit personal ratings,
-10/3 rating thresholds and a Diary statistics view. Local implementation and
-verification do not claim real-library/Alpha evidence or a merged CI result.
+None. The next committed delivery is W10 Ask MVP. Real-library, Alpha-user
+comprehension and repeated-use evidence remain separate product gates.
 
 ## Active quality gate
 
@@ -63,19 +64,7 @@ gate currently carried forward from W4.
 
 ## Next delivery sequence
 
-### 1. W9 — Cinema DNA V1
-
-- Compute exposure and preference from accepted local facts, Film state and
-  confirmed Viewings with a deterministic, versioned formula.
-- Show sample size, calculation basis and contributing Films/Viewings; report
-  insufficient evidence instead of presenting a false-precision profile.
-- Keep the baseline available without an AI key and do not use an LLM or Agent
-  to calculate or mutate Cinema DNA.
-
-Exit: Cinema DNA is a transparent, reproducible local statistic whose inputs
-and limitations remain visible to the user.
-
-### 2. W10 — Ask MVP
+### 1. W10 — Ask MVP
 
 - Let the model structure intent while the database and Graph perform strict
   filtering and entity lookup.
@@ -85,7 +74,7 @@ and limitations remain visible to the user.
 Exit: Ask is a bounded interface over trusted local facts, not an autonomous
 database or filesystem agent.
 
-### 3. W11 — RC stabilization
+### 2. W11 — RC stabilization
 
 - Freeze feature expansion and verify upgrade, backup, restore preview, complete
   restore, diagnostics and projection rebuild behavior.
@@ -95,7 +84,7 @@ database or filesystem agent.
 Exit: core data and the Import → Understand → Explore → Remember → Ask loop
 remain reliable through supported failures and upgrades.
 
-### 4. W12 — Public Beta and validation
+### 3. W12 — Public Beta and validation
 
 - Open recruitment only after the Beta Ready gate passes, with installation,
   privacy, diagnostics and known-issue guidance in place.
