@@ -155,6 +155,7 @@ from app.canonical_models import (  # noqa: E402, F401
     AssertionProvenance,
     Concept,
     ConceptAlias,
+    CinemaDnaFilmReadModel,
     Credit,
     CreditProvenance,
     ExternalIdentity,

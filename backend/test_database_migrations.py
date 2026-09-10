@@ -36,8 +36,8 @@ class FreshCanonicalMigrationTests(unittest.TestCase):
             first = run_migrations(engine, path, app_version="test", backup_required=False)
             before = self._digest(engine)
             second = run_migrations(engine, path, app_version="test", backup_required=False)
-            self.assertEqual(first.current_version, 4)
-            self.assertEqual(first.applied_versions, (1, 2, 3, 4))
+            self.assertEqual(first.current_version, 5)
+            self.assertEqual(first.applied_versions, (1, 2, 3, 4, 5))
             self.assertEqual(second.applied_versions, ())
             self.assertIsNone(second.backup)
             self.assertEqual(before, self._digest(engine))
@@ -112,6 +112,7 @@ class FreshCanonicalMigrationTests(unittest.TestCase):
             report = run_migrations(
                 engine,
                 path,
+                migrations=MIGRATIONS[:4],
                 app_version="test",
                 backup_required=True,
                 backup_dir=backup_dir,

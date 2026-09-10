@@ -3,6 +3,7 @@ import useSWRMutation from "swr/mutation";
 import { mutate } from "swr";
 
 import { API } from "@/lib/api";
+import { isDnaCacheKey } from "@/lib/cinema-dna";
 import type {
   FilmAnalysisView,
   FilmGraphView,
@@ -124,6 +125,7 @@ export function useDeleteViewing(viewingId?: string | null) {
 
 export async function invalidateViewingCaches(filmId: string) {
   await Promise.all([
+    mutate((key) => isDnaCacheKey(key, API.cinemaDna()), undefined, { revalidate: true }),
     mutate(API.filmViewings(filmId)),
     mutate(API.filmProfileState(filmId)),
     mutate(API.libraryFilm(filmId)),

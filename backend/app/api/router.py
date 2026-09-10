@@ -1,9 +1,10 @@
 from fastapi import APIRouter
 
-from app.api import core, events, explore, library, media, metadata, settings, system, workflows
+from app.api import cinema_dna, core, events, explore, library, media, metadata, settings, system, workflows
 
 
 api_router = APIRouter()
+api_router.include_router(cinema_dna.router)
 api_router.include_router(core.router)
 api_router.include_router(media.router)
 api_router.include_router(workflows.router)

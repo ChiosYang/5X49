@@ -1,6 +1,6 @@
 # 5X49 Product Roadmap
 
-- Updated: 2026-09-02
+- Updated: 2026-09-10
 - Product: self-hosted personal cinema knowledge and viewing system
 - Current architecture: Fresh Canonical v1
 
@@ -40,8 +40,11 @@ Complete:
 
 ## In delivery
 
-None. The next committed delivery is W9 Cinema DNA V1; implementation starts
-only after its formula and evidence contract are frozen.
+W9 Cinema DNA V1 is in delivery on `feat/cinema-dna-v1`. The formula and
+evidence contract are frozen in `docs/features/cinema-dna-v1.md`: all-time
+confirmed viewing history, four factual dimensions, explicit personal ratings,
+10/3 rating thresholds and a Diary statistics view. Local implementation and
+verification do not claim real-library/Alpha evidence or a merged CI result.
 
 ## Active quality gate
 

@@ -870,5 +870,70 @@
         "review": "元数据匹配已确认。"
       }
     }
+  },
+  "CinemaDna": {
+    "eyebrow": "从观影记录，认识自己的电影世界",
+    "title": "Cinema DNA",
+    "intro": "看看自己接触过哪些电影，又如何评价它们。每一项统计，都能回到背后的影片与观影记录。",
+    "allTime": "全部时间 · 完整观影历史",
+    "totals": {
+      "watched_films": "看过的影片",
+      "viewing_records": "观影记录",
+      "rated_films": "已看且评分"
+    },
+    "metricLabel": "统计方式",
+    "exposure": "接触面",
+    "preference": "评分偏好",
+    "dimensionLabel": "事实维度",
+    "dimensions": {
+      "genre": "类型",
+      "person": "人物",
+      "country": "国家",
+      "decade": "年代"
+    },
+    "exposureBasis": "每部影片在每个所属类别只计一次，分母为全部看过的影片。一部电影可以属于多个类别，因此占比之和可能超过 100%。",
+    "preferenceBasis": "按你的个人评分计算平均星级，每部影片只计一次。总计至少 {global} 部已看且评分影片、类别内至少 {category} 部，才展示偏好排名。这是展示门槛，不代表统计显著性。",
+    "needGlobal": "再为 {count} 部看过的影片评分，即可达到偏好排名的总样本门槛。",
+    "needCategory": "此类别还需 {count} 部已评分影片，才能展示偏好值。",
+    "inspectExposure": "可以切换到接触面，查看类别计数和影片原始评分。",
+    "coverage": "{total} 部已看影片中，{covered} 部有有效事实 · {conflicted} 部存在冲突 · {missing} 部缺失事实",
+    "basis": "{count} / {total} 部已看影片 · {rated} 部已评分",
+    "contributors": "贡献影片",
+    "contributionTitle": "统计背后的影片",
+    "sourceLabel": "事实来源：{sources}",
+    "roles": {
+      "actor": "演员",
+      "director": "导演"
+    },
+    "sources": {
+      "canonical": "规范元数据",
+      "curated": "人工整理",
+      "filename": "文件名",
+      "nfo": "NFO",
+      "rule": "确定性规则",
+      "tmdb": "TMDB",
+      "user": "你的修正",
+      "unknown": "来源不可用"
+    },
+    "emptyHistory": "还没有观影记录。可以在日记中记录一次观看，或将影片标记为已看。",
+    "emptyFacts": "此维度还没有可用的已接受事实。缺失或存在冲突的元数据不会被归入具体类别。",
+    "emptyPreference": "还没有类别达到评分样本门槛。切换到接触面，仍可查看计数和贡献影片。",
+    "emptyPage": "此页暂无类别，请返回上一页。",
+    "emptyContributors": "当前选择和页码下没有贡献影片。",
+    "outsideLibrary": "已不在资料库",
+    "viewDiary": "查看观影日记",
+    "records": "{count} 条观影记录",
+    "unknownYear": "年份未知",
+    "unrated": "未评分",
+    "methodTitle": "这些数字如何计算",
+    "method": "Cinema DNA 使用已确认、未删除的观影记录和已接受的本地事实。重看只增加记录数，不增加单部影片的权重；日期未知的记录也会计入。移除媒体不会抹去观影历史。收藏、外部评分、笔记和 AI 推断不参与计算。影片评分是你当前的评价，不是每次观看的独立评分。",
+    "loading": "正在读取观影统计…",
+    "error": "暂时无法加载统计。你的观影记录未受影响。",
+    "retry": "重试",
+    "previous": "上一页",
+    "next": "下一页",
+    "close": "收起",
+    "pageCount": "共 {count} 个类别",
+    "filmCount": "共 {count} 部影片"
   }
 }

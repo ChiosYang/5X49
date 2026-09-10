@@ -50,6 +50,7 @@ class CanonicalSchemaTests(unittest.TestCase):
             "film_search_read_model",
             "explore_film_read_model",
             "explore_facet_read_model",
+            "cinema_dna_film_read_model",
             "graph_node_read_model",
             "graph_edge_read_model",
         }.issubset(tables))

@@ -2,7 +2,7 @@
 
 - Status: Adopted
 - Epoch: `fresh-canonical-v1`
-- Current version: `4`
+- Current version: `5`
 
 ## Baseline decision
 
@@ -118,6 +118,23 @@ affected Explore rows in the same transaction; any projection failure rolls
 back the originating write. Public Explore queries never fall back to live
 Canonical joins and return `503 projection_unavailable` while state is absent,
 failed or stale.
+
+## Additive Schema v5
+
+Schema v5 adds `cinema_dna_film_read_model`, a disposable profile/Film projection
+for all-time confirmed viewing history. It includes active historical Films
+without any visible LibraryItem. It is refreshed independently of Library and
+Detail projection existence, using the same factual selector as Explore.
+
+The registered state is `cinema_dna=cinema-dna-film.v1`. A v4 upgrade creates a
+verified backup, applies only the new table DDL and rebuilds projections through
+the existing bootstrap. Repeated startup does not change domain facts. Rating,
+Viewing and metadata writes refresh the projection transactionally; failed
+projection writes roll back the domain transaction. Missing, failed or stale
+state returns `503 projection_unavailable` instead of an empty statistic.
+
+The normal verify/rebuild/backup/restore commands cover this table. It is absent
+from `library-export.v1`, which continues to export Canonical facts only.
 
 ## Old database cutover
 

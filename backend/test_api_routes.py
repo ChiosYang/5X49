@@ -30,6 +30,9 @@ REMOVED_ROUTES = {
 }
 
 CANONICAL_ROUTES = {
+    ("GET", "/profile/cinema-dna"),
+    ("GET", "/profile/cinema-dna/facets/{dimension}"),
+    ("GET", "/profile/cinema-dna/contributors"),
     ("GET", "/library/films"),
     ("GET", "/library/films/{film_id}"),
     ("GET", "/films/{film_id}/profile-state"),

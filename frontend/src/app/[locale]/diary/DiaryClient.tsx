@@ -15,6 +15,8 @@ import { diaryEditorFilmId, diaryViewFromQuery, groupViewingEntries } from "@/li
 import { isFilmResourceId } from "@/lib/resource-id";
 import type { ViewingPage, ViewingTimelineEntry, ViewingView } from "@/types/movie";
 
+import CinemaDnaClient from "./CinemaDnaClient";
+
 const PAGE_SIZE = 30;
 
 function formatViewingDate(entry: ViewingTimelineEntry, locale: string, unknown: string) {
@@ -30,14 +32,14 @@ function formatViewingDate(entry: ViewingTimelineEntry, locale: string, unknown:
   }).format(date);
 }
 
-export default function DiaryClient() {
+function ViewingDiaryClient() {
   const t = useTranslations("Diary");
   const locale = useLocale();
   const searchParams = useSearchParams();
   const requestedFilmId = searchParams.get("film");
   const validFilmFilter = !requestedFilmId || isFilmResourceId(requestedFilmId);
   const filmId = requestedFilmId && validFilmFilter ? requestedFilmId : undefined;
-  const view = diaryViewFromQuery(searchParams.get("view"), filmId);
+  const view = diaryViewFromQuery(searchParams.get("view"), filmId) === "recent" ? "recent" : "timeline";
   const { data, error, isLoading, mutate } = useProfileViewings(
     PAGE_SIZE,
     0,
@@ -109,32 +111,6 @@ export default function DiaryClient() {
 
   return (
     <div className="space-y-10">
-      {!filmId ? (
-        <nav aria-label={t("viewMode")} className="flex w-full gap-2 overflow-x-auto border-y border-line py-3">
-          <Link
-            href="/diary"
-            aria-current={view === "timeline" ? "page" : undefined}
-            className={`focus-ring duration-fast min-h-10 shrink-0 border px-4 py-2 type-badge transition-colors ${
-              view === "timeline"
-                ? "border-ink bg-inverse text-inverse-ink"
-                : "border-line text-ink-muted hover:border-line-strong hover:text-ink"
-            }`}
-          >
-            {t("timelineView")}
-          </Link>
-          <Link
-            href="/diary?view=recent"
-            aria-current={view === "recent" ? "page" : undefined}
-            className={`focus-ring duration-fast min-h-10 shrink-0 border px-4 py-2 type-badge transition-colors ${
-              view === "recent"
-                ? "border-ink bg-inverse text-inverse-ink"
-                : "border-line text-ink-muted hover:border-line-strong hover:text-ink"
-            }`}
-          >
-            {t("recentView")}
-          </Link>
-        </nav>
-      ) : null}
 
       {filmId ? (
         <div className="flex flex-col gap-4 border-y border-line py-5 sm:flex-row sm:items-center sm:justify-between">
@@ -243,4 +219,29 @@ export default function DiaryClient() {
       ) : null}
     </div>
   );
+}
+
+export default function DiaryClient() {
+  const t = useTranslations("Diary");
+  const dna = useTranslations("CinemaDna");
+  const params = useSearchParams();
+  const film = params.get("film") || undefined;
+  const view = diaryViewFromQuery(params.get("view"), film);
+  return <div className="space-y-10">
+    <header className="border-b border-line pb-8">
+      <p className="type-label text-ink-subtle">{view === "dna" ? dna("eyebrow") : t("eyebrow")}</p>
+      <h1 className={`mt-3 text-ink ${view === "dna" ? "text-5xl font-bold tracking-tight sm:text-7xl" : "type-display-editorial"}`}>{view === "dna" ? dna("title") : t("title")}</h1>
+      <p className="mt-4 max-w-2xl text-sm leading-7 text-ink-subtle">{view === "dna" ? dna("intro") : t("subtitle")}</p>
+    </header>
+    {!film ? <nav aria-label={t("viewMode")} className="grid w-full grid-cols-3 gap-2 border-y border-line py-3 sm:flex sm:flex-wrap">
+      {(["timeline", "recent", "dna"] as const).map((mode) => <Link
+        key={mode}
+        href={mode === "timeline" ? "/diary" : `/diary?view=${mode}`}
+        aria-current={view === mode ? "page" : undefined}
+        scroll={false}
+        className={`focus-ring duration-fast flex min-h-10 min-w-0 items-center justify-center border px-2 py-2 text-center type-badge transition-colors sm:px-4 ${view === mode ? "border-ink bg-inverse text-inverse-ink" : "border-line text-ink-muted hover:border-line-strong hover:text-ink"}`}
+      >{mode === "dna" ? "Cinema DNA" : t(mode === "recent" ? "recentView" : "timelineView")}</Link>)}
+    </nav> : null}
+    {view === "dna" ? <CinemaDnaClient /> : <ViewingDiaryClient />}
+  </div>;
 }

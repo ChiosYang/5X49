@@ -211,6 +211,23 @@ class ExploreFacetReadModel(SQLModel, table=True):
     projected_at: str = Field(default_factory=canonical_utc_now_iso)
 
 
+class CinemaDnaFilmReadModel(SQLModel, table=True):
+    __tablename__ = "cinema_dna_film_read_model"
+    __table_args__ = (
+        CheckConstraint(
+            "length(source_hash) = 64 AND source_hash NOT GLOB '*[^0-9a-f]*'",
+            name="ck_cinema_dna_film_read_hash",
+        ),
+    )
+
+    profile_id: str = Field(primary_key=True, foreign_key="local_profile.id", ondelete="CASCADE")
+    film_id: str = Field(primary_key=True, foreign_key="film.id", ondelete="CASCADE")
+    payload: dict[str, Any] = Field(default_factory=dict, sa_column=Column(JSON, nullable=False))
+    source_hash: str
+    projection_version: str
+    projected_at: str = Field(default_factory=canonical_utc_now_iso)
+
+
 class GraphNodeReadModel(SQLModel, table=True):
     __tablename__ = "graph_node_read_model"
     __table_args__ = (

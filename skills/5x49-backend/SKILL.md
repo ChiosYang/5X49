@@ -198,3 +198,20 @@ Settings/密钥、Job/Workflow/Event、Read Model 或模型原始内容。v1 没
 - 任何基于 Legacy ID、alias 或可选 read source 的接口。
 
 修改后端路径或响应时，必须同时更新 `docs/api.md` 和本 Skill。
+
+## Cinema DNA
+
+- `GET /profile/cinema-dna` 返回完整观影历史的去重影片数、记录数、评分样本和四维覆盖率。
+- `GET /profile/cinema-dna/facets/{dimension}` 接受 `genre|person|country|decade`、
+  `metric=exposure|preference`、`limit`（默认 20，最大 100）、`offset`。
+- `GET /profile/cinema-dna/contributors` 必填 `dimension` 与事实 `key`；相同 metric，
+  默认每页 40、最大 100。事实 ID 校验沿用 Explore，畸形输入 `422`，合法但缺失则空结果。
+- 契约为 `cinema-dna.v1`，读取 Schema v5 的 `cinema-dna-film.v1` 投影。只统计
+  当前 profile、active Film、confirmed 且未删除的 Viewing，包含不再位于资料库的影片。
+- 接触面为类别去重影片数 / 全部已看影片数；多标签占比之和可超过 100%。重看只增加记录数。
+- 偏好只计算当前电影级个人 1–5 星算术平均；全局至少 10 部、类别至少 3 部已看且评分
+  影片才展示，低样本值为 null 且不参与偏好排名。接触面仍可查看类别和评分明细。
+- 响应含公式版本、样本门槛、分子分母及来源；贡献影片可通过 `/diary?film={film_id}`
+  查看原始 Viewing。日期未知不影响全时间统计；收藏、外部评分、笔记和 AI 推断不参与。
+- 这是只读统计，不触发模型、文件操作或领域写入；投影缺失/失败/过期返回
+  `503 projection_unavailable`。不得将其称为统计显著性或用户价值验证结果。

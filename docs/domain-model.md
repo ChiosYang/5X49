@@ -2,7 +2,7 @@
 
 - Status: Adopted
 - Database epoch: `fresh-canonical-v1`
-- Schema version: `4`
+- Schema version: `5`
 
 ## Boundaries
 
@@ -105,6 +105,15 @@ genre is represented as accepted factual `HAS_GENRE` Assertion with structured
 provenance; unknown genres remain reviewable.
 
 ## Profile state and Viewing
+
+Cinema DNA is a derived all-time statistic, not a new domain fact. Schema v5
+adds `cinema_dna_film_read_model`, keyed by profile and Film, for active Films
+with confirmed undeleted Viewings. It is independent of Library visibility and
+stores only identity, factual memberships/coverage, rating and viewing count.
+Its shared factual selector preserves Explore's source and conflict semantics.
+Canonical changes refresh it in the same transaction; it is rebuildable and is
+excluded from portable exports. Notes, media paths and inferred Assertions do
+not enter its payload or formula.
 
 `FilmProfileState` stores one profile's `favorite`, `rating` and `notes` for a
 Film. Viewing is a fact, not a boolean state. A Film can have any number of

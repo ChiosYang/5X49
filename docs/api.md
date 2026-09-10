@@ -399,3 +399,45 @@ This is a deliberate breaking baseline. The following endpoints do not exist:
 The generated OpenAPI document at `/docs` is authoritative for request-model
 field details. Any route or response-shape change must update this document and
 `skills/5x49-backend/SKILL.md` together.
+## Cinema DNA V1
+
+Cinema DNA is an all-time, local-profile statistic over active Films with
+confirmed undeleted Viewings, including Films no longer in the Library. All
+three endpoints are read-only and return `formula_version=cinema-dna.v1`,
+`projection_version=cinema-dna-film.v1`, `scope=all-time-confirmed-viewings`,
+`thresholds`, `totals` and `needed_global_ratings`.
+
+| Method / path | Parameters | Result |
+| --- | --- | --- |
+| `GET /profile/cinema-dna` | none | Distinct watched/rated Films, viewing record count, four dimension coverage partitions |
+| `GET /profile/cinema-dna/facets/{dimension}` | `genre\|person\|country\|decade`; `metric=exposure\|preference`; `limit=20`, `offset=0` | Category statistics, source kinds, roles and stable pagination |
+| `GET /profile/cinema-dna/contributors` | required `dimension`, `key`; `metric=exposure\|preference`; `limit=40`, `offset=0` | Selected `facet` summary or null; actual contributing Films and selected factual source |
+
+Both page endpoints return `items`, `total`, `limit`, `offset`, `next_offset`.
+Limits are 1–100; offsets are nonnegative. Fact keys use the same validation as
+Explore, including normalization of `concept_` to `con_`. Malformed input is
+`422`; valid but absent categories yield empty results. Missing/failed/stale
+projection state is `503` with `detail.code=projection_unavailable`.
+
+`totals` contains `watched_films`, `viewing_records` and `rated_films`.
+Coverage partitions use `total_films`, `covered_films`, `conflicted_films` and
+`missing_films`; conflicting/missing facts do not become category memberships.
+Facet items include `film_count`, `denominator`, `share` (fraction, not percent),
+`viewing_count`, `rated_count`, `preference`, `needed_category_ratings`, `roles`
+and `source_kinds`, in addition to stable `key` and current `label`.
+
+Exposure counts distinct category Films divided by all distinct watched Films;
+multi-label percentages can exceed 100% in total. Preference is the arithmetic
+mean of current personal 1–5 Film ratings, with no rewatch/favorite/recency
+weight. It is null unless at least 10 watched Films are rated globally and 3
+within the category. Only eligible categories appear in preference ranking;
+exposure remains available to inspect low-sample categories and their ratings.
+Preference contributors contain only rated Films, even below the display gate.
+Sort exposure by count descending then key; sort preference by exact mean,
+rated count descending then key. Display means to one decimal place.
+
+Contributor items contain `film_id`, `title`, `year`, `rating`, `viewing_count`,
+`in_library` and `fact` (`dimension`, `key`, `label`, public `source`). Sort by
+casefolded title then Film ID. Link to `/diary?film={film_id}` for its original
+Viewing facts. Notes, media paths, provider input and credentials are excluded.
+Each response reads projection readiness and inputs from one SQLite snapshot.

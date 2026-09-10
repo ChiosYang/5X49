@@ -870,5 +870,70 @@
         "review": "Metadata match confirmed."
       }
     }
+  },
+  "CinemaDna": {
+    "eyebrow": "Your viewing, in perspective",
+    "title": "Cinema DNA",
+    "intro": "Explore what you have watched and how you rated it. Every figure leads back to the films and viewing records behind it.",
+    "allTime": "All time · Entire viewing history",
+    "totals": {
+      "watched_films": "Films watched",
+      "viewing_records": "Viewing records",
+      "rated_films": "Watched & rated"
+    },
+    "metricLabel": "Statistic",
+    "exposure": "Exposure",
+    "preference": "Rating preference",
+    "dimensionLabel": "Factual dimension",
+    "dimensions": {
+      "genre": "Genres",
+      "person": "People",
+      "country": "Countries",
+      "decade": "Decades"
+    },
+    "exposureBasis": "Each film counts once per category, divided by all films you have watched. Films can belong to several categories, so percentages may add up to more than 100%.",
+    "preferenceBasis": "Your average personal rating, with each film counted once. Rankings require {global} rated, watched films overall and {category} in a category. These are display thresholds, not statistical significance.",
+    "needGlobal": "Rate {count, plural, one {# more watched film} other {# more watched films}} to unlock preference rankings.",
+    "needCategory": "This category needs {count, plural, one {# more rated film} other {# more rated films}} for a preference value.",
+    "inspectExposure": "Use Exposure to inspect category counts and individual ratings.",
+    "coverage": "Facts available for {covered} of {total} watched films · {conflicted} conflicted · {missing} missing",
+    "basis": "{count} / {total} watched films · {rated} rated",
+    "contributors": "Contributing films",
+    "contributionTitle": "Behind this figure",
+    "sourceLabel": "Facts from: {sources}",
+    "roles": {
+      "actor": "Actor",
+      "director": "Director"
+    },
+    "sources": {
+      "canonical": "Canonical metadata",
+      "curated": "Curated metadata",
+      "filename": "Filename",
+      "nfo": "NFO",
+      "rule": "Deterministic rule",
+      "tmdb": "TMDB",
+      "user": "Your corrections",
+      "unknown": "Source unavailable"
+    },
+    "emptyHistory": "Your viewing history is empty. Record a viewing in Diary or mark a film as watched to begin.",
+    "emptyFacts": "No accepted facts are available for this dimension. Missing or conflicting metadata is not assigned to a category.",
+    "emptyPreference": "No categories meet the rating thresholds yet. Exposure still shows counts and the films behind them.",
+    "emptyPage": "This page has no categories. Return to the previous page.",
+    "emptyContributors": "No contributing films match this selection and page.",
+    "outsideLibrary": "Outside your Library",
+    "viewDiary": "View diary",
+    "records": "{count, plural, one {# viewing record} other {# viewing records}}",
+    "unknownYear": "Year unknown",
+    "unrated": "Not rated",
+    "methodTitle": "How these figures are calculated",
+    "method": "Cinema DNA uses confirmed, undeleted viewing records and accepted local facts. Rewatching increases the record count without increasing a film’s weight. Unknown dates count too. Removing media does not erase your history. Favorites, external scores, notes and AI inference are excluded. Film ratings represent your current rating, not a separate rating for each viewing.",
+    "loading": "Reading your viewing history…",
+    "error": "These statistics could not be loaded. Your records are unchanged.",
+    "retry": "Try again",
+    "previous": "Previous",
+    "next": "Next",
+    "close": "Close",
+    "pageCount": "{count, plural, one {# category} other {# categories}}",
+    "filmCount": "{count, plural, one {# film} other {# films}}"
   }
 }

@@ -7,6 +7,11 @@ const mediaPath = (path: string) => {
 };
 
 export const API = {
+  cinemaDna: () => `${API_BASE_URL}/profile/cinema-dna`,
+  cinemaDnaFacets: (dimension: string, metric: string, offset = 0) =>
+    `${API_BASE_URL}/profile/cinema-dna/facets/${segment(dimension)}?${new URLSearchParams({ metric, offset: String(offset), limit: "20" })}`,
+  cinemaDnaContributors: (dimension: string, key: string, metric: string, offset = 0) =>
+    `${API_BASE_URL}/profile/cinema-dna/contributors?${new URLSearchParams({ dimension, key, metric, offset: String(offset), limit: "40" })}`,
   baseUrl: API_BASE_URL,
 
   workflows: () => `${API_BASE_URL}/workflows`,

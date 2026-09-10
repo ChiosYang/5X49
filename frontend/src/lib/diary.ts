@@ -1,7 +1,7 @@
 import type { FilmProfileState, ViewingTimelineEntry, ViewingView } from "@/types/movie";
 
 export type WatchedAction = "mark_watched" | "mark_unwatched" | "open_diary";
-export type DiaryView = "timeline" | "recent";
+export type DiaryView = "timeline" | "recent" | "dna";
 export type ViewingDateMode = "date" | "year" | "unknown";
 
 export interface ViewingDateDraft {
@@ -25,7 +25,7 @@ export function watchedActionFor(state: Pick<FilmProfileState, "watched" | "manu
 
 export function diaryViewFromQuery(value: string | null, filmId?: string): DiaryView {
   if (filmId) return "timeline";
-  return value === "recent" ? "recent" : "timeline";
+  return value === "recent" || value === "dna" ? value : "timeline";
 }
 
 export function diaryEditorFilmId(

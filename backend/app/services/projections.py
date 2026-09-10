@@ -16,6 +16,7 @@ from app.canonical_models import (
     AssertionEvidence,
     AssertionProvenance,
     Concept,
+    CinemaDnaFilmReadModel,
     Credit,
     CreditProvenance,
     ExploreFacetReadModel,
@@ -44,9 +45,11 @@ from app.canonical_models import (
 )
 from app.contracts.structured_metadata import normalize_metadata_text
 from app.services.provenance_resolver import provenance_resolver
+from app.services.factual_facets import FACT_DIMENSIONS, build_factual_facets
 
 
 PROJECTION_VERSIONS = {
+    "cinema_dna": "cinema-dna-film.v1",
     "library": "library-film.v1",
     "detail": "film-detail.v1",
     "search": "film-search.v1",
@@ -56,6 +59,7 @@ PROJECTION_VERSIONS = {
     "graph_edges": "graph-edge.v1",
 }
 _TABLES = {
+    "cinema_dna": CinemaDnaFilmReadModel,
     "library": LibraryFilmReadModel,
     "detail": FilmDetailReadModel,
     "search": FilmSearchReadModel,
@@ -132,6 +136,7 @@ class ProjectionCoordinator:
                 self._delete_explore_views(session, film_id)
             else:
                 self._refresh_explore(session, film, summary_payload, resolved)
+        self._refresh_cinema_dna(session, film_id, film)
         if film is None or film.lifecycle_status != "active":
             session.exec(delete(GraphEdgeReadModel).where(GraphEdgeReadModel.subject_entity_id == film_id))
             session.exec(delete(GraphNodeReadModel).where(GraphNodeReadModel.entity_id == film_id))
@@ -145,6 +150,7 @@ class ProjectionCoordinator:
         session.info["skip_projection_hook"] = True
         try:
             for model in (
+                CinemaDnaFilmReadModel,
                 ExploreFacetReadModel,
                 ExploreFilmReadModel,
                 GraphEdgeReadModel,
@@ -404,105 +410,73 @@ class ProjectionCoordinator:
             )
         )
 
-        genre_names = set(resolved.genres.value)
-        genre_assertions = session.exec(
-            select(Assertion)
-            .where(Assertion.subject_entity_id == film.id)
-            .where(Assertion.predicate == "HAS_GENRE")
-            .where(Assertion.source_scope == "factual")
-            .where(Assertion.review_status == "accepted")
-            .where(Assertion.superseded_at.is_(None))
-            .order_by(Assertion.object_entity_id, Assertion.id)
+        for facet in build_factual_facets(session, film, resolved):
+            self._add_explore_facet(session, **facet)
+
+    def _refresh_cinema_dna(self, session: Session, film_id: str, film: Film | None) -> None:
+        # Historical Films can have no Library/Detail projection at all.
+        session.exec(delete(CinemaDnaFilmReadModel).where(CinemaDnaFilmReadModel.film_id == film_id))
+        if film is None or film.lifecycle_status != "active":
+            return
+        viewings = session.exec(
+            select(Viewing)
+            .where(Viewing.film_id == film_id)
+            .where(Viewing.review_status == "confirmed")
+            .where(Viewing.deleted_at.is_(None))
         ).all()
-        genres: dict[str, Concept] = {}
-        for assertion in genre_assertions:
-            concept = session.get(Concept, assertion.object_entity_id)
-            if (
-                concept is not None
-                and concept.kind == "genre"
-                and concept.lifecycle_status == "active"
-                and concept.canonical_name in genre_names
-            ):
-                genres[concept.id] = concept
-        for concept in genres.values():
-            self._add_explore_facet(
-                session,
-                dimension="genre",
-                facet_key=concept.id,
-                film_id=film.id,
-                display_label=concept.canonical_name,
-                conflicted=resolved.genres.conflicted,
-                payload={
-                    "source_kind": resolved.genres.source_kind,
-                    "observed_at": resolved.genres.observed_at,
-                    "policy_version": resolved.genres.policy_version,
-                },
+        counts: dict[str, int] = {}
+        for viewing in viewings:
+            counts[viewing.profile_id] = counts.get(viewing.profile_id, 0) + 1
+        if not counts:
+            return
+        resolved = provenance_resolver.resolve_film(session, film_id)
+        facets = build_factual_facets(session, film, resolved)
+        conflicts = {
+            "genre": resolved.genres.conflicted,
+            "person": resolved.credits.conflicted,
+            "country": resolved.countries.conflicted,
+            "decade": False,
+        }
+        coverage = {
+            dimension: (
+                "conflicted" if conflicts[dimension]
+                else "covered" if any(f["dimension"] == dimension for f in facets)
+                else "missing"
             )
-
-        people: dict[str, dict[str, Any]] = {}
-        for credit_id in resolved.credits.value:
-            credit = session.get(Credit, credit_id)
-            if credit is None:
-                continue
-            role = None
-            if (credit.department, credit.job) == ("Directing", "Director"):
-                role = "director"
-            elif (credit.department, credit.job) == ("Acting", "Actor"):
-                role = "actor"
-            if role is None:
-                continue
-            person = session.get(Person, credit.person_id)
-            if person is None or person.lifecycle_status != "active":
-                continue
-            item = people.setdefault(person.id, {"person": person, "roles": set()})
-            item["roles"].add(role)
-        for person_id in sorted(people):
-            person = people[person_id]["person"]
-            self._add_explore_facet(
-                session,
-                dimension="person",
-                facet_key=person_id,
-                film_id=film.id,
-                display_label=person.canonical_name,
-                conflicted=resolved.credits.conflicted,
-                payload={
-                    "source_kind": resolved.credits.source_kind,
-                    "observed_at": resolved.credits.observed_at,
-                    "policy_version": resolved.credits.policy_version,
-                    "roles": sorted(people[person_id]["roles"]),
-                },
-            )
-
-        for country_code in resolved.countries.value:
-            self._add_explore_facet(
-                session,
-                dimension="country",
-                facet_key=country_code,
-                film_id=film.id,
-                display_label=country_code,
-                conflicted=resolved.countries.conflicted,
-                payload={
-                    "source_kind": resolved.countries.source_kind,
-                    "observed_at": resolved.countries.observed_at,
-                    "policy_version": resolved.countries.policy_version,
-                },
-            )
-
-        if film.release_year is not None:
-            decade = film.release_year // 10 * 10
-            self._add_explore_facet(
-                session,
-                dimension="decade",
-                facet_key=str(decade),
-                film_id=film.id,
-                display_label=f"{decade}s",
-                conflicted=False,
-                payload={
-                    "source_kind": "canonical",
-                    "policy_version": "release-year-decade.v1",
-                    "derivation": "release_year",
-                },
-            )
+            for dimension in FACT_DIMENSIONS
+        }
+        memberships = [
+            {
+                "dimension": facet["dimension"],
+                "key": facet["facet_key"],
+                "label": facet["display_label"],
+                "source": facet["payload"],
+            }
+            for facet in facets if not facet["conflicted"]
+        ]
+        memberships.sort(key=lambda f: (f["dimension"], f["key"]))
+        in_library = session.exec(
+            select(LibraryItem.id).where(LibraryItem.film_id == film_id)
+            .where(LibraryItem.availability_status.notin_(("retired", "ignored")))
+        ).first() is not None
+        for profile_id, viewing_count in sorted(counts.items()):
+            state = session.get(FilmProfileState, (profile_id, film_id))
+            payload = self._safe_payload({
+                "film_id": film_id,
+                "title": resolved.canonical_title.value or film.canonical_title,
+                "year": film.release_year,
+                "rating": state.rating if state else None,
+                "viewing_count": viewing_count,
+                "in_library": in_library,
+                "coverage": coverage,
+                "facts": memberships,
+            })
+            session.add(CinemaDnaFilmReadModel(
+                profile_id=profile_id, film_id=film_id, payload=payload,
+                source_hash=_hash(payload),
+                projection_version=PROJECTION_VERSIONS["cinema_dna"],
+                projected_at=_now(),
+            ))
 
     def _add_explore_facet(
         self,
@@ -670,6 +644,8 @@ class ProjectionCoordinator:
 
     @staticmethod
     def _row_id(row: Any) -> str:
+        if isinstance(row, CinemaDnaFilmReadModel):
+            return f"{row.profile_id}:{row.film_id}"
         if isinstance(row, ExploreFacetReadModel):
             return f"{row.dimension}:{row.facet_key}:{row.film_id}"
         for field in ("film_id", "entity_id", "edge_id", "name"):
@@ -679,7 +655,7 @@ class ProjectionCoordinator:
 
     @staticmethod
     def _expected_hash(row: Any) -> str:
-        if isinstance(row, (LibraryFilmReadModel, FilmDetailReadModel)):
+        if isinstance(row, (LibraryFilmReadModel, FilmDetailReadModel, CinemaDnaFilmReadModel)):
             return _hash(row.payload)
         if isinstance(row, FilmSearchReadModel):
             return _hash(
@@ -826,6 +802,7 @@ def _affected_film_ids(session: Session) -> set[str]:
         for value in values:
             if isinstance(value, (
                 ProjectionState,
+                CinemaDnaFilmReadModel,
                 LibraryFilmReadModel,
                 FilmDetailReadModel,
                 FilmSearchReadModel,
@@ -841,7 +818,9 @@ def _affected_film_ids(session: Session) -> set[str]:
             direct = getattr(value, "film_id", None)
             if isinstance(direct, str):
                 film_ids.add(direct)
-            if isinstance(value, ExternalIdentity):
+            if isinstance(value, Assertion):
+                film_ids.add(value.subject_entity_id)
+            elif isinstance(value, ExternalIdentity):
                 film_ids.add(value.entity_id)
             elif isinstance(value, MediaAsset) and value.library_item_id:
                 item = session.get(LibraryItem, value.library_item_id)
