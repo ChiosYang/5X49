@@ -243,6 +243,7 @@ class ExploreQueryService:
         direction: str,
         limit: int,
         offset: int,
+        person_roles: dict[str, str] | None = None,
     ) -> dict[str, Any]:
         normalized = {
             dimension: sorted(set(filters.get(dimension, [])))
@@ -256,14 +257,23 @@ class ExploreQueryService:
                 keys = normalized[dimension]
                 if not keys:
                     continue
-                matching = set(
-                    session.exec(
-                        select(ExploreFacetReadModel.film_id)
-                        .where(ExploreFacetReadModel.dimension == dimension)
+                if dimension == "person" and person_roles:
+                    facets = session.exec(select(ExploreFacetReadModel)
+                        .where(ExploreFacetReadModel.dimension == "person")
                         .where(ExploreFacetReadModel.facet_key.in_(keys))
-                        .where(ExploreFacetReadModel.eligible.is_(True))
-                    ).all()
-                )
+                        .where(ExploreFacetReadModel.eligible.is_(True))).all()
+                    matching = {row.film_id for row in facets
+                                if person_roles.get(row.facet_key, "any") == "any"
+                                or person_roles[row.facet_key] in (row.payload or {}).get("roles", [])}
+                else:
+                    matching = set(
+                        session.exec(
+                            select(ExploreFacetReadModel.film_id)
+                            .where(ExploreFacetReadModel.dimension == dimension)
+                            .where(ExploreFacetReadModel.facet_key.in_(keys))
+                            .where(ExploreFacetReadModel.eligible.is_(True))
+                        ).all()
+                    )
                 candidate_ids = matching if candidate_ids is None else candidate_ids & matching
 
             statement = select(ExploreFilmReadModel)

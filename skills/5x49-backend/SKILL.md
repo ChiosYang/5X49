@@ -1,6 +1,6 @@
 ---
 name: 5x49-backend
-description: 5X49 Fresh Canonical FastAPI 的 Film、LibraryItem、Factual Explore、Viewing、Analysis 与运维接口调用指南
+description: 5X49 Fresh Canonical FastAPI 的 Film、LibraryItem、Factual Explore、Ask、Viewing、Analysis 与运维接口调用指南
 ---
 
 # 5X49 Backend API
@@ -121,6 +121,25 @@ TMDB 功能需要 `TMDB_API_KEY` 环境变量或托管设置；读取设置只�
 `POST /films/{film_id}/scrape/confirm?tmdb_id=...` 明确确认。
 `GET /films/{film_id}/scrape/candidates` 只读取可用 Film 版本并返回有界候选，
 不会修改刮削状态、写 Event/NFO、下载图片或自动确认。
+
+## Ask 只读查片
+
+- `GET /ask/status` 只报告模型 Key 是否存在；不能据此认定模型可用。
+- `POST /ask/interpret` 接受 `question`（1–600 字符）与 `locale: zh|en`。
+  只发送问题和固定 schema；不附带片库、笔记、路径或查询结果。
+- `POST /ask/resolve` 接受 `plan` 与可选 `person_id`，在本地解析和预览条件。
+- `plan` 支持一个 `genre`、一个 `person`、`person_role: any|director|actor`、
+  一个 `country`、一个 `decade`、`view: all|watched|unwatched`、
+  `sort: title|year` 与 `direction: asc|desc`；不同维度之间为 AND。
+- 同名/部分匹配人物必须从返回的候选中明确选择；未知条件不能忽略。
+- `POST /ask/query` 使用相同参数，加 `confirmed: true` 和可选 `offset`。
+  只有用户确认条件后执行；每页 20 条，分页无模型调用。
+- `status` 为 `ready|needs_clarification|clarify|unsupported`。未解决的条件
+  返回 `results: null`，零结果不会自动放宽。命中原因来自 `matched_facts`。
+- 无 Key 时直接使用 resolve/query；不支持评分、精确年份、否定、OR、多值维度、
+  推荐或写操作。Ask 不保存提问/模型输出，也不产生含这些内容的 Activity 事件。
+- `ask_private_input`、`ask_invalid_response` 等错误不得通过删减约束重试。
+  完整请求、错误码和提供商限制见 `docs/api.md` 的 Ask MVP。
 
 ## Analysis V2
 

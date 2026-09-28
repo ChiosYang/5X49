@@ -1,4 +1,84 @@
 {
+  "Ask": {
+    "sources": { "canonical": "Film metadata", "curated": "Curated metadata", "filename": "Filename", "nfo": "NFO", "rule": "Derived fact", "tmdb": "TMDB", "user": "Your correction" },
+    "eyebrow": "ASK YOUR CINEMA",
+    "title": "What are you looking for?",
+    "description": "Describe the films you want, review the conditions, and search your library using verified local facts.",
+    "mode": "Search input mode",
+    "questionMode": "Ask a question",
+    "formMode": "Use filters",
+    "questionLabel": "Your question",
+    "privacy": "Only this question is sent to your configured model. Library records, notes and paths are not attached. Leave private information out of the question.",
+    "example": "Find unwatched Japanese films from the 1990s.",
+    "useExample": "Use this example",
+    "statusFailed": "Could not check model configuration. You can still try the local filters.",
+    "retry": "Retry",
+    "noKey": "No model key is configured. Use filters to search locally.",
+    "settings": "Settings",
+    "genreExample": "Drama",
+    "countryExample": "Japan or JP",
+    "personExample": "A name as it appears in your library",
+    "decadeHelp": "Start year of the release decade, for example 1990.",
+    "role": "Person's role",
+    "view": "Viewing state",
+    "sort": "Order",
+    "supported": "Supports one genre, one person, one country and one release decade, plus viewing state and title/year order. All conditions must match.",
+    "interpret": "Understand question",
+    "preview": "Review conditions",
+    "confirmHint": "Check that these conditions represent your request before searching. Missing or conflicting metadata cannot satisfy a condition.",
+    "search": "Find films with these conditions",
+    "editFilters": "Edit conditions",
+    "unsupported": "This question includes a request outside the supported filters. Try a simpler question or use the filter form.",
+    "clarify": "Please name a specific condition, such as a country, decade or person, or use the filter form.",
+    "unknown_value": "No supported value or eligible person matched. Edit this condition before searching.",
+    "choose_person": "Select the intended person. Sample films help distinguish matching names.",
+    "results": "Search results",
+    "resultCount": "{count, plural, one {# matching film} other {# matching films}}",
+    "empty": "No films satisfy all these conditions. Edit the conditions and confirm a new search.",
+    "why": "Why this film matches",
+    "source": "Source: {source}",
+    "inLibrary": "Present in your current library.",
+    "previous": "Previous",
+    "next": "Next",
+    "asc": "Ascending",
+    "desc": "Descending",
+    "fields": {
+      "genre": "Genre",
+      "person": "Person",
+      "country": "Country",
+      "decade": "Release decade",
+      "title": "Title",
+      "year": "Release year"
+    },
+    "roles": {
+      "any": "Any role",
+      "director": "Director",
+      "actor": "Actor"
+    },
+    "views": {
+      "all": "All viewing states",
+      "watched": "Watched",
+      "unwatched": "Unwatched"
+    },
+    "sorts": {
+      "titleAsc": "Title A–Z",
+      "titleDesc": "Title Z–A",
+      "yearDesc": "Newest first",
+      "yearAsc": "Oldest first"
+    },
+    "errors": {
+      "ask_not_configured": "A model key is required to interpret questions. The filter form works without one.",
+      "ask_private_input": "This question appears to contain a path or credential. Remove it before sending.",
+      "ask_busy": "Another interpretation is in progress. Try again shortly.",
+      "ask_timeout": "The model timed out. Retry or use local filters.",
+      "ask_invalid_response": "The model returned an invalid plan. No search was run. Try again or use filters.",
+      "ask_provider_unavailable": "The model is unavailable. Retry or use local filters.",
+      "ask_invalid_selection": "The selected person is no longer valid. Review the conditions again.",
+      "projection_unavailable": "The local search index is not ready. Retry when it becomes available.",
+      "invalid_request": "Check the conditions and try again.",
+      "unavailable": "The request could not be completed. Please retry."
+    }
+  },
   "AnalysisReview": {
     "referenceHelp": "Link this unresolved reference to an existing entity. This does not create a relationship or validate its evidence.",
     "title": "Review relationships",
@@ -61,6 +141,7 @@
     }
   },
   "LibrarySearch": {
+    "askLink": "Ask in your own words →",
     "title": "Search your library",
     "description": "Find films by title, original title, genre, country or director.",
     "query": "Search term",
@@ -87,6 +168,7 @@
     "failed": "Could not save. Your draft is still here; please try again."
   },
   "Navigation": {
+    "ask": "Ask",
     "library": "Library",
     "libraryManagement": "Management",
     "explore": "Explore",

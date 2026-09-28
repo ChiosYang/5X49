@@ -14,6 +14,7 @@ import ExternalScoreStrip from "../components/ExternalScoreStrip";
 interface LibraryMovieCardProps {
   movie: LibraryFilmSummary;
   priority?: boolean;
+  readOnly?: boolean;
 }
 
 type MediaSpecBadge = {
@@ -240,7 +241,7 @@ function todayDateValue() {
   return `${year}-${month}-${day}`;
 }
 
-export default function LibraryMovieCard({ movie, priority = false }: LibraryMovieCardProps) {
+export default function LibraryMovieCard({ movie, priority = false, readOnly = false }: LibraryMovieCardProps) {
   const t = useTranslations("Library");
   const router = useRouter();
   const { trigger, isMutating } = useUpdateFilmProfileState(movie.id);
@@ -307,7 +308,7 @@ export default function LibraryMovieCard({ movie, priority = false }: LibraryMov
     <div className="block">
       <div className="space-y-4">
         {/* Landscape Still */}
-        <div className="peer/card group z-content hover:z-inspector relative aspect-video w-full bg-surface-raised">
+        <div className={`${readOnly ? "" : "peer/card group z-content hover:z-inspector"} relative aspect-video w-full bg-surface-raised`}>
           <Link href={`/library/${movie.id}`} scroll={false} className="focus-ring block h-full cursor-pointer rounded-media">
             <div className="relative h-full w-full overflow-hidden rounded-media">
               {backdropSrc ? (
@@ -347,7 +348,7 @@ export default function LibraryMovieCard({ movie, priority = false }: LibraryMov
             </div>
           </Link>
 
-          <div className="liquid-glass-popover z-inspector invisible absolute top-full right-0 left-0 origin-top translate-y-1 scale-95 overflow-hidden rounded-b-media border border-line/80 p-5 text-ink opacity-0 transition-[opacity,transform] delay-0 duration-standard ease-exit group-hover:visible group-hover:translate-y-0 group-hover:scale-100 group-hover:opacity-100 group-hover:delay-inspection">
+          {!readOnly && <div className="liquid-glass-popover z-inspector invisible absolute top-full right-0 left-0 origin-top translate-y-1 scale-95 overflow-hidden rounded-b-media border border-line/80 p-5 text-ink opacity-0 transition-[opacity,transform] delay-0 duration-standard ease-exit group-hover:visible group-hover:translate-y-0 group-hover:scale-100 group-hover:opacity-100 group-hover:delay-inspection">
             <div className="z-raised relative space-y-4">
               <div className="flex items-center gap-3">
                 <button
@@ -460,7 +461,7 @@ export default function LibraryMovieCard({ movie, priority = false }: LibraryMov
                 </div>
               )}
             </div>
-          </div>
+          </div>}
         </div>
 
         {/* Title & Info */}

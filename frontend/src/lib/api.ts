@@ -7,6 +7,10 @@ const mediaPath = (path: string) => {
 };
 
 export const API = {
+  askStatus: () => `${API_BASE_URL}/ask/status`,
+  askInterpret: () => `${API_BASE_URL}/ask/interpret`,
+  askResolve: () => `${API_BASE_URL}/ask/resolve`,
+  askQuery: () => `${API_BASE_URL}/ask/query`,
   cinemaDna: () => `${API_BASE_URL}/profile/cinema-dna`,
   cinemaDnaFacets: (dimension: string, metric: string, offset = 0) =>
     `${API_BASE_URL}/profile/cinema-dna/facets/${segment(dimension)}?${new URLSearchParams({ metric, offset: String(offset), limit: "20" })}`,

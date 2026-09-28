@@ -17,6 +17,7 @@ export default async function SearchPage({ params, searchParams }: {
     <main className="page-x min-h-screen bg-canvas pb-16 pt-36 text-ink">
       <h1 className="type-display-editorial">{t("title")}</h1>
       <p className="mt-4 text-ink-subtle">{t("description")}</p>
+      <Link href="/ask" className="focus-ring mt-4 inline-block text-sm text-ink-muted underline">{t("askLink")}</Link>
       <form action={`/${locale}/search`} method="get" role="search" className="my-8 flex max-w-3xl flex-wrap gap-3">
         <label htmlFor="library-search" className="sr-only">{t("query")}</label>
         <input id="library-search" name="q" type="search" defaultValue={query} maxLength={200}
