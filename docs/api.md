@@ -27,7 +27,7 @@ sources. Invalid resource IDs return `400`; missing resources return `404`.
 | `GET` | `/health` | Process health. |
 | `GET` | `/` | Service information. |
 | `GET` | `/settings` | Combined non-secret settings. |
-| `GET/PUT` | `/settings/model` | Analysis model selection. |
+| `GET/PUT` | `/settings/model` | Analysis and Ask model selection. |
 | `GET/PUT` | `/settings/media-dir` | Local media root and non-secret availability. `PUT` requires an existing readable directory and applies immediately without an application restart. |
 | `GET` | `/media/{relative_path}` | Serve a file from the current media root with traversal and symlink-escape protection. |
 | `GET/PUT` | `/settings/language` | Application language. |
@@ -315,6 +315,82 @@ child. Automatic organization remains root-only. Restorable moves reference a
 private controlled manifest; the Event and OperationSnapshot store only its
 opaque reference. File-location restore covers the video, associated sidecars,
 and database locator; generated NFO and artwork files remain.
+
+## Ask MVP
+
+Ask is a read-only planning and query interface over factual Explore projections.
+Its contract version is `ask.v1`; no schema migration is required.
+
+| Method | Path | Purpose |
+| --- | --- | --- |
+| `GET` | `/ask/status` | Provider-key presence and availability of the local form. |
+| `POST` | `/ask/interpret` | Interpret one question using the configured model, then resolve local entities. |
+| `POST` | `/ask/resolve` | Validate and preview a plan locally, without a model call. |
+| `POST` | `/ask/query` | Execute explicitly confirmed conditions; pagination never calls the model. |
+
+Interpretation accepts `{"question":"Find unwatched Japanese films from the 1990s.","locale":"en"}`.
+Question length is 1–600 characters, locale is `zh` or `en`. Only the question
+and static output schema reach the provider, not Library records, notes, media
+paths, selected results or private settings. Obvious pasted credentials and
+absolute paths are rejected before calling the provider. Questions and responses
+are not persisted, included in audit events or logged by Ask.
+
+Resolve accepts a plan and an optional explicit `person_id`:
+
+```json
+{
+  "plan": {
+    "genre": null,
+    "person": null,
+    "person_role": "any",
+    "country": "JP",
+    "decade": 1990,
+    "view": "unwatched",
+    "sort": "title",
+    "direction": "asc"
+  },
+  "person_id": null
+}
+```
+
+Each dimension accepts at most one value and combines with AND. Genre/country
+values are resolved through the controlled multilingual vocabulary. Person
+names use active, eligible local entities: a unique exact match can resolve
+automatically; multiple exact matches or partial matches require selecting one
+of the returned candidates (at most nine, each with up to two sample Films).
+Unknown values block execution. A provided Person ID must still match the name;
+it cannot override an unrelated or vanished entity.
+
+`person_role` is `any|director|actor`; decade is an integer divisible by ten in
+1880–2190; view is `all|watched|unwatched`; sort is `title|year`; direction is
+`asc|desc`. Model output must explicitly include every plan field. Manual form
+requests may omit fields to use null/any/all/title/asc defaults. Other fields,
+multiple values, arbitrary SQL, exact-year/rating/runtime filters, exclusions,
+recommendations and mutation instructions are outside the supported plan.
+
+Responses contain `version`, `status`, `plan`, `person_id`, `constraints` and
+`issues`. Status is `ready`, `needs_clarification`, `clarify` or `unsupported`.
+Unsupported/vague interpretations have no plan. Resolution issues name the
+unresolved field and include candidate identities when available.
+
+Query accepts the same payload plus required `"confirmed": true` and optional
+`offset` (0–100000). It resolves conditions again and returns `results: null`
+if anything remains unresolved. Otherwise `results` is the existing
+`ExploreFilmPage` shape with a fixed page size of 20. Person roles are enforced
+before total counts, sorting and pagination. The returned `matched_facts`,
+source kinds and viewing state provide deterministic explanations; zero results
+never trigger automatic relaxation. `/explore/films` behavior is unchanged.
+
+Interpretation makes one call with a 20-second transport timeout, a 1200-token
+output cap, zero retries and at most two concurrent calls per process. It uses
+the existing model/base URL settings and `OPENROUTER_API_KEY`; provider-key
+presence does not certify provider availability. Errors expose stable codes:
+`503 ask_not_configured`, `429 ask_busy`, `504 ask_timeout`,
+`502 ask_invalid_response|ask_provider_unavailable`,
+`422 ask_private_input|ask_invalid_selection`. Contract validation uses `422`;
+stale projections return `503 projection_unavailable`. The local form remains
+usable without a model key. Natural-language quality still requires live
+acceptance, independently of the offline query tests and Analysis Gate B.
 
 ## Analysis V2
 

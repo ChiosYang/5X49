@@ -1,6 +1,6 @@
 # 5X49 Product Roadmap
 
-- Updated: 2026-09-10
+- Updated: 2026-09-28
 - Product: self-hosted personal cinema knowledge and viewing system
 - Current architecture: Fresh Canonical v1
 
@@ -41,11 +41,16 @@ Complete:
   contributing Films and Viewings. Commit `555298ff2110` is merged into `main`;
   both CI jobs passed. Evidence is in `docs/features/cinema-dna-v1.md`.
 - GitHub Actions backend and frontend checks on `main` pushes and pull requests.
+- Library keyword search, Film rating/notes editor and local Analysis review/
+  correction are merged in PR #6. Gate B remains independent and blocked.
 
 ## In delivery
 
-None. The next committed delivery is W10 Ask MVP. Real-library, Alpha-user
-comprehension and repeated-use evidence remain separate product gates.
+W10 Ask MVP implementation and offline acceptance are complete, including a
+reviewable query plan, strict factual filtering, explicit Person resolution and
+a no-key form. Evidence is tracked in `docs/features/ask-mvp.md`.
+Live interpretation quality, representative real-library usefulness, Alpha
+comprehension and repeated-use evidence remain unverified product gates.
 
 ## Active quality gate
 
@@ -70,6 +75,10 @@ gate currently carried forward from W4.
   filtering and entity lookup.
 - Explain already selected results and the constraints that produced them.
 - Exclude private paths, notes and secrets from provider input by default.
+- Initial supported scope: one Genre, Person (any/director/actor), Country and
+  Decade per query, combined with AND; viewing state and title/year sorting.
+- Confirm parsed conditions before querying; explanations and pagination are
+  deterministic local reads. Unsupported conditions cannot be silently dropped.
 
 Exit: Ask is a bounded interface over trusted local facts, not an autonomous
 database or filesystem agent.

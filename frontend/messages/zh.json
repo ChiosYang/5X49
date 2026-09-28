@@ -1,4 +1,84 @@
 {
+  "Ask": {
+    "sources": { "canonical": "影片资料", "curated": "策展资料", "filename": "文件名", "nfo": "NFO", "rule": "事实推导", "tmdb": "TMDB", "user": "个人修正" },
+    "eyebrow": "ASK YOUR CINEMA",
+    "title": "这次想找什么电影？",
+    "description": "描述你的查片需求，确认筛选条件，再用资料库中的事实查找电影。",
+    "mode": "查片输入方式",
+    "questionMode": "自然语言提问",
+    "formMode": "使用条件表单",
+    "questionLabel": "你的问题",
+    "privacy": "仅将本次问题发送给已配置的模型，不附带片库记录、笔记或路径。请勿在问题中填写私人信息。",
+    "example": "找我还没看过的 90 年代日本电影。",
+    "useExample": "使用这个示例",
+    "statusFailed": "无法检查模型配置，你仍可尝试本地条件表单。",
+    "retry": "重试",
+    "noKey": "尚未配置模型 Key，可以使用条件表单在本地查片。",
+    "settings": "设置",
+    "genreExample": "剧情",
+    "countryExample": "日本或 JP",
+    "personExample": "资料库中显示的人物姓名",
+    "decadeHelp": "填写上映年代的起始年份，例如 1990。",
+    "role": "人物角色",
+    "view": "观看状态",
+    "sort": "排序",
+    "supported": "支持各选一个类型、人物、国家和上映年代，以及观看状态、片名或年份排序。所有条件同时满足。",
+    "interpret": "理解问题",
+    "preview": "确认筛选条件",
+    "confirmHint": "请核对这些条件是否准确表达了你的需求。缺失或有冲突的元数据无法满足对应条件。",
+    "search": "按这些条件查找",
+    "editFilters": "修改条件",
+    "unsupported": "问题包含当前筛选范围外的需求，请简化问题或改用条件表单。",
+    "clarify": "请明确一个条件，例如国家、年代或人物，也可以使用条件表单。",
+    "unknown_value": "没有匹配的受支持值或可用人物，请修改这个条件后再查找。",
+    "choose_person": "请选择你指的人物，可通过代表影片区分同名记录。",
+    "results": "查找结果",
+    "resultCount": "找到 {count} 部符合条件的电影",
+    "empty": "没有同时满足全部条件的电影，请修改条件后重新确认。",
+    "why": "为什么命中这部电影",
+    "source": "来源：{source}",
+    "inLibrary": "这部电影在当前资料库中。",
+    "previous": "上一页",
+    "next": "下一页",
+    "asc": "升序",
+    "desc": "降序",
+    "fields": {
+      "genre": "类型",
+      "person": "人物",
+      "country": "国家",
+      "decade": "上映年代",
+      "title": "片名",
+      "year": "上映年份"
+    },
+    "roles": {
+      "any": "不限角色",
+      "director": "导演",
+      "actor": "演员"
+    },
+    "views": {
+      "all": "不限观看状态",
+      "watched": "已观看",
+      "unwatched": "未观看"
+    },
+    "sorts": {
+      "titleAsc": "按片名升序",
+      "titleDesc": "按片名降序",
+      "yearDesc": "最新上映优先",
+      "yearAsc": "最早上映优先"
+    },
+    "errors": {
+      "ask_not_configured": "理解自然语言需要模型 Key，条件表单无需配置即可使用。",
+      "ask_private_input": "问题中疑似包含路径或密钥，请移除后再发送。",
+      "ask_busy": "当前有其他问题正在解析，请稍后重试。",
+      "ask_timeout": "模型响应超时，请重试或使用本地条件表单。",
+      "ask_invalid_response": "模型返回了无效的筛选方案，本次没有执行查询。请重试或使用条件表单。",
+      "ask_provider_unavailable": "模型服务暂不可用，请重试或使用本地条件表单。",
+      "ask_invalid_selection": "所选人物已不可用，请重新核对条件。",
+      "projection_unavailable": "本地检索索引尚未就绪，请稍后重试。",
+      "invalid_request": "请检查填写的条件后重试。",
+      "unavailable": "请求未完成，请重试。"
+    }
+  },
   "AnalysisReview": {
     "referenceHelp": "将未解析引用关联到已有对象。此操作不会创建关系，也不会将证据标记为有效。",
     "title": "关系审核与纠错",
@@ -61,6 +141,7 @@
     }
   },
   "LibrarySearch": {
+    "askLink": "用自然语言查片 →",
     "title": "搜索资料库",
     "description": "按片名、原名、类型、国家或导演查找电影。",
     "query": "搜索关键词",
@@ -87,6 +168,7 @@
     "failed": "保存失败，草稿仍然保留，请重试。"
   },
   "Navigation": {
+    "ask": "问电影",
     "library": "资料库",
     "libraryManagement": "资料库管理",
     "explore": "探索",
