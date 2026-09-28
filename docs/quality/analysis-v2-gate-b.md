@@ -1,5 +1,28 @@
 # Analysis V2 Gate B quality summary
 
+## 2026-09-28 local review delivery
+
+The final `search-profile-review-final-20260928` offline rehearsal used the
+unchanged 36-case dataset (hash prefix `fbfc9a1a481aef30`) and
+`gate-b-policy.v2`. It reported `tool_status=passed`, `live_status=blocked`,
+`human_status=blocked`, and `overall_status=blocked`. The command returned a
+nonzero blocked result as expected; this is not a strict quality pass.
+
+Local review acceptance/rejection, correction, revision conflicts, replay
+protection, atomic rollback and personal-note privacy were included in the
+89-test focused regression run, which passed. Six additional backup/export
+tests passed. The new UI was exercised with synthetic data in Chinese and
+English at desktop and mobile widths.
+
+Production Evidence preflight returned `evidence_network_boundary_blocked`.
+The application-configured provider key was absent. The user explicitly chose
+code and offline acceptance for this delivery; no live model calls or new
+human scoring were performed. Inferred Graph visibility remains unchanged.
+Implementation evidence is in
+`docs/features/search-profile-analysis-review.md`.
+
+## Previous live and dataset evidence
+
 - Evidence date: 2026-08-27
 - Database target: `fresh-canonical-v1` / version 4
 - Dataset contract: `analysis-eval.v1`

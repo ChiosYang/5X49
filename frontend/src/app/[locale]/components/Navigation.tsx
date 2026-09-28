@@ -2,8 +2,10 @@ import { Search } from "lucide-react";
 import { Link } from "@/i18n/routing";
 import WorkflowRuntimeStatus from "@/components/WorkflowRuntimeStatus";
 import NavigationMenu from "./NavigationMenu";
+import { getTranslations } from "next-intl/server";
 
-export default function Navigation() {
+export default async function Navigation() {
+  const t = await getTranslations("Navigation");
   return (
     <nav className="z-navigation fixed top-0 right-0 left-0 flex items-center justify-between p-8 text-ink">
       {/* Left: Menu Trigger */}
@@ -16,7 +18,9 @@ export default function Navigation() {
 
       {/* Right: Search and background jobs */}
       <div className="flex items-center gap-4">
-        <Search className="w-5 h-5 opacity-0 md:opacity-100 drop-shadow-lg" /> {/* Hidden on mobile or visual only */}
+        <Link href="/search" aria-label={t("search")} className="focus-ring inline-flex h-11 w-11 items-center justify-center">
+          <Search className="h-5 w-5 drop-shadow-lg" aria-hidden="true" />
+        </Link>
         <WorkflowRuntimeStatus />
       </div>
     </nav>

@@ -38,7 +38,14 @@ Event payloads must not contain:
 - API keys, authorization headers, userinfo or secret query parameters;
 - raw NFO/XML, raw model input/output, provider exception bodies or webpage content;
 - full before/after domain objects;
-- titles solely for Activity display.
+- titles solely for Activity display;
+- personal note bodies, including previous and new note values.
+
+`AnalysisAssertionReviewed` and `AnalysisReferenceReviewed` use the `film`
+aggregate and `actor_type=user`. Payloads contain only the reviewed resource
+ID, decision and optional replacement Assertion ID. They contain no rationale,
+candidate summaries, Evidence URLs or note text. A no-op decision emits no new
+event; failures roll back the decision and its event together.
 
 Activity resolves display titles from the current Film/LibraryItem. File
 operations store only stable resource IDs, counts, state names, content hashes

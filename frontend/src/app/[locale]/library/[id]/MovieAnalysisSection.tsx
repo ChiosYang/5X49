@@ -3,16 +3,14 @@
 import { ExternalLink, Loader2, Network } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useSWRConfig } from "swr";
+import { useState } from "react";
 
 import { Button } from "@/components/ui/Button";
 import { InlineFeedback } from "@/components/ui/Feedback";
 import { useAnalyzeFilm, useFilm, useFilmAnalysis } from "@/hooks/useFilm";
 import { API } from "@/lib/api";
 import type { LibraryFilmDetail } from "@/types/movie";
-
-function predicateLabel(value: string) {
-  return value.replaceAll("_", " ");
-}
+import AnalysisReviewPanel from "@/components/AnalysisReviewPanel";
 
 export default function MovieAnalysisSection({
   filmId,
@@ -26,12 +24,18 @@ export default function MovieAnalysisSection({
   const { data: film = initialFilm } = useFilm(filmId, initialFilm);
   const { data: analysis, error } = useFilmAnalysis(filmId);
   const { trigger: analyze, isMutating } = useAnalyzeFilm(filmId);
+  const [triggerFailed, setTriggerFailed] = useState(false);
   const running = isMutating || film.analysis.status === "queued" || film.analysis.status === "running" || analysis?.status === "running";
 
   const triggerAnalysis = async () => {
     if (running) return;
-    await analyze();
-    await Promise.all([mutate(API.libraryFilm(filmId)), mutate(API.filmAnalysis(filmId))]);
+    setTriggerFailed(false);
+    try {
+      await analyze();
+      await Promise.all([mutate(API.libraryFilm(filmId)), mutate(API.filmAnalysis(filmId))]);
+    } catch {
+      setTriggerFailed(true);
+    }
   };
 
   return (
@@ -46,7 +50,7 @@ export default function MovieAnalysisSection({
         </Button>
       </div>
 
-      {error && <InlineFeedback tone="error">{t("failedStatus")}</InlineFeedback>}
+      {(error || triggerFailed || analysis?.status === "failed") && <InlineFeedback tone="error">{t("failedStatus")}</InlineFeedback>}
       {!analysis && !error && (
         <div className="flex items-center gap-3 text-ink-subtle">
           {running ? <Loader2 className="h-4 w-4 animate-spin" /> : <Network className="h-4 w-4" />}
@@ -58,24 +62,7 @@ export default function MovieAnalysisSection({
         <div className="space-y-10">
           {analysis.summary && <p className="max-w-4xl type-editorial-lead text-ink-muted">{analysis.summary}</p>}
 
-          {analysis.relations.length > 0 && (
-            <div className="grid gap-px border border-line bg-line md:grid-cols-2 xl:grid-cols-3">
-              {analysis.relations.map((relation) => (
-                <article key={relation.id} className="min-w-0 bg-canvas p-5">
-                  <div className="flex items-center justify-between gap-3">
-                    <span className="type-badge text-ink-subtle">{predicateLabel(relation.predicate)}</span>
-                    <span className="rounded-pill border border-line px-2 py-1 type-badge text-ink-subtle">
-                      {relation.review_status}
-                    </span>
-                  </div>
-                  <h3 className="mt-5 truncate type-card-title text-ink">
-                    {relation.target.display_name || relation.target.entity_id}
-                  </h3>
-                  {relation.rationale && <p className="mt-3 line-clamp-4 type-body text-ink-muted">{relation.rationale}</p>}
-                </article>
-              ))}
-            </div>
-          )}
+          <AnalysisReviewPanel key={`${analysis.run.id}:${analysis.status}`} filmId={filmId} />
 
           {analysis.evidence.length > 0 && (
             <div className="space-y-4">
@@ -100,11 +87,6 @@ export default function MovieAnalysisSection({
             </div>
           )}
 
-          {analysis.reviews.length > 0 && (
-            <p className="type-meta text-warning" aria-live="polite">
-              {t("referencesNeedReview", { count: analysis.reviews.filter((review) => review.status === "open").length })}
-            </p>
-          )}
         </div>
       )}
     </section>
