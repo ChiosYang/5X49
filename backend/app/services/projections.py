@@ -720,7 +720,7 @@ class ProjectionReader:
                 term = normalize_metadata_text(query)
                 matching_ids = session.exec(
                     select(FilmSearchReadModel.film_id).where(
-                        FilmSearchReadModel.search_text.contains(term)
+                        FilmSearchReadModel.search_text.contains(term, autoescape=True)
                     )
                 ).all()
                 statement = statement.where(LibraryFilmReadModel.film_id.in_(matching_ids))

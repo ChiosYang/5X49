@@ -62,8 +62,8 @@ class FilmProfileStateManager:
                 film_id,
                 {
                     "changed_fields": sorted(fields_set),
-                    "before": before,
-                    "after": after,
+                    "before": {key: value for key, value in before.items() if key != "notes"},
+                    "after": {key: value for key, value in after.items() if key != "notes"},
                 },
                 actor_type="user",
             )

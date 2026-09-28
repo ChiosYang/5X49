@@ -74,6 +74,9 @@ class ProjectionTests(unittest.TestCase):
             [film_id],
         )
         self.assertEqual(projection_reader.list_films(self.engine, query="absent"), [])
+        self.assertEqual(projection_reader.list_films(self.engine, query="%"), [])
+        self.assertEqual(projection_reader.list_films(self.engine, query="_"), [])
+        self.assertEqual([row["id"] for row in projection_reader.list_films(self.engine, query="  SEARCHABLE  ")], [film_id])
         with Session(self.engine) as session:
             session.exec(delete(ProjectionState).where(ProjectionState.name == "library"))
             session.commit()

@@ -28,8 +28,10 @@ export async function getLibraryFilm(filmId: string): Promise<LibraryFilmDetail 
   return response.json();
 }
 
-export async function getLibraryFilms(): Promise<LibraryFilmSummary[]> {
-  const response = await fetch(`${backendUrl()}/library/films`, { cache: "no-store" });
+export async function getLibraryFilms(query = ""): Promise<LibraryFilmSummary[]> {
+  const params = new URLSearchParams();
+  if (query.trim()) params.set("q", query.trim());
+  const response = await fetch(`${backendUrl()}/library/films${params.size ? `?${params}` : ""}`, { cache: "no-store" });
   if (!response.ok) throw new Error(`Failed to fetch library: ${response.status}`);
   return response.json();
 }

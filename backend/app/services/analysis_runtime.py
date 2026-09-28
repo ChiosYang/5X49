@@ -1108,6 +1108,16 @@ class AnalysisRuntimePersistence:
             select(AnalysisResolutionReview).where(AnalysisResolutionReview.review_key == review_key)
         ).first()
         if review is None:
+            previous = session.exec(
+                select(AnalysisResolutionReview)
+                .where(AnalysisResolutionReview.film_id == run.film_id)
+                .where(AnalysisResolutionReview.candidate_kind == candidate_kind)
+                .where(AnalysisResolutionReview.reason_code == reason_code)
+                .where(AnalysisResolutionReview.predicate == predicate)
+                .where(AnalysisResolutionReview.candidate_hash == candidate_hash)
+                .order_by(AnalysisResolutionReview.updated_at.desc(), AnalysisResolutionReview.id.desc())
+            ).first()
+            previous_decision = previous if previous and previous.status != "open" else None
             review = AnalysisResolutionReview(
                 analysis_run_id=run.id,
                 film_id=run.film_id,
@@ -1117,7 +1127,9 @@ class AnalysisRuntimePersistence:
                 candidate_summary=candidate_summary,
                 candidate_hash=candidate_hash,
                 review_key=review_key,
-                status="open",
+                status=previous_decision.status if previous_decision else "open",
+                resolved_entity_id=previous_decision.resolved_entity_id if previous_decision else None,
+                resolved_at=previous_decision.resolved_at if previous_decision else None,
                 created_at=now,
                 updated_at=now,
             )

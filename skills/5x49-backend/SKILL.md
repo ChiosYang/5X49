@@ -124,6 +124,27 @@ TMDB 功能需要 `TMDB_API_KEY` 环境变量或托管设置；读取设置只�
 
 ## Analysis V2
 
+### 本地审核与纠错
+
+- `GET /films/{film_id}/analysis-review?offset=0&limit=50` 返回跨分析运行的
+  `relations`、`reviews` 和 `next_offset`，包含拒绝记录与用户修正关系；最大页长 100。
+- 每条记录包含 `revision`；写入前读取当前记录，过期版本返回 `409 stale_review`。
+- `PUT /films/{film_id}/assertions/{assertion_id}/review` 接受
+  `revision`、`decision: accepted|rejected`。纠错使用 `rejected` 并附带
+  `correction: {predicate, target_entity_id, direction}`，原关系拒绝与新关系接受原子提交。
+- `GET /films/{film_id}/analysis-review/targets?predicate=...&q=...` 查询最多 30 个
+  已有对象；引用匹配可附带 `entity_type=film|person|concept`。
+- `PUT /films/{film_id}/analysis-reviews/{review_id}` 使用 `revision` 与
+  `action: resolve|dismiss|reopen`。仅 `resolve` 需要 `correction`；
+  assertion 复核创建用户策展关系，entity_reference 复核只记录对象匹配。
+- 不允许创建新实体、绕过关系类型/方向约束、给修正关系复制旧证据，或在此将网络证据标记为有效。
+  Evidence/output 复核只可忽略或重新打开。重新打开复核不会撤销已建立的关系。
+- 已接受/拒绝决定及相同候选的已关闭复核会保留；Gate B 阻塞期间不改变事实图谱的展示边界。
+- 搜索使用 `/library/films?q=...`；`%`、`_` 按普通字符匹配。
+  评分/笔记仍使用 profile-state API，`null` 清空字段，Activity 不复制笔记正文。
+
+完整错误码与请求边界见 `docs/api.md` 的 Local Analysis review。
+
 ```bash
 curl -s -X POST http://127.0.0.1:8000/films/<film_id>/analysis-runs
 curl -s http://127.0.0.1:8000/films/<film_id>/analysis

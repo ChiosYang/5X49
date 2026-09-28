@@ -326,10 +326,67 @@ AnalysisRun, Assertion, provenance, Evidence and resolution reviews.
 
 ### `GET /films/{film_id}/analysis`
 
-Returns `FilmAnalysisView` assembled from the latest successful AnalysisRun and
+Returns `FilmAnalysisView` assembled from the latest AnalysisRun and
 active structured records. It contains a bounded summary, relations, Evidence,
 reviews and status. Raw prompts/responses, hidden reasoning and compatibility
 JSON are never stored or returned.
+
+### Local Analysis review
+
+| Method | Path | Purpose |
+| --- | --- | --- |
+| `GET` | `/films/{film_id}/analysis-review?offset=0&limit=50` | Review history across runs, including rejected and user-corrected relations. |
+| `GET` | `/films/{film_id}/analysis-review/targets?predicate=INFLUENCED_BY&q=...` | Up to 30 existing, active target entities of the required kind. |
+| `PUT` | `/films/{film_id}/assertions/{assertion_id}/review` | Accept, reject or correct an Analysis relationship. |
+| `PUT` | `/films/{film_id}/analysis-reviews/{review_id}` | Resolve, dismiss or reopen an unresolved reference. |
+
+The review page returns `relations`, `reviews`, `offset`, `limit` and
+`next_offset`. The same offset applies independently to both lists; consume
+both lists before requesting the next page. Maximum limit is 100. Each row
+includes a SHA-256 `revision` for optimistic concurrency. The original Analysis
+response remains unchanged and still excludes rejected relations.
+
+An Assertion decision is `{"revision":"<hash>","decision":"accepted"}` or
+`rejected`. To correct it, use `decision: "rejected"` plus:
+
+```json
+{
+  "correction": {
+    "predicate": "REMAKE_OF",
+    "target_entity_id": "film_0123456789abcdef0123456789abcdef",
+    "direction": "subject_to_target"
+  }
+}
+```
+
+This fragment supplements the decision payload. Correction rejects the original
+and accepts the replacement atomically. It validates predicate, entity kind,
+concept kind, lifecycle, direction and self-reference. It does not create new
+entities, make provider calls, or copy rationale/Evidence to another relation.
+An existing rejected replacement must be reviewed explicitly before reuse.
+
+Resolution payloads contain `revision` and `action` (`resolve`, `dismiss`,
+`reopen`). Only `resolve` requires `correction`. Assertion reviews create a
+user-curated relationship; entity-reference reviews only record the selected
+entity. For reference lookup, optional `entity_type=film|person|concept` selects
+the reference kind instead of the predicate's object kind. Evidence/output
+reviews can be dismissed or reopened, but cannot be marked verified here.
+Reopening a review does not undo any previously created relationship; review
+that relationship separately. Identical closed reference decisions carry
+forward when the same candidate appears in another analysis run.
+
+Stale revisions return `409 stale_review`; conflicting prior decisions return
+`409`; invalid selections return `422`; resources outside the selected Film
+return `404`. Read the current page before retrying. Writes, projections and
+bounded audit events commit together. User decisions survive reanalysis;
+Graph visibility remains factual while Gate B is blocked.
+
+The search UI uses `GET /library/films?q=...` (maximum 200 characters), matching
+normalized title/original title, genres, countries and directors. `%` and `_`
+are literal characters rather than wildcard syntax. The personal record editor
+uses the existing profile-state API and sends only changed `rating`/`notes`;
+explicit `null` clears either field. Notes are excluded from profile-state
+Activity payloads and from model input.
 
 ## Activity and operation restore
 
