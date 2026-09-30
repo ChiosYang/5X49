@@ -62,6 +62,12 @@ acceptance of the actual distributed build; no users or retention results are
 claimed. See `docs/features/rc-stabilization.md`, `docs/release-readiness.md`
 and `docs/beta-validation.md`.
 
+RC distribution tooling and local-registry acceptance are also complete:
+committed-source builds, pinned base/image digests, dual-architecture packaging
+and isolated install/upgrade/recovery passed on ARM64 and emulated AMD64. Public
+registry publication and native target-host acceptance remain separate from
+these local results. See `docs/features/rc-distribution.md`.
+
 ## Active quality gate
 
 ### Gate B — Analysis V2 quality

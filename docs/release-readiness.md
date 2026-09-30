@@ -11,6 +11,13 @@ It does not certify mutable published `latest` tags or imply external user or
 live-model results. Detailed evidence is in
 [the feature record](features/rc-stabilization.md).
 
+Follow-up RC distribution acceptance is complete for source `50e7125`: pinned
+base images, committed-source packaging, registry/OCI outputs, and exact-image
+installation/recovery passed on ARM64 and emulated AMD64. Registry testing used
+a disposable local endpoint; no public registry release was performed. See
+[distribution evidence](features/rc-distribution.md) and
+[operator commands](rc-distribution.md). This does not close the product gates.
+
 ## Evidence matrix
 
 | Area | Result | Evidence / practical boundary |
@@ -27,6 +34,7 @@ live-model results. Detailed evidence is in
 | Frontend regression | Passed | 44 unit tests, lint, typecheck, production build |
 | Dependency audit | Passed at evidence time | Next.js / eslint-config-next 16.3.8, compatible transitive updates; npm audit 0 findings |
 | Current-source containers | Passed | Both Dockerfiles built; isolated Linux ARM64 install/proxy/scan/restart/recovery |
+| Fixed RC distribution | Passed locally | Multi-platform registry and OCI outputs; digest-pinned install/recovery on ARM64 and emulated AMD64; public registry publication remains separate |
 | Browser smoke | Passed, sampled | English Ask; Chinese Diary/detail; 390px overflow checks and clean sampled console |
 | Install/privacy/diagnostics guidance | Prepared | [Operator runbook](rc-operations.md), existing README/Docker guide, known boundaries below |
 | W13–W14 tracking | Prepared, unmeasured | [Consent, cohort, denominators and follow-up plan](beta-validation.md); no telemetry or scheduled outreach added |
@@ -63,7 +71,8 @@ review conclusion, not a guarantee that the whole product is defect-free.
 - Default Compose uses published `latest` tags and fixed single-instance names.
   Current checkout tests do not prove those tags contain this candidate. For
   acceptance record exact image IDs/digests and use isolated project/resources.
-- ARM64 was exercised locally. AMD64, Windows, NAS permissions, prolonged soak,
+- ARM64 and emulated AMD64 were exercised locally. Native AMD64 host behavior,
+  Windows/NAS permissions, prolonged soak,
   power-loss durability and large real libraries require environment/user
   evidence beyond this run. Do not silently relabel them as passed.
 - Real Ask interpretation and Analysis Evidence quality are separate from the

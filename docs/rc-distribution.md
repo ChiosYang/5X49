@@ -101,6 +101,10 @@ downgrade is not guaranteed merely by switching to an older image.
 This command pulls exact digests and creates a unique, temporary Compose project
 with empty synthetic data, read-only media and no provider keys. It never uses an
 existing installation or repository `.env`. Output must be a new directory.
+For each platform it resolves the verified index to that architecture's child
+manifest digest. This lets classic Docker stores test both architectures without
+trying to overwrite the same local index reference. Both index and installed
+manifest references are recorded with the Docker engine architecture.
 
 ```sh
 uv run --project backend --locked python scripts/smoke_rc.py \

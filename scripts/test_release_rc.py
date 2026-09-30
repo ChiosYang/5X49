@@ -1,5 +1,8 @@
 import io
+import hashlib
 import json
+import os
+import shutil
 import subprocess
 import tarfile
 import tempfile
@@ -9,6 +12,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 import release_rc as rc
+import smoke_rc
 
 
 SHA = "a" * 40
@@ -34,6 +38,20 @@ class ReleaseTests(unittest.TestCase):
             rc.require_platforms(manifest, rc.PLATFORMS)
         manifest["manifests"].append({"platform": {"os": "linux", "architecture": "amd64"}})
         rc.require_platforms(manifest, rc.PLATFORMS)
+
+    def test_smoke_selects_platform_digest_without_clobbering_other_architectures(self):
+        manifest = {"manifests": [
+            {"platform": {"os": "linux", "architecture": "amd64"}, "digest": DIGEST},
+            {"platform": {"os": "linux", "architecture": "arm64"}, "digest": "sha256:" + "c" * 64},
+        ]}
+        with patch.object(smoke_rc.subprocess, "check_output", return_value=json.dumps(manifest)):
+            self.assertEqual(smoke_rc.platform_image("test/image@sha256:" + "d" * 64, "linux/amd64"), "test/image@" + DIGEST)
+            self.assertEqual(smoke_rc.platform_image("test/image@sha256:" + "d" * 64, "linux/arm64"), "test/image@sha256:" + "c" * 64)
+        for manifests in ([], [manifest["manifests"][0]] * 2,
+                          [{"platform": {"os": "linux", "architecture": "amd64"}, "digest": "invalid"}]):
+            with patch.object(smoke_rc.subprocess, "check_output", return_value=json.dumps({"manifests": manifests})), \
+                 self.assertRaises(rc.ReleaseError):
+                smoke_rc.platform_image("test/image@" + DIGEST, "linux/amd64")
 
     def test_build_commands_pin_bases_and_only_one_rc_tag(self):
         for push in (False, True):
@@ -128,6 +146,53 @@ class ReleaseTests(unittest.TestCase):
             with self.assertRaises(rc.ReleaseError):
                 rc.release(self._args(output))
             self.assertEqual((output / "release.json").read_text(), "retain me")
+
+    def test_oci_output_verifies_content_digest_and_architectures(self):
+        index = {"manifests": [{"platform": {"os": "linux", "architecture": arch}} for arch in ("arm64", "amd64")]}
+        data = json.dumps(index).encode()
+        digest = "sha256:" + hashlib.sha256(data).hexdigest()
+        with tempfile.TemporaryDirectory() as temporary:
+            path = Path(temporary) / "image.tar"
+            for content in (data, b"corrupted index"):
+                with tarfile.open(path, "w") as archive:
+                    for name, body in (("index.json", json.dumps({"manifests": [{"digest": digest}]}).encode()),
+                                       ("blobs/sha256/" + digest.split(":")[1], content)):
+                        entry = tarfile.TarInfo(name)
+                        entry.size = len(body)
+                        archive.addfile(entry, io.BytesIO(body))
+                if content == data:
+                    rc.verify_oci(path, digest, rc.PLATFORMS)
+                    with self.assertRaises(rc.ReleaseError):
+                        rc.verify_oci(path, DIGEST, rc.PLATFORMS)
+                else:
+                    with self.assertRaises(rc.ReleaseError):
+                        rc.verify_oci(path, digest, rc.PLATFORMS)
+
+    @unittest.skipUnless(shutil.which("docker"), "Docker CLI required for Compose contract")
+    def test_release_compose_requires_images_and_isolates_projects(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            env_file = Path(temporary) / "empty.env"
+            env_file.write_text("")
+            environment = {key: value for key, value in os.environ.items()
+                           if key not in ("BACKEND_IMAGE", "FRONTEND_IMAGE", "MEDIA_DIR")}
+            command = ["docker", "compose", "--env-file", str(env_file), "-p", "rc-contract-test",
+                       "-f", str(rc.ROOT / "docker-compose.release.yml"), "config", "--format", "json"]
+            missing = subprocess.run(command, env=environment, text=True, capture_output=True)
+            self.assertNotEqual(missing.returncode, 0)
+            self.assertIn("BACKEND_IMAGE", missing.stderr)
+            environment.update(BACKEND_IMAGE="test/backend@" + DIGEST, FRONTEND_IMAGE="test/frontend@" + DIGEST,
+                               MEDIA_DIR=temporary, TMDB_API_KEY="", OPENROUTER_API_KEY="",
+                               MEDIA_READ_ONLY="true", BIND_ADDRESS="127.0.0.1")
+            resolved = subprocess.run(command, env=environment, text=True, capture_output=True, check=True)
+            services = json.loads(resolved.stdout)["services"]
+            for service in services.values():
+                self.assertNotIn("container_name", service)
+                self.assertIn("@sha256:", service["image"])
+                self.assertEqual(service["ports"][0]["host_ip"], "127.0.0.1")
+            media = next(volume for volume in services["backend"]["volumes"] if volume["target"] == "/media")
+            self.assertTrue(media["read_only"])
+            self.assertFalse(media["bind"].get("create_host_path", False))
+            self.assertEqual(services["frontend"]["depends_on"]["backend"]["condition"], "service_healthy")
 
 
 if __name__ == "__main__":

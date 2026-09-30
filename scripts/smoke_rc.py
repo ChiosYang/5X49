@@ -28,7 +28,22 @@ def request(base, path, method="GET", data=None):
         return json.load(response)
 
 
+def platform_image(reference, platform):
+    # Classic Docker stores cannot associate one index digest with two local
+    # architectures. Install the selected child manifest by its immutable digest.
+    manifest = json.loads(subprocess.check_output(
+        ["docker", "buildx", "imagetools", "inspect", "--raw", reference], text=True,
+    ))
+    matches = [item.get("digest", "") for item in manifest.get("manifests", [])
+               if f"{item.get('platform', {}).get('os')}/{item.get('platform', {}).get('architecture')}" == platform]
+    if len(matches) != 1 or not DIGEST.fullmatch(matches[0]):
+        raise ReleaseError("RC index does not identify exactly one valid manifest for the requested platform")
+    return reference.rsplit("@", 1)[0] + "@" + matches[0]
+
+
 def smoke(args):
+    if not __debug__:
+        raise ReleaseError("Run acceptance without Python optimization so assertions remain enabled")
     release = json.loads(args.release.read_text(encoding="utf-8"))
     if release["distribution"] != "registry" or args.platform not in release["platforms"]:
         raise ReleaseError("Smoke requires registry-distributed images for the selected platform")
@@ -36,6 +51,11 @@ def smoke(args):
         image = release["images"][service]
         if not DIGEST.fullmatch(image["digest"]) or not image["reference"].endswith("@" + image["digest"]):
             raise ReleaseError("Smoke requires digest-pinned image references")
+    images = {service: platform_image(release["images"][service]["reference"], args.platform)
+              for service in ("backend", "frontend")}
+    engine_platform = subprocess.check_output(
+        ["docker", "info", "--format", "{{.OSType}}/{{.Architecture}}"], text=True,
+    ).strip().replace("aarch64", "arm64").replace("x86_64", "amd64")
     output = args.output.resolve()
     output.mkdir(parents=True, exist_ok=False)
     media = output / "media"
@@ -49,8 +69,8 @@ def smoke(args):
     frontend_port, backend_port = port(), port()
     while frontend_port == backend_port:
         backend_port = port()
-    environment = {**os.environ, "BACKEND_IMAGE": release["images"]["backend"]["reference"],
-                   "FRONTEND_IMAGE": release["images"]["frontend"]["reference"],
+    environment = {**os.environ, "BACKEND_IMAGE": images["backend"],
+                   "FRONTEND_IMAGE": images["frontend"],
                    "MEDIA_DIR": str(media), "MEDIA_READ_ONLY": "true", "WATCH_LIBRARY": "false",
                    "TMDB_API_KEY": "", "OPENROUTER_API_KEY": "", "BIND_ADDRESS": "127.0.0.1",
                    "BACKEND_PORT": str(backend_port), "FRONTEND_PORT": str(frontend_port),
@@ -83,6 +103,8 @@ def smoke(args):
 
     base = f"http://127.0.0.1:{frontend_port}/api"
     evidence = {"source_revision": release["source_revision"], "platform": args.platform, "images": release["images"],
+                "installed_images": images, "engine_platform": engine_platform,
+                "execution": "native-architecture" if args.platform == engine_platform else "cross-architecture",
                 "project": project, "checks": []}
     try:
         compose("config", "--quiet")
@@ -182,7 +204,7 @@ assert any(verify_backup_manifest(path).source_schema_version == 4 for path in m
         evidence["status"] = "passed"
     finally:
         try:
-            compose("down", "--remove-orphans")
+            compose("down", "--volumes", "--remove-orphans")
         finally:
             log.close()
     (output / "acceptance.json").write_text(json.dumps(evidence, indent=2) + "\n")
