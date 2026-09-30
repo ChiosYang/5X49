@@ -1,7 +1,10 @@
-FROM python:3.13-slim
+ARG PYTHON_IMAGE=python:3.13-slim
+ARG UV_IMAGE=ghcr.io/astral-sh/uv:latest
+FROM ${UV_IMAGE} AS uv
+FROM ${PYTHON_IMAGE}
 
 # Install uv
-COPY --from=ghcr.io/astral-sh/uv:latest /uv /bin/uv
+COPY --from=uv /uv /bin/uv
 
 # Install ffprobe for local video technical metadata extraction
 RUN apt-get update \

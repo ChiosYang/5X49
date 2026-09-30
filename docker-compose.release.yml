@@ -1,12 +1,16 @@
 services:
   backend:
-    image: ${DOCKER_USERNAME:-alicolia}/5x49-backend:latest
-    container_name: 5x49-backend
+    image: ${BACKEND_IMAGE:?Set BACKEND_IMAGE to the verified RC image digest}
     ports:
-      - "11548:8000"
+      - "${BIND_ADDRESS:-127.0.0.1}:${BACKEND_PORT:-11548}:8000"
     volumes:
       - backend_data:/app/data
-      - ${MEDIA_DIR:-./media}:/media
+      - type: bind
+        source: ${MEDIA_DIR:?Set MEDIA_DIR to an existing host directory}
+        target: /media
+        read_only: ${MEDIA_READ_ONLY:-true}
+        bind:
+          create_host_path: false
     environment:
       - TMDB_API_KEY=${TMDB_API_KEY:-}
       - TMDB_SCRAPE_CONCURRENCY=${TMDB_SCRAPE_CONCURRENCY:-3}
@@ -15,24 +19,33 @@ services:
       - MODEL_NAME=${MODEL_NAME:-openrouter/pony-alpha}
       - API_BASE_URL=${API_BASE_URL:-https://openrouter.ai/api/v1}
       - MEDIA_DIR=/media
+      - WATCH_LIBRARY=${WATCH_LIBRARY:-false}
+      - PYTHON_DOTENV_DISABLED=1
       - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-http://localhost:5549}
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:8000/health')"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=3)"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
 
   frontend:
-    image: ${DOCKER_USERNAME:-alicolia}/5x49-frontend:latest
-    container_name: 5x49-frontend
+    image: ${FRONTEND_IMAGE:?Set FRONTEND_IMAGE to the verified RC image digest}
     ports:
-      - "5549:3000"
+      - "${BIND_ADDRESS:-127.0.0.1}:${FRONTEND_PORT:-5549}:3000"
     environment:
       - BACKEND_URL=http://backend:8000
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/api/health', {signal: AbortSignal.timeout(3000)}).then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
 
 volumes:
   backend_data:
