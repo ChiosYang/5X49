@@ -1,6 +1,6 @@
 # 5X49 Product Roadmap
 
-- Updated: 2026-09-28
+- Updated: 2026-10-01
 - Product: self-hosted personal cinema knowledge and viewing system
 - Current architecture: Fresh Canonical v1
 
@@ -51,6 +51,16 @@ reviewable query plan, strict factual filtering, explicit Person resolution and
 a no-key form. Evidence is tracked in `docs/features/ask-mvp.md`.
 Live interpretation quality, representative real-library usefulness, Alpha
 comprehension and repeated-use evidence remain unverified product gates.
+
+W11 engineering acceptance is complete for the `ai/rc-stabilization`
+candidate based on `fbccc54`: supported upgrade/restore and failure-path fixes,
+read-only diagnostics, frontend security patches, regression and isolated
+ARM64 container recovery checks passed. Registry publication is a separate
+release step. W12 operator/privacy/known-issue guidance and W13–W14 cohort protocol
+are prepared. Public Beta remains pending real Alpha/product evidence and
+acceptance of the actual distributed build; no users or retention results are
+claimed. See `docs/features/rc-stabilization.md`, `docs/release-readiness.md`
+and `docs/beta-validation.md`.
 
 ## Active quality gate
 

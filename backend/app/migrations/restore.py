@@ -15,6 +15,7 @@ from pathlib import Path
 from typing import Any, Sequence
 
 from app.migrations.backup import (
+    MINIMUM_FREE_BYTES,
     BackupArtifact,
     BackupValidationError,
     create_verified_backup,
@@ -101,6 +102,7 @@ def restore_verified_backup(
         raise RestoreValidationError("Backup database cannot restore over itself")
     if not SHA256_PATTERN.fullmatch(expected_target_sha256):
         raise RestoreValidationError("Expected target SHA-256 is invalid")
+    _require_checkpointed_target(target_path)
 
     try:
         target_snapshot = inspect_database(target_path)
@@ -108,6 +110,9 @@ def restore_verified_backup(
         raise RestoreValidationError(str(exc)) from exc
     if target_snapshot.sha256 != expected_target_sha256:
         raise RestoreValidationError("Target SHA-256 changed; refusing to replace database")
+
+    if shutil.disk_usage(target_path.parent).free < verified.artifact.size_bytes + MINIMUM_FREE_BYTES:
+        raise RestoreValidationError("Insufficient free space for database restore")
 
     preserve_dir = (preserve_dir or target_path.parent / "backups" / "pre-restore").resolve()
     schema_version = _current_schema_version(target_path)
@@ -119,24 +124,42 @@ def restore_verified_backup(
             source_schema_version=schema_version,
             target_schema_version=schema_version,
         )
-    except BackupValidationError as exc:
+    except (BackupValidationError, OSError, sqlite3.Error) as exc:
         raise RestoreValidationError("Current database could not be preserved") from exc
 
+    if inspect_database(target_path) != target_snapshot:
+        raise RestoreValidationError("Target database changed; refusing to replace database")
+    _require_checkpointed_target(target_path)
     _require_offline_checkpoint(target_path)
-    temporary_path = _copy_to_temporary(verified.artifact.database_path, target_path.parent)
+    checkpoint_snapshot = inspect_database(target_path)
+    temporary_path = None
     archived_sidecars: tuple[Path, ...] = ()
     try:
+        temporary_path = _copy_to_temporary(verified.artifact.database_path, target_path.parent)
         temporary_snapshot = inspect_database(temporary_path)
-        if temporary_snapshot != inspect_database(verified.artifact.database_path):
+        if (
+            temporary_snapshot.sha256 != verified.artifact.sha256
+            or temporary_snapshot.size_bytes != verified.artifact.size_bytes
+            or temporary_snapshot.row_counts != verified.artifact.row_counts
+        ):
             raise RestoreValidationError("Temporary restore copy failed verification")
 
+        if inspect_database(target_path) != checkpoint_snapshot:
+            raise RestoreValidationError("Target database changed; refusing to replace database")
+        _require_checkpointed_target(target_path)
+        _require_offline_checkpoint(target_path)
+        if inspect_database(target_path) != checkpoint_snapshot:
+            raise RestoreValidationError("Target database changed; refusing to replace database")
         archived_sidecars = _archive_sidecars(target_path, preserve_dir)
         os.replace(temporary_path, target_path)
         restored_snapshot = inspect_database(target_path)
         if restored_snapshot != temporary_snapshot:
             raise RestoreValidationError("Restored database failed post-replace verification")
+    except (OSError, sqlite3.Error, BackupValidationError) as exc:
+        raise RestoreValidationError("Database restore failed; retained safety backup is available") from exc
     finally:
-        temporary_path.unlink(missing_ok=True)
+        if temporary_path is not None:
+            temporary_path.unlink(missing_ok=True)
 
     return RestoreReport(
         target_path=target_path,
@@ -219,6 +242,14 @@ def _require_offline_checkpoint(path: Path) -> None:
             connection.execute("ROLLBACK")
     except sqlite3.Error as exc:
         raise RestoreValidationError("Target database is busy; stop the application first") from exc
+
+
+def _require_checkpointed_target(path: Path) -> None:
+    # The confirmation hashes the .db file, not committed rows still in WAL.
+    # Do not silently checkpoint newer, unconfirmed work into the restore target.
+    wal = Path(f"{path}-wal")
+    if wal.exists() and wal.stat().st_size:
+        raise RestoreValidationError("Target has pending WAL; stop writers, checkpoint and confirm a new SHA-256")
 
 
 def _copy_to_temporary(source: Path, destination_dir: Path) -> Path:
@@ -304,6 +335,9 @@ def main(argv: Sequence[str] | None = None) -> int:
             )
     except RestoreValidationError as exc:
         print(f"Restore refused: {exc}", file=sys.stderr)
+        return 2
+    except (OSError, sqlite3.Error, BackupValidationError):
+        print("Restore refused: database or backup storage is unavailable", file=sys.stderr)
         return 2
 
     print(json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True))
