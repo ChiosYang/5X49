@@ -92,7 +92,11 @@ def run_migrations(
         _set_journal_status(engine, migration, "running")
         try:
             with engine.begin() as connection:
+                # sqlite3's legacy transaction mode does not begin for DDL.
+                # Keep schema/data and the applied journal in one real transaction.
+                connection.exec_driver_sql("BEGIN IMMEDIATE")
                 migration.upgrade(connection)
+                _write_journal_status(connection, migration, "applied")
         except Exception as exc:
             try:
                 _set_journal_status(
@@ -107,7 +111,6 @@ def run_migrations(
                 f"Database migration {migration.version} ({migration.name}) failed"
             ) from exc
 
-        _set_journal_status(engine, migration, "applied")
         newly_applied.append(migration.version)
 
     return MigrationReport(
@@ -213,26 +216,36 @@ def _set_journal_status(
     *,
     error_summary: str | None = None,
 ) -> None:
+    with engine.begin() as connection:
+        _write_journal_status(connection, migration, status, error_summary=error_summary)
+
+
+def _write_journal_status(
+    connection: Connection,
+    migration: Migration,
+    status: str,
+    *,
+    error_summary: str | None = None,
+) -> None:
     now = datetime.now(timezone.utc).isoformat()
     finished_at = now if status in {"applied", "failed"} else None
-    with engine.begin() as connection:
-        connection.execute(
-            text(
-                f"INSERT INTO {JOURNAL_TABLE} "
-                "(version, name, checksum, started_at, finished_at, status, error_summary) "
-                "VALUES (:version, :name, :checksum, :started_at, :finished_at, :status, :error_summary) "
-                "ON CONFLICT(version) DO UPDATE SET "
-                "name = excluded.name, checksum = excluded.checksum, "
-                "started_at = excluded.started_at, finished_at = excluded.finished_at, "
-                "status = excluded.status, error_summary = excluded.error_summary"
-            ),
-            {
-                "version": migration.version,
-                "name": migration.name,
-                "checksum": migration.checksum,
-                "started_at": now,
-                "finished_at": finished_at,
-                "status": status,
-                "error_summary": error_summary[:500] if error_summary else None,
-            },
-        )
+    connection.execute(
+        text(
+            f"INSERT INTO {JOURNAL_TABLE} "
+            "(version, name, checksum, started_at, finished_at, status, error_summary) "
+            "VALUES (:version, :name, :checksum, :started_at, :finished_at, :status, :error_summary) "
+            "ON CONFLICT(version) DO UPDATE SET "
+            "name = excluded.name, checksum = excluded.checksum, "
+            "started_at = excluded.started_at, finished_at = excluded.finished_at, "
+            "status = excluded.status, error_summary = excluded.error_summary"
+        ),
+        {
+            "version": migration.version,
+            "name": migration.name,
+            "checksum": migration.checksum,
+            "started_at": now,
+            "finished_at": finished_at,
+            "status": status,
+            "error_summary": error_summary[:500] if error_summary else None,
+        },
+    )

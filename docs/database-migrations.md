@@ -84,6 +84,13 @@ uv run python -m app.projections rebuild --film <film-id>
 Library and detail APIs never silently fall back to live Canonical joins. A
 missing or stale projection returns `503` with code `projection_unavailable`.
 
+`verify` opens an existing database read-only, never initializes or repairs it,
+and exits 2 with a bounded error code on missing/stale/corrupt state. `rebuild`
+explicitly initializes the supported schema but skips startup projection
+verification so damaged read models can actually be repaired. Stop application
+writers and make a verified backup before repair. Neither command needs a
+provider key or media access.
+
 ## Additive Schema v3
 
 Schema v3 adds durable `workflow_run` and `workflow_step` records and links the
@@ -155,7 +162,7 @@ entry point.
 
 ## Future migrations
 
-Future changes resume at version 5. Each migration must have a monotonically
+Future changes start at version 6. Each migration must have a monotonically
 increasing integer version, stable name, deterministic checksum and one
 transactional upgrade.
 
@@ -166,6 +173,11 @@ transactional upgrade.
 - Compare fresh baseline-plus-migrations with the registered current SQLModel schema.
 - Test repeat execution, checksum mismatch, transactional failure and recovery.
 
+The runner explicitly begins a SQLite transaction before migration DDL. The
+schema/data changes and `applied` journal update commit together. DDL failures,
+including a failed final journal write, roll back before recording a bounded
+`failed` status; a retry must not encounter partially committed new tables.
+
 ## Backup and restore
 
 Existing same-epoch databases with future pending migrations use SQLite's
@@ -174,6 +186,20 @@ hashed and described by a path-free manifest. Copying only a live `.db` file is
 not an acceptable backup when WAL may be active.
 
 Offline verification:
+
+Create an operator backup without booting, migrating or scanning the application
+(run from `backend/`, substitute the actual database path):
+
+```sh
+uv run python -m app.backup --database data/library.db --backup-dir data/backups/manual
+```
+
+Keep the returned `.db` and `.manifest.json` together. The backup command exits
+2 on integrity/storage errors and does not expose raw storage exceptions. A
+full backup contains private settings, paths and personal data; keep it local
+or in protected storage, not in a public issue or Git.
+
+Verify the returned manifest before replacement:
 
 ```powershell
 uv run python -m app.migrations.restore --manifest <backup.manifest.json>
@@ -193,6 +219,22 @@ The restore command creates a safety backup, checks exclusivity, validates the
 manifest and target hash, handles exact sidecars and verifies the restored
 database. Downgrade migrations are not supported; rollback means restoring a
 verified backup and running the corresponding earlier application build.
+
+Restore also checks destination space and revalidates the target after preparing
+the copy. The copied database must match the originally verified manifest, even
+if the backup changes during preparation. A non-empty target WAL is refused:
+stop every writer, explicitly checkpoint offline, then calculate a new target
+SHA-256. Never delete WAL/SHM files to bypass this guard. Online **backup** still
+captures committed WAL rows through SQLite's backup API.
+
+An exclusivity probe and repeated hashes do not replace the stopped-writer
+requirement: keep all application instances and database tools stopped for the
+entire replacement. Storage failure before replacement leaves the target and
+verified safety backup available. For post-replacement verification failure,
+leave the application stopped and recover from that safety backup.
+
+See [the RC operator runbook](rc-operations.md) for the full release/recovery
+sequence and [release readiness](release-readiness.md) for measured boundaries.
 
 ## Release verification
 

@@ -40,7 +40,7 @@ configure_sqlite_engine(engine)
 install_projection_hooks()
 
 
-def create_db_and_tables():
+def create_db_and_tables(*, initialize_projections: bool = True):
     import app.models  # noqa: F401
 
     existing_database = database_has_user_tables(sqlite_path)
@@ -53,7 +53,8 @@ def create_db_and_tables():
         backup_required=existing_database,
     )
     _assert_fresh_schema_epoch()
-    projection_coordinator.bootstrap(engine)
+    if initialize_projections:
+        projection_coordinator.bootstrap(engine)
 
 
 def _assert_fresh_schema_epoch() -> None:

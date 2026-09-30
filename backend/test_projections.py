@@ -1,11 +1,15 @@
 import tempfile
 import unittest
+import io
+import os
+from contextlib import redirect_stdout
 from pathlib import Path
 from unittest.mock import patch
 
 from sqlmodel import Session, create_engine, delete, select
 
 import app.database as database
+import app.projections as projection_cli
 import app.services.event_store as event_store_module
 import app.services.library as library_module
 import app.services.operation_snapshots as snapshots_module
@@ -109,6 +113,45 @@ class ProjectionTests(unittest.TestCase):
             )
             for name, version in PROJECTION_VERSIONS.items():
                 self.assertEqual(session.get(ProjectionState, name).projection_version, version)
+
+    def test_cli_verify_does_not_repair_stale_state_or_mutate_database(self):
+        self._seed("Diagnostic")
+        with Session(self.engine) as session:
+            state = session.get(ProjectionState, "library")
+            state.status = "failed"
+            session.add(state)
+            session.commit()
+        before = self.database_path.read_bytes()
+        with (
+            patch.dict(os.environ, {"SQLITE_DB_PATH": str(self.database_path)}),
+            patch.object(database, "sqlite_path", self.database_path),
+            redirect_stdout(io.StringIO()),
+        ):
+            self.assertEqual(projection_cli.main(["verify"]), 2)
+        self.assertEqual(self.database_path.read_bytes(), before)
+
+    def test_cli_rebuild_repairs_corrupt_projection_even_when_startup_would_fail(self):
+        film_id = self._seed("Repair")
+        with Session(self.engine) as session:
+            row = session.get(LibraryFilmReadModel, film_id)
+            row.source_hash = "0" * 64
+            session.add(row)
+            session.commit()
+        with (
+            patch.dict(os.environ, {"SQLITE_DB_PATH": str(self.database_path)}),
+            patch.object(database, "sqlite_path", self.database_path),
+            redirect_stdout(io.StringIO()),
+        ):
+            self.assertEqual(projection_cli.main(["rebuild", "--all"]), 0)
+            self.assertEqual(projection_cli.main(["verify"]), 0)
+        with Session(self.engine) as session:
+            self.assertEqual(session.get(Film, film_id).canonical_title, "Repair")
+
+    def test_cli_verify_missing_database_does_not_create_it(self):
+        missing = self.root / "missing" / "library.db"
+        with patch.dict(os.environ, {"SQLITE_DB_PATH": str(missing)}), redirect_stdout(io.StringIO()):
+            self.assertEqual(projection_cli.main(["verify"]), 2)
+        self.assertFalse(missing.parent.exists())
 
     def _seed(self, title: str) -> str:
         library_manager.add_observations([self._observation(title)])
