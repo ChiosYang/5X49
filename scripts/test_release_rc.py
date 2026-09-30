@@ -177,12 +177,15 @@ class ReleaseTests(unittest.TestCase):
                            if key not in ("BACKEND_IMAGE", "FRONTEND_IMAGE", "MEDIA_DIR")}
             command = ["docker", "compose", "--env-file", str(env_file), "-p", "rc-contract-test",
                        "-f", str(rc.ROOT / "docker-compose.release.yml"), "config", "--format", "json"]
-            missing = subprocess.run(command, env=environment, text=True, capture_output=True)
-            self.assertNotEqual(missing.returncode, 0)
-            self.assertIn("BACKEND_IMAGE", missing.stderr)
             environment.update(BACKEND_IMAGE="test/backend@" + DIGEST, FRONTEND_IMAGE="test/frontend@" + DIGEST,
                                MEDIA_DIR=temporary, TMDB_API_KEY="", OPENROUTER_API_KEY="",
                                MEDIA_READ_ONLY="true", BIND_ADDRESS="127.0.0.1")
+            for field in ("BACKEND_IMAGE", "FRONTEND_IMAGE", "MEDIA_DIR"):
+                with self.subTest(missing=field):
+                    incomplete = {key: value for key, value in environment.items() if key != field}
+                    missing = subprocess.run(command, env=incomplete, text=True, capture_output=True)
+                    self.assertNotEqual(missing.returncode, 0)
+                    self.assertIn(field, missing.stderr)
             resolved = subprocess.run(command, env=environment, text=True, capture_output=True, check=True)
             services = json.loads(resolved.stdout)["services"]
             for service in services.values():
