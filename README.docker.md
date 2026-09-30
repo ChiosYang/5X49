@@ -26,7 +26,9 @@ docker compose up -d
 - OpenAPI：`http://localhost:11548/docs`
 
 `docker-compose.yml` 是普通用户的规范部署文件；
-`docker-compose.release.yml` 保留相同的端口、环境变量和镜像行为，供已有发布流程使用。
+`docker-compose.release.yml` 用于固定版本的 RC 验收，需要显式指定镜像和媒体目录；
+默认绑定本机地址、只读媒体，并支持独立 Compose project。步骤见
+[RC 打包与固定镜像部署](docs/rc-distribution.md)。
 
 ## 媒体目录
 
@@ -86,4 +88,5 @@ docker compose down
 - 扫描结果为零：确认每部电影位于一级子目录，且包含受支持的视频或 NFO。
 - Key 测试失败：不会影响基础资料库；确认环境变量后重新创建 backend 容器。
 
-本部署路径使用远程 `latest` 镜像。镜像 digest 固定和可复现构建不在当前部署契约内。
+普通部署默认使用远程 `latest` 镜像。需要固定版本、可追溯的 RC 产物和安装恢复验收时，
+使用 [RC 分发流程](docs/rc-distribution.md)；该流程生成 digest 固定的部署配置。

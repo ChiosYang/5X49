@@ -16,6 +16,10 @@ backend container (`/app/data/library.db`, media `/media`). A Docker installatio
 uses the published image in Compose, not the checked-out source. Record the
 image ID/digest and source commit for the build actually being tested.
 
+For a fixed RC build, follow [RC distribution](rc-distribution.md). Include the
+same project name, release Compose file and env files in every command below;
+plain `docker compose` otherwise selects the ordinary `latest` deployment.
+
 ## Before an upgrade
 
 1. Record the current application commit/image ID and database schema version.

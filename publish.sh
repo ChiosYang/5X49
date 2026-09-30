@@ -1,5 +1,17 @@
 #!/bin/bash
 
+# RC publication is explicit, non-interactive and never moves latest or Git tags.
+if [[ "${1:-}" == "--rc" ]]; then
+    if [[ -z "${2:-}" ]]; then
+        echo "Usage: ./publish.sh --rc VERSION --output DIRECTORY [release_rc.py options]" >&2
+        exit 2
+    fi
+    RC_VERSION=$2
+    shift 2
+    RC_ROOT=$(cd "$(dirname "$0")" && pwd)
+    exec uv run --project "$RC_ROOT/backend" --locked python "$RC_ROOT/scripts/release_rc.py" --push --version "$RC_VERSION" "$@"
+fi
+
 # Configuration
 USERNAME="alicolia"
 TIMESTAMP=$(date +"%Y%m%d-%H%M")
