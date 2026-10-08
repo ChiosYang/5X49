@@ -1,0 +1,219 @@
+import { test, expect, type APIRequestContext, type Page } from '@playwright/test';
+import { writeFile, access } from 'node:fs/promises';
+import path from 'node:path';
+
+test.describe.configure({ mode: 'serial' });
+const backend = process.env.E2E_BACKEND!;
+const root = process.env.E2E_ROOT!;
+let films: Array<{ id: string; title: string }>;
+let retainedViewing: string;
+async function control(request: APIRequestContext, action: string) {
+  const r = await request.post(`${backend}/__e2e/control`, { headers: { 'x-e2e-token': process.env.E2E_TOKEN! }, data: { action } });
+  expect(r.ok()).toBeTruthy(); return r.json();
+}
+async function read(request: APIRequestContext, url: string) {
+  const r = await request.get(`${backend}${url}`); expect(r.ok()).toBeTruthy(); return r.json();
+}
+async function settleWorkflow(request: APIRequestContext, id: string) {
+  await expect.poll(async () => (await read(request, `/workflows/${id}`)).status, { timeout: 45000 }).toBe('succeeded');
+}
+test.beforeEach(async ({ context }) => {
+  // Browser network is local-only too; do not silently allow third-party artwork.
+  await context.route('**/*', route => {
+    const url = new URL(route.request().url());
+    return ['127.0.0.1', 'localhost'].includes(url.hostname) ? route.continue() : route.abort('blockedbyclient');
+  });
+});
+
+test('real empty library: invalid path, delayed save, exact scan path and refresh recovery', async ({ page, request }) => {
+  expect(await read(request, '/library/films')).toEqual([]);
+  await page.goto('/en/library');
+  const input = page.locator('input[type=text]').first();
+  await input.fill(path.join(root, 'does-not-exist'));
+  await page.getByRole('button', { name: /^(Start First Scan|Scan Again)$/ }).click();
+  await expect(page.getByRole('button', { name: /^(Start First Scan|Scan Again)$/ })).toBeEnabled();
+  await expect(page.getByText('Media directory does not exist', { exact: true })).toBeVisible();
+  expect(await read(request, '/workflows')).toEqual([]);
+  await control(request, 'hold_scan');
+  let saved = false;
+  let scanAfterSave = false;
+  await page.route(url => url.pathname === '/api/settings/media-dir', async route => {
+    if (route.request().method() !== 'PUT') return route.continue();
+    await new Promise(resolve => setTimeout(resolve, 500));
+    const response = await route.fetch(); saved = response.ok(); await route.fulfill({ response });
+  });
+  page.on('request', r => { if (new URL(r.url()).pathname === '/api/library/scan') scanAfterSave = saved; });
+  await input.fill(path.join(root, 'normal/media'));
+  const accepted = page.waitForResponse(r => new URL(r.url()).pathname === '/api/library/scan');
+  await page.getByRole('button', { name: /^(Start First Scan|Scan Again)$/ }).click();
+  const response = await accepted;
+  expect(response.ok()).toBeTruthy();
+  expect(new URL(response.url()).searchParams.get('media_dir')).toBe(path.join(root, 'normal/media'));
+  expect(scanAfterSave).toBe(true);
+  const { workflow_id } = await response.json();
+  await page.reload();
+  await expect(page.getByRole('button', { name: /scanning/i })).toBeVisible();
+  await control(request, 'release_scan');
+  await settleWorkflow(request, workflow_id);
+  films = await read(request, '/library/films'); expect(films).toHaveLength(12);
+  const detail = await read(request, `/library/films/${films[0].id}`);
+  expect(detail.primary_item.video.width).toBe(320);
+  expect(detail.primary_item.video.duration_seconds).toBeGreaterThan(0);
+  expect((await read(request, '/settings/media-dir')).media_dir).toBe(path.join(root, 'normal/media'));
+});
+
+test('card real mutation, explicit injected error/retry and keyboard disclosure', async ({ page, request }) => {
+  await page.goto('/en/library');
+  let fail = true;
+  await page.route(`**/api/films/${films[0].id}/profile-state`, route => fail && route.request().method() === 'PUT'
+    ? route.fulfill({ status: 503, json: { detail: 'Injected write failure' } }) : route.continue());
+  await page.getByRole('button', { name: `Actions for ${films[0].title}`, exact: true }).tap();
+  await page.getByRole('button', { name: 'Favorite', exact: true }).first().click();
+  await expect(page.getByText('Not saved. Please try again.', { exact: true })).toBeVisible();
+  expect((await read(request, `/films/${films[0].id}/profile-state`)).favorite).toBe(false);
+  fail = false;
+  await page.getByRole('button', { name: 'Retry', exact: true }).first().click();
+  await expect.poll(async () => (await read(request, `/films/${films[0].id}/profile-state`)).favorite).toBe(true);
+  await page.getByRole('button', { name: 'Filter', exact: true }).click();
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('button', { name: 'Filter', exact: true })).toBeFocused();
+  await expect(page.getByRole('button', { name: 'Filter', exact: true })).toHaveAttribute('aria-expanded', 'false');
+});
+
+async function confirmAsk(page: Page) {
+  await page.getByRole('button', { name: 'Review conditions', exact: true }).click();
+  await page.getByRole('button', { name: 'Find films with these conditions', exact: true }).click();
+}
+test('no-key real facts, zero results require reconfirmation; detail reload restores Ask', async ({ page, request }) => {
+  expect((await read(request, '/ask/status')).configured).toBe(false);
+  await page.goto('/en/ask');
+  await expect(page.getByRole('button', { name: 'Use filters', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  await page.getByRole('button', { name: 'Choose Genre', exact: true }).click();
+  const drama = page.getByRole('button', { name: /Drama/ }).first(); await drama.focus(); await page.keyboard.press('Enter');
+  await page.getByPlaceholder('Japan or JP').fill('JP');
+  await confirmAsk(page);
+  await page.getByRole('button', { name: 'Remove Genre', exact: true }).click();
+  await expect(page.getByPlaceholder('Japan or JP')).toHaveValue('JP');
+  await expect(page.getByRole('button', { name: 'Find films with these conditions', exact: true })).toHaveCount(0);
+  await confirmAsk(page);
+  await expect(page.locator('a[href*="/library/film_"]').first()).toBeVisible();
+  const saved = await page.evaluate(() => sessionStorage.getItem('5x49.ask.confirmed.v1'));
+  expect(saved).not.toContain('question');
+  await page.locator('a[href*="/library/film_"]').first().click();
+  await page.getByRole('button', { name: 'Watched today', exact: true }).waitFor();
+  await page.reload();
+  await page.getByRole('button', { name: /^Return to library$/i }).click();
+  await expect(page).toHaveURL(/\/en\/ask$/);
+  await expect(page.getByPlaceholder('Japan or JP')).toHaveValue('JP');
+  await expect(page.locator('a[href*="/library/film_"]').first()).toBeVisible();
+});
+
+test('filtered Library detail return preserves URL, focus and scroll', async ({ page }) => {
+  await page.goto('/en/library?filter=unwatched&sort=title');
+  const card = page.locator('a[id^="film-link-"]').nth(4);
+  await card.scrollIntoViewIfNeeded();
+  const id = await card.getAttribute('id');
+  await card.click();
+  await page.getByRole('button', { name: 'Watched today', exact: true }).waitFor();
+  await page.getByRole('button', { name: /^(Return to library|Back)$/i }).click();
+  await expect(page).toHaveURL(/filter=unwatched&sort=title/);
+  await expect(page.locator(`#${id}`)).toBeFocused();
+  const expected = await page.evaluate(() => JSON.parse(sessionStorage.getItem('5x49:return-context:v1')!).scrollY);
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBeCloseTo(expected, -1);
+});
+
+test('real Viewing exact undo and committed POST with injected failed GET, retry is read-only', async ({ page, request }) => {
+  const film = films[0];
+  const today = new Date().toLocaleDateString('en-CA');
+  const original = await request.post(`${backend}/films/${film.id}/viewings`, { data: { watched_at: today } });
+  expect(original.ok()).toBeTruthy(); retainedViewing = (await original.json()).id;
+  await page.goto(`/en/library/${film.id}`);
+  let failRead = false, posts = 0;
+  await page.route(`**/api/films/${film.id}/viewings`, async route => {
+    if (route.request().method() === 'POST') { posts++; failRead = true; return route.continue(); }
+    return failRead ? route.fulfill({ status: 500, json: { detail: 'Injected post-commit read failure' } }) : route.continue();
+  });
+  await page.getByRole('button', { name: 'Watched today', exact: true }).click();
+  await expect(page.getByText('Changes saved, but the list could not be refreshed. Do not save again.', { exact: true })).toBeVisible();
+  expect(await read(request, `/films/${film.id}/viewings`)).toHaveLength(2);
+  failRead = false;
+  await page.getByRole('button', { name: 'Refresh list', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Refresh list', exact: true })).toHaveCount(0);
+  expect(posts).toBe(1);
+  await page.getByRole('button', { name: 'Undo this new record', exact: true }).click();
+  await expect.poll(async () => (await read(request, `/films/${film.id}/viewings`)).map((v: {id:string}) => v.id)).toEqual([retainedViewing]);
+});
+
+test('generated abnormal media and TMDB transport fixture: inspect/skip/confirm uses real persistence', async ({ page, request }) => {
+  const scan = await request.post(`${backend}/library/scan?media_dir=${encodeURIComponent(path.join(root, 'mixed/media'))}`);
+  expect(scan.ok()).toBeTruthy(); await settleWorkflow(request, (await scan.json()).workflow_id);
+  const pending = (await read(request, '/library/films')).filter((f: {primary_item: {metadata: {scrape_status: string}}}) => f.primary_item.metadata.scrape_status === 'pending');
+  expect(pending.length).toBeGreaterThanOrEqual(2);
+  for (const film of pending.slice(0, 2)) {
+    const scrape = await request.post(`${backend}/films/${film.id}/scrape`, { data: {} });
+    expect(scrape.ok()).toBeTruthy(); expect((await scrape.json()).status).toBe('needs_review');
+  }
+  await page.goto('/en/library?view=metadata');
+  const beforeReview = await read(request, '/library/films');
+  let confirmations = 0;
+  page.on('request', r => { if (r.method() === 'POST' && new URL(r.url()).pathname.endsWith('/scrape/confirm')) confirmations++; });
+  await page.getByRole('button', { name: /E2E Candidate/ }).first().click();
+  await expect(page.getByText('Fixture synopsis for explicit comparison.', { exact: true })).toBeVisible();
+  expect(confirmations).toBe(0);
+  expect(await read(request, '/library/films')).toEqual(beforeReview);
+  await page.getByRole('button', { name: 'Skip for now', exact: true }).click();
+  await expect(page.getByText(/1 skipped films/)).toBeVisible();
+  await page.getByRole('textbox').first().press('Enter');
+  await page.getByRole('button', { name: /E2E Candidate/ }).first().click();
+  const confirmation = page.waitForResponse(r => r.request().method() === 'POST' && new URL(r.url()).pathname.endsWith('/scrape/confirm'));
+  await page.getByRole('button', { name: 'Confirm this match', exact: true }).click();
+  const response = await confirmation; expect(response.ok()).toBeTruthy(); expect(confirmations).toBe(1);
+  const matchedId = new URL(response.url()).pathname.split('/')[3];
+  const result = await read(request, `/library/films/${matchedId}`);
+  expect(result.title).toBe('E2E Candidate');
+  await page.getByRole('button', { name: 'Revisit skipped films', exact: true }).click();
+  await expect(page.getByRole('button', { name: /E2E Candidate/ }).first()).toBeVisible();
+});
+
+test('nine real queued workflows, cancel failure, actual cancellation and retry', async ({ page, request }) => {
+  await control(request, 'tasks');
+  await page.goto('/en/library');
+  await page.getByRole('button', { name: 'Background workflows', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Cancel workflow', exact: true })).toHaveCount(9);
+  let fail = true;
+  await page.route('**/api/workflows/*/cancel', route => fail ? route.fulfill({ status: 503, json: { detail: 'Injected cancellation failure' } }) : route.continue());
+  await page.getByRole('button', { name: 'Cancel workflow', exact: true }).first().click();
+  await expect(page.getByText('Cancellation failed.', { exact: false })).toBeVisible();
+  fail = false;
+  await page.getByRole('button', { name: 'Cancel workflow', exact: true }).first().click();
+  await expect(page.getByRole('button', { name: 'Cancel workflow', exact: true })).toHaveCount(8);
+  let failRetry = true;
+  await page.route('**/api/workflows/*/retry', route => failRetry ? route.fulfill({ status: 503, json: { detail: 'Injected retry failure' } }) : route.continue());
+  await page.getByRole('button', { name: 'Retry workflow', exact: true }).first().click();
+  await expect(page.getByText('Retry request failed. Try again.', { exact: true })).toBeVisible();
+  failRetry = false;
+  await page.getByRole('button', { name: 'Retry workflow', exact: true }).first().click();
+  await expect(page.getByRole('button', { name: 'Cancel workflow', exact: true })).toHaveCount(9);
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('button', { name: 'Background workflows', exact: true })).toBeFocused();
+  for (const w of await read(request, '/workflows?include_active=true')) if (['queued', 'running'].includes(w.status))
+    expect((await request.post(`${backend}/workflows/${w.id}/cancel`)).ok()).toBeTruthy();
+  await control(request, 'resume_tasks');
+});
+
+test('real process restart persists records; Chinese narrow-screen primary flow', async ({ page, request }) => {
+  const before = await read(request, '/library/films');
+  await writeFile(path.join(root, 'restart'), 'requested');
+  await expect.poll(async () => { try { await access(path.join(root, 'restarted')); return true; } catch { return false; } }, { timeout: 30000 }).toBe(true);
+  expect((await read(request, '/library/films')).map((f: {id:string}) => f.id)).toEqual(before.map((f: {id:string}) => f.id));
+  expect((await read(request, `/films/${films[0].id}/viewings`)).map((v: {id:string}) => v.id)).toEqual([retainedViewing]);
+  expect((await read(request, `/films/${films[0].id}/profile-state`)).favorite).toBe(true);
+  await page.context().setExtraHTTPHeaders({ 'Accept-Language': 'zh-CN' });
+  await page.context().addCookies([{ name: 'NEXT_LOCALE', value: 'zh', url: process.env.E2E_BASE_URL! }]);
+  await page.goto('/ask');
+  await expect(page.getByRole('button', { name: '使用条件表单', exact: true })).toBeVisible();
+  await page.getByRole('button', { name: '确认筛选条件', exact: true }).click();
+  await page.getByRole('button', { name: '按这些条件查找', exact: true }).click();
+  await expect(page.locator('a[href*="/library/film_"]').first()).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+});

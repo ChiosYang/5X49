@@ -63,6 +63,17 @@ directory or creates the default `./media` directory:
 ./setup.sh
 ```
 
+By default both ports bind to `127.0.0.1` and media is mounted read-only.
+Create the directory first (`mkdir -p media` in Bash, or `New-Item -ItemType Directory -Force media` in PowerShell); missing paths are rejected.
+NFO import, browsing and personal records work with read-only media. File organization
+and writing metadata/artwork into the media folder require an explicit
+`MEDIA_READ_ONLY=false` in `.env` and recreating the containers with `docker compose up -d`.
+
+For access from a trusted LAN, explicitly set `BIND_ADDRESS` to the host's LAN IP
+(or `0.0.0.0` for all interfaces) and `ALLOWED_ORIGINS` to the frontend origin.
+This application has no account authentication; CORS is not access control.
+Do not expose either port to the public Internet. These settings do not configure host firewall rules.
+
 ### 2. Start 5X49
 
 ```bash
@@ -176,3 +187,5 @@ uv run python -m unittest test_api_routes.ApiRouteContractTests
 - `docs/`: API, domain, installation-baseline, and feature documentation.
 
 *Crafted with 🖤 for film lovers.*
+
+[Real API browser acceptance](docs/real-api-e2e.md): `cd frontend && npm run test:e2e`.

@@ -3,10 +3,15 @@ services:
     image: ${DOCKER_USERNAME:-alicolia}/5x49-backend:latest
     container_name: 5x49-backend
     ports:
-      - "11548:8000"
+      - "${BIND_ADDRESS:-127.0.0.1}:${BACKEND_PORT:-11548}:8000"
     volumes:
       - backend_data:/app/data
-      - ${MEDIA_DIR:-./media}:/media
+      - type: bind
+        source: ${MEDIA_DIR:-./media}
+        target: /media
+        read_only: ${MEDIA_READ_ONLY:-true}
+        bind:
+          create_host_path: false
     environment:
       - TMDB_API_KEY=${TMDB_API_KEY:-}
       - TMDB_SCRAPE_CONCURRENCY=${TMDB_SCRAPE_CONCURRENCY:-3}
@@ -27,7 +32,7 @@ services:
     image: ${DOCKER_USERNAME:-alicolia}/5x49-frontend:latest
     container_name: 5x49-frontend
     ports:
-      - "5549:3000"
+      - "${BIND_ADDRESS:-127.0.0.1}:${FRONTEND_PORT:-5549}:3000"
     environment:
       - BACKEND_URL=http://backend:8000
     depends_on:

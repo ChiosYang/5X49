@@ -44,3 +44,7 @@ backend/data/
 plan.md
 .codex
 .plan
+# Browser verification artifacts (synthetic fixtures only)
+frontend/e2e-artifacts/
+frontend/test-results/
+frontend/playwright-report/

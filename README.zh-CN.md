@@ -65,6 +65,13 @@ Linux/NAS 可使用 `/volume1/video/movies` 一类绝对路径；Windows Docker 
 ./setup.sh
 ```
 
+默认两个端口仅绑定 `127.0.0.1`，媒体目录以只读方式挂载。
+请先创建目录（Bash 使用 `mkdir -p media`，PowerShell 使用 `New-Item -ItemType Directory -Force media`）；不存在的路径会被拒绝。
+只读挂载支持 NFO 导入、浏览和个人记录。整理文件、向媒体目录写入元数据或图片时，须在 `.env` 中明确设置 `MEDIA_READ_ONLY=false`，并运行 `docker compose up -d` 重新创建容器。
+
+需要可信局域网访问时，明确将 `BIND_ADDRESS` 设置为主机局域网 IP（或使用 `0.0.0.0` 绑定全部网卡），并将 `ALLOWED_ORIGINS` 设置为前端来源。
+应用没有账号认证，CORS 不能代替访问控制；不要将端口暴露到公网。这些配置不会修改主机防火墙。
+
 ### 2. 启动
 
 ```bash
@@ -179,3 +186,5 @@ uv run python -m unittest test_api_routes.ApiRouteContractTests
 - `docs/`：API、领域模型、安装基线和功能文档。
 
 *Crafted with 🖤 for film lovers.*
+
+[真实接口浏览器验证](docs/real-api-e2e.md)：`cd frontend && npm run test:e2e`。
