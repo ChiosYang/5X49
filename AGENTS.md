@@ -147,6 +147,35 @@ explicitly requests it, including by invoking an applicable workflow Skill.
 - Before merge, run relevant checks and perform a Codex/code-review pass focused
   on correctness, regressions, security, and missing tests.
 
+### Delivery for user-authorized development tasks
+
+For a development task the user has authorized, complete the following workflow
+without requesting repeated approval for commit, push, PR creation, or merge:
+
+1. Refresh remote state and work on an ordinary task branch in the existing
+   checkout, based on the current `main`. Preserve unrelated uncommitted work.
+2. Complete the authorized implementation, run the relevant checks above, and
+   perform a Codex/code-review pass. Fix blocking findings before proceeding.
+3. Commit and push only task-scoped changes using the commit format above, then
+   create a draft PR targeting `main` with the required description and evidence.
+4. Follow the PR checks to a clear result and address task-related failures or
+   review findings. Once verification and review are complete, mark the PR ready.
+   Merge only when required checks and repository review requirements are met;
+   do not merge a draft PR or while checks are failed or pending.
+5. Verify that remote `main` contains the merged change. Report the PR link,
+   merge commit, verification results, and any remaining limitations. Creating
+   a PR alone does not complete an authorized delivery task.
+
+This workflow does not authorize new features or other work outside the user's
+task, and does not apply to read-only questions or reviews. It does not authorize
+releases, deployments, direct pushes to `main`, force pushes, or bypassing branch
+protection. The explicit release authorization rule above remains in effect.
+
+If permissions are missing, a required human approval is outstanding, checks fail,
+or a conflict cannot be resolved safely within the task, stop the merge and report
+the specific blocker. Resolve task-scoped issues where possible, then repeat the
+relevant checks and review; never bypass these requirements to finish delivery.
+
 ## Cursor Cloud specific instructions
 
 Dependencies are refreshed automatically on VM startup by the update script
