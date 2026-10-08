@@ -7,7 +7,7 @@ import { useState } from "react";
 import ViewingInlineEditor, { ViewingQuickAdd } from "@/components/viewings/ViewingInlineEditor";
 import { StateMessage } from "@/components/ui/Feedback";
 import { useFilmViewings } from "@/hooks/useFilm";
-import { Link, useRouter } from "@/i18n/routing";
+import { Link } from "@/i18n/routing";
 import type { ViewingView } from "@/types/movie";
 
 function formatDate(viewing: ViewingView, locale: string, unknown: string) {
@@ -22,8 +22,8 @@ function formatDate(viewing: ViewingView, locale: string, unknown: string) {
 export default function MovieViewingSection({ filmId }: { filmId: string; filmTitle: string }) {
   const t = useTranslations("Diary");
   const locale = useLocale();
-  const router = useRouter();
-  const { data, error, isLoading, mutate } = useFilmViewings(filmId);
+  const { data, error, isLoading } = useFilmViewings(filmId);
+  const [editorBusy, setEditorBusy] = useState(false);
   const [selected, setSelected] = useState<ViewingView | null>(null);
   const viewings = data || [];
 
@@ -46,7 +46,6 @@ export default function MovieViewingSection({ filmId }: { filmId: string; filmTi
           ) : null}
           <ViewingQuickAdd
             filmId={filmId}
-            onSaved={async () => { await mutate(); router.refresh(); }}
           />
         </div>
       </div>
@@ -55,7 +54,7 @@ export default function MovieViewingSection({ filmId }: { filmId: string; filmTi
         {isLoading ? <StateMessage state="loading">{t("loadingFilm")}</StateMessage> : null}
         {error ? <StateMessage state="error">{t("errorFilm")}</StateMessage> : null}
         {!isLoading && !error && viewings.length === 0 ? <StateMessage>{t("emptyFilm")}</StateMessage> : null}
-        {!isLoading && !error && viewings.length > 0 ? (
+        {!isLoading && viewings.length > 0 ? (
           <div className="grid gap-3 md:grid-cols-3">
             {viewings.slice(0, 3).map((viewing) => (
               <div key={viewing.id} className="min-w-0 border border-line p-4">
@@ -72,6 +71,7 @@ export default function MovieViewingSection({ filmId }: { filmId: string; filmTi
                   </div>
                   <button
                     type="button"
+                    disabled={editorBusy}
                     className="focus-ring flex h-9 w-9 shrink-0 items-center justify-center border border-line text-ink-muted hover:text-ink"
                     aria-label={viewing.editable ? t("editViewing") : t("viewViewing")}
                     title={viewing.editable ? t("editViewing") : t("viewViewing")}
@@ -86,9 +86,9 @@ export default function MovieViewingSection({ filmId }: { filmId: string; filmTi
                     key={viewing.id}
                     filmId={filmId}
                     viewing={viewing}
+                    onBusyChange={setEditorBusy}
                     onCancel={() => setSelected(null)}
-                    onSaved={async () => { await mutate(); router.refresh(); }}
-                  />
+                          />
                 ) : null}
               </div>
             ))}

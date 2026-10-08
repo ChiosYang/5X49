@@ -54,3 +54,28 @@ export function getFirstScanState({
   if (syncState === "error" || lastError) return "error";
   return (scanned ?? 0) > 0 ? "success" : "empty";
 }
+
+// Keep the validated path attached to this command even if another tab changes settings.
+export async function saveDirectoryAndScan<T>(
+  draft: string,
+  save: (path: string) => Promise<MediaDirectoryStatus>,
+  scan: (path: string) => Promise<T>,
+): Promise<T> {
+  const status = await save(draft.trim());
+  if (!isMediaDirectoryReady(status)) throw new Error("Media directory is not readable");
+  return scan(status.media_dir);
+}
+
+export function getWorkflowScanState(
+  workflow: { status: string; cancel_requested?: boolean; progress?: { counts?: Record<string, number> } | null } | undefined,
+  preparing: boolean,
+  requested: boolean,
+): FirstScanState | "cancelled" | "cancelling" {
+  if (preparing) return "queueing";
+  if (!workflow) return requested ? "queued" : "idle";
+  if (workflow.status === "cancelled") return "cancelled";
+  if (workflow.status === "failed") return "error";
+  if (workflow.status === "succeeded") return workflow.progress?.counts?.scanned === 0 ? "empty" : "success";
+  if (workflow.cancel_requested) return "cancelling";
+  return workflow.status === "running" ? "running" : "queued";
+}

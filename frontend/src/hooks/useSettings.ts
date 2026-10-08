@@ -354,8 +354,9 @@ export function useTestApiKey() {
 export function useScanLibrary() {
   return useSWRMutation(
     API.libraryScan(),
-    async (url: string) => {
-      const res = await fetch(url, { method: "POST" });
+    async (url: string, { arg: mediaDir }: { arg?: string }) => {
+      const target = mediaDir ? `${url}?media_dir=${encodeURIComponent(mediaDir)}` : url;
+      const res = await fetch(target, { method: "POST" });
       if (!res.ok) throw await responseError(res, "Failed to start scan");
       return res.json();
     }

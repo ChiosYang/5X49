@@ -39,3 +39,27 @@ export function askErrorCode(status: number, body: { detail?: { code?: string } 
   const code = body?.detail?.code;
   return code && allowed.has(code) ? code : status === 422 ? "invalid_request" : "unavailable";
 }
+
+export const ASK_SESSION_KEY = "5x49.ask.confirmed.v1";
+
+/** Only the confirmed structured query is retained; never the typed question or results. */
+export function parseAskSession(raw: string | null): ReturnType<typeof askQueryPayload> | null {
+  try {
+    const value = JSON.parse(raw || "null");
+    const plan = value?.plan;
+    if (!plan || !["genre", "person", "country"].every((key) => plan[key] === null || (typeof plan[key] === "string" && plan[key].length <= 100))
+      || !["any", "director", "actor"].includes(plan.person_role)
+      || !["all", "watched", "unwatched"].includes(plan.view)
+      || !["title", "year"].includes(plan.sort) || !["asc", "desc"].includes(plan.direction)
+      || !(plan.decade === null || (Number.isInteger(plan.decade) && plan.decade >= 1880 && plan.decade <= 2190 && plan.decade % 10 === 0))
+      || !(value.person_id === null || (typeof value.person_id === "string" && /^person_[0-9a-f]{32}$/.test(value.person_id)))
+      || !Number.isInteger(value.offset) || value.offset < 0 || value.confirmed !== true) return null;
+    return { plan: Object.fromEntries(Object.keys(emptyAskPlan).map((key) => [key, plan[key]])) as unknown as AskPlan,
+      person_id: value.person_id, offset: value.offset, confirmed: true };
+  } catch { return null; }
+}
+
+export function removeAskConstraint(plan: AskPlan, dimension: "genre" | "person" | "country" | "decade" | "view"): AskPlan {
+  return { ...plan, [dimension]: dimension === "view" ? "all" : null,
+    ...(dimension === "person" ? { person_role: "any" as const } : {}) };
+}

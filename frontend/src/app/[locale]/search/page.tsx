@@ -29,7 +29,7 @@ export default async function SearchPage({ params, searchParams }: {
         {!query ? t("initial") : films.length ? t("results", { count: films.length, query }) : t("empty", { query })}
       </p>
       <div className="grid grid-cols-2 gap-x-5 gap-y-10 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-        {films.map((film, index) => <LibraryMovieCard key={`${film.id}:${film.profile_state.updated_at || "initial"}`} movie={film} priority={index === 0} />)}
+        {films.map((film, index) => <LibraryMovieCard key={film.id} movie={film} priority={index === 0} />)}
       </div>
     </main>
   );

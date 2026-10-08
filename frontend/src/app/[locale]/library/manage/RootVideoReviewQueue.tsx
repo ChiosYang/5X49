@@ -327,6 +327,7 @@ export default function RootVideoReviewQueue({
                       onLookup={() => void handleReview(video)}
                       onSelect={(candidate) => void requestPreview(video, candidate, renameStyle)}
                       placeholder={libraryT("rootUnifiedSearchPlaceholder")}
+                      selectLabel={t("candidatePreviewOrganization")}
                       selectionBusy={previewingPath === video.source_path}
                       busyCandidateId={selected?.tmdb_id}
                       showCandidates={activeReviewPath === video.source_path && candidates.length > 0}

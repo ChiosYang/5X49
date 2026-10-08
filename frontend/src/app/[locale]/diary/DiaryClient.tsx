@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/Button";
 import { StateMessage } from "@/components/ui/Feedback";
 import { useProfileViewings } from "@/hooks/useFilm";
 import { Link } from "@/i18n/routing";
+import { rememberFilmReturn } from "@/lib/navigation-context";
 import { API } from "@/lib/api";
 import { diaryEditorFilmId, diaryViewFromQuery, groupViewingEntries } from "@/lib/diary";
 import { isFilmResourceId } from "@/lib/resource-id";
@@ -40,7 +41,7 @@ function ViewingDiaryClient() {
   const validFilmFilter = !requestedFilmId || isFilmResourceId(requestedFilmId);
   const filmId = requestedFilmId && validFilmFilter ? requestedFilmId : undefined;
   const view = diaryViewFromQuery(searchParams.get("view"), filmId) === "recent" ? "recent" : "timeline";
-  const { data, error, isLoading, mutate } = useProfileViewings(
+  const { data, error, isLoading } = useProfileViewings(
     PAGE_SIZE,
     0,
     filmId,
@@ -55,6 +56,7 @@ function ViewingDiaryClient() {
   } | null>(null);
   const [loadingMore, setLoadingMore] = useState(false);
   const [loadMoreError, setLoadMoreError] = useState("");
+  const [editorBusy, setEditorBusy] = useState(false);
   const [selectedViewing, setSelectedViewing] = useState<ViewingView | null>(null);
 
   const entries = useMemo(() => {
@@ -107,10 +109,11 @@ function ViewingDiaryClient() {
     return <StateMessage state="error">{t("invalidFilm")}</StateMessage>;
   }
   if (isLoading) return <StateMessage state="loading">{t("loading")}</StateMessage>;
-  if (error) return <StateMessage state="error">{t("error")}</StateMessage>;
+  if (error && !data) return <StateMessage state="error">{t("error")}</StateMessage>;
 
   return (
     <div className="space-y-10">
+      {error ? <StateMessage state="error">{t("error")}</StateMessage> : null}
 
       {filmId ? (
         <div className="flex flex-col gap-4 border-y border-line py-5 sm:flex-row sm:items-center sm:justify-between">
@@ -120,7 +123,7 @@ function ViewingDiaryClient() {
           </div>
           <ViewingQuickAdd
             filmId={filmId}
-            onSaved={async () => { setContinuation(null); await mutate(); }}
+            onSaved={() => setContinuation(null)}
           />
         </div>
       ) : null}
@@ -148,7 +151,7 @@ function ViewingDiaryClient() {
                   <div className="flex items-start justify-between gap-4">
                     <div className="min-w-0">
                       {entry.film.in_library ? (
-                        <Link href={`/library/${entry.film.id}`} className="focus-ring block truncate font-bold text-ink hover:text-ink-muted">
+                        <Link href={`/library/${entry.film.id}`} id={`viewing-link-${entry.viewing.id}`} onClick={() => rememberFilmReturn(entry.film.id, `viewing-link-${entry.viewing.id}`)} className="focus-ring block truncate font-bold text-ink hover:text-ink-muted">
                           {entry.film.title}
                         </Link>
                       ) : (
@@ -160,6 +163,7 @@ function ViewingDiaryClient() {
                     </div>
                     <button
                       type="button"
+                      disabled={editorBusy}
                       className="focus-ring duration-fast flex h-9 w-9 shrink-0 items-center justify-center border border-line text-ink-muted transition-colors hover:border-line-strong hover:text-ink"
                       aria-label={entry.viewing.editable ? t("editViewing") : t("viewViewing")}
                       title={entry.viewing.editable ? t("editViewing") : t("viewViewing")}
@@ -200,8 +204,9 @@ function ViewingDiaryClient() {
                       key={entry.viewing.id}
                       filmId={editorFilmId}
                       viewing={entry.viewing}
+                      onBusyChange={setEditorBusy}
                       onCancel={() => setSelectedViewing(null)}
-                      onSaved={async () => { setContinuation(null); await mutate(); }}
+                      onSaved={() => setContinuation(null)}
                     />
                   ) : null}
                 </article>

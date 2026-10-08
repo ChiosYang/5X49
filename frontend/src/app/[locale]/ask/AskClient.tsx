@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import useSWR from "swr";
 import { Button } from "@/components/ui/Button";
@@ -8,42 +8,73 @@ import { FormField, Select, TextArea, TextInput } from "@/components/ui/FormCont
 import { InlineFeedback } from "@/components/ui/Feedback";
 import { Link } from "@/i18n/routing";
 import { API } from "@/lib/api";
-import { askErrorCode, askQueryPayload, emptyAskPlan, type AskPlan, type AskResolution } from "@/lib/ask";
+import { ASK_SESSION_KEY, parseAskSession, removeAskConstraint, askErrorCode, askQueryPayload, emptyAskPlan, type AskPlan, type AskResolution } from "@/lib/ask";
 import { formatExploreFacetLabel } from "@/lib/explore";
+import type { ExploreDimension } from "@/types/movie";
+import ExploreFactFinder from "../explore/ExploreFactFinder";
 import LibraryMovieCard from "../library/LibraryMovieCard";
 
 export default function AskClient() {
   const t = useTranslations("Ask");
   const locale = useLocale();
   const status = useSWR<{ configured: boolean }>(API.askStatus());
-  const [mode, setMode] = useState<"question" | "form">("question");
+  const [chosenMode, setMode] = useState<"question" | "form" | null>(null);
+  const mode = chosenMode ?? (status.data?.configured ? "question" : "form");
+  const [finder, setFinder] = useState<ExploreDimension | null>(null);
+  const [personId, setPersonId] = useState<string | null>(null);
+  const inFlight = useRef(false);
+  const restored = useRef(false);
   const [question, setQuestion] = useState("");
   const [draft, setDraft] = useState<AskPlan>({ ...emptyAskPlan });
   const [resolution, setResolution] = useState<AskResolution | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
-  const reset = () => { setResolution(null); setError(""); };
-  const change = (values: Partial<AskPlan>) => { setDraft((current) => ({ ...current, ...values })); reset(); };
+  const clearSaved = () => { try { sessionStorage.removeItem(ASK_SESSION_KEY); } catch { /* Storage may be unavailable. */ } };
+  const reset = () => { setResolution(null); setError(""); clearSaved(); };
+  const change = (values: Partial<AskPlan>) => { setMode("form"); if ("person" in values) setPersonId(null); setDraft((current) => ({ ...current, ...values })); reset(); };
   const switchMode = (next: "question" | "form") => { setMode(next); reset(); };
   const request = async (url: string, payload: object) => {
-    setBusy(true); setError("");
+    if (inFlight.current) return;
+    inFlight.current = true; setBusy(true); setError("");
     try {
       const response = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
       const body = await response.json().catch(() => null);
       if (!response.ok) throw new Error(askErrorCode(response.status, body));
       setResolution(body as AskResolution);
+      if (url === API.askQuery() && body.status === "ready" && body.results) {
+        try { sessionStorage.setItem(ASK_SESSION_KEY, JSON.stringify(askQueryPayload(body, body.results.offset))); } catch { /* Storage is optional. */ }
+      }
     } catch (issue) {
       setError(issue instanceof Error ? issue.message : "unavailable");
-    } finally { setBusy(false); }
+    } finally { inFlight.current = false; setBusy(false); }
   };
   const prepare = () => {
     setResolution(null);
     if (mode === "question") void request(API.askInterpret(), { question: question.trim(), locale });
-    else void request(API.askResolve(), { plan: draft });
+    else void request(API.askResolve(), { plan: draft, person_id: personId });
   };
   const search = (offset = 0) => {
     if (resolution?.status === "ready") void request(API.askQuery(), askQueryPayload(resolution, offset));
+  };
+  useEffect(() => {
+    if (restored.current) return;
+    restored.current = true;
+    let payload: ReturnType<typeof parseAskSession> = null;
+    try { payload = parseAskSession(sessionStorage.getItem(ASK_SESSION_KEY)); } catch { /* Storage is optional. */ }
+    if (!payload) return;
+    // Revalidate the saved query against current library data, rather than caching film data.
+    void Promise.resolve().then(() => {
+      setMode("form"); setDraft(payload!.plan); setPersonId(payload!.person_id);
+      void request(API.askQuery(), payload!);
+    });
+  }, []);
+  const edit = (plan: AskPlan, selectedPerson: string | null) => {
+    setDraft(plan); setPersonId(selectedPerson); setMode("form"); reset();
+    requestAnimationFrame(() => {
+      document.getElementById("ask-form")?.scrollIntoView({ block: "start" });
+      document.getElementById("ask-genre")?.focus({ preventScroll: true });
+    });
   };
   const results = resolution?.results;
 
@@ -59,14 +90,14 @@ export default function AskClient() {
         </div>
         {status.error && <InlineFeedback tone="warning">{t("statusFailed")} <Button onClick={() => void status.mutate()}>{t("retry")}</Button></InlineFeedback>}
         {status.data?.configured === false && <InlineFeedback tone="warning">{t("noKey")} <Link href="/settings" className="focus-ring underline">{t("settings")}</Link></InlineFeedback>}
-        <form onSubmit={(event) => { event.preventDefault(); prepare(); }} className="mt-6 space-y-6">
+        <form id="ask-form" onSubmit={(event) => { event.preventDefault(); prepare(); }} className="mt-6 space-y-6">
           {mode === "question" ? <>
             <FormField label={t("questionLabel")} description={t("privacy")}>
-              <TextArea value={question} maxLength={600} rows={3} disabled={busy} onChange={(event) => { setQuestion(event.target.value); reset(); }} placeholder={t("example")} />
+              <TextArea value={question} maxLength={600} rows={3} disabled={busy} onChange={(event) => { setMode("question"); setQuestion(event.target.value); reset(); }} placeholder={t("example")} />
             </FormField>
-            <button type="button" disabled={busy} className="focus-ring text-left text-sm text-ink-subtle underline" onClick={() => { setQuestion(t("example")); reset(); }}>{t("useExample")}</button>
+            <button type="button" disabled={busy} className="focus-ring text-left text-sm text-ink-subtle underline" onClick={() => { setMode("question"); setQuestion(t("example")); reset(); }}>{t("useExample")}</button>
           </> : <div className="grid gap-5 sm:grid-cols-2">
-            <FormField label={t("fields.genre")}><TextInput value={draft.genre ?? ""} maxLength={100} disabled={busy} onChange={(event) => change({ genre: event.target.value || null })} placeholder={t("genreExample")} /></FormField>
+            <FormField label={t("fields.genre")}><TextInput id="ask-genre" value={draft.genre ?? ""} maxLength={100} disabled={busy} onChange={(event) => change({ genre: event.target.value || null })} placeholder={t("genreExample")} /></FormField>
             <FormField label={t("fields.country")}><TextInput value={draft.country ?? ""} maxLength={100} disabled={busy} onChange={(event) => change({ country: event.target.value || null })} placeholder={t("countryExample")} /></FormField>
             <FormField label={t("fields.person")}><TextInput value={draft.person ?? ""} maxLength={100} disabled={busy} onChange={(event) => change({ person: event.target.value || null, ...(!event.target.value ? { person_role: "any" as const } : {}) })} placeholder={t("personExample")} /></FormField>
             <FormField label={t("role")}><Select value={draft.person_role} disabled={busy || !draft.person} onChange={(event) => change({ person_role: event.target.value as AskPlan["person_role"] })}>
@@ -79,6 +110,9 @@ export default function AskClient() {
             <FormField label={t("sort")}><Select value={`${draft.sort}:${draft.direction}`} disabled={busy} onChange={(event) => { const [sort, direction] = event.target.value.split(":"); change({ sort: sort as AskPlan["sort"], direction: direction as AskPlan["direction"] }); }}>
               <option value="title:asc">{t("sorts.titleAsc")}</option><option value="title:desc">{t("sorts.titleDesc")}</option><option value="year:desc">{t("sorts.yearDesc")}</option><option value="year:asc">{t("sorts.yearAsc")}</option>
             </Select></FormField>
+          </div>}
+          {mode === "form" && <div className="flex flex-wrap gap-2" role="group" aria-label={t("chooseLocal")}>
+            {(["genre", "country", "person", "decade"] as const).map((dimension) => <Button key={dimension} disabled={busy} onClick={() => setFinder(dimension)}>{t("chooseFact", { field: t(`fields.${dimension}`) })}</Button>)}
           </div>}
           <p className="text-sm leading-6 text-ink-subtle">{t("supported")}</p>
           <Button type="submit" busy={busy} disabled={busy || (mode === "question" && (!question.trim() || !status.data?.configured))} variant="primary">{mode === "question" ? t("interpret") : t("preview")}</Button>
@@ -107,16 +141,19 @@ export default function AskClient() {
             </div>)}
             <div className="flex flex-wrap gap-3">
               <Button variant="primary" disabled={busy || resolution.status !== "ready"} busy={busy} onClick={() => search()}>{t("search")}</Button>
-              <Button disabled={busy} onClick={() => { setDraft(resolution.plan!); switchMode("form"); }}>{t("editFilters")}</Button>
+              <Button disabled={busy} onClick={() => edit(resolution.plan!, resolution.person_id)}>{t("editFilters")}</Button>
             </div>
           </>}
         </section>}
       </div>
       {results && <section className="mt-10 space-y-6" aria-label={t("results")} aria-busy={busy}>
         <h2 className="type-section-title" role="status">{t("resultCount", { count: results.total })}</h2>
-        {results.total === 0 && <p className="text-ink-muted">{t("empty")}</p>}
+        {results.total === 0 && <div className="space-y-3"><p className="text-ink-muted">{t("empty")}</p><p className="text-sm text-ink-subtle">{t("removeHint")}</p><div className="flex flex-wrap gap-2">
+          {(["genre", "country", "person", "decade", "view"] as const).filter((field) => field === "view" ? resolution!.plan!.view !== "all" : resolution!.plan![field] !== null).map((field) => <Button key={field} disabled={busy} onClick={() => edit(removeAskConstraint(resolution!.plan!, field), field === "person" ? null : resolution!.person_id)}>{t("removeFilter", { field: field === "view" ? t("view") : t(`fields.${field}`) })}</Button>)}
+          <Button disabled={busy} onClick={() => edit(resolution!.plan!, resolution!.person_id)}>{t("editFilters")}</Button>
+        </div></div>}
         <div className="grid gap-x-6 gap-y-10 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {results.items.map(({ film, matched_facts }) => <div key={`${film.id}:${film.profile_state.updated_at || "initial"}`} className="min-w-0">
+          {results.items.map(({ film, matched_facts }) => <div key={film.id} className="min-w-0">
             <LibraryMovieCard movie={film} readOnly />
             <div className="mt-3 space-y-2 border-t border-line pt-3 text-xs leading-5 text-ink-muted">
               <p className="font-bold">{t("why")}</p>
@@ -135,6 +172,10 @@ export default function AskClient() {
           {results.next_offset !== null && <Button disabled={busy} onClick={() => search(results.next_offset!)}>{t("next")}</Button>}
         </div>
       </section>}
+      <ExploreFactFinder open={finder !== null} dimension={finder ?? "genre"} locale={locale} localizeCountries reducedMotion onDimensionChange={setFinder} onClose={() => setFinder(null)} onSelect={(dimension, item) => {
+        change({ [dimension]: dimension === "decade" ? Number(item.key) : dimension === "country" ? item.key : item.label });
+        if (dimension === "person") setPersonId(item.key);
+      }} />
     </main>
   );
 }

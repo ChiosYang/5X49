@@ -77,7 +77,11 @@
       "projection_unavailable": "The local search index is not ready. Retry when it becomes available.",
       "invalid_request": "Check the conditions and try again.",
       "unavailable": "The request could not be completed. Please retry."
-    }
+    },
+    "chooseLocal": "Choose from local library facts",
+    "chooseFact": "Choose {field}",
+    "removeHint": "Remove one condition, then preview and confirm again. Other conditions stay unchanged.",
+    "removeFilter": "Remove {field}"
   },
   "AnalysisReview": {
     "referenceHelp": "Link this unresolved reference to an existing entity. This does not create a relationship or validate its evidence.",
@@ -319,7 +323,12 @@
     "unfavorite": "Remove Favorite",
     "empty": "Your library is empty. Click Scan Now to add movies.",
     "emptyFiltered": "No Films match the current filter.",
-    "resetFilter": "Show All Films"
+    "resetFilter": "Show All Films",
+    "cardActions": "Actions for {title}",
+    "cardSaveFailed": "Not saved. Please try again.",
+    "cardRefreshFailed": "Saved, but related views could not refresh. Retry refresh only.",
+    "retryAction": "Retry",
+    "removedFromFilter": "Saved. {title} no longer matches this filter."
   },
   "Onboarding": {
     "eyebrow": "First Run",
@@ -353,7 +362,13 @@
     "helpTitle": "Status & Troubleshooting",
     "viewActivity": "View Scan Activity",
     "openManagement": "Open Library Settings",
-    "organizeRootCount": "Organize {count, plural, one {# root video} other {# root videos}}"
+    "organizeRootCount": "Organize {count, plural, one {# root video} other {# root videos}}",
+    "scanDirectory": "Directory to scan: {path}",
+    "scanCompleted": "Scan completed. Your library has been refreshed.",
+    "scanCancelled": "Scan cancelled. You can scan again.",
+    "scanCancelling": "Cancellation requested. Waiting for the scan to stop.",
+    "scanStatusUnavailable": "Unable to refresh scan status. Retrying automatically.",
+    "scanNoLongerAvailable": "This scan is no longer available. You can start a new scan."
   },
   "FileBrowser": {
     "title": "Select Directory",
@@ -536,7 +551,14 @@
     "filmSectionEyebrow": "Personal Viewing",
     "filmSectionTitle": "Viewing Records",
     "viewingCount": "{count, plural, one {# confirmed viewing} other {# confirmed viewings}}",
-    "viewAll": "View all viewings"
+    "viewAll": "View all viewings",
+    "undone": "The new viewing was removed.",
+    "savedRefreshFailed": "Changes saved, but the list could not be refreshed. Do not save again.",
+    "retryRefresh": "Refresh list",
+    "viewSaved": "View saved record",
+    "undoNew": "Undo this new record",
+    "recordAnother": "Record another viewing",
+    "todayCount": "Already recorded today: {count}. You can record another viewing."
   },
   "Genealogy": {
     "title": "5X49",
@@ -573,7 +595,20 @@
       "rootConfirmation": "File organization confirmation",
       "filmAnalysis": "Film analysis",
       "scoreRefresh": "Score refresh"
-    }
+    },
+    "cancelling": "Cancelling",
+    "actionFailed": "Action failed. Please try again.",
+    "states": {
+      "queued": "Queued",
+      "running": "Running",
+      "succeeded": "Completed",
+      "failed": "Failed",
+      "cancelled": "Cancelled"
+    },
+    "loadFailed": "Unable to update tasks.",
+    "cancelFailed": "Cancellation failed. The task may still be running; try again.",
+    "retryFailed": "Retry request failed. Try again.",
+    "reload": "Reload tasks"
   },
   "Activity": {
     "title": "Activity",
@@ -1038,7 +1073,17 @@
         "clear": "Library data was cleared.",
         "review": "Metadata match confirmed."
       }
-    }
+    },
+    "candidateViewDetails": "View candidate details",
+    "candidateHideDetails": "Hide candidate details",
+    "candidateNoOverview": "No synopsis is available for this candidate.",
+    "candidateConfirmMatch": "Confirm this match",
+    "candidatePreviewOrganization": "Select and preview file changes",
+    "reviewSkip": "Skip for now",
+    "reviewRevisitSkipped": "Revisit skipped films",
+    "reviewSessionRemaining": "{count} left in this pass · {skipped} skipped",
+    "reviewSkippedRemaining": "{count} skipped films still need review.",
+    "reviewRefreshFailed": "The latest queue could not be loaded. Saved matches will not be repeated in this pass; refresh to check remaining films."
   },
   "CinemaDna": {
     "eyebrow": "Your viewing, in perspective",

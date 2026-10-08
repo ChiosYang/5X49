@@ -1,3 +1,4 @@
+import LibraryEventsRefresher from "./LibraryEventsRefresher";
 import type { ReactNode } from "react";
 
 export default function LibraryLayout({
@@ -9,6 +10,7 @@ export default function LibraryLayout({
 }) {
   return (
     <>
+      <LibraryEventsRefresher />
       {children}
       {detail}
     </>

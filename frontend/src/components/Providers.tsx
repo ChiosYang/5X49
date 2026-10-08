@@ -2,6 +2,7 @@
 
 import { SWRConfig } from "swr";
 import { fetcher } from "@/lib/fetcher";
+import FilmReturnRestoration from "./FilmReturnRestoration";
 import { TechnicalModeProvider } from "./TechnicalModeProvider";
 
 export default function Providers({ children }: { children: React.ReactNode }) {
@@ -15,6 +16,7 @@ export default function Providers({ children }: { children: React.ReactNode }) {
       }}
     >
       <TechnicalModeProvider>
+        <FilmReturnRestoration />
         {children}
       </TechnicalModeProvider>
     </SWRConfig>

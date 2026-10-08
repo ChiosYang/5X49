@@ -2,6 +2,9 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import useSWR from "swr";
+import { API } from "@/lib/api";
+import type { WorkflowRunView } from "@/types/movie";
 import { useTranslations } from "next-intl";
 import {
   ArrowUpRight,
@@ -17,12 +20,12 @@ import { Button } from "@/components/ui/Button";
 import { InlineFeedback } from "@/components/ui/Feedback";
 import { Link } from "@/i18n/routing";
 import {
-  useLibrarySyncStatus,
   useMediaDir,
   useScanLibrary,
+  useUpdateMediaDir,
   useTmdbSettings,
 } from "@/hooks/useSettings";
-import { getFirstScanState, isMediaDirectoryReady } from "@/lib/library-onboarding";
+import { getWorkflowScanState, isMediaDirectoryReady, saveDirectoryAndScan } from "@/lib/library-onboarding";
 import FirstRunIntro from "./FirstRunIntro";
 
 export default function LibraryOnboarding({ rootVideoCount }: { rootVideoCount: number }) {
@@ -30,66 +33,70 @@ export default function LibraryOnboarding({ rootVideoCount }: { rootVideoCount: 
   const router = useRouter();
   const { data: mediaDirectory } = useMediaDir();
   const { data: tmdb } = useTmdbSettings();
-  const [scanRequested, setScanRequested] = useState(false);
-  const [baselineFinishedAt, setBaselineFinishedAt] = useState<string | null>();
-  const { data: syncStatus } = useLibrarySyncStatus((latestData) => {
-    if (!scanRequested) return 5000;
-    const lastFinishedAt = latestData?.sync.last_finished_at;
-    const finished = Boolean(lastFinishedAt && lastFinishedAt !== baselineFinishedAt);
-    return finished ? 5000 : 1000;
-  });
-  const {
-    trigger: scanLibrary,
-    isMutating: queueing,
-    error: queueError,
-    reset: resetScan,
-  } = useScanLibrary();
+  const [directoryDraft, setDirectoryDraft] = useState<string>();
+  const { data: scanWorkflowId, mutate: rememberScanWorkflow } = useSWR<string | null>(
+    "5x49:first-scan-workflow",
+    () => { try { return sessionStorage.getItem("5x49:first-scan-workflow"); } catch { return null; } },
+    { revalidateOnFocus: false },
+  );
+  const [preparing, setPreparing] = useState(false);
+  const [scanError, setScanError] = useState<string | null>(null);
+  const submitting = useRef(false);
+  const { trigger: updateMediaDir } = useUpdateMediaDir();
+  const { trigger: scanLibrary } = useScanLibrary();
+  const { data: scanWorkflow, error: workflowError } = useSWR<WorkflowRunView | null>(
+    scanWorkflowId ? API.workflow(scanWorkflowId) : null,
+    async (url: string) => {
+      const response = await fetch(url);
+      if (response.status === 404) return null;
+      if (!response.ok) throw new Error(t("scanStatusUnavailable"));
+      return response.json();
+    },
+    { refreshInterval: (workflow) => workflow === undefined || (workflow !== null && ["queued", "running"].includes(workflow.status)) ? 1000 : 0 },
+  );
   const refreshedScan = useRef<string | null>(null);
 
-  const directoryReady = isMediaDirectoryReady(mediaDirectory);
-  const sync = syncStatus?.sync;
-  const derivedScanState = getFirstScanState({
-    requested: scanRequested,
-    queueing,
-    syncState: sync?.state,
-    lastFinishedAt: sync?.last_finished_at,
-    baselineFinishedAt,
-    lastError: sync?.last_error,
-    scanned: sync?.last_result?.scanned,
-  });
-  const scanState = queueError ? "error" : derivedScanState;
-  const scanActive = scanState === "queueing" || scanState === "queued" || scanState === "running";
-  const scanned = sync?.last_result?.scanned ?? 0;
-  const added = sync?.last_result?.added ?? 0;
+  const directoryReady = isMediaDirectoryReady(mediaDirectory) && (directoryDraft === undefined || directoryDraft.trim() === mediaDirectory?.media_dir);
+  const scanState = preparing ? "queueing" : scanError || scanWorkflow === null ? "error" : getWorkflowScanState(scanWorkflow, preparing, Boolean(scanWorkflowId));
+  const scanActive = scanState === "queueing" || scanState === "queued" || scanState === "running" || scanState === "cancelling";
+  const directoryValue = directoryDraft ?? mediaDirectory?.media_dir ?? "";
 
   useEffect(() => {
-    if (scanState !== "success" || !sync?.last_finished_at) return;
-    if (refreshedScan.current === sync.last_finished_at) return;
-    refreshedScan.current = sync.last_finished_at;
+    if ((scanState !== "success" && scanState !== "empty") || !scanWorkflow?.finished_at) return;
+    if (refreshedScan.current === scanWorkflow.finished_at) return;
+    refreshedScan.current = scanWorkflow.finished_at;
     router.refresh();
-  }, [router, scanState, sync?.last_finished_at]);
+  }, [router, scanState, scanWorkflow?.finished_at]);
 
   const handleScan = async () => {
-    resetScan();
-    setBaselineFinishedAt(sync?.last_finished_at ?? null);
-    setScanRequested(true);
+    if (submitting.current || scanActive || scanWorkflowId === undefined) return;
+    submitting.current = true;
+    setPreparing(true);
+    setScanError(null);
     try {
-      await scanLibrary();
-    } catch {
-      // Mutation state renders the backend validation detail.
+      const result = await saveDirectoryAndScan(directoryValue, updateMediaDir, scanLibrary);
+      void rememberScanWorkflow(result.workflow_id, false);
+      try { sessionStorage.setItem("5x49:first-scan-workflow", result.workflow_id); } catch { /* Storage is optional. */ }
+    } catch (error) {
+      setScanError(error instanceof Error ? error.message : t("scanFailed"));
+    } finally {
+      submitting.current = false;
+      setPreparing(false);
     }
   };
 
   const scanFeedback = (() => {
+    if (workflowError && !scanError) return <InlineFeedback tone="error">{t("scanStatusUnavailable")}</InlineFeedback>;
+    if (scanState === "cancelled" || scanState === "cancelling") return <InlineFeedback tone="warning">{t(scanState === "cancelled" ? "scanCancelled" : "scanCancelling")}</InlineFeedback>;
     if (scanState === "queueing") return <InlineFeedback>{t("scanQueueing")}</InlineFeedback>;
     if (scanState === "queued") return <InlineFeedback>{t("scanQueued")}</InlineFeedback>;
     if (scanState === "running") return <InlineFeedback>{t("scanRunning")}</InlineFeedback>;
     if (scanState === "success") {
-      return <InlineFeedback tone="success">{t("scanSuccess", { scanned, added })}</InlineFeedback>;
+      return <InlineFeedback tone="success">{scanWorkflow?.progress?.counts ? t("scanSuccess", { scanned: scanWorkflow.progress.counts.scanned ?? 0, added: scanWorkflow.progress.counts.added ?? 0 }) : t("scanCompleted")}</InlineFeedback>;
     }
     if (scanState === "empty") return <InlineFeedback tone="warning">{t("scanEmpty")}</InlineFeedback>;
     if (scanState === "error") {
-      const message = queueError instanceof Error ? queueError.message : sync?.last_error || t("scanFailed");
+      const message = scanError || scanWorkflow?.error_message || t(scanWorkflow === null ? "scanNoLongerAvailable" : "scanFailed");
       return <InlineFeedback tone="error">{message}</InlineFeedback>;
     }
     return null;
@@ -107,7 +114,7 @@ export default function LibraryOnboarding({ rootVideoCount }: { rootVideoCount: 
         </header>
 
         <div className="mt-10 grid gap-10 lg:min-h-[27.0625rem] lg:grid-cols-[minmax(0,1.35fr)_minmax(18rem,0.65fr)] lg:gap-12">
-          <div className="space-y-10">
+          <form className="space-y-10" onSubmit={(event) => { event.preventDefault(); void handleScan(); }}>
             <article className="border-b border-line pb-10">
               <div className="mb-6 flex items-start gap-4">
                 <span className="flex h-10 w-10 shrink-0 items-center justify-center border border-line-strong bg-surface-raised">
@@ -122,7 +129,7 @@ export default function LibraryOnboarding({ rootVideoCount }: { rootVideoCount: 
                   <h3 className="mt-1 text-lg font-medium text-ink">{t("directoryTitle")}</h3>
                 </div>
               </div>
-              <MediaDirectoryControl autoSave inlineStatus />
+              <MediaDirectoryControl inlineStatus managedValue={directoryValue} onValueChange={setDirectoryDraft} disabled={scanActive} />
             </article>
 
             <article className="flex items-start gap-4">
@@ -145,14 +152,15 @@ export default function LibraryOnboarding({ rootVideoCount }: { rootVideoCount: 
                     variant="primary"
                     responsiveWidth
                     busy={scanActive}
-                    disabled={!directoryReady || scanActive}
-                    onClick={handleScan}
+                    disabled={!directoryValue.trim() || scanActive || scanWorkflowId === undefined}
+                    type="submit"
                   >
                     {scanActive ? t("scanning") : scanState === "error" || scanState === "empty" ? t("scanAgain") : t("scanNow")}
                   </Button>
                   <div className="min-h-5 flex-1" aria-live="polite">{scanFeedback}</div>
                 </div>
 
+                <p className="mt-3 break-all text-xs text-ink-subtle">{t("scanDirectory", { path: directoryValue })}</p>
                 {!directoryReady ? (
                   <p className="mt-3 text-xs leading-5 text-warning">{t("scanNeedsDirectory")}</p>
                 ) : null}
@@ -172,7 +180,7 @@ export default function LibraryOnboarding({ rootVideoCount }: { rootVideoCount: 
                 ) : null}
               </div>
             </article>
-          </div>
+          </form>
 
           <aside className="space-y-8 border-t border-line pt-8 lg:border-t-0 lg:border-l lg:pt-0 lg:pl-8">
             <div>

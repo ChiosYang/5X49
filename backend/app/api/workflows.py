@@ -12,8 +12,9 @@ def list_workflows(
     status: str | None = Query(default=None),
     type: str | None = Query(default=None),
     limit: int = Query(default=50, ge=1, le=200),
+    include_active: bool = Query(default=False),
 ):
-    return workflow_runtime.list(status=status, workflow_type=type, limit=limit)
+    return workflow_runtime.list(status=status, workflow_type=type, limit=limit, include_active=include_active)
 
 
 @router.get("/workflows/{workflow_id}")

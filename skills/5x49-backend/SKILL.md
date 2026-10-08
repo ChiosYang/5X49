@@ -194,6 +194,7 @@ curl -s http://127.0.0.1:8000/workflows/<workflow_id>
 - `/library/events` 是实时 SSE，不是持久审计来源。
 - Restore 必须先 preview；状态漂移、旧 token、重复恢复或文件冲突返回 `409`。
 - Workflow/Step 的公开结果已脱敏，不暴露路径、标题、密钥、原始模型输出或完整 dedupe key。
+- `GET /workflows?limit=8&include_active=true` 在最近记录之外保留全部 queued/running 任务；显式 status 过滤时仍按 limit 限制，type 过滤继续生效。
 - Job 仅为内部单步骤执行队列，没有公开 HTTP/SSE DTO。
 
 ## 设置与维护

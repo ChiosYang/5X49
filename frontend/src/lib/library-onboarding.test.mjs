@@ -3,6 +3,8 @@ import test from "node:test";
 
 import {
   FIRST_RUN_INTRO_SESSION_KEY,
+  saveDirectoryAndScan,
+  getWorkflowScanState,
   getFirstScanState,
   getLibraryEmptyState,
   isMediaDirectoryReady,
@@ -44,4 +46,34 @@ test("derives queued, running, success, empty, and failed first-scan states", ()
     getFirstScanState({ ...base, syncState: "error", lastFinishedAt: "after", lastError: "failed" }),
     "error",
   );
+});
+
+
+test("waits for directory validation then scans the returned path, not stale settings", async () => {
+  let resolveSave;
+  const calls = [];
+  const pending = saveDirectoryAndScan(" /new/path ", (path) => {
+    calls.push(["save", path]);
+    return new Promise((resolve) => { resolveSave = resolve; });
+  }, async (path) => { calls.push(["scan", path]); return { workflow_id: "new-scan" }; });
+  assert.deepEqual(calls, [["save", "/new/path"]]);
+  resolveSave({ media_dir: "/validated/path", exists: true, readable: true });
+  assert.deepEqual(await pending, { workflow_id: "new-scan" });
+  assert.deepEqual(calls[1], ["scan", "/validated/path"]);
+});
+
+test("a failed directory save never queues a scan", async () => {
+  let scans = 0;
+  await assert.rejects(saveDirectoryAndScan("/missing", async () => { throw new Error("missing"); }, async () => { scans++; }), /missing/);
+  await assert.rejects(saveDirectoryAndScan("/unreadable", async () => ({ media_dir: "/unreadable", exists: true, readable: false }), async () => { scans++; }), /not readable/);
+  assert.equal(scans, 0);
+});
+
+test("restored scan IDs follow their own terminal and cancellation states", () => {
+  assert.equal(getWorkflowScanState(undefined, false, true), "queued");
+  assert.equal(getWorkflowScanState({ status: "running", cancel_requested: true }, false, true), "cancelling");
+  assert.equal(getWorkflowScanState({ status: "cancelled", cancel_requested: true }, false, true), "cancelled");
+  assert.equal(getWorkflowScanState({ status: "failed" }, false, true), "error");
+  assert.equal(getWorkflowScanState({ status: "succeeded" }, false, true), "success");
+  assert.equal(getWorkflowScanState({ status: "succeeded", progress: { counts: { scanned: 0 } } }, false, true), "empty");
 });
