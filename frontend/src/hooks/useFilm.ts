@@ -3,6 +3,8 @@ import useSWRMutation from "swr/mutation";
 import { mutate } from "swr";
 
 import { API } from "@/lib/api";
+import { fetcher } from "@/lib/fetcher";
+import { refreshViewingReadCaches } from "@/lib/viewing-write";
 import { isDnaCacheKey } from "@/lib/cinema-dna";
 import type {
   FilmAnalysisView,
@@ -65,6 +67,7 @@ export function useUpdateFilmProfileState(filmId: string) {
       if (!response.ok) throw new Error(await errorMessage(response, "Failed to update Film state"));
       return response.json();
     },
+    { revalidate: false },
   );
 }
 
@@ -94,6 +97,7 @@ export function useCreateFilmViewing(filmId: string) {
       if (!response.ok) throw new Error(await errorMessage(response, "Failed to create Viewing"));
       return response.json();
     },
+    { revalidate: false },
   );
 }
 
@@ -109,6 +113,7 @@ export function useUpdateViewing(viewingId?: string | null) {
       if (!response.ok) throw new Error(await errorMessage(response, "Failed to update Viewing"));
       return response.json();
     },
+    { revalidate: false },
   );
 }
 
@@ -120,10 +125,23 @@ export function useDeleteViewing(viewingId?: string | null) {
       if (!response.ok) throw new Error(await errorMessage(response, "Failed to delete Viewing"));
       return response.json();
     },
+    { revalidate: false },
   );
 }
 
-export async function invalidateViewingCaches(filmId: string) {
+export async function invalidateViewingCaches(filmId: string, cacheKeys?: Iterable<string>) {
+  if (cacheKeys) {
+    const directKeys = new Set([API.filmViewings(filmId), API.filmProfileState(filmId), API.libraryFilm(filmId), API.libraryFilms()]);
+    const keys = [...cacheKeys].filter((key) => directKeys.has(key)
+      || isDnaCacheKey(key, API.cinemaDna())
+      || key === API.profileViewings() || key.startsWith(`${API.profileViewings()}?`));
+    // SWR revalidation resolves with stale data on HTTP errors. Supply an explicit
+    // read as mutation data instead, so the receipt can distinguish a failed read.
+    await refreshViewingReadCaches(keys, fetcher, (key, read) => mutate(key, read, {
+      revalidate: false, throwOnError: true,
+    }));
+    return;
+  }
   await Promise.all([
     mutate((key) => isDnaCacheKey(key, API.cinemaDna()), undefined, { revalidate: true }),
     mutate(API.filmViewings(filmId)),

@@ -32,8 +32,8 @@ class WorkflowRuntime:
     def get(self, workflow_id: str) -> dict[str, Any] | None:
         return workflow_store.get(workflow_id)
 
-    def list(self, *, status: str | None = None, workflow_type: str | None = None, limit: int = 50):
-        return workflow_store.list(status=status, workflow_type=workflow_type, limit=limit)
+    def list(self, *, status: str | None = None, workflow_type: str | None = None, limit: int = 50, include_active: bool = False):
+        return workflow_store.list(status=status, workflow_type=workflow_type, limit=limit, include_active=include_active)
 
     def cancel(self, workflow_id: str) -> dict[str, Any] | None:
         workflow = workflow_store.request_cancel(workflow_id)

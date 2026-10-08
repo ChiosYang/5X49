@@ -1,10 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useId, useState } from "react";
+import Image from "next/image";
+import { useTranslations } from "next-intl";
 import { Search } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { TextInput } from "@/components/ui/FormControls";
-import { Spinner } from "@/components/ui/Feedback";
+
 import type { MetadataSearchResult } from "@/types/movie";
 export {
   parseMetadataSearchInput,
@@ -27,6 +29,7 @@ export function MetadataCandidatePicker({
   onSelect,
   placeholder,
   selectionBusy = false,
+  selectLabel,
   showCandidates = true,
   showFewerLabel,
   showMoreLabel,
@@ -43,10 +46,14 @@ export function MetadataCandidatePicker({
   onSelect: (candidate: MetadataSearchResult) => void;
   placeholder: string;
   selectionBusy?: boolean;
+  selectLabel?: string;
   showCandidates?: boolean;
   showFewerLabel: string;
   showMoreLabel: (hiddenCount: number) => string;
 }) {
+  const t = useTranslations("LibraryManagement");
+  const detailsId = useId();
+  const [inspectedId, setInspectedId] = useState<number | null>(null);
   const [expandedCandidateKey, setExpandedCandidateKey] = useState<string | null>(null);
   const candidateKey = candidates.map((candidate) => candidate.tmdb_id).join(",");
   const showAll = expandedCandidateKey === candidateKey;
@@ -61,15 +68,28 @@ export function MetadataCandidatePicker({
         <TextInput
           type="text"
           value={inputValue}
-          onChange={(event) => onInputChange(event.target.value)}
+          onChange={(event) => {
+            setInspectedId(null);
+            onInputChange(event.target.value);
+          }}
+          aria-label={placeholder}
+          onKeyDown={(event) => {
+            if (event.key === "Enter" && !event.nativeEvent.isComposing) {
+              event.preventDefault();
+              if (!disabled && !lookupBusy && !selectionBusy && inputValue.trim()) {
+                setInspectedId(null);
+                onLookup();
+              }
+            }
+          }}
           onFocus={onInputFocus}
           placeholder={placeholder}
           className="min-h-9 min-w-0 flex-1 px-3 py-2 text-xs"
         />
         <Button
           size="sm"
-          onClick={onLookup}
-          disabled={disabled || !inputValue.trim()}
+          onClick={() => { setInspectedId(null); onLookup(); }}
+          disabled={disabled || selectionBusy || !inputValue.trim()}
           busy={lookupBusy}
           icon={<Search className="h-3 w-3" />}
           className="h-9 w-24"
@@ -79,29 +99,72 @@ export function MetadataCandidatePicker({
       </div>
       {showCandidates ? (
         <div className="space-y-2 pt-1">
-          {visibleCandidates.map((candidate) => (
-            <button
-              key={candidate.tmdb_id}
-              type="button"
-              onClick={() => onSelect(candidate)}
-              disabled={disabled || selectionBusy}
-              className="focus-ring duration-standard block w-full border border-line-strong bg-surface-raised px-3 py-2 text-left text-xs text-ink-muted transition-colors hover:border-ink-disabled hover:text-ink disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              <span className="flex items-start justify-between gap-3">
-                <span className="min-w-0">
-                  <span className="block truncate font-bold tracking-widest uppercase">
+          {visibleCandidates.map((candidate) => {
+            const inspected = inspectedId === candidate.tmdb_id;
+            const panelId = `${detailsId}-${candidate.tmdb_id}`;
+            return (
+              <div key={candidate.tmdb_id} className="border border-line-strong bg-surface-raised">
+                <button
+                  type="button"
+                  onClick={() => setInspectedId(inspected ? null : candidate.tmdb_id)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Escape" && inspected) {
+                      event.stopPropagation();
+                      setInspectedId(null);
+                    }
+                  }}
+                  disabled={disabled || selectionBusy}
+                  aria-expanded={inspected}
+                  aria-controls={panelId}
+                  className="focus-ring duration-standard block w-full px-3 py-3 text-left text-xs text-ink-muted transition-colors hover:text-ink disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <span className="block break-words font-bold tracking-widest uppercase">
                     {candidate.title} {candidate.year ? `(${candidate.year})` : ""}
                   </span>
-                  <span className="block text-ink-subtle">
+                  <span className="mt-1 block text-ink-subtle">
                     TMDB {candidate.tmdb_id} · {Math.round(candidate.score)}%
                   </span>
-                </span>
-                {selectionBusy && (busyCandidateId == null || busyCandidateId === candidate.tmdb_id) ? (
-                  <Spinner className="mt-0.5 h-3 w-3" />
+                  <span className="mt-2 block text-ink-subtle">{t(inspected ? "candidateHideDetails" : "candidateViewDetails")}</span>
+                </button>
+                {inspected ? (
+                  <div id={panelId} className="space-y-3 border-t border-line p-3 text-xs" onKeyDown={(event) => {
+                    if (event.key === "Escape") {
+                      event.stopPropagation();
+                      setInspectedId(null);
+                      (event.currentTarget.previousElementSibling as HTMLButtonElement | null)?.focus();
+                    }
+                  }}>
+                    <div className="flex items-start gap-3">
+                      {candidate.poster_path ? (
+                        <Image
+                          src={`https://image.tmdb.org/t/p/w185${candidate.poster_path}`}
+                          alt=""
+                          width={80}
+                          height={120}
+                          unoptimized
+                          className="h-auto w-20 shrink-0"
+                        />
+                      ) : null}
+                      <div className="min-w-0 space-y-2">
+                        {candidate.original_title && candidate.original_title !== candidate.title ? (
+                          <p className="break-words font-medium text-ink">{candidate.original_title}</p>
+                        ) : null}
+                        <p className="break-words whitespace-pre-line leading-5 text-ink-muted">{candidate.overview || t("candidateNoOverview")}</p>
+                      </div>
+                    </div>
+                    <Button
+                      size="sm"
+                      disabled={disabled || lookupBusy || selectionBusy}
+                      busy={selectionBusy && (busyCandidateId == null || busyCandidateId === candidate.tmdb_id)}
+                      onClick={() => onSelect(candidate)}
+                    >
+                      {selectLabel ?? t("candidateConfirmMatch")}
+                    </Button>
+                  </div>
                 ) : null}
-              </span>
-            </button>
-          ))}
+              </div>
+            );
+          })}
           {candidates.length > DEFAULT_VISIBLE_CANDIDATES ? (
             <button
               type="button"

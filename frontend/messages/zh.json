@@ -77,7 +77,11 @@
       "projection_unavailable": "本地检索索引尚未就绪，请稍后重试。",
       "invalid_request": "请检查填写的条件后重试。",
       "unavailable": "请求未完成，请重试。"
-    }
+    },
+    "chooseLocal": "从本地资料库事实中选择",
+    "chooseFact": "选择{field}",
+    "removeHint": "移除一个条件后，重新预览并确认；其他条件保持不变。",
+    "removeFilter": "移除{field}"
   },
   "AnalysisReview": {
     "referenceHelp": "将未解析引用关联到已有对象。此操作不会创建关系，也不会将证据标记为有效。",
@@ -319,7 +323,12 @@
     "unfavorite": "取消收藏",
     "empty": "资料库为空。点击扫描添加电影。",
     "emptyFiltered": "当前筛选条件下没有影片。",
-    "resetFilter": "显示全部影片"
+    "resetFilter": "显示全部影片",
+    "cardActions": "操作：{title}",
+    "cardSaveFailed": "未保存，请重试。",
+    "cardRefreshFailed": "已保存，但相关视图刷新失败。重试只刷新显示。",
+    "retryAction": "重试",
+    "removedFromFilter": "已保存。《{title}》已不符合当前筛选条件。"
   },
   "Onboarding": {
     "eyebrow": "首次启动",
@@ -353,7 +362,13 @@
     "helpTitle": "检查与排错",
     "viewActivity": "查看扫描活动",
     "openManagement": "打开资料库设置",
-    "organizeRootCount": "整理根目录中的 {count} 个视频"
+    "organizeRootCount": "整理根目录中的 {count} 个视频",
+    "scanDirectory": "本次扫描目录：{path}",
+    "scanCompleted": "扫描完成，资料库已刷新。",
+    "scanCancelled": "扫描已取消，可以重新扫描。",
+    "scanCancelling": "已请求取消，正在等待扫描停止。",
+    "scanStatusUnavailable": "暂时无法更新扫描进度，正在自动重试。",
+    "scanNoLongerAvailable": "这次扫描的记录已不存在，可以重新扫描。"
   },
   "FileBrowser": {
     "title": "选择目录",
@@ -536,7 +551,14 @@
     "filmSectionEyebrow": "个人观看",
     "filmSectionTitle": "观看记录",
     "viewingCount": "共 {count} 次已确认观看",
-    "viewAll": "查看全部观看"
+    "viewAll": "查看全部观看",
+    "undone": "刚新增的观看记录已撤销。",
+    "savedRefreshFailed": "更改已保存，但列表刷新失败。无需重复保存。",
+    "retryRefresh": "刷新列表",
+    "viewSaved": "查看刚保存的记录",
+    "undoNew": "撤销刚新增的记录",
+    "recordAnother": "再记录一次观看",
+    "todayCount": "今天已有 {count} 次观看记录，仍可再记录一次。"
   },
   "Genealogy": {
     "title": "5X49",
@@ -573,7 +595,20 @@
       "rootConfirmation": "文件整理确认",
       "filmAnalysis": "电影分析",
       "scoreRefresh": "评分刷新"
-    }
+    },
+    "cancelling": "正在取消",
+    "actionFailed": "操作失败，请重试。",
+    "states": {
+      "queued": "排队中",
+      "running": "进行中",
+      "succeeded": "已完成",
+      "failed": "失败",
+      "cancelled": "已取消"
+    },
+    "loadFailed": "暂时无法更新任务。",
+    "cancelFailed": "取消失败，任务可能仍在运行，请重试。",
+    "retryFailed": "重试请求失败，请再次尝试。",
+    "reload": "重新加载任务"
   },
   "Activity": {
     "title": "活动记录",
@@ -1038,7 +1073,17 @@
         "clear": "资料库数据已清空。",
         "review": "元数据匹配已确认。"
       }
-    }
+    },
+    "candidateViewDetails": "查看候选详情",
+    "candidateHideDetails": "收起候选详情",
+    "candidateNoOverview": "该候选暂无简介。",
+    "candidateConfirmMatch": "确认匹配此影片",
+    "candidatePreviewOrganization": "选择并预览文件变更",
+    "reviewSkip": "暂时跳过",
+    "reviewRevisitSkipped": "重新处理跳过的影片",
+    "reviewSessionRemaining": "本轮还有 {count} 部 · 已跳过 {skipped} 部",
+    "reviewSkippedRemaining": "仍有 {count} 部跳过的影片待复核。",
+    "reviewRefreshFailed": "最新队列加载失败。本轮不会重复已保存的匹配；请刷新以核对剩余影片。"
   },
   "CinemaDna": {
     "eyebrow": "从观影记录，认识自己的电影世界",

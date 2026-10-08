@@ -32,10 +32,11 @@ import {
   getMissingLibraryItems,
 } from "@/lib/server-api";
 import type { LibraryFilmSummary, MissingLibraryItemsResponse } from "@/types/movie";
+import { Disclosure } from "@/components/ui/Disclosure";
+import LibraryFilmGrid from "./LibraryFilmGrid";
 import LibraryActions from "./LibraryActions";
 import LibraryInboxCare from "./LibraryInboxCare";
 import LibraryMetadataCare from "./LibraryMetadataCare";
-import LibraryMovieCard from "./LibraryMovieCard";
 import LibraryOfflineCare from "./LibraryOfflineCare";
 import LibraryOnboarding from "./LibraryOnboarding";
 
@@ -183,12 +184,7 @@ export default async function LibraryPage({ params, searchParams }: LibraryPageP
             {view === "all" && films.length > 0 ? (
               <>
                 <span className="mr-1 hidden text-xs font-bold tracking-widest text-ink-subtle uppercase md:inline-block">{filteredMovies.length} FILMS</span>
-                <div className="group/filter relative">
-                  <button type="button" aria-label={t("filter")} title={t("filter")} className={`focus-ring duration-standard inline-flex h-11 w-11 items-center justify-center rounded-media border transition-colors ${filter === "all" ? "border-line-strong bg-surface/70 text-ink-muted hover:bg-inverse hover:text-inverse-ink" : "border-inverse bg-inverse text-inverse-ink"}`}>
-                    <ListFilter className="h-4 w-4" />
-                  </button>
-                  <div className="z-popover pointer-events-none absolute top-full right-0 w-48 pt-3 opacity-0 transition-opacity duration-standard group-hover/filter:pointer-events-auto group-hover/filter:opacity-100 group-focus-within/filter:pointer-events-auto group-focus-within/filter:opacity-100">
-                    <div className="liquid-glass-popover rounded-media border border-line/80 p-1">
+                <Disclosure label={t("filter")} icon={<ListFilter className="h-4 w-4" />} active={filter !== "all"}>
                       {FILTER_OPTIONS.map((option) => {
                         const Icon = option.icon;
                         const active = filter === option.key;
@@ -199,15 +195,8 @@ export default async function LibraryPage({ params, searchParams }: LibraryPageP
                           </Link>
                         );
                       })}
-                    </div>
-                  </div>
-                </div>
-                <div className="group/sort relative">
-                  <button type="button" aria-label={t("sort")} title={t("sort")} className="focus-ring duration-standard inline-flex h-11 w-11 items-center justify-center rounded-media border border-line-strong bg-surface/70 text-ink-muted transition-colors hover:bg-inverse hover:text-inverse-ink">
-                    <ArrowUpDown className="h-4 w-4" />
-                  </button>
-                  <div className="z-popover pointer-events-none absolute top-full right-0 w-48 pt-3 opacity-0 transition-opacity duration-standard group-hover/sort:pointer-events-auto group-hover/sort:opacity-100 group-focus-within/sort:pointer-events-auto group-focus-within/sort:opacity-100">
-                    <div className="liquid-glass-popover rounded-media border border-line/80 p-1">
+                </Disclosure>
+                <Disclosure label={t("sort")} icon={<ArrowUpDown className="h-4 w-4" />}>
                       {SORT_OPTIONS.map((option) => {
                         const Icon = option.icon;
                         const active = sort === option.key;
@@ -220,9 +209,7 @@ export default async function LibraryPage({ params, searchParams }: LibraryPageP
                           </Link>
                         );
                       })}
-                    </div>
-                  </div>
-                </div>
+                </Disclosure>
               </>
             ) : null}
             {view !== "all" || emptyState !== "onboarding" ? <LibraryActions /> : null}
@@ -275,9 +262,7 @@ export default async function LibraryPage({ params, searchParams }: LibraryPageP
             <Link href={buildLibraryHref({ ...queryState, filter: "all" }, "all")} className="focus-ring inline-flex min-h-10 items-center border border-line-strong px-4 text-xs font-medium tracking-widest text-ink-muted uppercase hover:border-ink-disabled hover:text-ink">{t("resetFilter")}</Link>
           </div>
         ) : (
-          <div className="mt-20 grid grid-cols-1 gap-x-5 gap-y-12 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 xl:gap-x-6 xl:gap-y-14 2xl:grid-cols-5">
-            {sortedMovies.map((movie, index) => <LibraryMovieCard key={`${movie.id}:${movie.profile_state.updated_at || "initial"}`} movie={movie} priority={index === 0} />)}
-          </div>
+          <LibraryFilmGrid films={sortedMovies} filter={filter} />
         )}
       </div>
     </main>

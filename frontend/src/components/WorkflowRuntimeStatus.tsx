@@ -1,7 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { AlertTriangle, CheckCircle2, Clock3, Layers3, ListRestart, Loader2, X } from "lucide-react";
 import {
@@ -40,6 +39,7 @@ function workflowLabel(type: string, translate: (key: string) => string) {
 }
 
 function statusIcon(workflow: WorkflowRunView) {
+  if (workflow.status === "cancelled") return <X className="h-3.5 w-3.5 text-ink-muted" />;
   if (workflow.status === "running") {
     return <Loader2 className="h-3.5 w-3.5 animate-spin text-ink" />;
   }
@@ -71,12 +71,16 @@ function progressPercent(workflow: WorkflowRunView) {
 }
 
 export default function WorkflowRuntimeStatus() {
-  const router = useRouter();
   const t = useTranslations("WorkflowStatus");
-  const { data: workflows = [] } = useWorkflows();
+  const { data: workflows = [], error: loadError } = useWorkflows();
   const { upsertWorkflow, refreshWorkflows } = useWorkflowCache();
   const { trigger: cancelWorkflow, isMutating: isCancelling } = useCancelWorkflow();
   const { trigger: retryWorkflow, isMutating: isRetrying } = useRetryWorkflow();
+  const [open, setOpen] = useState(false);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const actionLock = useRef(false);
+  const [actionErrors, setActionErrors] = useState<Record<string, string>>({});
+  const [pendingCancel, setPendingCancel] = useState<string | null>(null);
   const refreshTimer = useRef<number | null>(null);
 
   const activeWorkflows = useMemo(
@@ -93,7 +97,6 @@ export default function WorkflowRuntimeStatus() {
       if (refreshTimer.current) window.clearTimeout(refreshTimer.current);
       refreshTimer.current = window.setTimeout(() => {
         refreshWorkflows();
-        router.refresh();
       }, 750);
     };
 
@@ -119,11 +122,46 @@ export default function WorkflowRuntimeStatus() {
       WORKFLOW_EVENTS.forEach((eventName) => eventSource.removeEventListener(eventName, handleWorkflowEvent));
       eventSource.close();
     };
-  }, [refreshWorkflows, router, upsertWorkflow]);
+  }, [refreshWorkflows, upsertWorkflow]);
+
+  useEffect(() => {
+    if (!open) return;
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      setOpen(false);
+      triggerRef.current?.focus();
+    };
+    document.addEventListener("keydown", closeOnEscape);
+    return () => document.removeEventListener("keydown", closeOnEscape);
+  }, [open]);
+
+  const handleAction = async (workflow: WorkflowRunView, action: "cancel" | "retry") => {
+    if (actionLock.current || (action === "cancel" && workflow.cancel_requested)) return;
+    actionLock.current = true;
+    setActionErrors((current) => ({ ...current, [workflow.id]: "" }));
+    if (action === "cancel") setPendingCancel(workflow.id);
+    try {
+      if (action === "cancel") upsertWorkflow(await cancelWorkflow(workflow.id));
+      else {
+        const result = await retryWorkflow(workflow.id);
+        if (result.workflow) upsertWorkflow(result.workflow);
+      }
+    } catch {
+      setActionErrors((current) => ({ ...current, [workflow.id]: t(action === "cancel" ? "cancelFailed" : "retryFailed") }));
+    } finally {
+      actionLock.current = false;
+      setPendingCancel(null);
+    }
+  };
 
   return (
-    <div className="group/workflows relative text-ink">
+    <div className="relative text-ink" onKeyDown={(event) => { if (event.key === "Escape") { setOpen(false); triggerRef.current?.focus(); } }}>
       <button
+        ref={triggerRef}
+        aria-expanded={open}
+        aria-controls="workflow-status-panel"
+        onClick={() => setOpen((value) => !value)}
         type="button"
         className="focus-ring duration-standard relative flex h-10 w-10 items-center justify-center text-ink drop-shadow-lg transition-opacity hover:opacity-70"
         aria-label={t("label")}
@@ -143,7 +181,7 @@ export default function WorkflowRuntimeStatus() {
         )}
       </button>
 
-      <div className="z-popover pointer-events-none absolute top-full right-0 w-[min(24rem,calc(100vw-2rem))] pt-3 opacity-0 transition-opacity duration-standard group-hover/workflows:pointer-events-auto group-hover/workflows:opacity-100 group-focus-within/workflows:pointer-events-auto group-focus-within/workflows:opacity-100">
+      <div id="workflow-status-panel" hidden={!open} className="z-popover absolute top-full right-0 w-[min(24rem,calc(100vw-2rem))] pt-3">
         <div className="liquid-glass-popover scrollbar-minimal relative max-h-80 overflow-y-auto border border-line/80 p-2">
           <div className="border-b border-line px-3 py-2">
             <p className="text-xs font-bold tracking-widest text-ink-muted uppercase">{t("title")}</p>
@@ -153,6 +191,7 @@ export default function WorkflowRuntimeStatus() {
                 : t("noRecent")}
             </p>
           </div>
+          {loadError && <div role="alert" className="px-3 py-2 text-xs text-danger"><p>{t("loadFailed")}</p><button type="button" className="focus-ring mt-2 min-h-11 underline" onClick={refreshWorkflows}>{t("reload")}</button></div>}
           {workflows.length === 0 ? (
             <div className="px-3 py-6 text-center text-xs font-bold tracking-widest text-ink-disabled uppercase">
               {t("empty")}
@@ -166,7 +205,7 @@ export default function WorkflowRuntimeStatus() {
                     <span className="flex min-w-0 items-center justify-between gap-3">
                       <span className="truncate text-xs font-bold uppercase tracking-widest">{workflowLabel(workflow.type, (key) => t(key as never))}</span>
                       <span className="shrink-0 text-[10px] font-bold tracking-widest text-ink-subtle uppercase">
-                        {workflow.status}
+                        {(pendingCancel === workflow.id || (workflow.cancel_requested && !TERMINAL_STATUSES.has(workflow.status))) ? t("cancelling") : t(`states.${workflow.status}`)}
                       </span>
                     </span>
                     <span className={`mt-1 block truncate text-xs ${workflow.status === "failed" ? "text-danger" : "text-ink-subtle"}`}>
@@ -185,9 +224,9 @@ export default function WorkflowRuntimeStatus() {
                     {(workflow.status === "queued" || workflow.status === "running") && (
                       <button
                         type="button"
-                        onClick={() => void cancelWorkflow(workflow.id)}
-                        disabled={isCancelling}
-                        className="focus-ring duration-standard flex h-6 w-6 items-center justify-center text-ink-subtle transition-colors hover:text-ink disabled:opacity-50"
+                        onClick={() => void handleAction(workflow, "cancel")}
+                        aria-disabled={isCancelling || isRetrying || workflow.cancel_requested}
+                        className="focus-ring duration-standard flex h-11 w-11 items-center justify-center text-ink-subtle transition-colors hover:text-ink aria-disabled:opacity-50"
                         aria-label={t("cancel")}
                         title={t("cancel")}
                       >
@@ -197,9 +236,9 @@ export default function WorkflowRuntimeStatus() {
                     {(workflow.status === "failed" || workflow.status === "cancelled") && (
                       <button
                         type="button"
-                        onClick={() => void retryWorkflow(workflow.id)}
-                        disabled={isRetrying}
-                        className="focus-ring duration-standard flex h-6 w-6 items-center justify-center text-ink-subtle transition-colors hover:text-ink disabled:opacity-50"
+                        onClick={() => void handleAction(workflow, "retry")}
+                        aria-disabled={isRetrying || isCancelling}
+                        className="focus-ring duration-standard flex h-11 w-11 items-center justify-center text-ink-subtle transition-colors hover:text-ink aria-disabled:opacity-50"
                         aria-label={t("retry")}
                         title={t("retry")}
                       >
@@ -207,6 +246,7 @@ export default function WorkflowRuntimeStatus() {
                       </button>
                     )}
                   </span>
+                  {actionErrors[workflow.id] && <p role="alert" className="col-span-3 break-words text-xs text-danger">{actionErrors[workflow.id]}</p>}
                 </li>
               ))}
             </ul>

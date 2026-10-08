@@ -1,7 +1,7 @@
 import tempfile
 import unittest
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 from sqlalchemy import inspect
 from sqlmodel import Session, create_engine, select
@@ -40,6 +40,49 @@ class WorkflowRuntimeTests(unittest.TestCase):
             module.engine = original
         self.engine.dispose()
         self._tmp.cleanup()
+
+    def test_scan_counts_are_attached_to_the_exact_workflow_progress(self):
+        from app.services.library_sync import LibrarySyncService
+        service = LibrarySyncService()
+        context = Mock()
+        with (
+            patch("app.services.library_sync.NFOScanner") as scanner,
+            patch("app.services.library_sync.library_manager") as manager,
+            patch("app.services.library_sync.library_event_bus"),
+            patch("app.services.library_sync.event_store"),
+            patch.object(service, "_video_probe_cache", return_value={}),
+        ):
+            scanner.return_value.scan_observed.return_value = []
+            manager.add_observations.return_value = 0
+            manager.mark_missing_not_seen_since.return_value = 0
+            result = service.reconcile(self._tmp.name, ctx=context)
+        self.assertEqual(result, {"scanned": 0, "added": 0, "missing": 0})
+        context.progress.assert_called_with(
+            stage="finalize", message="Finalizing Library reconcile", counts=result,
+        )
+
+    def test_recent_listing_keeps_all_active_and_respects_type_and_status(self):
+        created = []
+        for index in range(12):
+            workflow, _ = workflow_store.create(
+                "library.reconcile", {"media_root_ref": "manifest_test"},
+                dedupe_key=f"listing:{index}",
+            )
+            created.append(workflow["id"])
+        with Session(self.engine) as session:
+            for index, workflow_id in enumerate(created):
+                run = session.get(WorkflowRun, workflow_id)
+                run.created_at = f"2026-01-{index + 1:02d}T00:00:00Z"
+                run.status = "running" if index == 0 else "queued" if index == 1 else "succeeded"
+                session.add(run)
+            session.commit()
+        recent = workflow_store.list(limit=8)
+        self.assertNotIn(created[0], [run["id"] for run in recent])
+        visible = workflow_store.list(limit=8, include_active=True)
+        self.assertEqual(len(visible), 10)
+        self.assertTrue(set(created[:2]).issubset({run["id"] for run in visible}))
+        self.assertEqual(workflow_store.list(workflow_type="library.scan_folder", include_active=True), [])
+        self.assertEqual(len(workflow_store.list(status="succeeded", limit=2, include_active=True)), 2)
 
     def test_schema_v3_adds_workflow_tables_and_private_job_links(self):
         inspector = inspect(self.engine)

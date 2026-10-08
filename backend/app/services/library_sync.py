@@ -56,7 +56,7 @@ class LibrarySyncService:
                 "added": added,
                 "missing": missing,
             }
-            self._progress(ctx, "finalize", "Finalizing Library reconcile")
+            self._progress(ctx, "finalize", "Finalizing Library reconcile", counts=result)
             self._set_status(
                 state="idle",
                 last_finished_at=datetime.now(timezone.utc).isoformat(),
@@ -171,9 +171,9 @@ class LibrarySyncService:
             self._status.update(updates)
 
     @staticmethod
-    def _progress(ctx, stage: str, message: str) -> None:
+    def _progress(ctx, stage: str, message: str, *, counts: dict | None = None) -> None:
         if ctx is not None and hasattr(ctx, "progress"):
-            ctx.progress(stage=stage, message=message)
+            ctx.progress(stage=stage, message=message, **({"counts": counts} if counts is not None else {}))
         if ctx is not None and hasattr(ctx, "raise_if_cancelled"):
             ctx.raise_if_cancelled()
 

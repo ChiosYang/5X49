@@ -1,17 +1,14 @@
 "use client";
 
 import { CalendarPlus, ChevronDown, Trash2 } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 
 import { Button } from "@/components/ui/Button";
 import { InlineFeedback } from "@/components/ui/Feedback";
-import {
-  invalidateViewingCaches,
-  useCreateFilmViewing,
-  useDeleteViewing,
-  useUpdateViewing,
-} from "@/hooks/useFilm";
+import { useFilmViewings } from "@/hooks/useFilm";
+import { Link } from "@/i18n/routing";
+import { useViewingWrite } from "./useViewingWrite";
 import { cn } from "@/lib/cn";
 import {
   createViewingDateDraft,
@@ -28,6 +25,7 @@ interface ViewingInlineEditorProps {
   filmId: string;
   onCancel: () => void;
   onSaved?: () => void | Promise<void>;
+  onBusyChange?: (busy: boolean) => void;
   viewing?: ViewingView | null;
 }
 
@@ -36,6 +34,7 @@ export default function ViewingInlineEditor({
   filmId,
   onCancel,
   onSaved,
+  onBusyChange,
   viewing,
 }: ViewingInlineEditorProps) {
   const t = useTranslations("Diary");
@@ -43,59 +42,19 @@ export default function ViewingInlineEditor({
   const [advancedOpen, setAdvancedOpen] = useState(() => draft.mode !== "date");
   const [actionsOpen, setActionsOpen] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
-  const [feedback, setFeedback] = useState<{ tone: "success" | "error"; text: string } | null>(null);
-  const closeTimer = useRef<number | null>(null);
-  const createViewing = useCreateFilmViewing(filmId);
-  const updateViewing = useUpdateViewing(viewing?.id);
-  const deleteViewing = useDeleteViewing(viewing?.id);
-  const busy = createViewing.isMutating || updateViewing.isMutating || deleteViewing.isMutating;
+  const actions = useViewingWrite(filmId, viewing, onSaved);
+  const { busy, completed: succeeded, feedback } = actions;
+  useEffect(() => {
+    onBusyChange?.(busy);
+    return () => onBusyChange?.(false);
+  }, [busy, onBusyChange]);
   const editable = viewing?.editable ?? true;
-  const succeeded = feedback?.tone === "success";
   const watchedAt = viewingDraftWatchedAt(draft);
   const valid = viewingDateDraftValid(draft);
   const dirty = viewingDateDraftDirty(draft, viewing);
-
-  useEffect(() => () => {
-    if (closeTimer.current !== null) window.clearTimeout(closeTimer.current);
-  }, []);
-
-  const complete = async (message: string) => {
-    setFeedback({ tone: "success", text: message });
-    await invalidateViewingCaches(filmId);
-    await onSaved?.();
-    closeTimer.current = window.setTimeout(onCancel, 650);
-  };
-
-  const save = async () => {
-    if (succeeded || !valid || !dirty) return;
-    setFeedback(null);
-    try {
-      if (viewing) {
-        await updateViewing.trigger({ watched_at: watchedAt });
-        await complete(t("updated"));
-      } else {
-        await createViewing.trigger({ watched_at: watchedAt });
-        await complete(t("created"));
-      }
-    } catch (error) {
-      setFeedback({ tone: "error", text: error instanceof Error ? error.message : t("saveFailed") });
-    }
-  };
-
-  const remove = async () => {
-    setFeedback(null);
-    try {
-      await deleteViewing.trigger();
-      await complete(t("deleted"));
-    } catch (error) {
-      setFeedback({ tone: "error", text: error instanceof Error ? error.message : t("deleteFailed") });
-    }
-  };
-
-  const setMode = (mode: ViewingDateMode) => {
-    setDraft((current) => ({ ...current, mode }));
-    setFeedback(null);
-  };
+  const save = () => { if (valid && dirty) void actions.save(watchedAt); };
+  const remove = () => { void actions.remove(); };
+  const setMode = (mode: ViewingDateMode) => setDraft((current) => ({ ...current, mode }));
 
   if (!editable) {
     return (
@@ -111,6 +70,7 @@ export default function ViewingInlineEditor({
       className={cn("mt-4 space-y-4 border-t border-line pt-4", className)}
       aria-label={viewing ? t("editViewing") : t("otherDate")}
     >
+      <fieldset disabled={busy || succeeded} className="space-y-4">
       {draft.mode === "date" ? (
         <label className="block space-y-2">
           <span className="type-label text-ink-subtle">{t("date")}</span>
@@ -181,13 +141,15 @@ export default function ViewingInlineEditor({
         ) : null}
       </div>
 
+      </fieldset>
       <div aria-live="polite" className="min-h-5">
         {feedback ? <InlineFeedback tone={feedback.tone}>{feedback.text}</InlineFeedback> : null}
       </div>
 
+      <ViewingReceipt filmId={filmId} actions={actions} />
       <div className="flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          {viewing ? (
+          {viewing && !succeeded ? (
             <button
               type="button"
               className="focus-ring duration-fast inline-flex min-h-9 items-center gap-2 type-badge text-ink-subtle transition-colors hover:text-ink"
@@ -198,21 +160,21 @@ export default function ViewingInlineEditor({
               {actionsOpen ? t("hideActions") : t("moreActions")}
             </button>
           ) : null}
-          {actionsOpen ? (
+          {actionsOpen && !succeeded ? (
             <div className="mt-2 flex flex-wrap items-center gap-2">
               {confirmDelete ? (
                 <>
-                  <Button variant="danger" size="sm" busy={deleteViewing.isMutating} onClick={remove}>
+                  <Button variant="danger" size="sm" busy={busy} onClick={remove}>
                     {t("confirmDelete")}
                   </Button>
-                  <Button variant="ghost" size="sm" onClick={() => setConfirmDelete(false)}>{t("cancel")}</Button>
+                  <Button variant="ghost" size="sm" disabled={busy} onClick={() => setConfirmDelete(false)}>{t("cancel")}</Button>
                 </>
               ) : (
                 <Button
                   variant="ghost"
                   size="sm"
                   icon={<Trash2 className="h-4 w-4" />}
-                  onClick={() => setConfirmDelete(true)}
+                  disabled={busy} onClick={() => setConfirmDelete(true)}
                 >
                   {t("delete")}
                 </Button>
@@ -221,13 +183,13 @@ export default function ViewingInlineEditor({
           ) : null}
         </div>
         <div className="flex flex-col gap-2 sm:flex-row">
-          <Button variant="ghost" size="sm" onClick={onCancel}>{t("cancel")}</Button>
+          <Button variant="ghost" size="sm" disabled={busy} onClick={onCancel}>{succeeded ? t("close") : t("cancel")}</Button>
           <Button
             variant="primary"
             size="sm"
             icon={<CalendarPlus className="h-4 w-4" />}
-            busy={busy && !deleteViewing.isMutating}
-            disabled={!valid || !dirty || succeeded}
+            busy={busy}
+            disabled={busy || !valid || !dirty || succeeded}
             onClick={save}
           >
             {viewing ? t("save") : t("record")}
@@ -246,38 +208,23 @@ interface ViewingQuickAddProps {
 
 export function ViewingQuickAdd({ className, filmId, onSaved }: ViewingQuickAddProps) {
   const t = useTranslations("Diary");
-  const createViewing = useCreateFilmViewing(filmId);
   const [otherDateOpen, setOtherDateOpen] = useState(false);
-  const [feedback, setFeedback] = useState<{ tone: "success" | "error"; text: string } | null>(null);
-  const feedbackTimer = useRef<number | null>(null);
-
-  useEffect(() => () => {
-    if (feedbackTimer.current !== null) window.clearTimeout(feedbackTimer.current);
-  }, []);
-
-  const recordToday = async () => {
-    if (createViewing.isMutating) return;
-    setFeedback(null);
-    try {
-      await createViewing.trigger({ watched_at: todayLocalDate() });
-      await invalidateViewingCaches(filmId);
-      await onSaved?.();
-      setFeedback({ tone: "success", text: t("createdToday") });
-      if (feedbackTimer.current !== null) window.clearTimeout(feedbackTimer.current);
-      feedbackTimer.current = window.setTimeout(() => setFeedback(null), 1800);
-    } catch (error) {
-      setFeedback({ tone: "error", text: error instanceof Error ? error.message : t("saveFailed") });
-    }
-  };
+  const [editorBusy, setEditorBusy] = useState(false);
+  const actions = useViewingWrite(filmId, null, onSaved);
+  const { data: existingViewings } = useFilmViewings(filmId);
+  const todayCount = existingViewings?.filter((item) => item.watched_at?.slice(0, 10) === todayLocalDate()).length || 0;
+  const { busy, feedback, completed } = actions;
+  const recordToday = () => { void actions.save(todayLocalDate()); };
 
   return (
     <div className={cn("w-full sm:w-auto", className)}>
+      {todayCount > 0 ? <p className="mb-2 text-xs text-ink-subtle">{t("todayCount", { count: todayCount })}</p> : null}
       <div className="flex flex-col gap-2 sm:flex-row">
         <Button
           variant="primary"
           icon={<CalendarPlus className="h-4 w-4" />}
-          busy={createViewing.isMutating}
-          disabled={otherDateOpen}
+          busy={busy}
+          disabled={otherDateOpen || completed || busy}
           responsiveWidth
           onClick={recordToday}
         >
@@ -286,9 +233,9 @@ export function ViewingQuickAdd({ className, filmId, onSaved }: ViewingQuickAddP
         <Button
           variant="secondary"
           responsiveWidth
-          disabled={createViewing.isMutating}
+          disabled={busy || editorBusy}
           aria-expanded={otherDateOpen}
-          onClick={() => { setOtherDateOpen((current) => !current); setFeedback(null); }}
+          onClick={() => setOtherDateOpen((current) => !current)}
         >
           {otherDateOpen ? t("cancelOtherDate") : t("otherDate")}
         </Button>
@@ -296,14 +243,35 @@ export function ViewingQuickAdd({ className, filmId, onSaved }: ViewingQuickAddP
       <div aria-live="polite" className="mt-2 min-h-5">
         {feedback ? <InlineFeedback tone={feedback.tone}>{feedback.text}</InlineFeedback> : null}
       </div>
+      <ViewingReceipt filmId={filmId} actions={actions} />
+      {completed && !otherDateOpen ? <Button size="sm" variant="ghost" disabled={busy} onClick={actions.reset}>{t("recordAnother")}</Button> : null}
       {otherDateOpen ? (
         <ViewingInlineEditor
           key="new-viewing"
           filmId={filmId}
           onCancel={() => setOtherDateOpen(false)}
           onSaved={onSaved}
+          onBusyChange={setEditorBusy}
         />
       ) : null}
     </div>
   );
+}
+
+function ViewingReceipt({ filmId, actions }: { filmId: string; actions: ReturnType<typeof useViewingWrite> }) {
+  const t = useTranslations("Diary");
+  return <div className="space-y-2">
+    {actions.refreshFailed ? <div role="status">
+      <InlineFeedback tone="warning">{t("savedRefreshFailed")}</InlineFeedback>
+      <Button size="sm" variant="ghost" disabled={actions.busy} onClick={actions.retryRefresh}>{t("retryRefresh")}</Button>
+    </div> : null}
+    {actions.receipt ? <div className="flex flex-wrap gap-3">
+      <details className="w-full">
+        <summary className="focus-ring cursor-pointer py-2 text-sm underline">{t("viewSaved")}</summary>
+        <p className="py-2 text-sm text-ink-muted">{t("date")}: {actions.receipt.watched_at || t("unknownDate")}</p>
+        <Link className="focus-ring inline-flex min-h-10 items-center text-sm underline" href={`/diary?film=${encodeURIComponent(filmId)}`}>{t("viewAll")}</Link>
+      </details>
+      <Button size="sm" variant="ghost" disabled={actions.busy} onClick={actions.undo}>{t("undoNew")}</Button>
+    </div> : null}
+  </div>;
 }

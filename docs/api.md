@@ -497,7 +497,7 @@ was already restored, or a controlled file restore is no longer safe.
 
 | Method | Path | Purpose |
 | --- | --- | --- |
-| `GET` | `/workflows` | List sanitized workflows; optional `status`, `type`, `limit`. |
+| `GET` | `/workflows` | List sanitized workflows; optional `status`, `type`, `limit`, `include_active`. With `include_active=true` and no status filter, retain every queued/running workflow in addition to the bounded recent list; type filtering still applies. |
 | `GET` | `/workflows/{workflow_id}` | Get a workflow and its ordered steps. |
 | `POST` | `/workflows/{workflow_id}/cancel` | Cancel or request cancellation. |
 | `POST` | `/workflows/{workflow_id}/retry` | Resume from the first failed/cancelled step. |

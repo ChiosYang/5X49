@@ -2,7 +2,7 @@
 
 import { CheckCircle2, ChevronRight, RotateCcw } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import {
   MetadataCandidatePicker,
@@ -17,6 +17,7 @@ import {
   useFilmScrapeCandidates,
 } from "@/hooks/useFilm";
 import { useLibrary } from "@/hooks/useLibrary";
+import { reviewSession } from "@/lib/metadata-review";
 import { API } from "@/lib/api";
 import type { LibraryFilmSummary, MetadataSearchResult } from "@/types/movie";
 
@@ -33,9 +34,13 @@ function filmsNeedingReview(films: LibraryFilmSummary[], locale: string) {
 export function MetadataReviewInspector({
   film,
   onConfirmed,
+  onSkip,
+  onBusyChange,
 }: {
   film: LibraryFilmSummary;
   onConfirmed: (filmId: string) => Promise<void>;
+  onSkip: () => void;
+  onBusyChange?: (busy: boolean) => void;
 }) {
   const t = useTranslations("LibraryManagement");
   const filmT = useTranslations("FilmDetail");
@@ -45,17 +50,20 @@ export function MetadataReviewInspector({
   const [reviewSearchDraft, setReviewSearchDraft] = useState(
     `${film.title}${film.year ? ` ${film.year}` : ""}`,
   );
+  const operationInFlight = useRef(false);
   const [lookupBusy, setLookupBusy] = useState(false);
   const [busyCandidateId, setBusyCandidateId] = useState<number | null>(null);
   const [feedback, setFeedback] = useState<{ message: string; tone: "error" | "success" } | null>(null);
   const candidates = candidateOverride ?? candidateQuery.data ?? [];
-  const busy = lookupBusy || confirmScrape.isMutating;
+  const busy = lookupBusy || busyCandidateId !== null || confirmScrape.isMutating;
   const automaticCandidatesLoading = candidateOverride === null && candidateQuery.isLoading;
   const automaticCandidatesError = candidateOverride === null && candidateQuery.error;
 
   const handleLookup = async () => {
     const input = reviewSearchDraft.trim();
-    if (!input) return;
+    if (!input || operationInFlight.current) return;
+    operationInFlight.current = true;
+    onBusyChange?.(true);
     setLookupBusy(true);
     setFeedback(null);
     try {
@@ -79,11 +87,16 @@ export function MetadataReviewInspector({
         tone: "error",
       });
     } finally {
+      operationInFlight.current = false;
+      onBusyChange?.(false);
       setLookupBusy(false);
     }
   };
 
   const handleConfirm = async (candidate: MetadataSearchResult) => {
+    if (operationInFlight.current) return;
+    operationInFlight.current = true;
+    onBusyChange?.(true);
     setBusyCandidateId(candidate.tmdb_id);
     setFeedback(null);
     try {
@@ -95,6 +108,8 @@ export function MetadataReviewInspector({
         tone: "error",
       });
     } finally {
+      operationInFlight.current = false;
+      onBusyChange?.(false);
       setBusyCandidateId(null);
     }
   };
@@ -150,6 +165,7 @@ export function MetadataReviewInspector({
           showMoreLabel={(count) => filmT("showMore", { count })}
         />
       </div>
+      <Button className="mt-4" size="sm" disabled={busy} onClick={onSkip}>{t("reviewSkip")}</Button>
       <div className="mt-3 min-h-5" aria-live="polite">
         {feedback ? <InlineFeedback tone={feedback.tone}>{feedback.message}</InlineFeedback> : null}
       </div>
@@ -164,14 +180,15 @@ export default function MetadataReviewQueue({ refreshSignal }: { refreshSignal?:
   const [activeFilmId, setActiveFilmId] = useState<string | null>(null);
   const [completed, setCompleted] = useState(false);
   const [confirmedSinceStart, setConfirmedSinceStart] = useState(false);
-  const [sessionTotal, setSessionTotal] = useState(0);
-  const [sessionConfirmedCount, setSessionConfirmedCount] = useState(0);
+  const [skippedIds, setSkippedIds] = useState<string[]>([]);
+  const [confirmedIds, setConfirmedIds] = useState<string[]>([]);
 
   const allReviewFilms = useMemo(
     () => filmsNeedingReview(data ?? [], locale),
     [data, locale],
   );
-  const activeFilm = allReviewFilms.find((film) => film.id === activeFilmId) ?? null;
+  const { pending, available, skippedCount } = reviewSession(allReviewFilms, skippedIds, confirmedIds);
+  const activeFilm = available.find((film) => film.id === activeFilmId) ?? null;
 
   useEffect(() => {
     if (refreshSignal) void mutate();
@@ -180,21 +197,31 @@ export default function MetadataReviewQueue({ refreshSignal }: { refreshSignal?:
   const startReview = () => {
     setCompleted(false);
     setConfirmedSinceStart(false);
-    setSessionTotal(allReviewFilms.length);
-    setSessionConfirmedCount(0);
-    setActiveFilmId(allReviewFilms[0]?.id ?? null);
+    setSkippedIds([]);
+    setActiveFilmId(pending[0]?.id ?? null);
   };
 
   const handleConfirmed = async (filmId: string) => {
-    const currentRemaining = allReviewFilms.filter((film) => film.id !== filmId);
+    const nextConfirmed = [...confirmedIds, filmId];
+    // Record success independently of revalidation; stale cache must not repeat a write.
     const refreshed = await mutate().catch(() => undefined);
-    const remaining = refreshed
-      ? filmsNeedingReview(refreshed, locale).filter((film) => film.id !== filmId)
-      : currentRemaining;
+    setConfirmedIds(nextConfirmed);
+    const remaining = reviewSession(
+      refreshed ? filmsNeedingReview(refreshed, locale) : allReviewFilms,
+      skippedIds,
+      nextConfirmed,
+    );
     setConfirmedSinceStart(true);
-    setSessionConfirmedCount((current) => current + 1);
-    setActiveFilmId(remaining[0]?.id ?? null);
-    setCompleted(remaining.length === 0);
+    setActiveFilmId(remaining.available[0]?.id ?? null);
+    setCompleted(remaining.pending.length === 0);
+  };
+
+  const handleSkip = () => {
+    if (!activeFilm) return;
+    const nextSkipped = [...skippedIds, activeFilm.id];
+    setSkippedIds(nextSkipped);
+    setConfirmedSinceStart(false);
+    setActiveFilmId(reviewSession(allReviewFilms, nextSkipped, confirmedIds).available[0]?.id ?? null);
   };
 
   return (
@@ -209,27 +236,27 @@ export default function MetadataReviewQueue({ refreshSignal }: { refreshSignal?:
               {t("reviewQueueTitle")}
             </h3>
             <span className="type-badge border border-line-strong px-2 py-1 text-ink-muted">
-              {t("reviewQueueCount", { count: allReviewFilms.length })}
+              {t("reviewQueueCount", { count: pending.length })}
             </span>
           </div>
           <p className="mt-2 max-w-2xl text-xs leading-5 text-ink-disabled">
             {t("reviewQueueDesc")}
           </p>
         </div>
-        {!activeFilm && allReviewFilms.length > 0 ? (
+        {!activeFilm && pending.length > 0 ? (
           <Button
             responsiveWidth
             icon={<ChevronRight className="h-3.5 w-3.5" />}
             onClick={startReview}
           >
-            {t("startReview")}
+            {t(skippedCount > 0 ? "reviewRevisitSkipped" : "startReview")}
           </Button>
         ) : null}
       </div>
 
       <div className="mt-5 min-h-5" aria-live="polite">
         {error ? <InlineFeedback tone="error">{t("reviewQueueLoadFailed")}</InlineFeedback> : null}
-        {completed && allReviewFilms.length === 0 ? (
+        {completed && pending.length === 0 ? (
           <InlineFeedback tone="success">
             <span className="inline-flex items-center gap-2">
               <CheckCircle2 className="h-3.5 w-3.5" />
@@ -237,16 +264,16 @@ export default function MetadataReviewQueue({ refreshSignal }: { refreshSignal?:
             </span>
           </InlineFeedback>
         ) : null}
-        {!isLoading && !error && !completed && allReviewFilms.length === 0 ? (
+        {!isLoading && !error && !completed && pending.length === 0 ? (
           <InlineFeedback>{t("noPendingReviews")}</InlineFeedback>
+        ) : null}
+        {!activeFilm && skippedCount > 0 ? (
+          <InlineFeedback>{t("reviewSkippedRemaining", { count: skippedCount })}</InlineFeedback>
         ) : null}
         {activeFilm ? (
           <InlineFeedback tone={confirmedSinceStart ? "success" : "neutral"}>
             {confirmedSinceStart ? `${t("reviewConfirmed")} ` : ""}
-            {t("reviewProgress", {
-              current: Math.min(sessionConfirmedCount + 1, sessionTotal),
-              total: sessionTotal,
-            })}
+            {t("reviewSessionRemaining", { count: available.length, skipped: skippedCount })}
           </InlineFeedback>
         ) : null}
       </div>
@@ -256,6 +283,7 @@ export default function MetadataReviewQueue({ refreshSignal }: { refreshSignal?:
           key={activeFilm.id}
           film={activeFilm}
           onConfirmed={handleConfirmed}
+          onSkip={handleSkip}
         />
       ) : null}
     </article>

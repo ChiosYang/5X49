@@ -1,20 +1,24 @@
 "use client";
 
 import Image from "next/image";
-import { useState } from "react";
+import { useSWRConfig } from "swr";
+import { useId, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
-import { Check, Globe2, Loader2, Star } from "lucide-react";
+import { Check, Globe2, Loader2, MoreHorizontal, Star } from "lucide-react";
 import { Link, useRouter } from "@/i18n/routing";
+import { rememberFilmReturn } from "@/lib/navigation-context";
+import { Button } from "@/components/ui/Button";
 import { API } from "@/lib/api";
 import { invalidateViewingCaches, useUpdateFilmProfileState } from "@/hooks/useFilm";
 import { watchedActionFor } from "@/lib/diary";
-import type { AudioTrack, LibraryFilmSummary } from "@/types/movie";
+import type { AudioTrack, FilmProfileState, LibraryFilmSummary } from "@/types/movie";
 import ExternalScoreStrip from "../components/ExternalScoreStrip";
 
 interface LibraryMovieCardProps {
   movie: LibraryFilmSummary;
   priority?: boolean;
   readOnly?: boolean;
+  onProfileSaved?: (state: FilmProfileState) => void;
 }
 
 type MediaSpecBadge = {
@@ -241,12 +245,21 @@ function todayDateValue() {
   return `${year}-${month}-${day}`;
 }
 
-export default function LibraryMovieCard({ movie, priority = false, readOnly = false }: LibraryMovieCardProps) {
+export default function LibraryMovieCard({ movie, priority = false, readOnly = false, onProfileSaved }: LibraryMovieCardProps) {
   const t = useTranslations("Library");
+  const { cache } = useSWRConfig();
   const router = useRouter();
   const { trigger, isMutating } = useUpdateFilmProfileState(movie.id);
   const artwork = movie.primary_item.artwork;
-  const [profileState, setProfileState] = useState(movie.profile_state);
+  const [localState, setLocalState] = useState<{ baseline: string | null | undefined; state: FilmProfileState } | null>(null);
+  const profileState = localState && localState.baseline === movie.profile_state.updated_at ? localState.state : movie.profile_state;
+  const setProfileState = (state: FilmProfileState) => setLocalState({ baseline: movie.profile_state.updated_at, state });
+  const [actionsOpen, setActionsOpen] = useState(false);
+  const [feedback, setFeedback] = useState<"failed" | "refreshFailed" | null>(null);
+  const [retryAction, setRetryAction] = useState<"favorite" | "watched" | null>(null);
+  const submitting = useRef(false);
+  const actionTrigger = useRef<HTMLButtonElement>(null);
+  const panelId = useId();
   const watched = Boolean(profileState.watched);
   const favorite = Boolean(profileState.favorite);
   const artworkVersion = movie.primary_item.metadata.updated_at
@@ -272,44 +285,47 @@ export default function LibraryMovieCard({ movie, priority = false, readOnly = f
     .filter(Boolean)
     .slice(0, 3);
 
-  const updateFavorite = async () => {
-    const previous = profileState;
-    setProfileState({ ...profileState, favorite: !favorite });
-    try {
-      const saved = await trigger({ favorite: !favorite });
-      setProfileState(saved);
-      await invalidateViewingCaches(movie.id);
-      router.refresh();
-    } catch {
-      setProfileState(previous);
-    }
-  };
-
-  const handleWatched = async () => {
+  const updateState = async (kind: "favorite" | "watched") => {
+    if (submitting.current) return;
     const action = watchedActionFor(profileState);
-    if (action === "open_diary") {
+    if (kind === "watched" && action === "open_diary") {
       router.push(`/diary?film=${movie.id}`);
       return;
     }
+    submitting.current = true;
+    setFeedback(null);
+    setRetryAction(null);
+    let saved: FilmProfileState;
     try {
-      const saved = await trigger({
+      saved = await trigger(kind === "favorite" ? { favorite: !favorite } : {
         watched: action === "mark_watched",
         watched_at: action === "mark_watched" ? profileState.watched_at || todayDateValue() : null,
       });
-      setProfileState(saved);
-      await invalidateViewingCaches(movie.id);
-      router.refresh();
     } catch {
-      // Keep the last confirmed server state when the command fails.
+      setFeedback("failed");
+      setRetryAction(kind);
+      submitting.current = false;
+      return;
     }
+    setProfileState(saved);
+    onProfileSaved?.(saved);
+    try { await invalidateViewingCaches(movie.id, cache.keys()); } catch { setFeedback("refreshFailed"); }
+    submitting.current = false;
+  };
+
+  const retry = async () => {
+    if (retryAction) { await updateState(retryAction); return; }
+    try { await invalidateViewingCaches(movie.id, cache.keys()); setFeedback(null); } catch { setFeedback("refreshFailed"); }
   };
 
   return (
-    <div className="block">
+    <div className="block" onKeyDown={(event) => {
+      if (event.key === "Escape" && actionsOpen) { event.stopPropagation(); setActionsOpen(false); actionTrigger.current?.focus(); }
+    }}>
       <div className="space-y-4">
         {/* Landscape Still */}
-        <div className={`${readOnly ? "" : "peer/card group z-content hover:z-inspector"} relative aspect-video w-full bg-surface-raised`}>
-          <Link href={`/library/${movie.id}`} scroll={false} className="focus-ring block h-full cursor-pointer rounded-media">
+        <div className={`${readOnly ? "" : `peer/card group ${actionsOpen ? "z-inspector" : "z-content"}`} relative aspect-video w-full bg-surface-raised`}>
+          <Link href={`/library/${movie.id}`} onClick={() => rememberFilmReturn(movie.id)} scroll={false} id={`film-link-${movie.id}`} className="focus-ring block h-full cursor-pointer rounded-media">
             <div className="relative h-full w-full overflow-hidden rounded-media">
               {backdropSrc ? (
                 <Image
@@ -348,14 +364,16 @@ export default function LibraryMovieCard({ movie, priority = false, readOnly = f
             </div>
           </Link>
 
-          {!readOnly && <div className="liquid-glass-popover z-inspector invisible absolute top-full right-0 left-0 origin-top translate-y-1 scale-95 overflow-hidden rounded-b-media border border-line/80 p-5 text-ink opacity-0 transition-[opacity,transform] delay-0 duration-standard ease-exit group-hover:visible group-hover:translate-y-0 group-hover:scale-100 group-hover:opacity-100 group-hover:delay-inspection">
+          {!readOnly && <button ref={actionTrigger} type="button" aria-label={t("cardActions", { title })} aria-expanded={actionsOpen} aria-controls={panelId}
+            onClick={() => setActionsOpen((open) => !open)} className="focus-ring absolute bottom-2 right-2 z-raised flex h-11 w-11 items-center justify-center rounded-control border border-white/30 bg-black/80 text-white"><MoreHorizontal className="h-5 w-5" /></button>}
+          {!readOnly && actionsOpen && <div id={panelId} className="liquid-glass-popover z-inspector absolute top-full right-0 left-0 overflow-hidden rounded-b-media border border-line/80 p-5 text-ink">
             <div className="z-raised relative space-y-4">
-              <div className="flex items-center gap-3">
+              <div className="flex flex-wrap items-center gap-3">
                 <button
                   type="button"
-                  onClick={handleWatched}
-                  disabled={isMutating}
-                  className={`focus-ring duration-standard inline-flex h-10 items-center gap-2 rounded-pill px-4 text-sm font-black tracking-wide uppercase transition-colors ${
+                  onClick={() => void updateState("watched")}
+                  aria-disabled={isMutating}
+                  className={`focus-ring duration-standard inline-flex min-h-11 items-center gap-2 rounded-pill px-4 text-sm font-black tracking-wide uppercase transition-colors ${
                     watched
                       ? "bg-inverse text-inverse-ink group-hover:bg-neutral-200"
                       : "border border-ink/55 text-ink hover:border-ink hover:bg-inverse hover:text-inverse-ink"
@@ -368,9 +386,9 @@ export default function LibraryMovieCard({ movie, priority = false, readOnly = f
                 </button>
                 <button
                   type="button"
-                  onClick={updateFavorite}
-                  disabled={isMutating}
-                  className={`focus-ring duration-standard flex h-8 w-8 items-center justify-center rounded-pill border transition-colors ${
+                  onClick={() => void updateState("favorite")}
+                  aria-disabled={isMutating}
+                  className={`focus-ring duration-standard flex h-11 w-11 items-center justify-center rounded-pill border transition-colors ${
                     favorite
                       ? "border-inverse bg-inverse text-inverse-ink"
                       : "border-ink/55 text-ink hover:border-ink"
@@ -382,6 +400,10 @@ export default function LibraryMovieCard({ movie, priority = false, readOnly = f
                 </button>
               </div>
 
+              {feedback && <div role="status" className="space-y-2 text-sm text-warning">
+                <p>{t(feedback === "failed" ? "cardSaveFailed" : "cardRefreshFailed")}</p>
+                <Button size="sm" aria-disabled={isMutating} onClick={() => void retry()}>{t("retryAction")}</Button>
+              </div>}
               <p className="overflow-hidden text-[15px] leading-snug text-ink-muted [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:4]">
                 {description || `${title} (${movie.year})`}
               </p>
@@ -465,7 +487,7 @@ export default function LibraryMovieCard({ movie, priority = false, readOnly = f
         </div>
 
         {/* Title & Info */}
-        <Link href={`/library/${movie.id}`} scroll={false} className="focus-ring duration-standard flex cursor-pointer items-start justify-between transition-opacity delay-0 peer-hover/card:pointer-events-none peer-hover/card:opacity-0 peer-hover/card:delay-inspection">
+        <Link href={`/library/${movie.id}`} onClick={() => rememberFilmReturn(movie.id)} scroll={false} className="focus-ring duration-standard flex cursor-pointer items-start justify-between transition-opacity">
           <div className="space-y-1">
             <h3 className="text-xl md:text-2xl font-bold uppercase leading-none tracking-tight">
               {title}

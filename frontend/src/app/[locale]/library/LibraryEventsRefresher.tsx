@@ -1,5 +1,6 @@
 "use client";
 
+import { shouldRefreshLibraryEvent } from "@/lib/library-interactions";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef } from "react";
 
@@ -10,7 +11,11 @@ export default function LibraryEventsRefresher() {
   useEffect(() => {
     const eventSource = new EventSource("/api/library/events");
 
-    const scheduleRefresh = () => {
+    const scheduleRefresh = (event: Event) => {
+      try {
+        const data = JSON.parse((event as MessageEvent<string>).data);
+        if (!shouldRefreshLibraryEvent(data.reason)) return;
+      } catch { return; }
       if (refreshTimer.current) {
         window.clearTimeout(refreshTimer.current);
       }

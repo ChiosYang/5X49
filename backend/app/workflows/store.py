@@ -136,6 +136,7 @@ class WorkflowStore:
         status: str | None = None,
         workflow_type: str | None = None,
         limit: int = 50,
+        include_active: bool = False,
     ) -> list[dict[str, Any]]:
         with Session(engine) as session:
             statement = select(WorkflowRun)
@@ -144,6 +145,10 @@ class WorkflowStore:
             if workflow_type:
                 statement = statement.where(WorkflowRun.type == workflow_type)
             runs = session.exec(statement.order_by(WorkflowRun.created_at.desc()).limit(max(1, min(limit, 200)))).all()
+            if include_active and not status:
+                active = session.exec(statement.where(WorkflowRun.status.in_(["queued", "running"]))).all()
+                by_id = {run.id: run for run in [*runs, *active]}
+                runs = sorted(by_id.values(), key=lambda run: run.created_at, reverse=True)
             return [self.public_view_from_session(session, run.id) for run in runs]
 
     def start_job(self, job_id: str) -> dict[str, Any] | None:

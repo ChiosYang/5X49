@@ -15,10 +15,16 @@ import { isMediaDirectoryReady } from "@/lib/library-onboarding";
 
 export default function MediaDirectoryControl({
   autoSave = false,
+  managedValue,
+  onValueChange,
+  disabled = false,
   inlineStatus = false,
   showDockerNote = false,
 }: {
   autoSave?: boolean;
+  managedValue?: string;
+  onValueChange?: (value: string) => void;
+  disabled?: boolean;
   inlineStatus?: boolean;
   showDockerNote?: boolean;
 }) {
@@ -41,7 +47,7 @@ export default function MediaDirectoryControl({
     return () => window.clearTimeout(timer);
   }, [resetSave, saveResult]);
 
-  const value = draft ?? data?.media_dir ?? "";
+  const value = managedValue ?? draft ?? data?.media_dir ?? "";
   const dirty = draft !== undefined && draft.trim() !== (data?.media_dir ?? "");
   const ready = isMediaDirectoryReady(saveResult ?? data);
   const inlineIconState = (() => {
@@ -76,6 +82,7 @@ export default function MediaDirectoryControl({
   const handleDraftChange = (nextValue: string) => {
     resetSave();
     setDraft(nextValue);
+    onValueChange?.(nextValue);
   };
 
   const handleInputBlur = (event: FocusEvent<HTMLInputElement>) => {
@@ -94,6 +101,7 @@ export default function MediaDirectoryControl({
       <div className="flex flex-col gap-3 md:flex-row">
         <div className="relative min-w-0 flex-1">
           <TextInput
+            disabled={disabled}
             type="text"
             value={value}
             onChange={(event) => handleDraftChange(event.target.value)}
@@ -125,11 +133,11 @@ export default function MediaDirectoryControl({
         <Button
           ref={browseButtonRef}
           onClick={() => setFileBrowserOpen(true)}
-          disabled={autoSave && saving}
+          disabled={disabled || (autoSave && saving)}
         >
           {t("browse")}
         </Button>
-        {!autoSave ? (
+        {!autoSave && !onValueChange ? (
           <Button
             onClick={handleSave}
             disabled={!dirty || !value.trim() || saving}
