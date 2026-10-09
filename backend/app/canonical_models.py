@@ -1306,6 +1306,7 @@ class FilmProfileState(SQLModel, table=True):
     notes: str | None = None
     created_at: str = Field(default_factory=canonical_utc_now_iso)
     updated_at: str = Field(default_factory=canonical_utc_now_iso)
+    primary_item_id: str | None = Field(default=None, foreign_key="library_item.id", ondelete="SET NULL")
 
 
 class Viewing(SQLModel, table=True):

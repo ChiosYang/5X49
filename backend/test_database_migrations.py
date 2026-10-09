@@ -18,7 +18,7 @@ from app.migrations.versions import MIGRATIONS
 from app.migrations.versions.v0001_fresh_canonical_baseline import BASELINE_SQL_SHA256
 from app.migrations.backup import BackupValidationError
 from app.migrations.restore import verify_backup_manifest
-from app.canonical_models import Film, FilmProfileState, GraphEntity, LocalProfile, Viewing
+from app.canonical_models import Film, FilmProfileState, GraphEntity, LocalProfile, Viewing, LibraryItem, LibraryFilmReadModel
 from app.services.projections import projection_coordinator
 
 
@@ -42,8 +42,8 @@ class FreshCanonicalMigrationTests(unittest.TestCase):
             first = run_migrations(engine, path, app_version="test", backup_required=False)
             before = self._digest(engine)
             second = run_migrations(engine, path, app_version="test", backup_required=False)
-            self.assertEqual(first.current_version, 5)
-            self.assertEqual(first.applied_versions, (1, 2, 3, 4, 5))
+            self.assertEqual(first.current_version, 6)
+            self.assertEqual(first.applied_versions, (1, 2, 3, 4, 5, 6))
             self.assertEqual(second.applied_versions, ())
             self.assertIsNone(second.backup)
             self.assertEqual(before, self._digest(engine))
@@ -209,7 +209,7 @@ class FreshCanonicalMigrationTests(unittest.TestCase):
             engine.dispose()
 
     def test_all_supported_upgrade_versions_preserve_personal_facts_and_rebuild(self):
-        for version in range(1, 5):
+        for version in range(1, 6):
             with self.subTest(version=version):
                 path, engine = self._engine(f"upgrade-{version}.db")
                 try:
@@ -222,12 +222,12 @@ class FreshCanonicalMigrationTests(unittest.TestCase):
                         session.flush()
                         session.add(Film(id=film_id, canonical_title="Upgrade fixture", release_year=1999))
                         session.flush()
-                        session.add(FilmProfileState(profile_id=profile_id, film_id=film_id, rating=4, notes="preserve me"))
+                        session.execute(text("INSERT INTO film_profile_state (profile_id,film_id,favorite,rating,notes,created_at,updated_at) VALUES (:profile,:film,0,4,'preserve me','2026-01-01','2026-01-01')"), {"profile":profile_id,"film":film_id})
                         session.add(Viewing(id="view_" + "b" * 32, profile_id=profile_id, film_id=film_id,
                                            source="diary", source_record_id="fixture"))
                         session.commit()
                     report = run_migrations(engine, path, backup_dir=self.root / f"backup-{version}")
-                    self.assertEqual(report.applied_versions, tuple(range(version + 1, 6)))
+                    self.assertEqual(report.applied_versions, tuple(range(version + 1, 7)))
                     self.assertEqual(verify_backup_manifest(report.backup.manifest_path).source_schema_version, version)
                     projection_coordinator.bootstrap(engine)
                     with Session(engine) as session:
@@ -252,6 +252,37 @@ class FreshCanonicalMigrationTests(unittest.TestCase):
             self.assertNotIn("cinema_dna_film_read_model", inspect(engine).get_table_names())
         finally:
             engine.dispose()
+
+    def test_v5_upgrade_preserves_displayed_default_and_personal_state(self):
+        path, engine = self._engine("primary-upgrade.db")
+        try:
+            run_migrations(engine,path,migrations=MIGRATIONS[:5],backup_required=False)
+            film_id="film_"+"a"*32
+            second="lib_"+"c"*32
+            with Session(engine) as session:
+                session.info["skip_projection_hook"]=True
+                profile=session.exec(select(LocalProfile.id)).one()
+                session.add(GraphEntity(id=film_id,entity_type="film"));session.flush()
+                session.add(Film(id=film_id,canonical_title="Upgrade editions"));session.flush()
+                for id,added in [("lib_"+"b"*32,"2026-01-01"),(second,"2026-01-02")]:
+                    session.add(LibraryItem(id=id,film_id=film_id,profile_id=profile,source_type="local_folder",
+                        source_instance_id="local",source_item_key=id,added_at=added))
+                session.flush()
+                session.add(LibraryFilmReadModel(film_id=film_id,sort_title="upgrade editions",primary_item_id=second,
+                    payload={},source_hash="a"*64,projection_version="library-film.v1"))
+                session.execute(text("INSERT INTO film_profile_state (profile_id,film_id,favorite,rating,notes,created_at,updated_at) VALUES (:profile,:film,1,4,'keep notes','2026-01-01','2026-01-01')"),{"profile":profile,"film":film_id})
+                session.commit()
+            report=run_migrations(engine,path,backup_dir=self.root/"primary-backups")
+            self.assertEqual(report.applied_versions,(6,))
+            self.assertEqual(verify_backup_manifest(report.backup.manifest_path).source_schema_version,5)
+            projection_coordinator.bootstrap(engine)
+            with Session(engine) as session:
+                state=session.get(FilmProfileState,(profile,film_id))
+                self.assertEqual((state.primary_item_id,state.favorite,state.rating,state.notes),(second,True,4,"keep notes"))
+                projected=session.get(LibraryFilmReadModel,film_id)
+                self.assertEqual(projected.primary_item_id,second)
+                self.assertEqual(projected.projection_version,"library-film.v2")
+        finally:engine.dispose()
 
     @staticmethod
     def _table_signature(engine, table: str):

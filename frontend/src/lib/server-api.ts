@@ -6,6 +6,7 @@ import type {
   ExploreOverview,
   LibraryFilmDetail,
   LibraryFilmSummary,
+  LibraryFilmPage,
   MissingLibraryItemsResponse,
   OrganizationCandidate,
   RootVideo,
@@ -33,6 +34,12 @@ export async function getLibraryFilms(query = ""): Promise<LibraryFilmSummary[]>
   if (query.trim()) params.set("q", query.trim());
   const response = await fetch(`${backendUrl()}/library/films${params.size ? `?${params}` : ""}`, { cache: "no-store" });
   if (!response.ok) throw new Error(`Failed to fetch library: ${response.status}`);
+  return response.json();
+}
+
+export async function getLibraryFilmPage(params: URLSearchParams): Promise<LibraryFilmPage> {
+  const response = await fetch(`${backendUrl()}/library/films/page?${params}`, { cache: "no-store" });
+  if (!response.ok) throw new Error(`Failed to fetch library page: ${response.status}`);
   return response.json();
 }
 

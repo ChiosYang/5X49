@@ -4,7 +4,7 @@ Updated: 2026-10-01
 
 ## Supported boundary
 
-This runbook covers Fresh Canonical schema v1–v5 in epoch
+This runbook covers Fresh Canonical schema v1–v6 in epoch
 `fresh-canonical-v1`. Pre-epoch development databases are not upgraded or
 imported; archive them with their matching older application. Never point a new
 build at an old database to experiment. A portable export is not a restorable
@@ -52,6 +52,13 @@ plain `docker compose` otherwise selects the ordinary `latest` deployment.
 6. Check `/health`, Library, a Film detail, Diary, Explore and a confirmed Ask
    form query. Record counts/IDs and a personal record before and after restart.
    `/health` is liveness, not a complete database or user-journey diagnosis.
+
+Settings → Diagnostics and backups (also `/admin/health`) is available in
+production. Local checks are read-only; full projection consistency still uses
+the verify command below. The explicit provider check makes real fixed TMDB and
+small-poster reads and distinguishes proxy/CA failures without disabling TLS.
+No credentials, absolute paths or provider request URLs are included in its
+results. Browser candidate previews require their own trusted proxy CA.
 
 ## Diagnose and repair projections
 

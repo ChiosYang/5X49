@@ -7,6 +7,8 @@ const mediaPath = (path: string) => {
 };
 
 export const API = {
+  diagnostics: () => `${API_BASE_URL}/diagnostics`,
+  providerDiagnostics: () => `${API_BASE_URL}/diagnostics/providers`,
   askStatus: () => `${API_BASE_URL}/ask/status`,
   askInterpret: () => `${API_BASE_URL}/ask/interpret`,
   askResolve: () => `${API_BASE_URL}/ask/resolve`,
@@ -31,6 +33,7 @@ export const API = {
   metadataMovie: (tmdbId: number) => `${API_BASE_URL}/metadata/movie/${tmdbId}`,
 
   libraryFilms: () => `${API_BASE_URL}/library/films`,
+  libraryFilmPage: (params = new URLSearchParams()) => `${API_BASE_URL}/library/films/page${params.size ? `?${params}` : ""}`,
   exploreOverview: () => `${API_BASE_URL}/explore`,
   exploreContext: (params: URLSearchParams) => `${API_BASE_URL}/explore/context?${params}`,
   exploreFacets: (dimension: string, params: { q?: string; limit?: number; offset?: number } = {}) => {
@@ -57,6 +60,7 @@ export const API = {
   filmScrapeConfirm: (filmId: string) => `${API_BASE_URL}/films/${segment(filmId)}/scrape/confirm`,
   libraryItemRefresh: (itemId: string) => `${API_BASE_URL}/library/items/${segment(itemId)}/refresh`,
   libraryItemIgnore: (itemId: string) => `${API_BASE_URL}/library/items/${segment(itemId)}/ignore`,
+  filmPrimaryEdition: (filmId: string) => `${API_BASE_URL}/films/${segment(filmId)}/primary-edition`,
   profileViewings: (params: { limit?: number; offset?: number; filmId?: string; view?: "timeline" | "recent" } = {}) => {
     const query = new URLSearchParams();
     if (params.limit !== undefined) query.set("limit", String(params.limit));

@@ -1,3 +1,8 @@
+export class ApiError extends Error {
+  status: number;
+  constructor(message: string, status: number) { super(message); this.status = status; }
+}
+
 export async function responseError(response: Response, fallback: string) {
   const body = await response.json().catch(() => null);
   const detail = body?.detail;
@@ -6,7 +11,7 @@ export async function responseError(response: Response, fallback: string) {
     : typeof detail?.message === "string"
       ? detail.message
       : fallback;
-  return new Error(message);
+  return new ApiError(message, response.status);
 }
 
 export const fetcher = async (url: string) => {

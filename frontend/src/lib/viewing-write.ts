@@ -24,3 +24,24 @@ export async function refreshViewingReadCaches(
   const failure = outcomes.find((outcome) => outcome.status === "rejected");
   if (failure?.status === "rejected") throw failure.reason;
 }
+
+export function actionFailureKind(error: unknown): "connection" | "unavailable" | "conflict" | "rejected" {
+  if (error instanceof TypeError) return "connection";
+  if (error instanceof Error && "status" in error && typeof error.status === "number") {
+    if (error.status >= 500) return "unavailable";
+    if (error.status === 409) return "conflict";
+  }
+  return "rejected";
+}
+
+/** Never replay a committed action to recover failed reads. */
+export async function executeFilmAction<T>(
+  write: () => Promise<T>, committed: (value: T) => void, refresh: () => Promise<unknown>,
+) {
+  try {
+    const result = await commitViewingWrite(write, committed, refresh);
+    return { status: result.refreshFailed ? "refreshFailed" as const : "saved" as const, value: result.value };
+  } catch (error) {
+    return { status: "failed" as const, reason: actionFailureKind(error) };
+  }
+}

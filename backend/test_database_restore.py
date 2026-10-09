@@ -89,7 +89,7 @@ class FreshCanonicalRestoreTests(unittest.TestCase):
     def test_backup_changed_after_verification_is_never_restored(self):
         backup = create_verified_backup(
             self.database_path, self.root / "backup", app_version="test",
-            source_schema_version=5, target_schema_version=5,
+            source_schema_version=6, target_schema_version=6,
         )
         before = self.database_path.read_bytes()
         copy = restore_module._copy_to_temporary
@@ -111,7 +111,7 @@ class FreshCanonicalRestoreTests(unittest.TestCase):
     def test_target_changed_while_preparing_restore_is_not_overwritten(self):
         backup = create_verified_backup(
             self.database_path, self.root / "backup", app_version="test",
-            source_schema_version=5, target_schema_version=5,
+            source_schema_version=6, target_schema_version=6,
         )
         copy = restore_module._copy_to_temporary
 
@@ -133,7 +133,7 @@ class FreshCanonicalRestoreTests(unittest.TestCase):
     def _backup(self):
         return create_verified_backup(
             self.database_path, self.root / "backup", app_version="test",
-            source_schema_version=5, target_schema_version=5,
+            source_schema_version=6, target_schema_version=6,
         )
 
     def test_preview_is_read_only_and_corrupt_manifest_is_refused(self):
@@ -226,7 +226,7 @@ class FreshCanonicalRestoreTests(unittest.TestCase):
             code = backup_module.main(["--database", str(self.database_path), "--backup-dir", str(destination)])
         self.assertEqual(code, 0)
         payload = json.loads(output.getvalue())
-        self.assertEqual(payload["schema_version"], 5)
+        self.assertEqual(payload["schema_version"], 6)
         self.assertNotIn(str(self.root), output.getvalue())
         verify_backup_manifest(destination / payload["manifest_file"])
         self.assertEqual(self.database_path.read_bytes(), before)

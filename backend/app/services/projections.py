@@ -6,7 +6,7 @@ import re
 from datetime import datetime, timezone
 from typing import Any, Iterable
 
-from sqlalchemy import event, inspect
+from sqlalchemy import event, inspect, func
 from sqlmodel import Session, delete, select
 
 from app.canonical_models import (
@@ -50,8 +50,8 @@ from app.services.factual_facets import FACT_DIMENSIONS, build_factual_facets
 
 PROJECTION_VERSIONS = {
     "cinema_dna": "cinema-dna-film.v1",
-    "library": "library-film.v1",
-    "detail": "film-detail.v1",
+    "library": "library-film.v2",
+    "detail": "film-detail.v2",
     "search": "film-search.v1",
     "explore_films": "factual-explore-film.v1",
     "explore_facets": "factual-explore-facet.v1",
@@ -711,6 +711,43 @@ class ProjectionCoordinator:
 
 
 class ProjectionReader:
+    def film_page(self, engine, *, query=None, filter="all", sort="title", direction="asc",
+                  metadata_status="all", limit=40, offset=0) -> dict[str, Any]:
+        with Session(engine) as session:
+            self._require(session, "library")
+            model = LibraryFilmReadModel
+            conditions = [model.visible.is_(True)]
+            library_total = session.exec(select(func.count()).select_from(model).where(*conditions)).one()
+            reviews = session.exec(select(func.count()).select_from(model).where(*conditions,
+                model.payload["primary_item"]["metadata"]["scrape_status"].as_string() == "needs_review")).one()
+            if query and query.strip():
+                self._require(session, "search")
+                # Keep the matching set in SQL, including literal wildcard input.
+                conditions.append(model.film_id.in_(select(FilmSearchReadModel.film_id).where(
+                    FilmSearchReadModel.search_text.contains(normalize_metadata_text(query), autoescape=True))))
+            profile = model.payload["profile_state"]
+            if filter in {"watched", "unwatched"}:
+                conditions.append(profile["watched"].as_boolean() == (filter == "watched"))
+            elif filter == "favorite":
+                conditions.append(profile["favorite"].as_boolean().is_(True))
+            if metadata_status != "all":
+                conditions.append(model.payload["primary_item"]["metadata"]["scrape_status"].as_string() == metadata_status)
+            total = session.exec(select(func.count()).select_from(model).where(*conditions)).one()
+            offset = min(offset, max(0, (total - 1) // limit * limit))
+            if sort == "added":
+                value = model.payload["primary_item"]["added_at"].as_string()
+            elif sort == "duration":
+                value = func.coalesce(model.payload["primary_item"]["video"]["duration_seconds"].as_float(),
+                    model.payload["runtime_minutes"].as_integer() * 60)
+            else:
+                value = model.sort_title
+            order = value.desc() if direction == "desc" else value.asc()
+            rows = session.exec(select(model).where(*conditions).order_by(value.is_(None), order,
+                model.sort_title, model.release_year, model.film_id).limit(limit).offset(offset)).all()
+            return {"items": [json.loads(_canonical_json(row.payload)) for row in rows],
+                "total": total, "library_total": library_total, "metadata_reviews": reviews,
+                "limit": limit, "offset": offset}
+
     def list_films(self, engine, query: str | None = None) -> list[dict[str, Any]]:
         with Session(engine) as session:
             self._require(session, "library")

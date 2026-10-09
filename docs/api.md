@@ -25,6 +25,8 @@ sources. Invalid resource IDs return `400`; missing resources return `404`.
 | Method | Path | Purpose |
 | --- | --- | --- |
 | `GET` | `/health` | Process health. |
+| `GET` | `/diagnostics` | Read-only database/schema, projection readiness, media access, estimated backup space and credential-presence checks. No private paths or secret values. |
+| `GET` | `/diagnostics/providers` | Explicit bounded real TMDB detail and poster reads; reports only safe states and HTTP codes, preserving proxy/CA trust. |
 | `GET` | `/` | Service information. |
 | `GET` | `/settings` | Combined non-secret settings. |
 | `GET/PUT` | `/settings/model` | Analysis and Ask model selection. |
@@ -69,9 +71,59 @@ optional `q` query parameter filters the synchronous local search projection.
 Primary edition selection is deterministic:
 
 1. `available` before `missing` and `ignored`;
-2. an edition with a present main video first;
-3. `last_seen_at` descending;
-4. LibraryItem ID ascending.
+2. the explicitly selected default edition;
+3. an edition with a present main video first;
+4. `added_at` ascending, then LibraryItem ID ascending. Repeat scans do not change
+   the default merely by updating observation timestamps.
+
+Schema v6 preserves the previously projected default as an initial preference
+when upgrading, without changing ratings or notes. Library/detail projections
+advance to `library-film.v2` / `film-detail.v2` and rebuild before serving.
+
+### `GET /library/films/page`
+
+Bounded Library/search reads, while `/library/films` retains its array response.
+Parameters: `q` (up to 200 characters), `filter=all|watched|unwatched|favorite`,
+`sort=title|added|duration`, `direction=asc|desc`,
+`metadata_status=all|pending|needs_review|failed|matched`, `limit=1..100` (default
+40), and `offset=0..1000000`. Unknown sort values remain last in either direction;
+ties use normalized title, year and Film ID. Filtering and search happen before
+pagination. Literal wildcard characters do not broaden searches.
+
+Returns `{items,total,library_total,metadata_reviews,limit,offset}`. The latter
+two counts cover the whole visible library; `total` covers the requested filters.
+An offset beyond the final page is clamped to the last valid page, or zero for
+an empty result. Projection failure remains `503 projection_unavailable`.
+
+### `PUT /films/{film_id}/primary-edition`
+
+Body: `{"library_item_id":"lib_<32 lowercase hex>"}`. Returns the updated Film
+detail. Selection belongs to the local profile and survives scans and restart.
+The edition must belong to the requested active Film (`404` otherwise) and be
+available (`409` otherwise). Missing/ignored preferences fall back to an available
+edition while retaining the preference. Invalid IDs return `400`.
+
+Scanning emits one edition per independent same-folder video, with stem-matched
+NFO first, then `movie.nfo`. Another video's NFO is never reused in multi-video
+folders. Common sample/trailer/teaser/featurette suffixes are excluded. Contiguous
+CD/Disc/Disk/Part sequences starting at 1 form one edition unless every part has
+its own NFO; `video.part_files` reports safe filenames. Edition source keys use
+the video locator; existing folder-key editions are matched by their exact video
+locator and retain their IDs and scrape state.
+
+### Diagnostic boundaries
+
+Local diagnostics do not migrate/rebuild, contact providers or validate every
+projection hash. They report schema readiness, SQLite quick-check and eight
+projection-state/version checks. The space estimate is not a backup guarantee.
+The provider probe reads fixed TMDB Film `5511` and its small poster once each,
+with timeouts, rate limiting, no redirects and normal TLS verification. States
+include `not_configured`, `credentials_rejected`, `access_denied`, `rate_limited`,
+`tls_failed`, `proxy_failed`, `timeout`, `connection_failed`, `invalid_response`,
+`no_artwork`, `not_checked`, `unavailable` and `ready`. It never returns exception
+strings, provider bodies or request URLs. Backend access does not certify browser
+proxy-CA trust. Full backup/restore and portable export remain the existing CLI
+capabilities, with guidance in Settings → Diagnostics and backups.
 
 ### `GET /library/films/{film_id}`
 

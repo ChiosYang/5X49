@@ -32,6 +32,17 @@ curl -s -X POST http://127.0.0.1:8000/library/items/lib_0123456789abcdef01234567
 
 - `GET /library/films` 一部 Film 一项，直接包含 profile state 和 primary edition。
 - `GET /library/films/{film_id}` 返回全部非 retired editions。
+- `GET /library/films/page` 是有界片库／搜索读取：`q`、
+  `filter=all|watched|unwatched|favorite`、`sort=title|added|duration`、
+  `direction=asc|desc`、`metadata_status`、`limit`（默认 40，最大 100）、
+  `offset`（最大 1000000）。返回 `items,total,library_total,metadata_reviews,limit,offset`；
+  过滤在分页前执行，越界 offset 归到最后有效页。旧数组接口保留。
+- `PUT /films/{film_id}/primary-edition` 接受 `library_item_id`，只选择属于该 Film
+  且可用的版本；跨 Film／缺失为 `404`，不可用为 `409`。默认版本偏好持久化，
+  扫描时间不影响选择；不可用时回退，新增偏好保存在 Schema v6。
+- 同目录独立视频按版本导入，匹配同名 NFO 后再用 `movie.nfo`；多视频目录不借用
+  另一个视频的 NFO。常见附属视频后缀不导入；从 1 开始的连续 CD／Disc／Disk／Part
+  分段视为一个版本，各段都有独立 NFO 时分开。`video.part_files` 只包含文件名。
 - `GET /films/{film_id}/graph` 只从同步 Read Model 返回一跳、定长的
   accepted factual 图谱；Gate B 前不会暴露 inferred/proposed 关系。
 - `POST /library/scan` 与 `/library/reconcile` 返回 queued Job。
@@ -202,6 +213,13 @@ curl -s http://127.0.0.1:8000/workflows/<workflow_id>
 - Job 仅为内部单步骤执行队列，没有公开 HTTP/SSE DTO。
 
 ## 设置与维护
+
+- `GET /diagnostics` 只读检查 SQLite、Schema、读取模型就绪状态、媒体权限及备份
+  空间估算，不返回路径或凭据，不迁移／修复，也不等于完整投影一致性校验。
+- `GET /diagnostics/providers` 主动测试固定 TMDB `5511` 的详情和小海报；只返回
+  安全状态与 HTTP 状态码，区分凭据、访问策略、限流、代理、CA、超时故障。
+  保留 TLS 校验和 Network secret 的既有注入方式，无重定向及隐式重试。
+  后端通过不代表浏览器已信任代理 CA。
 
 - `/settings/*` 管理语言、媒体目录、watcher、刮削确认、TMDB 和模型。
 - `GET /settings/media-dir` 返回 `media_dir`、`exists` 和 `readable`，只报告

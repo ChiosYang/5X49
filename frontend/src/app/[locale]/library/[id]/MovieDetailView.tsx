@@ -140,14 +140,15 @@ export default async function MovieDetailView({ film }: { film: LibraryFilmDetai
           <span className="type-label block text-ink-subtle">{t("editions")}</span>
           <div className="mt-6 grid gap-3 lg:grid-cols-2">
             {film.editions.map((edition, index) => (
-              <div key={edition.id} className="flex min-w-0 items-center justify-between gap-4 border border-line p-4">
+              <div key={edition.id} className="flex min-w-0 flex-col items-start justify-between gap-4 border border-line p-4 sm:flex-row sm:items-center">
                 <div className="min-w-0">
                   <p className="truncate font-bold text-ink">{editionLabel(edition, t("edition", { index: index + 1 }))}</p>
                   <p className="type-meta mt-1 truncate text-ink-subtle">{edition.video?.file_name || sourceLabel[edition.source_type] || edition.source_type}</p>
+                  {(edition.video?.part_files?.length || 0) > 1 && <p className="type-meta mt-1 break-words text-ink-subtle">{t("splitParts", {count: edition.video!.part_files!.length})}</p>}
                 </div>
                 <div className="flex shrink-0 items-center gap-3">
                   <span className="rounded-pill border border-line px-3 py-1 type-badge text-ink-muted">{statusLabel[edition.status]}</span>
-                  <LibraryEditionActions filmId={film.id} itemId={edition.id} />
+                  <LibraryEditionActions filmId={film.id} itemId={edition.id} primary={edition.id === film.primary_item.id} available={edition.status === "available"} />
                 </div>
               </div>
             ))}

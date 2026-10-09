@@ -1,5 +1,5 @@
 import { test, expect, type APIRequestContext, type Page } from '@playwright/test';
-import { writeFile, access } from 'node:fs/promises';
+import { writeFile, access, mkdir } from 'node:fs/promises';
 import path from 'node:path';
 
 test.describe.configure({ mode: 'serial' });
@@ -278,4 +278,83 @@ test('real process restart persists records; Chinese narrow-screen primary flow'
   await page.getByRole('button', { name: '按这些条件查找', exact: true }).click();
   await expect(page.locator('a[href*="/library/film_"]').first()).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+});
+
+test('detail operations consume failures and saved-read retry never replays a write', async ({ page, request }) => {
+  const film = (await read(request, '/library/films'))[0];
+  const errors: string[] = [];
+  page.on('pageerror', error => errors.push(error.message));
+  await page.goto(`/en/library/${film.id}`);
+  const state = await read(request, `/films/${film.id}/profile-state`);
+  const favorite = () => page.getByRole('button',{name:state.favorite ? 'Remove favorite' : 'Favorite',exact:true});
+  let rejectWrite = true, rejectRead = false, writes = 0;
+  await page.route(`**/api/films/${film.id}/profile-state`, route => {
+    if (route.request().method() !== 'PUT') return route.continue();
+    writes++;
+    return rejectWrite ? route.fulfill({status:503,json:{detail:'Test write failure'}}) : route.continue();
+  });
+  await favorite().click();
+  await expect(page.getByText('Your favorite or watched change was not saved. The service is unavailable. Try again later.',{exact:true})).toBeVisible();
+  expect((await read(request,`/films/${film.id}/profile-state`)).favorite).toBe(state.favorite);
+  rejectWrite=false;rejectRead=true;
+  await page.route(`**/api/library/films/${film.id}`, route => rejectRead ? route.fulfill({status:503,json:{detail:'Test read failure'}}) : route.continue());
+  await favorite().click();
+  await expect(page.getByText('Changes saved, but the page could not be refreshed. You do not need to save again.',{exact:true})).toBeVisible();
+  expect((await read(request,`/films/${film.id}/profile-state`)).favorite).toBe(!state.favorite);
+  rejectRead=false;
+  await page.getByRole('button',{name:'Refresh page',exact:true}).click();
+  await expect(page.getByRole('button',{name:'Refresh page',exact:true})).toHaveCount(0);
+  expect(writes).toBe(2);
+  for (const [label,endpoint,prefix] of [
+    ['Refresh external scores',`/api/films/${film.id}/external-scores/refresh`,'The score refresh could not be started.'],
+    ['Refresh primary edition',`/api/library/items/${film.primary_item.id}/refresh`,'The edition refresh could not be started.'],
+    ['Ignore primary edition',`/api/library/items/${film.primary_item.id}/ignore`,'The edition was not ignored.'],
+  ]) {
+    await page.route(url => url.pathname===endpoint,route => route.fulfill({status:503,json:{detail:'Test operation failure'}}));
+    await page.getByRole('button',{name:label,exact:true}).click();
+    await expect(page.getByText(`${prefix} The service is unavailable. Try again later.`,{exact:true})).toBeVisible();
+  }
+  expect(errors).toEqual([]);
+});
+
+test('same-directory editions expose stable default selection and mobile title wrapping', async ({ page, request }) => {
+  const folder=path.join(root,'normal/media/Core.Quality.1967');
+  await mkdir(folder,{recursive:true});
+  await writeFile(path.join(folder,'Core.Quality.1967.Cut.A.mkv'),'edition A');
+  await writeFile(path.join(folder,'Core.Quality.1967.Cut.B.mp4'),'edition B');
+  await writeFile(path.join(folder,'Core.Quality.1967.trailer.mkv'),'extra');
+  const title='UnbrokenTitle'.repeat(7);
+  await writeFile(path.join(folder,'movie.nfo'),`<movie><title>${title}</title><year>1967</year><tmdbid>5511</tmdbid></movie>`);
+  const scan=await request.post(`${backend}/library/scan-folder?folder_path=${encodeURIComponent(folder)}`);
+  expect(scan.ok()).toBeTruthy();await settleWorkflow(request,(await scan.json()).workflow_id);
+  const film=(await read(request,'/library/films')).find((item:{title:string})=>item.title===title);
+  const before=await read(request,`/library/films/${film.id}`);
+  expect(before.editions).toHaveLength(2);
+  await page.goto(`/en/library/${film.id}`);
+  await page.getByRole('button',{name:'Use as default edition',exact:true}).click();
+  await expect.poll(async()=> (await read(request,`/library/films/${film.id}`)).primary_item.id).not.toBe(before.primary_item.id);
+  const selected=(await read(request,`/library/films/${film.id}`)).primary_item.id;
+  const repeat=await request.post(`${backend}/library/scan-folder?folder_path=${encodeURIComponent(folder)}`);
+  await settleWorkflow(request,(await repeat.json()).workflow_id);
+  expect((await read(request,`/library/films/${film.id}`)).primary_item.id).toBe(selected);
+  expect(await page.locator('h1').first().evaluate(node=>node.scrollWidth<=node.clientWidth)).toBe(true);
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+});
+
+test('navigation traps focus, closes with Escape and production diagnostics are usable', async ({ page }) => {
+  await page.goto('/en/library');
+  const menu=page.getByRole('button',{name:'Menu',exact:true});
+  await menu.click();
+  const dialog=page.getByRole('dialog',{name:'Menu',exact:true});
+  await expect(dialog).toBeVisible();
+  await expect(dialog.locator('a[href="#"]')).toHaveCount(0);
+  await dialog.getByRole('link').last().focus();
+  await page.keyboard.press('Tab');
+  await expect(dialog.getByRole('button',{name:'Close',exact:true})).toBeFocused();
+  await page.keyboard.press('Escape');
+  await expect(menu).toBeFocused();await expect(menu).toHaveAttribute('aria-expanded','false');
+  await page.goto('/en/settings?section=maintenance');
+  await expect(page.getByRole('heading',{name:'System diagnostics',exact:true})).toBeVisible();
+  await expect(page.getByRole('heading',{name:'Backup and recovery',exact:true})).toBeVisible();
+  await expect(page.getByText('Full database restore requires the application to be stopped',{exact:true})).toBeVisible();
 });
