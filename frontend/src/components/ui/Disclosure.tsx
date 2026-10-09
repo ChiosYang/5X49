@@ -14,7 +14,7 @@ export function Disclosure({ label, icon, children, active = false }: { label: s
   }}>
     <button ref={trigger} type="button" aria-label={label} title={label} aria-expanded={open} aria-controls={id}
       onClick={() => setOpen((current) => !current)}
-      className={`focus-ring inline-flex h-11 w-11 items-center justify-center rounded-media border ${active ? "border-inverse bg-inverse text-inverse-ink" : "border-line-strong bg-surface/70 text-ink-muted"}`}>{icon}</button>
+      className={`focus-ring inline-flex h-11 w-11 items-center justify-center rounded-control border ${active ? "border-inverse bg-inverse text-inverse-ink" : "border-line-strong bg-surface/70 text-ink-muted"}`}>{icon}</button>
     {open && <div id={id} className="z-popover absolute top-full right-0 w-48 pt-3" onClick={(event) => {
       if ((event.target as HTMLElement).closest("a")) { setOpen(false); trigger.current?.focus(); }
     }}><div className="liquid-glass-popover rounded-media border border-line/80 p-1">{children}</div></div>}

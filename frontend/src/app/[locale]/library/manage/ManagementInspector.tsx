@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 import { useMemo, useState } from "react";
 
-import { Button } from "@/components/ui/Button";
+import { Button, IconButton } from "@/components/ui/Button";
 import { InlineFeedback, StateMessage } from "@/components/ui/Feedback";
 import { useCancelWorkflow, useRetryWorkflow } from "@/hooks/useWorkflows";
 import type {
@@ -75,10 +75,10 @@ function InspectorActionList({ actions, busyActions, onExecute, t }: {
   return (
     <div className="mt-7 space-y-2 border-t border-white/10 pt-5">
       {actions.map((action) => (
-        <button key={action.id} type="button" disabled={Boolean(action.disabledReason) || busyActions[action.id]} onClick={() => onExecute(action.id)} className={`focus-ring flex min-h-11 w-full items-center justify-between gap-4 border px-4 text-left text-[10px] font-black tracking-[0.12em] uppercase transition disabled:cursor-not-allowed disabled:opacity-35 ${action.danger ? "border-red-400/30 bg-red-400/[0.06] text-red-300 hover:bg-red-400/[0.12]" : "border-white/12 text-neutral-300 hover:bg-white/[0.05] hover:text-white"}`}>
+        <Button key={action.id} disabled={Boolean(action.disabledReason)} busy={busyActions[action.id]} variant={action.danger ? "danger" : "secondary"} onClick={() => onExecute(action.id)} className="w-full justify-between gap-4 text-left">
           <span>{t(`actions.${action.id}.label`)}</span>
-          {busyActions[action.id] ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : <ChevronRight className="h-3.5 w-3.5" />}
-        </button>
+          <ChevronRight className="h-3.5 w-3.5 shrink-0" />
+        </Button>
       ))}
     </div>
   );
@@ -89,18 +89,18 @@ function WorkflowList({ workflows, t }: { workflows: WorkflowRunView[]; t: Trans
   if (workflows.length === 0) return null;
   return (
     <div className="mt-7 border-t border-white/10 pt-5">
-      <p className="text-[9px] font-black tracking-[0.18em] text-neutral-600 uppercase">{t("workflows")}</p>
+      <p className="type-label text-ink-muted uppercase">{t("workflows")}</p>
       <ul className="mt-3 space-y-2">
         {workflows.slice(0, 5).map((workflow) => (
           <li key={workflow.id} className="border border-white/10 bg-white/[0.025] p-3">
             <div className="flex items-start gap-3">
               {workflow.status === "running" ? <RefreshCw className="mt-0.5 h-3.5 w-3.5 shrink-0 animate-spin text-cyan-300" /> : workflow.status === "failed" ? <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-red-300" /> : <Clock3 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-neutral-500" />}
               <div className="min-w-0 flex-1">
-                <p className="truncate text-[10px] font-bold text-neutral-300">{workflow.type}</p>
-                <p className={`mt-1 line-clamp-2 text-[9px] leading-4 ${workflow.status === "failed" ? "text-red-300" : "text-neutral-600"}`}>{workflow.error_message || workflow.result_summary || workflow.current_step || workflow.status}</p>
+                <p className="truncate text-xs font-bold text-ink">{workflow.type}</p>
+                <p className={`mt-1 line-clamp-2 text-xs leading-5 ${workflow.status === "failed" ? "text-red-300" : "text-ink-muted"}`}>{workflow.error_message || workflow.result_summary || workflow.current_step || workflow.status}</p>
               </div>
-              {(workflow.status === "running" || workflow.status === "queued") ? <button type="button" disabled={cancel.isMutating} onClick={() => void cancel.trigger(workflow.id)} aria-label={t("cancelWorkflow")} className="focus-ring p-1.5 text-neutral-600 hover:text-white"><X className="h-3.5 w-3.5" /></button> : null}
-              {(workflow.status === "failed" || workflow.status === "cancelled") ? <button type="button" disabled={retry.isMutating} onClick={() => void retry.trigger(workflow.id)} aria-label={t("retryWorkflow")} className="focus-ring p-1.5 text-neutral-600 hover:text-white"><ListRestart className="h-3.5 w-3.5" /></button> : null}
+              {(workflow.status === "running" || workflow.status === "queued") ? <IconButton variant="ghost" busy={cancel.isMutating} onClick={() => void cancel.trigger(workflow.id)} aria-label={t("cancelWorkflow")} icon={<X className="h-3.5 w-3.5" />} /> : null}
+              {(workflow.status === "failed" || workflow.status === "cancelled") ? <IconButton variant="ghost" busy={retry.isMutating} onClick={() => void retry.trigger(workflow.id)} aria-label={t("retryWorkflow")} icon={<ListRestart className="h-3.5 w-3.5" />} /> : null}
             </div>
           </li>
         ))}
@@ -111,9 +111,9 @@ function WorkflowList({ workflows, t }: { workflows: WorkflowRunView[]; t: Trans
 
 function QueueSearch({ value, onChange, placeholder }: { value: string; onChange: (value: string) => void; placeholder: string }) {
   return (
-    <label className="mt-5 flex min-h-10 items-center gap-3 border border-white/10 bg-black px-3">
-      <Search className="h-3.5 w-3.5 text-neutral-600" /><span className="sr-only">{placeholder}</span>
-      <input value={value} onChange={(event) => onChange(event.target.value)} placeholder={placeholder} className="min-w-0 flex-1 bg-transparent text-xs text-white outline-none placeholder:text-neutral-700" />
+    <label className="mt-5 flex min-h-11 items-center gap-3 rounded-control border border-line-strong bg-surface px-3 focus-within:ring-2 focus-within:ring-ink">
+      <Search className="h-3.5 w-3.5 text-ink-muted" /><span className="sr-only">{placeholder}</span>
+      <input value={value} onChange={(event) => onChange(event.target.value)} placeholder={placeholder} className="min-w-0 flex-1 bg-transparent text-xs text-ink outline-none placeholder:text-ink-subtle" />
     </label>
   );
 }
@@ -163,12 +163,12 @@ export default function ManagementInspector({
       || t("unknownEdition");
     return (
       <div className="flex min-h-full flex-col p-5 sm:p-6">
-        <button type="button" onClick={() => { setDetailEntityId(null); if (clusterId) onSelect(clusterId); }} className="focus-ring inline-flex w-fit items-center gap-2 text-[9px] font-black tracking-[0.16em] text-neutral-600 uppercase hover:text-white"><ArrowLeft className="h-3.5 w-3.5" />{t("backToQueue")}</button>
+        <Button variant="ghost" onClick={() => { setDetailEntityId(null); if (clusterId) onSelect(clusterId); }} className="w-fit px-0" icon={<ArrowLeft className="h-3.5 w-3.5" />}>{t("backToQueue")}</Button>
         <span className="mt-8 flex h-11 w-11 items-center justify-center rounded-full border border-amber-300/30 bg-amber-300/[0.08] text-amber-200"><AlertTriangle className="h-4 w-4" /></span>
         <h3 className="mt-5 text-xl font-semibold text-white">{title}</h3>
-        <p className="mt-2 break-words text-xs text-neutral-500">{detail}</p>
-        {selectedMissing ? <p className="mt-5 text-xs text-neutral-600">{t("missingSince")}: {formatTime(selectedMissing.missing_since) || t("unknownTime")}</p> : null}
-        <p className="mt-6 border-l border-white/15 pl-3 text-xs leading-5 text-neutral-500">{t("diagnosticOnly")}</p>
+        <p className="mt-2 break-words text-xs text-ink-muted">{detail}</p>
+        {selectedMissing ? <p className="mt-5 text-xs text-ink-muted">{t("missingSince")}: {formatTime(selectedMissing.missing_since) || t("unknownTime")}</p> : null}
+        <p className="mt-6 border-l border-white/15 pl-3 text-xs leading-5 text-ink-muted">{t("diagnosticOnly")}</p>
         {actionId ? <Button className="mt-auto" responsiveWidth onClick={() => onExecute(actionId)}>{t(`actions.${actionId}.label`)}</Button> : null}
       </div>
     );
@@ -181,9 +181,9 @@ export default function ManagementInspector({
     const searchPlaceholder = isMetadata ? t("searchReviews") : isOrganization ? t("searchFiles") : t("searchMissing");
     return (
       <div className="p-5 sm:p-6">
-        <p className="text-[9px] font-black tracking-[0.18em] text-amber-200 uppercase">{t(`nodes.${isMetadata ? "metadataReview" : isOrganization ? "organizationReview" : "missingItems"}`)}</p>
+        <p className="type-label text-warning uppercase">{t(`nodes.${isMetadata ? "metadataReview" : isOrganization ? "organizationReview" : "missingItems"}`)}</p>
         <h3 className="mt-3 text-2xl font-semibold tracking-tight text-white">{t("queueCount", { count: results.length })}</h3>
-        <p className="mt-2 text-xs leading-5 text-neutral-500">{t(isMetadata ? "metadataQueueDescription" : isOrganization ? "organizationQueueDescription" : "missingQueueDescription")}</p>
+        <p className="mt-2 text-xs leading-5 text-ink-muted">{t(isMetadata ? "metadataQueueDescription" : isOrganization ? "organizationQueueDescription" : "missingQueueDescription")}</p>
         {actionId ? <Button className="mt-5" responsiveWidth onClick={() => onExecute(actionId)}>{t(`actions.${actionId}.label`)}</Button> : null}
         <QueueSearch value={query} onChange={setQuery} placeholder={searchPlaceholder} />
         {results.length === 0 ? <StateMessage className="mt-4">{t("noQueueMatches")}</StateMessage> : (
@@ -195,7 +195,7 @@ export default function ManagementInspector({
               return (
                 <li key={id}>
                   <button type="button" onClick={() => setDetailEntityId(id)} className="focus-ring group flex w-full items-center justify-between gap-4 py-4 text-left">
-                    <span className="min-w-0"><span className="block truncate text-xs font-semibold text-neutral-300 group-hover:text-white">{title}</span><span className="mt-1 block truncate text-[10px] text-neutral-600">{meta}</span></span>
+                    <span className="min-w-0"><span className="block truncate text-xs font-semibold text-neutral-300 group-hover:text-white">{title}</span><span className="mt-1 block truncate text-xs text-ink-muted">{meta}</span></span>
                     <ChevronRight className="h-3.5 w-3.5 shrink-0 text-neutral-700" />
                   </button>
                 </li>
@@ -210,13 +210,13 @@ export default function ManagementInspector({
 
   return (
     <div className="flex min-h-full flex-col p-5 sm:p-6">
-      <div className="flex items-center justify-between gap-4"><p className="text-[9px] font-black tracking-[0.18em] text-cyan-300 uppercase">{t("inspector")}</p><span className={`text-[9px] font-bold tracking-wider uppercase ${node.state === "failed" ? "text-red-300" : node.state === "attention" ? "text-amber-200" : node.state === "running" ? "text-cyan-300" : "text-neutral-600"}`}>{t(`states.${node.state}`)}</span></div>
+      <div className="flex items-center justify-between gap-4"><p className="type-label text-ink-muted uppercase">{t("inspector")}</p><span className={`type-meta uppercase ${node.state === "failed" ? "text-red-300" : node.state === "attention" ? "text-amber-200" : node.state === "running" ? "text-cyan-300" : "text-ink-muted"}`}>{t(`states.${node.state}`)}</span></div>
       <span className="mt-8 flex h-11 w-11 items-center justify-center rounded-full border border-white/10 text-cyan-300">{node.id === "library" ? <Layers3 className="h-4 w-4" /> : node.state === "failed" ? <AlertTriangle className="h-4 w-4" /> : node.state === "running" ? <RefreshCw className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}</span>
       <h3 className="mt-5 text-2xl font-semibold tracking-tight text-white">{t(`nodes.${node.id}`)}</h3>
-      <p className="mt-3 text-xs leading-5 text-neutral-500">{details?.description || t("defaultNodeDescription")}</p>
-      {details?.detail ? <p className="mt-4 break-words border-l border-white/15 pl-3 text-[10px] leading-5 text-neutral-400">{details.detail}</p> : null}
+      <p className="mt-3 text-xs leading-5 text-ink-muted">{details?.description || t("defaultNodeDescription")}</p>
+      {details?.detail ? <p className="mt-4 break-words border-l border-white/15 pl-3 text-xs leading-5 text-ink-muted">{details.detail}</p> : null}
       {details?.error ? <InlineFeedback tone="error" className="mt-4">{details.error}</InlineFeedback> : null}
-      {node.id === "library" ? <div className="mt-7 grid grid-cols-2 gap-px border border-white/10 bg-white/10"><div className="bg-[#030506] p-4"><p className="text-2xl font-semibold text-white">{node.count ?? 0}</p><p className="mt-1 text-[9px] text-neutral-600">{t("films")}</p></div><div className="bg-[#030506] p-4"><p className="text-2xl font-semibold text-amber-200">{model.attentionCount}</p><p className="mt-1 text-[9px] text-neutral-600">{t("attentionItems")}</p></div></div> : null}
+      {node.id === "library" ? <div className="mt-7 grid grid-cols-2 gap-px border border-white/10 bg-white/10"><div className="bg-[#030506] p-4"><p className="text-2xl font-semibold text-white">{node.count ?? 0}</p><p className="mt-1 text-xs text-ink-muted">{t("films")}</p></div><div className="bg-[#030506] p-4"><p className="text-2xl font-semibold text-amber-200">{model.attentionCount}</p><p className="mt-1 text-xs text-ink-muted">{t("attentionItems")}</p></div></div> : null}
       <InspectorActionList actions={nodeActions} busyActions={busyActions} onExecute={onExecute} t={t} />
       <WorkflowList workflows={relatedWorkflows} t={t} />
     </div>

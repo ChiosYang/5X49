@@ -14,7 +14,7 @@ import { Compass, X } from "lucide-react";
 import { useReducedMotion } from "framer-motion";
 import { useTranslations } from "next-intl";
 
-import { Button } from "@/components/ui/Button";
+import { Button, IconButton } from "@/components/ui/Button";
 import { Dialog } from "@/components/ui/Dialog";
 import { useRouter } from "@/i18n/routing";
 import {
@@ -297,7 +297,7 @@ export default function ExploreClient({
         </div>
 
         {resolvedLens ? (
-          <aside className="hidden min-w-0 border-l border-white/8 pl-7 xl:block">
+          <aside className="hidden min-w-0 border-l border-line pl-7 xl:block">
             <div className="sticky top-36">
               <LensPanel
                 activeDimension={resolvedLens}
@@ -316,7 +316,7 @@ export default function ExploreClient({
 
       {hasFilters && resolvedLens ? (
         <div className="fixed inset-x-0 bottom-5 z-sticky flex justify-center px-4 xl:hidden">
-          <Button className="shadow-2xl" variant="primary" onClick={() => setLensSheetOpen(true)}>
+          <Button variant="primary" onClick={() => setLensSheetOpen(true)}>
             <Compass className="h-4 w-4" />
             {t("continueExplore")}
           </Button>
@@ -331,17 +331,15 @@ export default function ExploreClient({
         ariaLabel={t("currentLens")}
         placement="bottom"
         size="md"
-        panelClassName="max-h-[calc(100dvh-2rem)] overflow-y-auto rounded-t-[1.75rem] p-5 sm:rounded-[1.75rem] sm:p-6"
+        panelClassName="max-h-[calc(100dvh-2rem)] overflow-y-auto rounded-control p-5 sm:rounded-control sm:p-6"
       >
         <div className="mb-4 flex justify-end">
-          <button
-            type="button"
+          <IconButton
+            variant="ghost"
             onClick={() => setLensSheetOpen(false)}
             aria-label={t("closeLens")}
-            className="rounded-full border border-white/10 p-2 text-white/45 outline-none hover:bg-white/5 hover:text-white focus-visible:ring-2 focus-visible:ring-gold/60"
-          >
-            <X className="h-4 w-4" />
-          </button>
+            icon={<X className="h-4 w-4" />}
+          />
         </div>
         {resolvedLens ? (
           <LensPanel

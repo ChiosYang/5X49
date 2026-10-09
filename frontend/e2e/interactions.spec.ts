@@ -320,7 +320,7 @@ test('detail operations consume failures and saved-read retry never replays a wr
 test('same-directory editions expose stable default selection and mobile title wrapping', async ({ page, request }) => {
   const folder=path.join(root,'normal/media/Core.Quality.1967');
   await mkdir(folder,{recursive:true});
-  await writeFile(path.join(folder,'Core.Quality.1967.Cut.A.mkv'),'edition A');
+  await writeFile(path.join(folder,`Core.Quality.1967.${'long-edition-name-'.repeat(8)}Cut.A.mkv`),'edition A');
   await writeFile(path.join(folder,'Core.Quality.1967.Cut.B.mp4'),'edition B');
   await writeFile(path.join(folder,'Core.Quality.1967.trailer.mkv'),'extra');
   const title='UnbrokenTitle'.repeat(7);
@@ -338,7 +338,10 @@ test('same-directory editions expose stable default selection and mobile title w
   await settleWorkflow(request,(await repeat.json()).workflow_id);
   expect((await read(request,`/library/films/${film.id}`)).primary_item.id).toBe(selected);
   expect(await page.locator('h1').first().evaluate(node=>node.scrollWidth<=node.clientWidth)).toBe(true);
-  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+  for (const width of [375,390,1440]) {
+    await page.setViewportSize({width,height:1050});
+    expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+  }
 });
 
 test('navigation traps focus, closes with Escape and production diagnostics are usable', async ({ page }) => {
@@ -356,5 +359,62 @@ test('navigation traps focus, closes with Escape and production diagnostics are 
   await page.goto('/en/settings?section=maintenance');
   await expect(page.getByRole('heading',{name:'System diagnostics',exact:true})).toBeVisible();
   await expect(page.getByRole('heading',{name:'Backup and recovery',exact:true})).toBeVisible();
+  await expect(page.getByText('Full database restore requires the application to be stopped',{exact:true})).toBeHidden();
+  await page.locator('summary').filter({hasText:'Advanced backup and recovery steps'}).click();
   await expect(page.getByText('Full database restore requires the application to be stopped',{exact:true})).toBeVisible();
+});
+
+test('cinematic controls preserve touch size, keyboard focus and collapsed maintenance steps', async ({ page }) => {
+  await page.goto('/en/library');
+  const menu=page.getByRole('button',{name:'Menu',exact:true});
+  expect(await menu.evaluate(node=>node.getBoundingClientRect().height)).toBeGreaterThanOrEqual(44);
+  await menu.focus();
+  await expect(menu).toHaveCSS('outline-style','solid');
+  await page.keyboard.press('Enter');
+  await expect(page.getByRole('dialog',{name:'Menu',exact:true})).toBeVisible();
+  await page.keyboard.press('Escape');await expect(menu).toBeFocused();
+  await page.goto('/en/settings?section=maintenance');
+  const summary=page.locator('summary').filter({hasText:'Advanced backup and recovery steps'});
+  await expect(page.getByText('Full database restore requires the application to be stopped',{exact:true})).toBeHidden();
+  await expect(page.getByText(/Full database backups can contain credentials/)).toBeVisible();
+  await summary.focus();await page.keyboard.press('Enter');
+  await expect(page.getByText('Full database restore requires the application to be stopped',{exact:true})).toBeVisible();
+  await page.keyboard.press('Enter');
+  await expect(page.getByText('Full database restore requires the application to be stopped',{exact:true})).toBeHidden();
+});
+
+test('cinematic Explore has neutral cards and a keyboard-accessible fact finder', async ({ page }) => {
+  await page.goto('/en/explore');
+  const lens=page.getByRole('button',{name:'Open the Genre lens',exact:true});
+  await lens.focus();await expect(lens).toHaveCSS('border-radius','6px');
+  await expect(lens).toHaveCSS('outline-style','solid');
+  await page.getByRole('button',{name:'Find a fact',exact:true}).click();
+  const dialog=page.getByRole('dialog',{name:'Fact Finder',exact:true});
+  await expect(dialog).toBeVisible();
+  const close=dialog.getByRole('button',{name:'Close Fact Finder',exact:true});
+  await expect.poll(()=>close.evaluate(node=>node.getBoundingClientRect().height)).toBeGreaterThanOrEqual(44);
+  await expect(dialog.getByRole('textbox')).toBeFocused();
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('button',{name:'Find a fact',exact:true})).toBeFocused();
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+});
+
+test('cinematic matching promotes unresolved films and returns to the quiet matched toolbar', async ({ page, request }) => {
+  const film=(await read(request,'/library/films')).find((item: {primary_item:{status:string;metadata:{scrape_status:string}}})=>
+    item.primary_item.status==='available' && item.primary_item.metadata.scrape_status==='needs_review');
+  expect(film).toBeTruthy();
+  await page.goto(`/en/library/${film.id}`);
+  const match=page.getByRole('button',{name:'Review match',exact:true});
+  expect(await match.evaluate(node=>node.getBoundingClientRect().height)).toBeGreaterThanOrEqual(44);
+  expect(await match.evaluate(node=>node===node.parentElement?.parentElement?.querySelector('button'))).toBe(true);
+  await expect(match).toHaveCSS('background-color','rgb(255, 255, 255)');
+  await match.click();
+  await page.getByRole('button',{name:/E2E Candidate/}).first().click();
+  const confirm=page.getByRole('button',{name:'Confirm this match',exact:true});
+  expect(await confirm.evaluate(node=>node.getBoundingClientRect().height)).toBeGreaterThanOrEqual(44);
+  const response=page.waitForResponse(r=>r.request().method()==='POST'&&new URL(r.url()).pathname.endsWith('/scrape/confirm'));
+  await confirm.click();expect((await response).ok()).toBeTruthy();
+  await expect(page.getByRole('button',{name:'Scrape metadata',exact:true})).toBeVisible();
+  await expect(page.getByRole('button',{name:'Review match',exact:true})).toHaveCount(0);
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
 });

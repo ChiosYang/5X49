@@ -4,6 +4,8 @@ import { getLibraryFilmPage } from "@/lib/server-api";
 import { normalizeLibrarySearch } from "@/lib/library-search";
 import { FILM_PAGE_SIZE, normalizeFilmPage } from "@/lib/film-pagination";
 import FilmPagination from "@/components/FilmPagination";
+import { Button, ButtonLink } from "@/components/ui/Button";
+import { TextInput } from "@/components/ui/FormControls";
 import LibraryMovieCard from "../library/LibraryMovieCard";
 
 export default async function SearchPage({ params, searchParams }: {
@@ -25,10 +27,10 @@ export default async function SearchPage({ params, searchParams }: {
       <Link href="/ask" className="focus-ring mt-4 inline-block text-sm text-ink-muted underline">{t("askLink")}</Link>
       <form action={`/${locale}/search`} method="get" role="search" className="my-8 flex max-w-3xl flex-wrap gap-3">
         <label htmlFor="library-search" className="sr-only">{t("query")}</label>
-        <input id="library-search" name="q" type="search" defaultValue={query} maxLength={200}
-          placeholder={t("placeholder")} className="focus-ring min-h-12 min-w-0 flex-1 border border-line-strong bg-surface-raised px-4 text-base" />
-        <button type="submit" className="focus-ring min-h-12 border border-line-strong bg-inverse px-6 font-bold text-inverse-ink">{t("submit")}</button>
-        {query && <Link href="/search" className="focus-ring inline-flex min-h-12 items-center px-3 text-ink-muted">{t("clear")}</Link>}
+        <TextInput id="library-search" name="q" type="search" defaultValue={query} maxLength={200}
+          placeholder={t("placeholder")} className="min-w-0 flex-1" />
+        <Button type="submit" variant="primary">{t("submit")}</Button>
+        {query && <ButtonLink href="/search" variant="ghost">{t("clear")}</ButtonLink>}
       </form>
       <p className="mb-8 break-words text-ink-muted" role="status">
         {!query ? t("initial") : films.length ? t("results", { count: data!.total, query }) : t("empty", { query })}
