@@ -7,8 +7,8 @@ const backend = process.env.E2E_BACKEND!;
 const root = process.env.E2E_ROOT!;
 let films: Array<{ id: string; title: string }>;
 let retainedViewing: string;
-async function control(request: APIRequestContext, action: string) {
-  const r = await request.post(`${backend}/__e2e/control`, { headers: { 'x-e2e-token': process.env.E2E_TOKEN! }, data: { action } });
+async function control(request: APIRequestContext, action: string, payload: Record<string, unknown> = {}) {
+  const r = await request.post(`${backend}/__e2e/control`, { headers: { 'x-e2e-token': process.env.E2E_TOKEN! }, data: { action, ...payload } });
   expect(r.ok()).toBeTruthy(); return r.json();
 }
 async function read(request: APIRequestContext, url: string) {
@@ -23,6 +23,19 @@ test.beforeEach(async ({ context }) => {
     const url = new URL(route.request().url());
     return ['127.0.0.1', 'localhost'].includes(url.hostname) ? route.continue() : route.abort('blockedbyclient');
   });
+});
+
+test('Chinese entry points terminate on both loopback hosts', async ({ page, context, baseURL }) => {
+  for (const hostname of ['127.0.0.1', 'localhost']) {
+    const origin = new URL(baseURL!); origin.hostname = hostname;
+    await context.addCookies([{ name: 'NEXT_LOCALE', value: 'zh', url: origin.origin }]);
+    for (const pathname of ['/library', '/zh/library']) {
+      const response = await page.goto(origin.origin + pathname);
+      expect(response?.status()).toBe(200);
+      expect(new URL(page.url()).pathname).toBe('/library');
+      await expect(page.locator('html')).toHaveAttribute('lang', 'zh');
+    }
+  }
 });
 
 test('real empty library: invalid path, delayed save, exact scan path and refresh recovery', async ({ page, request }) => {
@@ -78,6 +91,53 @@ test('card real mutation, explicit injected error/retry and keyboard disclosure'
   await page.keyboard.press('Escape');
   await expect(page.getByRole('button', { name: 'Filter', exact: true })).toBeFocused();
   await expect(page.getByRole('button', { name: 'Filter', exact: true })).toHaveAttribute('aria-expanded', 'false');
+});
+
+test('empty scrape feedback is specific and rejected requests are handled', async ({ page }) => {
+  const pageErrors: string[] = [];
+  page.on('pageerror', error => pageErrors.push(error.message));
+  await page.route(`**/api/films/${films[0].id}/scrape`, route => route.fulfill({
+    status: 409, json: { detail: { status: 'failed', message: 'No TMDB matches found', candidates: [] } },
+  }));
+  await page.goto(`/en/library/${films[0].id}`);
+  await page.getByText('Film controls', { exact: true }).click();
+  await page.getByRole('button', { name: 'Scrape metadata', exact: true }).click();
+  await expect(page.getByText('No TMDB matches found. Check the title and year, or choose a match using a TMDB ID.', { exact: true })).toBeVisible();
+  await expect(page.getByText('Film action failed', { exact: true })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Scrape metadata', exact: true })).toBeEnabled();
+  expect(pageErrors).toEqual([]);
+});
+
+test('long unbroken and Chinese titles stay within cards and away from the year', async ({ page, request }) => {
+  const title = 'InceptionQZX49NoSuchFilm'.repeat(4) + '一个非常长的中文影片标题';
+  await control(request, 'set_title', { film_id: films[0].id, title });
+  try {
+    for (const width of [390, 1440]) {
+      await page.setViewportSize({ width, height: 1050 });
+      await page.goto('/en/library');
+      const heading = page.getByRole('heading', { name: title, exact: true }).last();
+      await expect(heading).toBeVisible();
+      const bounds = await heading.evaluate(element => {
+        const link = element.closest('a')!;
+        const card = link.parentElement!;
+        const rect = element.getBoundingClientRect();
+        const year = link.lastElementChild!.getBoundingClientRect();
+        const text = document.createRange(); text.selectNodeContents(element);
+        return { cardRight: card.getBoundingClientRect().right, titleRight: rect.right,
+          yearLeft: year.left, lines: [...text.getClientRects()].map(line => ({ left: line.left, right: line.right })),
+          titleLeft: rect.left, viewportWidth: window.innerWidth, pageWidth: document.documentElement.scrollWidth };
+      });
+      expect(bounds.titleRight).toBeLessThanOrEqual(bounds.yearLeft);
+      expect(bounds.titleRight).toBeLessThanOrEqual(bounds.cardRight);
+      for (const line of bounds.lines) {
+        expect(line.left).toBeGreaterThanOrEqual(bounds.titleLeft - 1);
+        expect(line.right).toBeLessThanOrEqual(bounds.titleRight + 1);
+      }
+      expect(bounds.pageWidth).toBeLessThanOrEqual(bounds.viewportWidth);
+    }
+  } finally {
+    await control(request, 'set_title', { film_id: films[0].id, title: films[0].title });
+  }
 });
 
 async function confirmAsk(page: Page) {
@@ -154,6 +214,8 @@ test('generated abnormal media and TMDB transport fixture: inspect/skip/confirm 
     expect(scrape.ok()).toBeTruthy(); expect((await scrape.json()).status).toBe('needs_review');
   }
   await page.goto('/en/library?view=metadata');
+  await expect(page.getByText(/Awaiting confirmation/).first()).toBeVisible();
+  await expect(page.getByText('Previous attempt failed', { exact: true })).toHaveCount(0);
   const beforeReview = await read(request, '/library/films');
   let confirmations = 0;
   page.on('request', r => { if (r.method() === 'POST' && new URL(r.url()).pathname.endsWith('/scrape/confirm')) confirmations++; });

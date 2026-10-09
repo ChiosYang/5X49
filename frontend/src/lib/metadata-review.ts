@@ -1,3 +1,8 @@
+export function metadataActionError(error: unknown, fallback: string, noMatches: string): string {
+  if (!(error instanceof Error) || !error.message) return fallback;
+  return error.message === "No TMDB matches found" ? noMatches : error.message;
+}
+
 /** A skip is local to one review pass; only successful confirmations reduce pending work. */
 export function reviewSession<T extends { id: string }>(
   films: readonly T[],

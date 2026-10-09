@@ -106,6 +106,76 @@ class MetadataScraperIntegrationTests(unittest.TestCase):
         details.assert_not_called()
         refreshed = library_manager.get_film(film["id"])
         self.assertEqual(refreshed["primary_item"]["metadata"]["scrape_status"], "needs_review")
+        self.assertIsNone(refreshed["primary_item"]["metadata"]["scrape_error"])
+
+    def test_two_prescanned_versions_confirm_into_one_film_and_update_the_correct_item(self):
+        second_folder = self.root / "The.Matrix.1999.Directors.Cut"
+        second_folder.mkdir()
+        (second_folder / "The.Matrix.1999.Directors.Cut.mkv").write_bytes(b"different version")
+        originals = [library_sync_service.scan_folder(folder) for folder in (self.movie_dir, second_folder)]
+        item_ids = {film["primary_item"]["id"] for film in originals}
+        with patch.object(metadata_scraper.tmdb, "movie_details", return_value=self._details()):
+            for film in originals:
+                result = metadata_scraper.scrape_film(film["id"], ScrapeOptions(tmdb_id=603, download_artwork=False))
+                self.assertEqual(result.status, "success", result.message)
+                self.assertEqual(result.film_id, originals[0]["id"])
+        films = library_manager.list_films()
+        self.assertEqual(len(films), 1)
+        detail = library_manager.get_film(originals[1]["id"])
+        self.assertEqual(detail["identities"], {"tmdb": "603", "imdb": "tt0133093"})
+        self.assertEqual({edition["id"] for edition in detail["editions"]}, item_ids)
+        for edition in detail["editions"]:
+            self.assertEqual(edition["metadata"]["scrape_status"], "matched")
+            self.assertIsNotNone(edition["metadata"]["scraped_at"])
+            self.assertEqual(edition["metadata"]["match_confidence"], 100)
+        for folder in (self.movie_dir, second_folder):
+            library_sync_service.scan_folder(folder)
+        self.engine.dispose()
+        restored = library_manager.get_film(originals[1]["id"])
+        self.assertEqual({item["id"] for item in restored["editions"]}, item_ids)
+        before = {item["id"]: item["metadata"] for item in detail["editions"]}
+        for item in restored["editions"]:
+            for field in ("scrape_status", "scrape_error", "scraped_at", "match_confidence"):
+                self.assertEqual(item["metadata"][field], before[item["id"]][field])
+        with Session(self.engine) as session:
+            snapshot = session.exec(
+                select(OperationSnapshot).where(OperationSnapshot.aggregate_id == originals[0]["id"])
+                .order_by(OperationSnapshot.created_at.desc())
+            ).first()
+        preview = operation_snapshot_service.preview(snapshot.id)
+        self.assertEqual({item["id"] for item in preview["before"]["library_items"]}, item_ids)
+        self.assertEqual(preview["before"]["film"]["canonical_title"], detail["title"])
+
+    def test_no_results_are_failed_without_metadata_writes_and_survive_rescan(self):
+        film = library_sync_service.scan_folder(self.movie_dir)
+        with (
+            patch.object(metadata_scraper.tmdb, "search_movies", return_value=[]),
+            patch.object(metadata_scraper.tmdb, "movie_details") as details,
+        ):
+            result = metadata_scraper.scrape_film(film["id"], ScrapeOptions())
+        self.assertEqual(result.status, "failed")
+        self.assertEqual(result.message, "No TMDB matches found")
+        details.assert_not_called()
+        self.assertEqual(list(self.movie_dir.glob("*.nfo")), [])
+        library_sync_service.scan_folder(self.movie_dir)
+        self.engine.dispose()
+        metadata = library_manager.get_film(film["id"])["primary_item"]["metadata"]
+        self.assertEqual(metadata["scrape_status"], "failed")
+        self.assertEqual(metadata["scrape_error"], "No TMDB matches found")
+
+    def test_identity_conflicts_fail_before_writing_nfo_or_artwork(self):
+        film = library_sync_service.scan_folder(self.movie_dir)
+        library_manager.update_film_observation(film["id"], {"tmdb_id": "604"})
+        with (
+            patch.object(metadata_scraper.tmdb, "movie_details", return_value=self._details()),
+            patch.object(metadata_scraper.artwork, "download") as download,
+        ):
+            result = metadata_scraper.scrape_film(film["id"], ScrapeOptions(tmdb_id=603))
+        self.assertEqual(result.status, "failed")
+        self.assertIn("identity review required", result.message)
+        download.assert_not_called()
+        self.assertEqual(list(self.movie_dir.glob("*.nfo")), [])
+        self.assertEqual(library_manager.get_film(film["id"])["identities"]["tmdb"], "604")
 
     def test_candidate_lookup_is_bounded_and_does_not_mutate_library_state(self):
         film = library_sync_service.scan_folder(self.movie_dir)

@@ -487,9 +487,9 @@ export default function LibraryMovieCard({ movie, priority = false, readOnly = f
         </div>
 
         {/* Title & Info */}
-        <Link href={`/library/${movie.id}`} onClick={() => rememberFilmReturn(movie.id)} scroll={false} className="focus-ring duration-standard flex cursor-pointer items-start justify-between transition-opacity">
-          <div className="space-y-1">
-            <h3 className="text-xl md:text-2xl font-bold uppercase leading-none tracking-tight">
+        <Link href={`/library/${movie.id}`} onClick={() => rememberFilmReturn(movie.id)} scroll={false} className="focus-ring duration-standard flex min-w-0 cursor-pointer items-start justify-between gap-3 transition-opacity">
+          <div className="min-w-0 space-y-1">
+            <h3 className="break-words text-xl md:text-2xl font-bold uppercase leading-none tracking-tight">
               {title}
             </h3>
             {metadataBadge && (
@@ -498,7 +498,7 @@ export default function LibraryMovieCard({ movie, priority = false, readOnly = f
               </p>
             )}
           </div>
-          <span className="font-serif text-xl text-ink-muted italic">
+          <span className="shrink-0 font-serif text-xl text-ink-muted italic">
             {movie.year}
           </span>
         </Link>

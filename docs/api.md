@@ -281,6 +281,13 @@ The API never returns the key. External scores are normalized
 Candidate lookup requires an available edition with a present video locator and
 returns an empty array when TMDB has no matches. It never marks the Film as
 reviewed or writes metadata; confirmation remains an explicit `POST`.
+Confirmation can attach a pre-scanned edition to an existing Film with the same
+TMDB/IMDb identity. The result's `film_id` and `film.id` identify the canonical
+Film; an emptied source Film remains an alias for detail reads. Edition IDs and
+their scrape bookkeeping are preserved. Unchanged file scans do not clear
+attempt time/confidence or reset `failed`/`needs_review` states. Ordinary review
+uses `needs_review` with no `scrape_error`; an empty scrape returns HTTP 409 with
+`detail.message = "No TMDB matches found"` and persists `failed`.
 
 ## File organization
 

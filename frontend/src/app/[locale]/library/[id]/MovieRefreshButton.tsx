@@ -23,6 +23,7 @@ import {
   useUpdateFilmProfileState,
 } from "@/hooks/useFilm";
 import { API } from "@/lib/api";
+import { metadataActionError } from "@/lib/metadata-review";
 import { useRouter } from "@/i18n/routing";
 import type { LibraryFilmDetail, MetadataSearchResult } from "@/types/movie";
 import MovieArtworkPicker from "./MovieArtworkPicker";
@@ -82,23 +83,34 @@ export default function MovieRefreshButton({ film }: { film: LibraryFilmDetail }
 
   const handleScrape = async () => {
     setMessage("");
-    const result = await scrape.trigger();
-    if (result.status === "needs_review") {
-      setCandidates(result.candidates);
-      setReviewOpen(true);
-    } else {
+    try {
+      const result = await scrape.trigger();
+      if (result.status === "needs_review") {
+        setCandidates(result.candidates);
+        setReviewOpen(true);
+      } else {
+        setReviewOpen(false);
+        await refreshViews();
+      }
+      setMessage(result.message);
+    } catch (error) {
+      setCandidates([]);
       setReviewOpen(false);
-      await refreshViews();
+      setMessage(metadataActionError(error, t("actionFailed"), t("metadataNoMatches")));
     }
-    setMessage(result.message);
   };
 
   const handleConfirm = async (tmdbId: number) => {
-    const result = await confirmScrape.trigger(tmdbId);
-    setCandidates([]);
-    setReviewOpen(false);
-    setMessage(result.message);
-    await refreshViews();
+    try {
+      const result = await confirmScrape.trigger(tmdbId);
+      setCandidates([]);
+      setReviewOpen(false);
+      setMessage(result.message);
+      await refreshViews();
+      if (result.film && result.film.id !== filmId) router.replace(`/library/${result.film.id}`);
+    } catch (error) {
+      setMessage(metadataActionError(error, t("actionFailed"), t("metadataNoMatches")));
+    }
   };
 
   const handleReviewLookup = async () => {
@@ -132,8 +144,8 @@ export default function MovieRefreshButton({ film }: { film: LibraryFilmDetail }
     <div className="relative flex min-w-0 flex-col items-start justify-between gap-4 p-8 md:px-16 2xl:flex-row 2xl:items-center">
       <div className="space-y-2">
         <span className="type-label block text-ink-subtle">{t("filmControls")}</span>
-        {message && <InlineFeedback>{message}</InlineFeedback>}
-        {anyError && <InlineFeedback tone="error">{t("actionFailed")}</InlineFeedback>}
+        {message && <InlineFeedback tone={anyError ? "error" : "neutral"}>{message}</InlineFeedback>}
+        {anyError && !message && <InlineFeedback tone="error">{t("actionFailed")}</InlineFeedback>}
       </div>
       <div className="flex max-w-full flex-wrap items-center gap-2 sm:shrink-0">
         <IconButton

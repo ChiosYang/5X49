@@ -340,6 +340,7 @@ class MetadataScraper:
         movie = library_manager.get_film_operation_context(film_id)
         if not movie:
             return ScrapeResult(status="failed", film_id=film_id, message="Movie not found")
+        film_id = movie["id"]
 
         folder = self._film_folder(movie)
         if not folder:
@@ -366,7 +367,7 @@ class MetadataScraper:
                         film_id,
                         scrape_status="needs_review",
                         tmdb_confidence=candidate.score,
-                        scrape_error="Manual confirmation required",
+                        scrape_error=None,
                     )
                     self._record_match_suggested(
                         film_id,
@@ -400,7 +401,7 @@ class MetadataScraper:
                         film_id,
                         scrape_status="needs_review",
                         tmdb_confidence=best.score,
-                        scrape_error="Manual confirmation required",
+                        scrape_error=None,
                     )
                     self._record_match_suggested(
                         film_id,
@@ -421,7 +422,7 @@ class MetadataScraper:
                         film_id,
                         scrape_status="needs_review",
                         tmdb_confidence=best.score,
-                        scrape_error="Low confidence TMDB match",
+                        scrape_error=None,
                     )
                     self._record_match_suggested(
                         film_id,
@@ -441,6 +442,19 @@ class MetadataScraper:
 
             artwork_language = self._artwork_language(options.artwork_language)
             details = self.tmdb.movie_details(selected_id, language=language, artwork_language=artwork_language)
+            library_manager.validate_film_identity(film_id, {
+                "tmdb_id": selected_id,
+                "imdb_id": (details.get("external_ids") or {}).get("imdb_id") or details.get("imdb_id"),
+            })
+            canonical_id = library_manager.identity_film_id("tmdb.movie", str(selected_id))
+            if canonical_id is not None and canonical_id != movie["id"]:
+                canonical_before = library_manager.operation_snapshot_state(canonical_id, "metadata")
+                canonical_before["library_items"].extend(
+                    item for item in operation_before_state["library_items"]
+                    if item["id"] == movie["library_item_id"]
+                )
+                canonical_before["library_items"].sort(key=lambda item: item["id"])
+                operation_before_state = canonical_before
             structured_observation = tmdb_structured_metadata_observation(
                 details,
                 selected_id,
@@ -509,7 +523,9 @@ class MetadataScraper:
                     command_id=operation_command_id,
                     correlation_id=operation_correlation_id,
                 )
-            updated_movie = library_manager.get_film_operation_context(film_id)
+            updated_movie = library_manager.get_film_operation_context(
+                updated_movie["id"], library_item_id=movie["library_item_id"],
+            )
             if not updated_movie:
                 return self._mark_failed(
                     film_id,
@@ -535,6 +551,7 @@ class MetadataScraper:
                 "tmdb_confidence": candidates[0].score if candidates else 100,
             }
             metadata_changes = self._field_changes(movie, enriched, METADATA_MATCH_FIELDS)
+            film_id = updated_movie["id"]
             with self._persistence_lock:
                 projected = library_manager.update_film_observation(
                     film_id,

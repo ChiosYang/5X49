@@ -118,7 +118,11 @@ curl -s -X POST http://127.0.0.1:8000/films/<film_id>/external-scores/refresh
 
 TMDB 功能需要 `TMDB_API_KEY` 环境变量或托管设置；读取设置只返回配置状态，
 不会返回明文密钥。低置信度或启用确认策略时，通过
-`POST /films/{film_id}/scrape/confirm?tmdb_id=...` 明确确认。
+`POST /films/{film_id}/scrape/confirm?tmdb_id=...` 明确确认。先扫描的不同版本在确认
+相同 TMDB/IMDb 身份后归于同一 Film；响应 `film_id`/`film.id` 是规范身份，旧 Film
+详情 ID 保留为别名，版本 ID 保持稳定。重复扫描保留刮削时间、置信度及失败／待确认
+状态。普通待确认不设置 `scrape_error`；无结果刮削返回 HTTP 409、
+`detail.message = "No TMDB matches found"`，并记录 `failed`。
 `GET /films/{film_id}/scrape/candidates` 只读取可用 Film 版本并返回有界候选，
 不会修改刮削状态、写 Event/NFO、下载图片或自动确认。
 
