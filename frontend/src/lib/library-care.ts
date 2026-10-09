@@ -14,6 +14,7 @@ export interface LibraryQueryState {
   sort: LibrarySortKey;
   direction: LibrarySortDirection;
   filter: LibraryFilterKey;
+  page?: number;
 }
 
 export interface LibraryCareState {
@@ -40,6 +41,7 @@ export function buildLibraryHref(state: LibraryQueryState, nextView = state.view
   params.set("sort", state.sort);
   params.set("dir", state.direction);
   if (state.filter !== "all") params.set("filter", state.filter);
+  if (nextView === state.view && (state.page || 1) > 1) params.set("page", String(state.page));
   return `/library?${params.toString()}`;
 }
 
@@ -50,6 +52,7 @@ export function buildLibraryCareState({
   activeView,
   organizationUnavailable = false,
   missingUnavailable = false,
+  metadataReviewCount,
 }: {
   films: LibraryFilmSummary[];
   organizationCandidates: OrganizationCandidate[];
@@ -57,8 +60,9 @@ export function buildLibraryCareState({
   activeView: LibraryView;
   organizationUnavailable?: boolean;
   missingUnavailable?: boolean;
+  metadataReviewCount?: number;
 }): LibraryCareState {
-  const metadataReviews = films.filter(
+  const metadataReviews = metadataReviewCount ?? films.filter(
     (film) => film.primary_item.metadata.scrape_status === "needs_review",
   ).length;
   const actionableInbox = organizationCandidates.filter((item) => item.stable).length;

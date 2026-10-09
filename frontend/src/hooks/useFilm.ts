@@ -3,7 +3,7 @@ import useSWRMutation from "swr/mutation";
 import { mutate } from "swr";
 
 import { API } from "@/lib/api";
-import { fetcher } from "@/lib/fetcher";
+import { fetcher, responseError } from "@/lib/fetcher";
 import { refreshViewingReadCaches } from "@/lib/viewing-write";
 import { isDnaCacheKey } from "@/lib/cinema-dna";
 import type {
@@ -22,17 +22,6 @@ import type {
   ViewingView,
 } from "@/types/movie";
 
-const errorMessage = async (response: Response, fallback: string) => {
-  const body = await response.json().catch(() => null) as {
-    detail?: unknown | { message?: unknown };
-  } | null;
-  if (typeof body?.detail === "string") return body.detail;
-  if (body?.detail && typeof body.detail === "object" && "message" in body.detail) {
-    const message = body.detail.message;
-    if (typeof message === "string") return message;
-  }
-  return fallback;
-};
 
 export function useFilm(filmId: string, fallbackData?: LibraryFilmDetail) {
   return useSWR<LibraryFilmDetail>(filmId ? API.libraryFilm(filmId) : null, {
@@ -64,7 +53,7 @@ export function useUpdateFilmProfileState(filmId: string) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(arg),
       });
-      if (!response.ok) throw new Error(await errorMessage(response, "Failed to update Film state"));
+      if (!response.ok) throw await responseError(response, "Failed to update Film state");
       return response.json();
     },
     { revalidate: false },
@@ -94,7 +83,7 @@ export function useCreateFilmViewing(filmId: string) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(arg),
       });
-      if (!response.ok) throw new Error(await errorMessage(response, "Failed to create Viewing"));
+      if (!response.ok) throw await responseError(response, "Failed to create Viewing");
       return response.json();
     },
     { revalidate: false },
@@ -110,7 +99,7 @@ export function useUpdateViewing(viewingId?: string | null) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(arg),
       });
-      if (!response.ok) throw new Error(await errorMessage(response, "Failed to update Viewing"));
+      if (!response.ok) throw await responseError(response, "Failed to update Viewing");
       return response.json();
     },
     { revalidate: false },
@@ -122,7 +111,7 @@ export function useDeleteViewing(viewingId?: string | null) {
     viewingId ? API.viewing(viewingId) : null,
     async (): Promise<ViewingDeleteResult> => {
       const response = await fetch(API.viewing(viewingId || ""), { method: "DELETE" });
-      if (!response.ok) throw new Error(await errorMessage(response, "Failed to delete Viewing"));
+      if (!response.ok) throw await responseError(response, "Failed to delete Viewing");
       return response.json();
     },
     { revalidate: false },
@@ -132,7 +121,7 @@ export function useDeleteViewing(viewingId?: string | null) {
 export async function invalidateViewingCaches(filmId: string, cacheKeys?: Iterable<string>) {
   if (cacheKeys) {
     const directKeys = new Set([API.filmViewings(filmId), API.filmProfileState(filmId), API.libraryFilm(filmId), API.libraryFilms()]);
-    const keys = [...cacheKeys].filter((key) => directKeys.has(key)
+    const keys = [...cacheKeys].filter((key) => directKeys.has(key) || key.startsWith(`${API.libraryFilmPage()}?`)
       || isDnaCacheKey(key, API.cinemaDna())
       || key === API.profileViewings() || key.startsWith(`${API.profileViewings()}?`));
     // SWR revalidation resolves with stale data on HTTP errors. Supply an explicit
@@ -161,7 +150,7 @@ export function useAnalyzeFilm(filmId: string) {
     filmId ? API.filmAnalysisRuns(filmId) : null,
     async (): Promise<WorkflowAccepted> => {
       const response = await fetch(API.filmAnalysisRuns(filmId), { method: "POST" });
-      if (!response.ok) throw new Error(await errorMessage(response, "Failed to trigger analysis"));
+      if (!response.ok) throw await responseError(response, "Failed to trigger analysis");
       return response.json();
     },
   );
@@ -172,7 +161,7 @@ export function useRefreshLibraryItem(itemId: string) {
     itemId ? API.libraryItemRefresh(itemId) : null,
     async (): Promise<WorkflowAccepted> => {
       const response = await fetch(API.libraryItemRefresh(itemId), { method: "POST" });
-      if (!response.ok) throw new Error(await errorMessage(response, "Failed to refresh edition"));
+      if (!response.ok) throw await responseError(response, "Failed to refresh edition");
       return response.json();
     },
   );
@@ -183,7 +172,7 @@ export function useRefreshFilmExternalScores(filmId: string) {
     filmId ? API.filmExternalScores(filmId) : null,
     async (): Promise<WorkflowAccepted> => {
       const response = await fetch(API.filmExternalScores(filmId), { method: "POST" });
-      if (!response.ok) throw new Error(await errorMessage(response, "Failed to refresh external scores"));
+      if (!response.ok) throw await responseError(response, "Failed to refresh external scores");
       return response.json();
     },
   );
@@ -198,7 +187,7 @@ export function useScrapeFilm(filmId: string) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ mode: "auto", overwrite: false, write_nfo: true, download_artwork: true }),
       });
-      if (!response.ok) throw new Error(await errorMessage(response, "Failed to scrape metadata"));
+      if (!response.ok) throw await responseError(response, "Failed to scrape metadata");
       return response.json();
     },
   );
@@ -219,7 +208,7 @@ export function useConfirmScrapeFilm(filmId: string) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ mode: "manual", overwrite: false, write_nfo: true, download_artwork: true }),
       });
-      if (!response.ok) throw new Error(await errorMessage(response, "Failed to scrape metadata"));
+      if (!response.ok) throw await responseError(response, "Failed to scrape metadata");
       return response.json();
     },
   );
@@ -230,10 +219,20 @@ export function useIgnoreLibraryItem(itemId: string) {
     itemId ? API.libraryItemIgnore(itemId) : null,
     async () => {
       const response = await fetch(API.libraryItemIgnore(itemId), { method: "POST" });
-      if (!response.ok) throw new Error(await errorMessage(response, "Failed to ignore edition"));
+      if (!response.ok) throw await responseError(response, "Failed to ignore edition");
       return response.json();
     },
   );
+}
+
+export function useSelectPrimaryEdition(filmId: string) {
+  return useSWRMutation(API.filmPrimaryEdition(filmId),
+    async (_key: string, { arg }: { arg: string }): Promise<LibraryFilmDetail> => {
+      const response = await fetch(API.filmPrimaryEdition(filmId), {method: "PUT",
+        headers: { "Content-Type": "application/json" }, body: JSON.stringify({library_item_id: arg})});
+      if (!response.ok) throw await responseError(response, "Failed to select primary edition");
+      return response.json();
+    }, { revalidate: false });
 }
 
 export function useOperationPreview(snapshotId?: string | null) {
@@ -249,7 +248,7 @@ export function useRestoreOperation(snapshotId?: string | null) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(arg),
       });
-      if (!response.ok) throw new Error(await errorMessage(response, "Operation restore failed"));
+      if (!response.ok) throw await responseError(response, "Operation restore failed");
       return response.json();
     },
   );

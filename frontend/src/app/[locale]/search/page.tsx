@@ -1,17 +1,22 @@
 import { getTranslations } from "next-intl/server";
 import { Link } from "@/i18n/routing";
-import { getLibraryFilms } from "@/lib/server-api";
+import { getLibraryFilmPage } from "@/lib/server-api";
 import { normalizeLibrarySearch } from "@/lib/library-search";
+import { FILM_PAGE_SIZE, normalizeFilmPage } from "@/lib/film-pagination";
+import FilmPagination from "@/components/FilmPagination";
 import LibraryMovieCard from "../library/LibraryMovieCard";
 
 export default async function SearchPage({ params, searchParams }: {
   params: Promise<{ locale: string }>;
-  searchParams: Promise<{ q?: string | string[] }>;
+  searchParams: Promise<{ q?: string | string[]; page?: string | string[] }>;
 }) {
   const { locale } = await params;
-  const query = normalizeLibrarySearch((await searchParams).q);
+  const search = await searchParams;
+  const query = normalizeLibrarySearch(search.q);
+  const page = normalizeFilmPage(search.page);
   const t = await getTranslations("LibrarySearch");
-  const films = query ? await getLibraryFilms(query) : [];
+  const data = query ? await getLibraryFilmPage(new URLSearchParams({q:query,limit:String(FILM_PAGE_SIZE),offset:String((page-1)*FILM_PAGE_SIZE)})) : null;
+  const films = data?.items ?? [];
 
   return (
     <main className="page-x min-h-screen bg-canvas pb-16 pt-36 text-ink">
@@ -26,11 +31,12 @@ export default async function SearchPage({ params, searchParams }: {
         {query && <Link href="/search" className="focus-ring inline-flex min-h-12 items-center px-3 text-ink-muted">{t("clear")}</Link>}
       </form>
       <p className="mb-8 break-words text-ink-muted" role="status">
-        {!query ? t("initial") : films.length ? t("results", { count: films.length, query }) : t("empty", { query })}
+        {!query ? t("initial") : films.length ? t("results", { count: data!.total, query }) : t("empty", { query })}
       </p>
       <div className="grid grid-cols-2 gap-x-5 gap-y-10 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
         {films.map((film, index) => <LibraryMovieCard key={film.id} movie={film} priority={index === 0} />)}
       </div>
+      {data && <FilmPagination data={data} href={`/search?${new URLSearchParams({q:query})}`} />}
     </main>
   );
 }

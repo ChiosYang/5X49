@@ -84,6 +84,7 @@ const sizeClasses: Record<DialogSize, string> = {
 };
 
 export interface DialogProps {
+  id?: string;
   animated?: boolean;
   ariaLabel?: string;
   ariaLabelledBy?: string;
@@ -103,6 +104,7 @@ export interface DialogProps {
 }
 
 export function Dialog({
+  id,
   animated = false,
   ariaLabel,
   ariaLabelledBy,
@@ -213,6 +215,7 @@ export function Dialog({
         <div className="z-content absolute inset-0" aria-hidden="true" />
       )}
       <section
+        id={id}
         ref={panelRef}
         tabIndex={-1}
         role="dialog"

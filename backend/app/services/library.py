@@ -87,6 +87,12 @@ class LibraryManager:
                     .where(LibraryItem.source_item_key == source_key)
                     .where(LibraryItem.availability_status != "retired")
                 ).first()
+                if existed is None and payload.get("media_path"):
+                    existed = session.exec(select(LibraryItem.id).join(MediaAsset)
+                        .where(MediaAsset.asset_kind == "video")
+                        .where(MediaAsset.locator == payload["media_path"])
+                        .where(MediaAsset.availability_status != "retired")
+                        .where(LibraryItem.availability_status != "retired")).first()
                 try:
                     resolution = canonical_runtime_writer.sync_observation(
                         session,
@@ -335,6 +341,10 @@ class LibraryManager:
         from app.services.projections import projection_reader
 
         return projection_reader.list_films(engine, query=query)
+
+    def film_page(self, **params) -> dict[str, Any]:
+        from app.services.projections import projection_reader
+        return projection_reader.film_page(engine, **params)
 
     def get_film(self, film_id: str) -> dict[str, Any] | None:
         from app.services.projections import projection_reader
@@ -931,6 +941,8 @@ class LibraryManager:
             "video": (
                 {
                     "file_name": Path(video.locator).name,
+                    "part_files": [Path(video.locator).name] + sorted(Path(asset.locator).name for asset in assets
+                        if asset.library_item_id == item.id and asset.asset_kind == "video_part" and asset.availability_status == "present"),
                     "file_size": video.file_size,
                     "file_mtime": video.file_mtime,
                     "width": video.width,
@@ -956,7 +968,26 @@ class LibraryManager:
             .where(MediaAsset.asset_kind == "video")
             .where(MediaAsset.availability_status == "present")
         ).first() is not None
-        return (rank, 0 if has_video else 1, self._descending_time(item.last_seen_at), item.id)
+        state = session.get(FilmProfileState, (item.profile_id, item.film_id))
+        preferred = state is not None and state.primary_item_id == item.id
+        return (rank, 0 if preferred else 1, 0 if has_video else 1, item.added_at or item.created_at, item.id)
+
+    def select_primary_item(self, film_id: str, item_id: str) -> dict[str, Any]:
+        with Session(engine) as session:
+            film = session.get(Film, film_id)
+            item = session.get(LibraryItem, item_id)
+            if film is None or film.lifecycle_status != "active" or item is None or item.film_id != film_id:
+                raise LookupError("Film edition not found")
+            if item.availability_status != "available":
+                raise ValueError("Primary edition must be available")
+            profile_id = canonical_runtime_writer.local_profile_id(session)
+            state = session.get(FilmProfileState, (profile_id, film_id)) or FilmProfileState(profile_id=profile_id, film_id=film_id)
+            state.primary_item_id = item_id
+            state.updated_at = utc_now_iso()
+            session.add(state)
+            session.add(EventRecord(aggregate_type="film", aggregate_id=film_id, type="FilmPrimaryEditionSelected", payload={"library_item_id": item_id}))
+            session.commit()
+        return self.get_film(film_id)
 
     @staticmethod
     def _descending_time(value: str | None) -> float:

@@ -112,6 +112,7 @@ export interface LibraryEdition {
   };
   video?: {
     file_name?: string | null;
+    part_files?: string[];
     file_size?: number | null;
     file_mtime?: number | null;
     width?: number | null;
@@ -166,6 +167,15 @@ export interface MissingLibraryItemsResponse {
 
 export interface LibraryFilmDetail extends LibraryFilmSummary {
   editions: LibraryEdition[];
+}
+
+export interface LibraryFilmPage {
+  items: LibraryFilmSummary[];
+  total: number;
+  library_total: number;
+  metadata_reviews: number;
+  limit: number;
+  offset: number;
 }
 
 export interface FilmAnalysisTarget {

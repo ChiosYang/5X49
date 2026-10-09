@@ -85,6 +85,15 @@ class CanonicalRuntimeWriter:
             file_observation = self.observe_item(observation)
         if existing is None:
             existing = self._by_source_key(session, self.source_item_key(observation, requested_id))
+        if existing is None and observation.get("media_path"):
+            # Upgrade folder-based keys without changing the existing edition ID.
+            matches = session.exec(select(LibraryItem).join(MediaAsset)
+                .where(MediaAsset.asset_kind == "video")
+                .where(MediaAsset.locator == observation["media_path"])
+                .where(MediaAsset.availability_status != "retired")
+                .where(LibraryItem.availability_status != "retired")).all()
+            if len(matches) == 1:
+                existing = RuntimeLibraryResolution(matches[0].film_id, matches[0].id)
         if existing is None and file_observation is not None and review_reason is None:
             try:
                 existing = self._by_file_identity(session, file_observation, observation)
@@ -120,7 +129,7 @@ class CanonicalRuntimeWriter:
                     ),
                     source_instance_id=SOURCE_INSTANCE_ID,
                     source_item_key=source_key,
-                    display_name=observation.get("folder_name") or observation.get("title"),
+                    display_name=observation.get("edition_name") or observation.get("folder_name") or observation.get("title"),
                     availability_status=availability,
                     resolution_status="review_required" if conflict or review_reason else (
                         "matched" if identities else "unresolved"
@@ -284,6 +293,7 @@ class CanonicalRuntimeWriter:
             else:
                 target.favorite = target.favorite or state.favorite
                 target.rating = target.rating if target.rating is not None else state.rating
+                target.primary_item_id = target.primary_item_id or state.primary_item_id
                 if state.notes and state.notes != target.notes:
                     target.notes = "\n\n".join(value for value in (target.notes, state.notes) if value)
                 target.updated_at = now
@@ -424,8 +434,8 @@ class CanonicalRuntimeWriter:
     @staticmethod
     def source_item_key(observation: dict[str, Any], fallback: str | None = None) -> str:
         raw = (
-            observation.get("folder_path")
-            or observation.get("media_path")
+            observation.get("media_path")
+            or observation.get("folder_path")
             or observation.get("folder_name")
             or fallback
             or f"unknown-{uuid4().hex}"
@@ -652,7 +662,7 @@ class CanonicalRuntimeWriter:
         item = session.get(LibraryItem, library_item_id)
         if item is None:
             return
-        item.display_name = observation.get("folder_name") or observation.get("title") or item.display_name
+        item.display_name = observation.get("edition_name") or observation.get("folder_name") or observation.get("title") or item.display_name
         incoming_availability = self._availability(observation.get("library_status"))
         item.availability_status = (
             "ignored"
@@ -858,6 +868,21 @@ class CanonicalRuntimeWriter:
             asset.last_observed_at = observation.get("last_seen_at") or now
             asset.updated_at = now
             session.add(asset)
+
+        if "video_parts" in observation:
+            locators = {str(value) for value in observation["video_parts"]}
+            existing_parts = session.exec(select(MediaAsset)
+                .where(MediaAsset.library_item_id == resolution.library_item_id)
+                .where(MediaAsset.asset_kind == "video_part")).all()
+            for part in existing_parts:
+                part.availability_status = "present" if part.locator in locators else "retired"
+                session.add(part)
+            known = {part.locator for part in existing_parts}
+            for locator in sorted(locators - known):
+                session.add(MediaAsset(id=f"asset_{uuid4().hex}", library_item_id=resolution.library_item_id,
+                    asset_kind="video_part", locator_kind="local_path", locator=locator,
+                    normalized_locator_hash=self._hash(locator.replace("\\", "/")),
+                    availability_status="present", source="filename", last_observed_at=now))
 
     @staticmethod
     def local_profile_id(session: Session) -> str:

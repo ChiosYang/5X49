@@ -128,20 +128,31 @@ class LibrarySyncService:
 
         scanner = NFOScanner(str(folder.parent), video_probe_cache=self._video_probe_cache())
         self._progress(ctx, "inspect", "Inspecting media folder")
-        observed_film = scanner.scan_folder_observed(folder)
-        if not observed_film:
+        locator = None
+        if library_item_id:
+            context = library_manager.get_item_operation_context(library_item_id)
+            locator = (context.get("video") or {}).get("locator") if context else None
+            if locator is None:
+                return None
+        observations = scanner.scan_folder_editions_observed(folder, video_path=locator)
+        if not observations:
             return None
-        film_data = observed_film.film
 
-        self._progress(ctx, "persist", "Persisting media observation")
-        upsert_result = library_manager.upsert_observation(
-            film_data,
-            library_item_id=library_item_id,
-            command_id=command_id,
-            correlation_id=correlation_id,
-            structured_metadata=observed_film.structured_metadata,
-            preserve_scrape_state=True,
-        )
+        self._progress(ctx, "persist", "Persisting media observations")
+        upsert_result = None
+        for observed_film in observations:
+            result = library_manager.upsert_observation(
+                observed_film.film,
+                library_item_id=library_item_id,
+                command_id=command_id,
+                correlation_id=correlation_id,
+                structured_metadata=observed_film.structured_metadata,
+                preserve_scrape_state=True,
+            )
+            # The compatibility response is the first edition's Film; every
+            # observation is persisted even if a later one needs relink review.
+            if upsert_result is None:
+                upsert_result = result
         if upsert_result and upsert_result.get("status") == "pending_relink":
             return {
                 "status": "pending_relink",

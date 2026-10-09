@@ -69,10 +69,10 @@ class NFOScanner:
             if not folder.is_dir() or folder.name.startswith('.'):
                 continue
             
-            observed = self.scan_folder_observed(folder)
-            if observed:
-                movies.append(observed)
-                print("  Parsed movie")
+            observations = self.scan_folder_editions_observed(folder)
+            movies.extend(observations)
+            if observations:
+                print("  Parsed movie editions")
         
         print(f"\nTotal movies scanned: {len(movies)}")
         return movies
@@ -82,17 +82,38 @@ class NFOScanner:
         observed = self.scan_folder_observed(folder)
         return observed.film if observed else None
 
-    def scan_folder_observed(self, folder: Path | str) -> Optional[FilmObservation]:
+    def scan_folder_editions_observed(self, folder: Path | str, *, video_path: str | None = None) -> list[FilmObservation]:
+        folder = Path(folder)
+        if not folder.is_dir():
+            return []
+        groups = self._find_video_groups(folder)
+        if video_path is not None:
+            groups = [group for group in groups if str(group[0].resolve()) == video_path]
+            if not groups:
+                return []
+        if not groups:
+            observed = self.scan_folder_observed(folder)
+            return [observed] if observed else []
+        result = []
+        for group in groups:
+            observed = self.scan_folder_observed(folder, video_file=group[0])
+            if observed:
+                observed.film["edition_name"] = group[0].stem if len(groups) > 1 else folder.name
+                observed.film["video_parts"] = [str(part.resolve()) for part in group[1:]]
+                result.append(observed)
+        return result
+
+    def scan_folder_observed(self, folder: Path | str, *, video_file: Path | None = None) -> Optional[FilmObservation]:
         """Scan one folder into Film and structured metadata observations."""
         folder = Path(folder)
         if not folder.exists() or not folder.is_dir():
             return None
 
-        video_file = self._find_video_file(folder)
+        video_file = video_file or self._find_video_file(folder)
 
         nfo_file = self._find_nfo_file(folder, video_file)
         if nfo_file:
-            return self._parse_nfo_observed(nfo_file, folder)
+            return self._parse_nfo_observed(nfo_file, folder, video_file=video_file)
 
         if not video_file:
             return None
@@ -136,7 +157,7 @@ class NFOScanner:
         observed = self._parse_nfo_observed(nfo_path, folder)
         return observed.film if observed else None
 
-    def _parse_nfo_observed(self, nfo_path: Path, folder: Path) -> Optional[FilmObservation]:
+    def _parse_nfo_observed(self, nfo_path: Path, folder: Path, *, video_file: Path | None = None) -> Optional[FilmObservation]:
         """Parse one NFO into Film and structured metadata observations."""
         try:
             tree = ET.parse(nfo_path)
@@ -195,7 +216,7 @@ class NFOScanner:
             if fanart_elem is not None and fanart_elem.text:
                 fanart_url = fanart_elem.text
             
-            video_file = self._find_video_file(folder)
+            video_file = video_file or self._find_video_file(folder)
             source_record_id = self._build_source_record_id(tmdb_id, imdb_id, year, folder, video_file)
             generator = root.findtext('generator') or ""
             nfo_source = "tmdb" if generator.strip().lower() == "5x49" else "tmm"
@@ -363,7 +384,8 @@ class NFOScanner:
             return movie_nfo
 
         nfo_files = sorted(folder.glob("*.nfo"), key=lambda path: path.name.lower())
-        return nfo_files[0] if nfo_files else None
+        # Never apply another video's per-file NFO to an unrelated edition.
+        return nfo_files[0] if nfo_files and len(self._find_video_groups(folder)) <= 1 else None
 
     def nfo_signature(self, nfo_path: Path) -> dict:
         stat = nfo_path.stat()
@@ -425,14 +447,36 @@ class NFOScanner:
         cleaned = re.sub(r"[^a-zA-Z0-9_-]+", "", value.strip())
         return cleaned or None
 
+    def _find_video_groups(self, folder: Path) -> list[list[Path]]:
+        extras = re.compile(r"(?:^|[ ._-])(sample|trailer|teaser|featurette|behind[ ._-]the[ ._-]scenes)$", re.I)
+        videos = sorted((path for path in folder.iterdir()
+            if path.suffix.lower() in self.video_extensions and self._is_usable_video_file(path)
+            and not extras.search(path.stem)), key=lambda path: path.name.casefold())
+        split = re.compile(r"^(.*?)[ ._-](cd|disc|disk|part)[ ._-]?([1-9][0-9]*)(.*)$", re.I)
+        candidates = {}
+        singles = []
+        for video in videos:
+            match = split.match(video.stem)
+            if match:
+                key = (match[1].casefold(), match[2].lower(), match[4].casefold(), video.suffix.lower())
+                candidates.setdefault(key, []).append((int(match[3]), video))
+            else:
+                singles.append([video])
+        for entries in candidates.values():
+            entries.sort()
+            numbers = [number for number, _ in entries]
+            # Only a contiguous sequence starting at 1 is an unambiguous split.
+            # Separate per-file NFOs can describe different films; preserve them.
+            separate_nfos = [path.with_suffix(".nfo") for _, path in entries]
+            if len(entries) > 1 and numbers == list(range(1, len(entries) + 1)) and not all(p.exists() for p in separate_nfos):
+                singles.append([path for _, path in entries])
+            else:
+                singles.extend([path] for _, path in entries)
+        return sorted(singles, key=lambda group: group[0].name.casefold())
+
     def _find_video_file(self, folder: Path) -> Optional[Path]:
-        """Find the primary video file in a movie folder."""
-        for ext in self.video_extensions:
-            videos = list(folder.glob(f"*{ext}")) + list(folder.glob(f"*{ext.upper()}"))
-            usable_videos = [video for video in videos if self._is_usable_video_file(video)]
-            if usable_videos:
-                return sorted(usable_videos, key=lambda path: path.name.lower())[0]
-        return None
+        groups = self._find_video_groups(folder)
+        return groups[0][0] if groups else None
 
     def _is_usable_video_file(self, path: Path) -> bool:
         lower_name = path.name.lower()

@@ -10,7 +10,7 @@ import { rememberFilmReturn } from "@/lib/navigation-context";
 import { Button } from "@/components/ui/Button";
 import { API } from "@/lib/api";
 import { invalidateViewingCaches, useUpdateFilmProfileState } from "@/hooks/useFilm";
-import { watchedActionFor } from "@/lib/diary";
+import { todayLocalDate, watchedActionFor } from "@/lib/diary";
 import type { AudioTrack, FilmProfileState, LibraryFilmSummary } from "@/types/movie";
 import ExternalScoreStrip from "../components/ExternalScoreStrip";
 
@@ -229,21 +229,15 @@ function getMetadataBadge(movie: LibraryFilmSummary) {
   }
 
   if (metadata.scrape_status === "needs_review") {
-    return "Needs review";
+    return "metadataNeedsReview";
   }
   if (metadata.scrape_status === "failed") {
-    return "Match failed";
+    return "metadataFailed";
   }
-  return "Unmatched";
+  return "metadataUnmatched";
 }
 
-function todayDateValue() {
-  const now = new Date();
-  const year = now.getFullYear();
-  const month = String(now.getMonth() + 1).padStart(2, "0");
-  const day = String(now.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
-}
+
 
 export default function LibraryMovieCard({ movie, priority = false, readOnly = false, onProfileSaved }: LibraryMovieCardProps) {
   const t = useTranslations("Library");
@@ -299,7 +293,7 @@ export default function LibraryMovieCard({ movie, priority = false, readOnly = f
     try {
       saved = await trigger(kind === "favorite" ? { favorite: !favorite } : {
         watched: action === "mark_watched",
-        watched_at: action === "mark_watched" ? profileState.watched_at || todayDateValue() : null,
+        watched_at: action === "mark_watched" ? profileState.watched_at || todayLocalDate() : null,
       });
     } catch {
       setFeedback("failed");
@@ -343,7 +337,7 @@ export default function LibraryMovieCard({ movie, priority = false, readOnly = f
               )}
               {metadataBadge && (
                 <span className="z-raised absolute top-3 left-3 rounded-small bg-canvas/80 px-2 py-1 text-[10px] font-black tracking-widest text-ink uppercase">
-                  {metadataBadge}
+                  {t(metadataBadge)}
                 </span>
               )}
               {watched && (
@@ -494,7 +488,7 @@ export default function LibraryMovieCard({ movie, priority = false, readOnly = f
             </h3>
             {metadataBadge && (
               <p className="text-[10px] font-black tracking-widest text-ink-subtle uppercase">
-                {metadataBadge}
+                {t(metadataBadge)}
               </p>
             )}
           </div>

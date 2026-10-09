@@ -56,6 +56,20 @@ def get_missing_library_items():
     return {"count": len(items), "items": items}
 
 
+@router.get("/library/films/page")
+def get_library_film_page(
+    q: str | None = Query(default=None, max_length=200),
+    filter: Literal["all", "watched", "unwatched", "favorite"] = "all",
+    sort: Literal["title", "added", "duration"] = "title",
+    direction: Literal["asc", "desc"] = "asc",
+    metadata_status: Literal["all", "pending", "needs_review", "failed", "matched"] = "all",
+    limit: int = Query(default=40, ge=1, le=100),
+    offset: int = Query(default=0, ge=0, le=1_000_000),
+):
+    return library_manager.film_page(query=q, filter=filter, sort=sort, direction=direction,
+        metadata_status=metadata_status, limit=limit, offset=offset)
+
+
 @router.get("/library/films/{film_id}")
 def get_library_film(film_id: str):
     _validate_id(film_id, "film")
@@ -251,6 +265,24 @@ def ignore_library_item(library_item_id: str):
         library_item_id=library_item_id,
     )
     return {"status": "success", "edition": item}
+
+
+class PrimaryEditionRequest(BaseModel):
+    library_item_id: str
+
+
+@router.put("/films/{film_id}/primary-edition")
+def select_primary_edition(film_id: str, request: PrimaryEditionRequest):
+    _validate_id(film_id, "film")
+    _validate_id(request.library_item_id, "library item")
+    try:
+        film = library_manager.select_primary_item(film_id, request.library_item_id)
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    library_event_bus.publish_library_changed("primary_edition_selected", film_id=film_id)
+    return film
 
 
 @router.get("/library/sync/status")

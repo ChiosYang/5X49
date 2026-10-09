@@ -130,10 +130,10 @@ class MissingLibraryItemTests(unittest.TestCase):
             "display_name": "A Film (2000)",
             "missing_since": "2026-08-01T00:00:00Z",
         }]
+        client = TestClient(app)
         with (
             patch("app.api.library.library_manager.list_missing_items", return_value=fixture),
             patch("app.api.library.library_manager.cleanup_missing") as cleanup_missing,
-            TestClient(app) as client,
         ):
             response = client.get("/library/missing")
 
@@ -142,10 +142,10 @@ class MissingLibraryItemTests(unittest.TestCase):
         cleanup_missing.assert_not_called()
 
     def test_delete_route_keeps_existing_response_contract(self):
+        client = TestClient(app)
         with (
             patch("app.api.library.library_manager.cleanup_missing", return_value=3) as cleanup_missing,
             patch("app.api.library.library_event_bus.publish_library_changed") as publish,
-            TestClient(app) as client,
         ):
             response = client.delete("/library/missing")
 

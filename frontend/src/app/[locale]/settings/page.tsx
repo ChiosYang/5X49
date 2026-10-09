@@ -6,8 +6,9 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import GeneralSettings from "./GeneralSettings";
 import IntegrationSettings from "./IntegrationSettings";
 import LibrarySettings from "./LibrarySettings";
+import MaintenanceSettings from "./MaintenanceSettings";
 
-const settingSections = ["general", "integrations", "library"] as const;
+const settingSections = ["general", "integrations", "library", "maintenance"] as const;
 type SettingSection = (typeof settingSections)[number];
 
 function isSettingSection(value: string | null): value is SettingSection {
@@ -28,6 +29,7 @@ function SettingsContent() {
     general: t("general"),
     integrations: t("integrations"),
     library: t("librarySettings"),
+    maintenance: t("maintenance"),
   };
 
   const selectSection = (section: SettingSection) => {
@@ -76,6 +78,7 @@ function SettingsContent() {
             {activeSection === "general" && <GeneralSettings />}
             {activeSection === "integrations" && <IntegrationSettings />}
             {activeSection === "library" && <LibrarySettings />}
+            {activeSection === "maintenance" && <MaintenanceSettings />}
           </div>
         </section>
       </div>
