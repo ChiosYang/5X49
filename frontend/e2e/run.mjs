@@ -18,7 +18,7 @@ async function run(root) {
   // Do not forward provider keys, proxy credentials or application configuration.
   const env = Object.fromEntries(['PATH', 'HOME', 'USERPROFILE', 'SYSTEMROOT', 'TMPDIR', 'CI', 'PLAYWRIGHT_BROWSERS_PATH', 'E2E_CHROMIUM_PATH'].filter(k => process.env[k]).map(k => [k, process.env[k]]));
   Object.assign(env, { E2E_ROOT: root, E2E_TOKEN: randomUUID(),
-    E2E_BACKEND: `http://127.0.0.1:${backendPort}`, E2E_BASE_URL: `http://localhost:${frontendPort}`,
+    E2E_BACKEND: `http://127.0.0.1:${backendPort}`, E2E_BASE_URL: `http://127.0.0.1:${frontendPort}`,
     SQLITE_DB_PATH: path.join(root, 'data/library.db'), MEDIA_DIR: path.join(root, 'empty'),
     OPERATION_MANIFEST_DIR: path.join(root, 'manifests'), WATCH_LIBRARY: 'false',
     PYTHON_DOTENV_DISABLED: '1', TMDB_API_KEY: '', OPENROUTER_API_KEY: '',
@@ -48,8 +48,8 @@ async function run(root) {
     const standalone = path.join(frontend, '.next/standalone');
     await cp(path.join(frontend, '.next/static'), path.join(standalone, '.next/static'), { recursive: true });
     await cp(path.join(frontend, 'public'), path.join(standalone, 'public'), { recursive: true });
-    // Match NextURL's loopback hostname normalization, avoiding a self-proxy rewrite.
-    env.PORT = String(frontendPort); env.HOSTNAME = 'localhost';
+    // Exercise the loopback host that previously caused default-locale rewrites to loop.
+    env.PORT = String(frontendPort); env.HOSTNAME = '127.0.0.1';
     const web = start(process.execPath, ['server.js'], standalone, 'frontend.log');
     await ready(`${env.E2E_BASE_URL}/api/health`, web);
     watcher = setInterval(async () => {

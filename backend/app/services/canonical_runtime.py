@@ -69,6 +69,7 @@ class CanonicalRuntimeWriter:
         force_library_item_id: str | None = None,
         review_reason: str | None = None,
         review_context: dict[str, Any] | None = None,
+        preserve_scrape_state: bool = False,
         structured_metadata: (
             StructuredMetadataObservation | StructuredMetadataObservationDraft | None
         ) = None,
@@ -93,9 +94,12 @@ class CanonicalRuntimeWriter:
                 review_reason = review_reason or "relink_live_copy_conflict"
 
         if existing is not None:
-            resolution = existing
+            resolution = self._resolve_existing_identity(session, existing, observation, now)
             self._update_film(session, resolution.film_id, observation, now)
-            self._update_library_item(session, resolution.library_item_id, observation, now)
+            self._update_library_item(
+                session, resolution.library_item_id, observation, now,
+                preserve_scrape_state=preserve_scrape_state,
+            )
             self._update_locator(session, resolution.library_item_id, observation, now)
         else:
             film_id, conflict = self._resolve_film(session, observation, now)
@@ -199,6 +203,94 @@ class CanonicalRuntimeWriter:
             )
         session.flush()
         return resolution
+
+    def _resolve_existing_identity(
+        self, session: Session, existing: RuntimeLibraryResolution,
+        observation: dict[str, Any], now: str,
+    ) -> RuntimeLibraryResolution:
+        target_id = self.identity_target(session, existing.film_id, observation)
+        if target_id == existing.film_id:
+            return existing
+
+        # Late confirmation changes the edition's owner, never its item ID or files.
+        item = session.get(LibraryItem, existing.library_item_id)
+        item.film_id = target_id
+        item.resolution_status = "matched"
+        session.add(item)
+        session.flush()
+        # The item now points at the target; touch its former owner as well so
+        # projections remove that edition even when other source editions remain.
+        source_film = session.get(Film, existing.film_id)
+        source_film.updated_at = now
+        session.add(source_film)
+        remaining = session.exec(
+            select(LibraryItem.id).where(LibraryItem.film_id == existing.film_id)
+        ).first()
+        if remaining is None:
+            self._merge_empty_film(session, existing.film_id, target_id, now)
+        session.add(EventRecord(
+            aggregate_type="library_item", aggregate_id=item.id,
+            type="LibraryItemIdentityResolved",
+            payload={"previous_film_id": existing.film_id, "film_id": target_id},
+        ))
+        return RuntimeLibraryResolution(target_id, item.id)
+
+    def identity_target(self, session: Session, film_id: str, observation: dict[str, Any]) -> str:
+        """Validate compatible active identities without mutating rows or files."""
+        incoming = self._identities(observation)
+        owners = session.exec(
+            select(ExternalIdentity).where(ExternalIdentity.identity_status == "active")
+            .where(ExternalIdentity.provider.in_(list(incoming)))
+        ).all() if incoming else []
+        targets = {
+            identity.entity_id for identity in owners
+            if incoming.get(identity.provider) == identity.external_id
+        }
+        if len(targets) > 1:
+            raise RelinkIdentityConflict("TMDB and IMDb resolve to different Films; identity review required")
+        target_id = next(iter(targets), film_id)
+        known: dict[str, set[str]] = {provider: {value} for provider, value in incoming.items()}
+        if incoming:
+            for identity in session.exec(
+                select(ExternalIdentity).where(ExternalIdentity.identity_status == "active")
+                .where(ExternalIdentity.entity_id.in_([film_id, target_id]))
+            ).all():
+                known.setdefault(identity.provider, set()).add(identity.external_id)
+            if any(len(values) > 1 for values in known.values()):
+                raise RelinkIdentityConflict("Conflicting Film identity; identity review required")
+        return target_id
+
+    @staticmethod
+    def _merge_empty_film(session: Session, source_id: str, target_id: str, now: str) -> None:
+        # Retain historical metadata/events and an alias instead of deleting a Film.
+        for model in (Film, GraphEntity):
+            source = session.get(model, source_id)
+            source.lifecycle_status = "merged"
+            source.merged_into_id = target_id
+            source.updated_at = now
+            session.add(source)
+        for identity in session.exec(
+            select(ExternalIdentity).where(ExternalIdentity.entity_id == source_id)
+        ).all():
+            identity.entity_id = target_id
+            identity.updated_at = now
+            session.add(identity)
+        for state in session.exec(
+            select(FilmProfileState).where(FilmProfileState.film_id == source_id)
+        ).all():
+            target = session.get(FilmProfileState, (state.profile_id, target_id))
+            if target is None:
+                target = FilmProfileState(**{**state.model_dump(), "film_id": target_id})
+            else:
+                target.favorite = target.favorite or state.favorite
+                target.rating = target.rating if target.rating is not None else state.rating
+                if state.notes and state.notes != target.notes:
+                    target.notes = "\n\n".join(value for value in (target.notes, state.notes) if value)
+                target.updated_at = now
+            session.add(target)
+        for viewing in session.exec(select(Viewing).where(Viewing.film_id == source_id)).all():
+            viewing.film_id = target_id
+            session.add(viewing)
 
     @staticmethod
     def observe_item(observation: dict[str, Any]) -> FileIdentityObservation | None:
@@ -554,6 +646,8 @@ class CanonicalRuntimeWriter:
         library_item_id: str,
         observation: dict[str, Any],
         now: str,
+        *,
+        preserve_scrape_state: bool = False,
     ) -> None:
         item = session.get(LibraryItem, library_item_id)
         if item is None:
@@ -569,10 +663,16 @@ class CanonicalRuntimeWriter:
         item.missing_since = observation.get("missing_since")
         item.metadata_source = observation.get("metadata_source")
         item.metadata_updated_at = observation.get("metadata_updated_at")
-        item.scrape_status = observation.get("scrape_status") or item.scrape_status
-        item.scrape_error = observation.get("scrape_error")
-        item.scraped_at = observation.get("scraped_at")
-        item.match_confidence = observation.get("tmdb_confidence")
+        # A scan observes files; only a scrape command owns attempt bookkeeping.
+        if not preserve_scrape_state:
+            item.scrape_status = observation.get("scrape_status") or item.scrape_status
+            item.scrape_error = observation.get("scrape_error")
+            item.scraped_at = observation.get("scraped_at")
+            item.match_confidence = observation.get("tmdb_confidence")
+        elif item.scrape_status == "pending" and observation.get("scrape_status") == "matched":
+            item.scrape_status = "matched"
+        if self._identities(observation):
+            item.resolution_status = "matched"
         item.retired_at = now if item.availability_status == "retired" else None
         item.updated_at = now
         session.add(item)

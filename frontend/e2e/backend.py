@@ -64,6 +64,9 @@ def control(payload: dict, x_e2e_token: str = Header(default='')):
                 dedupe_key=f'e2e-{i}')[0] for i in range(9)]
     elif action == 'resume_tasks':
         job_runtime.start()
+    elif action == 'set_title':
+        from app.services.library import library_manager
+        library_manager.update_film_observation(payload['film_id'], {'title': payload['title'], 'title_cn': None})
     else:
         raise HTTPException(400)
     return {'ok': True}

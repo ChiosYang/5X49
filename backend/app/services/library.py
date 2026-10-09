@@ -93,6 +93,7 @@ class LibraryManager:
                         payload,
                         file_observation=canonical_runtime_writer.observe_item(payload),
                         structured_metadata=structured,
+                        preserve_scrape_state=True,
                     )
                 except AmbiguousRelink as ambiguity:
                     self._queue_relink_job(session, payload, ambiguity)
@@ -124,6 +125,7 @@ class LibraryManager:
         event_type: str | None = None,
         event_payload: dict[str, Any] | None = None,
         operation_before_state: dict[str, Any] | None = None,
+        preserve_scrape_state: bool = False,
     ) -> dict[str, Any] | None:
         with Session(engine) as session:
             requested_item_id = force_library_item_id or library_item_id
@@ -157,6 +159,7 @@ class LibraryManager:
                     review_reason=review_reason,
                     review_context=review_context,
                     structured_metadata=structured_metadata,
+                    preserve_scrape_state=preserve_scrape_state,
                 )
             except AmbiguousRelink as ambiguity:
                 job_id = self._queue_relink_job(session, payload, ambiguity)
@@ -336,7 +339,20 @@ class LibraryManager:
     def get_film(self, film_id: str) -> dict[str, Any] | None:
         from app.services.projections import projection_reader
 
+        with Session(engine) as session:
+            film_id = self._resolved_film_id(session, film_id)
         return projection_reader.get_film(engine, film_id)
+
+    @staticmethod
+    def _resolved_film_id(session: Session, film_id: str) -> str:
+        visited: set[str] = set()
+        while film_id not in visited:
+            visited.add(film_id)
+            film = session.get(Film, film_id)
+            if film is None or film.lifecycle_status != "merged" or not film.merged_into_id:
+                break
+            film_id = film.merged_into_id
+        return film_id
 
     def get_item(self, library_item_id: str) -> dict[str, Any] | None:
         with Session(engine) as session:
@@ -391,13 +407,22 @@ class LibraryManager:
                 view["video"] = {**(view.get("video") or {}), "locator": video_asset.locator}
             return view
 
-    def get_film_operation_context(self, film_id: str) -> dict[str, Any] | None:
+    def get_film_operation_context(
+        self, film_id: str, *, library_item_id: str | None = None,
+    ) -> dict[str, Any] | None:
         """Return the bounded flat input used by scan/metadata command services."""
         with Session(engine) as session:
+            film_id = self._resolved_film_id(session, film_id)
             film = self._canonical_film_view(session, film_id, include_editions=False)
             if film is None:
                 return None
+            film_id = film["id"]
             item = film["primary_item"]
+            if library_item_id is not None:
+                edition = session.get(LibraryItem, library_item_id)
+                if edition is None or edition.film_id != film_id:
+                    return None
+                item = self._edition_view(session, edition)
             video = item.get("video") or {}
             artwork = item.get("artwork") or {}
             metadata = item.get("metadata") or {}
@@ -482,7 +507,9 @@ class LibraryManager:
         event_payload: dict[str, Any] | None = None,
         operation_before_state: dict[str, Any] | None = None,
     ) -> dict[str, Any] | None:
-        current = self.get_film_operation_context(film_id)
+        current = self.get_film_operation_context(
+            film_id, library_item_id=updates.get("library_item_id"),
+        )
         if current is None:
             return None
         result = self.upsert_observation(
@@ -495,11 +522,24 @@ class LibraryManager:
             event_payload=event_payload,
             operation_before_state=operation_before_state,
         )
-        return self.get_film(film_id) if result else None
+        return self.get_film(result["film_id"]) if result else None
 
     def operation_snapshot_state(self, film_id: str, operation_kind: str) -> dict[str, Any]:
         with Session(engine) as session:
             return self._snapshot_state(session, "film", film_id, operation_kind)
+
+    def identity_film_id(self, provider: str, external_id: str) -> str | None:
+        with Session(engine) as session:
+            return session.exec(
+                select(ExternalIdentity.entity_id)
+                .where(ExternalIdentity.provider == provider)
+                .where(ExternalIdentity.external_id == external_id)
+                .where(ExternalIdentity.identity_status == "active")
+            ).first()
+
+    def validate_film_identity(self, film_id: str, observation: dict[str, Any]) -> None:
+        with Session(engine) as session:
+            canonical_runtime_writer.identity_target(session, film_id, observation)
 
     def mark_missing_not_seen_since(self, seen_at: str) -> int:
         now = utc_now_iso()

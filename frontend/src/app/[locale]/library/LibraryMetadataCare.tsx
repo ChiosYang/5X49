@@ -16,9 +16,7 @@ function reviewFilms(films: LibraryFilmSummary[], locale: string) {
   return films
     .filter((film) => film.primary_item.metadata.scrape_status === "needs_review")
     .sort((left, right) => (
-      Number(Boolean(right.primary_item.metadata.scrape_error))
-      - Number(Boolean(left.primary_item.metadata.scrape_error))
-      || left.title.localeCompare(right.title, locale)
+      left.title.localeCompare(right.title, locale)
       || (left.year ?? 0) - (right.year ?? 0)
       || left.id.localeCompare(right.id)
     ));
@@ -102,8 +100,8 @@ export default function LibraryMetadataCare() {
                 >
                   <span className="min-w-0">
                     <span className="block truncate text-sm font-medium">{film.title}</span>
-                    <span className={`mt-1 block text-[11px] ${active ? "text-inverse-ink/60" : film.primary_item.metadata.scrape_error ? "text-danger" : "text-ink-disabled"}`}>
-                      {film.primary_item.metadata.scrape_error ? t("previousAttemptFailed") : film.year ?? t("unknownYear")}
+                    <span className={`mt-1 block text-[11px] ${active ? "text-inverse-ink/60" : "text-ink-disabled"}`}>
+                      {t("awaitingConfirmation")} · {film.year ?? t("unknownYear")}
                     </span>
                   </span>
                   <ChevronRight className="h-4 w-4 shrink-0" />

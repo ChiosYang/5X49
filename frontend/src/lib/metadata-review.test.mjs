@@ -1,6 +1,12 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { reviewSession } from "./metadata-review.ts";
+import { metadataActionError, reviewSession } from "./metadata-review.ts";
+
+test("empty TMDB searches have actionable localized feedback; other failures retain their cause", () => {
+  assert.equal(metadataActionError(new Error("No TMDB matches found"), "Failed", "Check title/year"), "Check title/year");
+  assert.equal(metadataActionError(new Error("Service unavailable"), "Failed", "No match"), "Service unavailable");
+  assert.equal(metadataActionError(null, "Failed", "No match"), "Failed");
+});
 
 const films = [{ id: "a" }, { id: "b" }, { id: "c" }];
 test("skipping the first film advances without completing or reducing pending work", () => {

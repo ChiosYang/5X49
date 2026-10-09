@@ -140,6 +140,7 @@ class LibrarySyncService:
             command_id=command_id,
             correlation_id=correlation_id,
             structured_metadata=observed_film.structured_metadata,
+            preserve_scrape_state=True,
         )
         if upsert_result and upsert_result.get("status") == "pending_relink":
             return {

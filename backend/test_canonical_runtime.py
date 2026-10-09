@@ -24,6 +24,7 @@ from app.migrations.runner import run_migrations
 from app.services.library import library_manager
 from app.services.operation_snapshots import operation_snapshot_service
 from app.services.canonical_runtime import canonical_runtime_writer
+from app.services.canonical_runtime import RelinkIdentityConflict
 from app.services.user_state import film_profile_state_manager
 from app.services.viewings import viewing_manager
 
@@ -84,6 +85,78 @@ class FreshCanonicalRuntimeTests(unittest.TestCase):
         with Session(self.engine) as session:
             self.assertEqual(len(session.exec(select(Film)).all()), 5)
             self.assertEqual(len(session.exec(select(LibraryItem)).all()), 5)
+
+    def test_late_identity_resolution_groups_versions_and_preserves_alias_and_state(self):
+        first = self._observation(self._video("theatrical.mkv", b"theatrical"), title="Blade Runner")
+        second = self._observation(self._video("final-cut.mkv", b"final cut"), title="Blade Runner")
+        library_manager.add_observations([first, second])
+        original = library_manager.list_films()
+        a, b = original
+        source_id = b["id"]
+        item_ids = {film["primary_item"]["id"] for film in original}
+        film_profile_state_manager.upsert(
+            source_id, favorite=True, rating=4, notes="Final cut", watched=True,
+            watched_at="2026-08-24", fields_set={"favorite", "rating", "notes", "watched", "watched_at"},
+        )
+        for film in original:
+            result = library_manager.update_film_observation(film["id"], {
+                "tmdb_id": "78", "imdb_id": "tt0083658", "metadata_source": "tmdb",
+                "scrape_status": "matched", "scraped_at": "2026-08-26T10:00:00Z",
+                "tmdb_confidence": 100,
+            })
+            self.assertIsNotNone(result)
+        films = library_manager.list_films()
+        self.assertEqual(len(films), 1)
+        detail = library_manager.get_film(a["id"])
+        self.assertEqual({item["id"] for item in detail["editions"]}, item_ids)
+        self.assertEqual(detail["identities"], {"tmdb": "78", "imdb": "tt0083658"})
+        self.assertTrue(detail["profile_state"]["favorite"])
+        self.assertTrue(detail["profile_state"]["watched"])
+        self.assertEqual(detail["profile_state"]["notes"], "Final cut")
+        self.assertEqual(library_manager.get_film(source_id)["id"], a["id"])
+        self.assertEqual(library_manager.get_film_operation_context(source_id)["id"], a["id"])
+        self.assertTrue(all(item["metadata"]["scraped_at"] for item in detail["editions"]))
+        # Filename-only observations cannot split the identity or clear scrape state.
+        library_manager.add_observations([first, second])
+        self.engine.dispose()
+        self.assertEqual(len(library_manager.list_films()), 1)
+        self.assertEqual(library_manager.get_film(source_id)["identities"]["tmdb"], "78")
+
+    def test_scans_preserve_attempt_bookkeeping_but_explicit_retry_can_clear_error(self):
+        for status, error in (("matched", None), ("failed", "No TMDB matches found"),
+                              ("needs_review", None)):
+            with self.subTest(status=status):
+                observation = self._observation(self._video(status + ".mkv", status.encode()), title=status)
+                library_manager.add_observations([observation])
+                film = next(f for f in library_manager.list_films() if f["title"] == status)
+                library_manager.update_film_observation(film["id"], {
+                    "scrape_status": status, "scrape_error": error,
+                    "scraped_at": "2026-08-26T10:00:00Z", "tmdb_confidence": 95,
+                })
+                before = library_manager.get_film(film["id"])["primary_item"]["metadata"]
+                library_manager.add_observations([observation])
+                library_manager.upsert_observation(
+                    observation, library_item_id=film["primary_item"]["id"], preserve_scrape_state=True,
+                )
+                self.engine.dispose()
+                after = library_manager.get_film(film["id"])["primary_item"]["metadata"]
+                for field in ("scrape_status", "scrape_error", "scraped_at", "match_confidence"):
+                    self.assertEqual(after[field], before[field])
+                library_manager.update_film_observation(film["id"], {
+                    "scrape_status": "matched", "scrape_error": None,
+                })
+                self.assertIsNone(library_manager.get_film(film["id"])["primary_item"]["metadata"]["scrape_error"])
+
+    def test_conflicting_known_identities_do_not_merge_or_lose_the_existing_identity(self):
+        library_manager.add_observations([
+            self._observation(self._video("a.mkv", b"a"), title="A", tmdb_id="42"),
+            self._observation(self._video("b.mkv", b"b"), title="B", tmdb_id="84"),
+        ])
+        before = library_manager.list_films()
+        source = next(film for film in before if film["identities"]["tmdb"] == "84")
+        with self.assertRaises(RelinkIdentityConflict):
+            library_manager.update_film_observation(source["id"], {"tmdb_id": "42"})
+        self.assertEqual(library_manager.list_films(), before)
 
     def test_ignored_only_film_is_hidden_from_list_but_available_by_id(self):
         path = self._video("ignored.mkv", b"ignored")
