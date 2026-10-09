@@ -10,7 +10,7 @@ import {
   parseTmdbId,
   prependMetadataCandidate,
 } from "@/components/metadata/MetadataCandidatePicker";
-import { IconButton } from "@/components/ui/Button";
+import { Button, IconButton } from "@/components/ui/Button";
 import { InlineFeedback } from "@/components/ui/Feedback";
 import {
   useConfirmScrapeFilm,
@@ -51,6 +51,8 @@ export default function MovieRefreshButton({ film }: { film: LibraryFilmDetail }
   const ignore = useIgnoreLibraryItem(itemId);
   const action = useFilmAction(filmId);
   const busy = action.pending || profile.isMutating || refresh.isMutating || scores.isMutating || scrape.isMutating || confirmScrape.isMutating || ignore.isMutating || isSearching;
+  const needsMetadataMatch = !film.identities.tmdb || film.primary_item.metadata.scrape_status !== "matched";
+  const matchLabel = t(film.primary_item.metadata.scrape_status === "needs_review" ? "reviewMatch" : "matchFilm");
 
   const updateProfile = async (updates: { watched?: boolean; favorite?: boolean; watched_at?: string | null }) => {
     setMessage("");
@@ -136,6 +138,48 @@ export default function MovieRefreshButton({ film }: { film: LibraryFilmDetail }
     }
   };
 
+  const metadataControl = (
+    <div className={needsMetadataMatch ? "relative w-full sm:w-auto" : "relative"}>
+      {needsMetadataMatch ? <Button
+        variant="primary"
+        responsiveWidth
+        onClick={() => reviewOpen ? setReviewOpen(false) : void handleScrape()}
+        disabled={busy}
+        busy={scrape.isMutating || confirmScrape.isMutating}
+        aria-expanded={reviewOpen}
+        icon={<Clapperboard className="h-4 w-4" />}
+      >{matchLabel}</Button> : <IconButton
+        onClick={() => reviewOpen ? setReviewOpen(false) : void handleScrape()}
+        disabled={busy}
+        busy={scrape.isMutating || confirmScrape.isMutating}
+        aria-expanded={reviewOpen}
+        aria-label={t("scrapeMetadata")}
+        title={t("scrapeMetadata")}
+        icon={<Clapperboard className="h-4 w-4" />}
+      />}
+      {reviewOpen && (
+        <div className="z-popover absolute top-full right-0 w-[min(24rem,calc(100vw-4rem))] pt-3">
+          <div className="liquid-glass-popover border border-line/80 p-4">
+            <MetadataCandidatePicker
+              candidates={candidates}
+              inputValue={reviewSearchDraft}
+              onInputChange={setReviewSearchDraft}
+              onLookup={handleReviewLookup}
+              onSelect={(candidate) => handleConfirm(candidate.tmdb_id)}
+              lookupBusy={isSearching}
+              selectionBusy={confirmScrape.isMutating}
+              disabled={busy}
+              lookupLabel={t("lookup")}
+              placeholder={t("metadataSearchPlaceholder")}
+              showFewerLabel={t("showFewer")}
+              showMoreLabel={(count) => t("showMore", { count })}
+            />
+          </div>
+        </div>
+      )}
+    </div>
+  );
+
   return (
     <div className="relative flex min-w-0 flex-col items-start justify-between gap-4 p-8 md:px-16 2xl:flex-row 2xl:items-center">
       <div className="space-y-2">
@@ -147,6 +191,7 @@ export default function MovieRefreshButton({ film }: { film: LibraryFilmDetail }
         </div>
       </div>
       <div className="flex max-w-full flex-wrap items-center gap-2 sm:shrink-0">
+        {needsMetadataMatch && metadataControl}
         <IconButton
           onClick={handleWatched}
           disabled={busy}
@@ -174,36 +219,7 @@ export default function MovieRefreshButton({ film }: { film: LibraryFilmDetail }
           title={t("refreshExternalScores")}
           icon={<Award className="h-4 w-4" />}
         />
-        <div className="relative">
-          <IconButton
-            onClick={() => reviewOpen ? setReviewOpen(false) : void handleScrape()}
-            disabled={busy}
-            busy={scrape.isMutating || confirmScrape.isMutating}
-            aria-label={t("scrapeMetadata")}
-            title={t("scrapeMetadata")}
-            icon={<Clapperboard className="h-4 w-4" />}
-          />
-          {reviewOpen && (
-            <div className="z-popover absolute top-full right-0 w-[min(24rem,calc(100vw-4rem))] pt-3">
-              <div className="liquid-glass-popover border border-line/80 p-4">
-                <MetadataCandidatePicker
-                  candidates={candidates}
-                  inputValue={reviewSearchDraft}
-                  onInputChange={setReviewSearchDraft}
-                  onLookup={handleReviewLookup}
-                  onSelect={(candidate) => handleConfirm(candidate.tmdb_id)}
-                  lookupBusy={isSearching}
-                  selectionBusy={confirmScrape.isMutating}
-                  disabled={busy}
-                  lookupLabel={t("lookup")}
-                  placeholder={t("metadataSearchPlaceholder")}
-                  showFewerLabel={t("showFewer")}
-                  showMoreLabel={(count) => t("showMore", { count })}
-                />
-              </div>
-            </div>
-          )}
-        </div>
+        {!needsMetadataMatch && metadataControl}
         <IconButton
           onClick={() => { setMessage(""); void action.run(() => ignore.trigger(), t("ignoreFailed"), () => {}, t("editionIgnored")); }}
           disabled={busy}

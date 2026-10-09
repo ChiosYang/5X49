@@ -18,6 +18,7 @@ import {
   Trash2,
   X,
 } from "lucide-react";
+import { Button, IconButton } from "@/components/ui/Button";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import type {
@@ -103,15 +104,13 @@ export default function ManagementCommandLayer({
 
   return (
     <>
-      <button
-        type="button"
+      <Button
         onClick={openPalette}
-        className="focus-ring inline-flex min-h-9 items-center gap-2 border border-white/12 px-3 text-[9px] font-black tracking-[0.14em] text-neutral-400 uppercase transition hover:border-white/25 hover:bg-white/[0.04] hover:text-white"
       >
         <Command className="h-3.5 w-3.5" />
         {t("openCommand")}
         {attentionCount > 0 ? <span className="rounded-full bg-amber-200 px-1.5 py-0.5 text-[8px] text-black">{attentionCount > 99 ? "99+" : attentionCount}</span> : null}
-      </button>
+      </Button>
 
       <AnimatePresence>
         {open ? (
@@ -140,10 +139,10 @@ export default function ManagementCommandLayer({
                   placeholder={t("palettePlaceholder")}
                   className="min-h-14 min-w-0 flex-1 bg-transparent text-sm text-white outline-none placeholder:text-neutral-700"
                 />
-                <button type="button" aria-label={t("closePalette")} onClick={() => setOpen(false)} className="focus-ring p-2 text-neutral-600 hover:text-white"><X className="h-4 w-4" /></button>
+                <IconButton variant="ghost" aria-label={t("closePalette")} onClick={() => setOpen(false)} icon={<X className="h-4 w-4" />} />
               </header>
               <div className="scrollbar-minimal max-h-[55vh] overflow-y-auto p-2">
-                {filteredActions.length === 0 ? <p className="px-4 py-8 text-center text-xs text-neutral-600">{t("noCommands")}</p> : null}
+                {filteredActions.length === 0 ? <p className="px-4 py-8 text-center text-xs text-ink-muted">{t("noCommands")}</p> : null}
                 {filteredActions.map((action) => {
                   const Icon = actionIcons[action.id];
                   const disabled = disabledMessage(action.disabledReason, t);
@@ -153,19 +152,19 @@ export default function ManagementCommandLayer({
                       type="button"
                       disabled={Boolean(disabled) || busyActions[action.id]}
                       onClick={() => run(action.id)}
-                      className={`focus-ring group flex min-h-16 w-full items-center gap-4 px-4 text-left transition hover:bg-white/[0.05] disabled:cursor-not-allowed disabled:opacity-35 ${action.danger ? "text-red-300" : "text-neutral-300"}`}
+                      className={`focus-ring group flex min-h-16 w-full items-center gap-4 px-4 text-left transition hover:bg-white/[0.05] disabled:cursor-not-allowed disabled:opacity-50 ${action.danger ? "text-danger" : "text-neutral-300"}`}
                     >
                       <span className="flex h-9 w-9 shrink-0 items-center justify-center border border-white/10 bg-black"><Icon className="h-4 w-4" /></span>
                       <span className="min-w-0 flex-1">
                         <span className="block text-xs font-semibold">{t(`actions.${action.id}.label`)}</span>
-                        <span className="mt-1 block text-[10px] leading-4 text-neutral-600">{disabled ?? t(`actions.${action.id}.description`)}</span>
+                        <span className="mt-1 block text-xs leading-5 text-ink-muted">{disabled ?? t(`actions.${action.id}.description`)}</span>
                       </span>
                       {busyActions[action.id] ? <RefreshCw className="h-4 w-4 animate-spin text-cyan-300" /> : action.danger ? <AlertTriangle className="h-4 w-4 text-red-400" /> : <Gauge className="h-4 w-4 text-neutral-800 group-hover:text-neutral-500" />}
                     </button>
                   );
                 })}
               </div>
-              <footer className="flex items-center justify-between border-t border-white/10 px-4 py-3 text-[9px] text-neutral-700">
+              <footer className="flex items-center justify-between border-t border-white/10 px-4 py-3 text-xs text-ink-muted">
                 <span>{t("paletteHint")}</span><span>⌘ / Ctrl + K</span>
               </footer>
             </motion.section>

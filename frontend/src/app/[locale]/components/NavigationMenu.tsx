@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { Menu, X } from "lucide-react";
 import { Dialog } from "@/components/ui/Dialog";
 import { Link } from "@/i18n/routing";
+import { Button } from "@/components/ui/Button";
 
 export default function NavigationMenu() {
   const panelId = useId();
@@ -16,18 +17,19 @@ export default function NavigationMenu() {
 
   return (
     <>
-      <button
+      <Button
+        variant="ghost"
         type="button" aria-expanded={isOpen} aria-controls={panelId} aria-haspopup="dialog"
         onClick={toggleMenu}
-        className="focus-ring duration-standard flex items-center gap-2 text-sm font-bold tracking-widest uppercase drop-shadow-lg transition-opacity hover:opacity-70"
+        className="px-0 text-ink hover:bg-transparent hover:text-ink-muted"
       >
         <Menu className="h-5 w-5" /> {isOpen ? t("close") : t("menu")}
-      </button>
+      </Button>
 
       <Dialog id={panelId} open={isOpen} onClose={closeMenu} ariaLabel={t("menu")} closeLabel={t("close")}
         size="fullscreen" overlayClassName="justify-start items-stretch"
         panelClassName="liquid-glass-sidebar flex w-full flex-col overflow-y-auto border-r border-line/80 p-8 md:w-[40vw] md:p-16">
-        <button type="button" data-dialog-initial-focus="" onClick={closeMenu} className="focus-ring flex min-h-11 items-center gap-2 self-start text-sm font-bold uppercase"><X className="h-5 w-5" aria-hidden />{t("close")}</button>
+        <Button variant="ghost" data-dialog-initial-focus="" onClick={closeMenu} className="self-start px-0 text-ink" icon={<X className="h-5 w-5" aria-hidden />}>{t("close")}</Button>
         <div className="my-auto w-full space-y-4 py-16 md:space-y-6 md:py-20">
           <Link
             href="/library"

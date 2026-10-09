@@ -84,7 +84,7 @@ export function MetadataCandidatePicker({
           }}
           onFocus={onInputFocus}
           placeholder={placeholder}
-          className="min-h-9 min-w-0 flex-1 px-3 py-2 text-xs"
+          className="min-h-11 min-w-0 flex-1 px-3 py-2 text-sm"
         />
         <Button
           size="sm"
@@ -92,7 +92,7 @@ export function MetadataCandidatePicker({
           disabled={disabled || selectionBusy || !inputValue.trim()}
           busy={lookupBusy}
           icon={<Search className="h-3 w-3" />}
-          className="h-9 w-24"
+          className="w-24"
         >
           {lookupLabel}
         </Button>
@@ -154,6 +154,7 @@ export function MetadataCandidatePicker({
                     </div>
                     <Button
                       size="sm"
+                      variant="primary"
                       disabled={disabled || lookupBusy || selectionBusy}
                       busy={selectionBusy && (busyCandidateId == null || busyCandidateId === candidate.tmdb_id)}
                       onClick={() => onSelect(candidate)}

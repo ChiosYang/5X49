@@ -1,8 +1,9 @@
 "use client";
 
-import { forwardRef, type ButtonHTMLAttributes, type ReactNode } from "react";
+import { forwardRef, type ButtonHTMLAttributes, type ComponentProps, type ReactNode } from "react";
 import { Loader2 } from "lucide-react";
 import { cn } from "@/lib/cn";
+import { Link } from "@/i18n/routing";
 
 type ButtonVariant = "primary" | "secondary" | "ghost" | "danger";
 type ButtonSize = "sm" | "md" | "icon";
@@ -15,10 +16,31 @@ const variantClasses: Record<ButtonVariant, string> = {
 };
 
 const sizeClasses: Record<ButtonSize, string> = {
-  sm: "min-h-9 px-3 type-badge",
+  sm: "min-h-11 px-3 type-label",
   md: "min-h-11 px-5 type-label",
   icon: "h-11 w-11 p-0",
 };
+
+function buttonClassName(variant: ButtonVariant, size: ButtonSize, responsiveWidth: boolean, className?: string) {
+  return cn(
+    "focus-ring duration-fast inline-flex shrink-0 items-center justify-center gap-2 font-medium tracking-widest uppercase transition-colors disabled:cursor-not-allowed disabled:opacity-50",
+    variantClasses[variant],
+    sizeClasses[size],
+    responsiveWidth && "w-full sm:w-auto",
+    className,
+  );
+}
+
+type ButtonLinkProps = ComponentProps<typeof Link> & {
+  icon?: ReactNode;
+  responsiveWidth?: boolean;
+  size?: ButtonSize;
+  variant?: ButtonVariant;
+};
+
+export function ButtonLink({ children, className, icon, responsiveWidth = false, size = "md", variant = "secondary", ...props }: ButtonLinkProps) {
+  return <Link className={buttonClassName(variant, size, responsiveWidth, className)} {...props}>{icon}{children}</Link>;
+}
 
 export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   busy?: boolean;
@@ -49,13 +71,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
       type={type}
       disabled={disabled || busy}
       aria-busy={busy || undefined}
-      className={cn(
-        "focus-ring duration-fast inline-flex shrink-0 items-center justify-center gap-2 font-medium tracking-widest uppercase transition-colors disabled:cursor-not-allowed disabled:opacity-50",
-        variantClasses[variant],
-        sizeClasses[size],
-        responsiveWidth && "w-full sm:w-auto",
-        className,
-      )}
+      className={buttonClassName(variant, size, responsiveWidth, className)}
       {...props}
     >
       {busy ? <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin" /> : icon}

@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/Button";
 import { InlineFeedback, StateMessage } from "@/components/ui/Feedback";
 import { API } from "@/lib/api";
 import { fetcher } from "@/lib/fetcher";
+import { DisclosurePanel } from "@/components/settings/SettingsPrimitives";
 
 type Check = {state:string;status_code?:number|null};
 type Diagnostics = {
@@ -59,6 +60,7 @@ export default function MaintenanceSettings() {
       <h2 className="type-section-title">{t("backupTitle")}</h2>
       <p className="text-sm leading-6 text-ink-subtle">{t("backupCoverage")}</p>
       <p className="text-sm leading-6 text-warning">{t("backupPrivacy")}</p>
+      <DisclosurePanel title={t("advancedTitle")} description={t("advancedDescription")}>
       <p className="text-sm leading-6 text-ink-subtle">{t("commandsContext")}</p>
       {commands.map(([label,command]) => <div key={label} className="space-y-2"><h3 className="text-sm font-bold">{t(label)}</h3><pre className="overflow-x-auto border border-line bg-surface p-4 text-xs"><code>{command}</code></pre></div>)}
       <p className="text-sm leading-6 text-ink-subtle">{t("dockerBackup")}</p>
@@ -66,6 +68,7 @@ export default function MaintenanceSettings() {
       <h3 className="text-sm font-bold">{t("restoreTitle")}</h3>
       <ol className="list-decimal space-y-3 pl-5 text-sm leading-6 text-ink-subtle">{(["restoreStop","restoreVerify","restoreReplace","restoreCheck"] as const).map(step => <li key={step}>{t(step)}</li>)}</ol>
       <p className="text-xs leading-5 text-ink-subtle">{t("runbook")}</p>
+      </DisclosurePanel>
     </section>
   </div>;
 }

@@ -18,7 +18,6 @@ import {
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 
-import { Link } from "@/i18n/routing";
 import { API } from "@/lib/api";
 import {
   EXPLORE_DIMENSIONS,
@@ -34,7 +33,7 @@ import type {
   ExploreOverview,
   ExploreView,
 } from "@/types/movie";
-import { Button } from "@/components/ui/Button";
+import { Button, ButtonLink, IconButton } from "@/components/ui/Button";
 import LibraryMovieCard from "@/app/[locale]/library/LibraryMovieCard";
 import { Spinner } from "@/components/ui/Feedback";
 
@@ -114,7 +113,7 @@ function artworkUrl(item?: ExploreContextItem | null) {
 function ExploreArtwork({ item, label }: { item?: ExploreContextItem; label: string }) {
   const src = artworkUrl(item);
   return (
-    <div className="absolute inset-0 overflow-hidden bg-[radial-gradient(circle_at_20%_20%,rgba(196,160,92,0.2),transparent_45%),linear-gradient(145deg,#22211f,#0b0b0c)]">
+    <div className="absolute inset-0 overflow-hidden bg-surface">
       {src ? (
         <Image
           src={src}
@@ -124,7 +123,7 @@ function ExploreArtwork({ item, label }: { item?: ExploreContextItem; label: str
           className="object-cover transition duration-200 group-hover:scale-[1.03] group-focus-visible:scale-[1.03]"
         />
       ) : (
-        <span className="absolute right-5 top-2 font-serif text-8xl text-white/[0.06]">
+        <span className="absolute right-5 top-2 font-serif text-8xl text-ink/[0.06]">
           {label.slice(0, 1).toUpperCase()}
         </span>
       )}
@@ -154,11 +153,11 @@ export function LensDeck({
     <section aria-labelledby="lens-deck-title">
       <div className="mb-6">
         <div>
-          <p className="eyebrow">{t("lensDeckEyebrow")}</p>
-          <h2 id="lens-deck-title" className="mt-2 font-serif text-3xl text-white md:text-4xl">
+          <p className="type-label text-ink-muted">{t("lensDeckEyebrow")}</p>
+          <h2 id="lens-deck-title" className="mt-2 font-serif text-3xl text-ink md:text-4xl">
             {t("lensDeckTitle")}
           </h2>
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-white/55">
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-ink-muted">
             {t("lensDeckDescription")}
           </p>
         </div>
@@ -181,25 +180,25 @@ export function LensDeck({
               key={dimension}
               type="button"
               onClick={() => onOpenLens(dimension)}
-              className="group relative min-h-64 overflow-hidden rounded-[1.75rem] border border-white/10 text-left outline-none transition duration-200 hover:-translate-y-0.5 hover:border-gold/40 focus-visible:ring-2 focus-visible:ring-gold/70 motion-reduce:transform-none"
+              className="group relative min-h-64 overflow-hidden rounded-media border border-line-strong text-left focus-ring duration-standard transition-colors hover:border-ink-muted"
               aria-label={t("openLens", { dimension: t(`dimensions.${dimension}`) })}
             >
               <ExploreArtwork item={clue} label={label} />
               <div className="relative flex min-h-64 flex-col justify-between p-6">
                 <div className="flex items-center justify-between gap-3">
-                  <span className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/15 bg-black/30 text-gold backdrop-blur">
+                  <span className="inline-flex h-10 w-10 items-center justify-center rounded-control border border-line-strong bg-canvas/70 text-ink">
                     <Icon className="h-4 w-4" />
                   </span>
-                  <span className="rounded-full border border-white/10 bg-black/35 px-3 py-1 text-[11px] uppercase tracking-[0.15em] text-white/60 backdrop-blur">
+                  <span className="rounded-full border border-line-strong bg-black/35 px-3 py-1 text-[11px] uppercase tracking-[0.15em] text-ink-muted backdrop-blur">
                     {t("coverage", { covered: coverage, total })}
                   </span>
                 </div>
                 <div>
-                  <p className="text-xs uppercase tracking-[0.2em] text-white/50">
+                  <p className="text-xs uppercase tracking-[0.2em] text-ink-muted">
                     {t(`dimensions.${dimension}`)}
                   </p>
-                  <p className="mt-2 font-serif text-3xl text-white">{label}</p>
-                  <p className="mt-2 line-clamp-1 text-sm text-white/50">
+                  <p className="mt-2 font-serif text-3xl text-ink">{label}</p>
+                  <p className="mt-2 line-clamp-1 text-sm text-ink-muted">
                     {clue?.preview_film?.title || t("lensFallback")}
                   </p>
                 </div>
@@ -209,22 +208,22 @@ export function LensDeck({
         })}
       </div>
 
-      <details className="mt-5 rounded-2xl border border-white/8 bg-white/[0.025] px-5 py-4 text-sm text-white/55">
-        <summary className="cursor-pointer list-none font-medium text-white/70 outline-none focus-visible:text-gold">
+      <details className="mt-5 border-y border-line py-4 text-sm text-ink-muted">
+        <summary className="focus-ring flex min-h-11 cursor-pointer list-none items-center font-medium text-ink-muted">
           <span className="inline-flex items-center gap-2">
-            <Sparkles className="h-4 w-4 text-gold/70" />
+            <Sparkles className="h-4 w-4 text-ink-muted" />
             {t("dataHealth")}
-            <span className="text-white/35">·</span>
-            <span className="font-normal text-white/40">
+            <span className="text-ink-subtle">·</span>
+            <span className="font-normal text-ink-muted">
               {t("dataHealthSummary", { conflicted, missing })}
             </span>
           </span>
         </summary>
-        <div className="mt-3 flex flex-wrap items-center justify-between gap-3 border-t border-white/8 pt-3">
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-3 border-t border-line pt-3">
           <p>{t("dataHealthDetail")}</p>
-          <Link href="/library?view=metadata" className="text-gold hover:text-gold-light">
+          <ButtonLink href="/library?view=metadata" variant="ghost">
             {t("review")}
-          </Link>
+          </ButtonLink>
         </div>
       </details>
     </section>
@@ -247,35 +246,34 @@ export function QueryRibbon({
   return (
     <section
       aria-labelledby="query-ribbon-title"
-      className="rounded-[1.5rem] border border-white/10 bg-white/[0.035] px-4 py-4 md:px-5"
+      className="rounded-structural border border-line-strong bg-surface px-4 py-4 md:px-5"
     >
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
-          <p id="query-ribbon-title" className="text-[10px] uppercase tracking-[0.22em] text-white/40">
+          <p id="query-ribbon-title" className="text-[10px] uppercase tracking-[0.22em] text-ink-muted">
             {t("journeyTitle")}
           </p>
-          <p className="mt-1 font-serif text-lg text-white/80">{t("showFilmsWhere")}</p>
+          <p className="mt-1 font-serif text-lg text-ink">{t("showFilmsWhere")}</p>
         </div>
-        <button
-          type="button"
+        <Button
+          variant="ghost"
           onClick={onClear}
-          className="shrink-0 rounded-full px-3 py-1.5 text-xs text-white/45 transition hover:bg-white/5 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold/60"
         >
           {t("clearAll")}
-        </button>
+        </Button>
       </div>
 
       <div className="mt-4 flex flex-col gap-3">
         {selectedDimensions.map((dimension, dimensionIndex) => (
           <Fragment key={dimension}>
             {dimensionIndex > 0 ? (
-              <span className="ml-2 text-[10px] uppercase tracking-[0.2em] text-gold/60">{t("and")}</span>
+              <span className="ml-2 text-[10px] uppercase tracking-[0.2em] text-ink-muted">{t("and")}</span>
             ) : null}
             <div className="flex min-w-0 flex-wrap items-center gap-2">
-              <span className="shrink-0 text-xs font-medium text-white/45">
+              <span className="shrink-0 text-xs font-medium text-ink-muted">
                 {t(`dimensions.${dimension}`)}
               </span>
-              <span className="text-white/20">:</span>
+              <span className="text-ink-subtle">:</span>
               {query[dimension].map((key, keyIndex) => {
                 const fact = labels.get(`${dimension}:${key}`);
                 const label = formatExploreFacetLabel(
@@ -289,15 +287,15 @@ export function QueryRibbon({
                 return (
                   <Fragment key={key}>
                     {keyIndex > 0 ? (
-                      <span className="text-[10px] uppercase tracking-[0.16em] text-white/30">{t("or")}</span>
+                      <span className="text-[10px] uppercase tracking-[0.16em] text-ink-subtle">{t("or")}</span>
                     ) : null}
                     <button
                       type="button"
                       onClick={() => onRemove(dimension, key)}
-                      className={`inline-flex max-w-full items-center gap-2 rounded-full border px-3 py-1.5 text-sm outline-none transition focus-visible:ring-2 focus-visible:ring-gold/60 ${
+                      className={`focus-ring duration-standard inline-flex min-h-11 max-w-full items-center gap-2 rounded-pill border px-3 py-2 text-sm transition-colors ${
                         warning
-                          ? "border-amber-400/40 bg-amber-400/10 text-amber-100"
-                          : "border-gold/25 bg-gold/8 text-gold-light hover:bg-gold/15"
+                          ? "border-warning/40 bg-warning/10 text-warning"
+                          : "border-line-strong bg-surface-raised text-ink hover:bg-surface-hover"
                       }`}
                       title={warning ? t("unresolvedShort") : t("removeFact", { fact: label })}
                     >
@@ -309,7 +307,7 @@ export function QueryRibbon({
                 );
               })}
               {query[dimension].length > 1 ? (
-                <span className="text-[10px] text-white/35">{t("anyOf")}</span>
+                <span className="text-[10px] text-ink-subtle">{t("anyOf")}</span>
               ) : null}
             </div>
           </Fragment>
@@ -336,17 +334,17 @@ export function LensPanel({
     <section aria-labelledby="current-lens-title" className="min-w-0">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <p className="eyebrow">{t("currentLens")}</p>
-          <h2 id="current-lens-title" className="mt-1 font-serif text-2xl text-white">
+          <p className="type-label text-ink-muted">{t("currentLens")}</p>
+          <h2 id="current-lens-title" className="mt-1 font-serif text-2xl text-ink">
             {t(`dimensions.${activeDimension}`)}
           </h2>
         </div>
-        <span className="rounded-full border border-white/10 px-2.5 py-1 text-[10px] uppercase tracking-[0.14em] text-white/40">
+        <span className="rounded-full border border-line-strong px-2.5 py-1 text-[10px] uppercase tracking-[0.14em] text-ink-muted">
           {active?.operator === "or" ? t("lensOperatorOr") : t("lensOperatorAnd")}
         </span>
       </div>
 
-      <div className="mt-4 grid grid-cols-4 gap-1 rounded-xl border border-white/8 bg-black/25 p-1">
+      <div className="mt-4 grid grid-cols-4 gap-1 rounded-control border border-line bg-surface p-1">
         {EXPLORE_DIMENSIONS.map((dimension) => {
           const Icon = DIMENSION_ICON[dimension];
           const selected = dimension === activeDimension;
@@ -356,8 +354,8 @@ export function LensPanel({
               type="button"
               onClick={() => onChangeDimension(dimension)}
               aria-pressed={selected}
-              className={`flex min-w-0 flex-col items-center gap-1 rounded-lg px-1 py-2 text-[10px] outline-none transition focus-visible:ring-2 focus-visible:ring-gold/60 ${
-                selected ? "bg-white/10 text-white" : "text-white/35 hover:bg-white/5 hover:text-white/70"
+              className={`focus-ring duration-standard flex min-h-11 min-w-0 flex-col items-center gap-1 rounded-control px-1 py-2 type-badge transition-colors ${
+                selected ? "bg-inverse text-inverse-ink" : "text-ink-muted hover:bg-surface-hover hover:text-ink"
               }`}
             >
               <Icon className="h-3.5 w-3.5" />
@@ -367,7 +365,7 @@ export function LensPanel({
         })}
       </div>
 
-      <p className="mt-4 text-xs leading-5 text-white/45">
+      <p className="mt-4 text-xs leading-5 text-ink-muted">
         {active?.operator === "or" ? t("lensOrHint") : t("lensAndHint")}
       </p>
 
@@ -388,29 +386,29 @@ export function LensPanel({
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: reducedMotion ? 0 : 0.18, delay: reducedMotion ? 0 : index * 0.025 }}
               onClick={() => onSelect(activeDimension, item)}
-              className="group relative min-h-36 overflow-hidden rounded-2xl border border-white/10 text-left outline-none transition hover:border-gold/40 focus-visible:ring-2 focus-visible:ring-gold/70"
+              className="group relative min-h-36 overflow-hidden rounded-media border border-line-strong text-left focus-ring duration-standard transition-colors hover:border-ink-muted"
               title={item.preview_film?.title || label}
             >
               <ExploreArtwork item={item} label={label} />
               <div className="relative flex min-h-36 flex-col justify-end p-4">
-                <p className="line-clamp-1 font-serif text-xl text-white">{label}</p>
+                <p className="line-clamp-1 font-serif text-xl text-ink">{label}</p>
                 {item.roles.length > 0 ? (
-                  <p className="mt-1 text-[10px] uppercase tracking-[0.16em] text-white/50">
+                  <p className="mt-1 text-[10px] uppercase tracking-[0.16em] text-ink-muted">
                     {item.roles.map((role) => t(`roles.${role}`)).join(" · ")}
                   </p>
                 ) : null}
                 <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-xs">
-                  <span className="text-gold-light">
+                  <span className="text-ink">
                     {active.operator === "or"
                       ? t("adds", { count: item.additional_count })
                       : t("remains", { count: item.result_count })}
                   </span>
                   {item.source_kinds.length > 0 ? (
-                    <span className="max-w-24 truncate text-white/35">{item.source_kinds.join(" · ")}</span>
+                    <span className="max-w-24 truncate text-ink-subtle">{item.source_kinds.join(" · ")}</span>
                   ) : null}
                 </div>
                 {item.preview_film ? (
-                  <p className="mt-2 translate-y-2 truncate text-[11px] text-white/0 transition group-hover:translate-y-0 group-hover:text-white/45 group-focus-visible:translate-y-0 group-focus-visible:text-white/45 motion-reduce:transform-none">
+                  <p className="mt-2 translate-y-2 truncate text-[11px] text-ink/0 transition group-hover:translate-y-0 group-hover:text-ink-muted group-focus-visible:translate-y-0 group-focus-visible:text-ink-muted motion-reduce:transform-none">
                     {item.preview_film.title}
                   </p>
                 ) : null}
@@ -421,7 +419,7 @@ export function LensPanel({
       </div>
 
       {active?.items.length === 0 ? (
-        <div className="mt-4 rounded-2xl border border-dashed border-white/10 px-4 py-8 text-center text-sm text-white/40">
+        <div className="mt-4 rounded-media border border-dashed border-line-strong px-4 py-8 text-center text-sm text-ink-muted">
           {t("lensEmpty")}
         </div>
       ) : null}
@@ -429,7 +427,7 @@ export function LensPanel({
       <Button className="mt-4 w-full" variant="secondary" onClick={() => onBrowseAll(activeDimension)}>
         <Search className="h-4 w-4" />
         {t("browseAll")}
-        {active?.has_more ? <span className="text-white/35">+</span> : null}
+        {active?.has_more ? <span className="text-ink-subtle">+</span> : null}
       </Button>
     </section>
   );
@@ -460,56 +458,52 @@ export function ResultStage({
 
   return (
     <section ref={sectionRef} aria-labelledby="explore-results-title" className="min-w-0 scroll-mt-28">
-      <div className="flex flex-col gap-3 border-b border-white/8 pb-4 sm:flex-row sm:items-end sm:justify-between">
+      <div className="flex flex-col gap-3 border-b border-line pb-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <p className="eyebrow">{t("strictResults")}</p>
+          <p className="type-label text-ink-muted">{t("strictResults")}</p>
           <h2
             id="explore-results-title"
             ref={headingRef}
             tabIndex={-1}
-            className="mt-1 font-serif text-3xl text-white outline-none"
+            className="mt-1 font-serif text-3xl text-ink outline-none"
           >
             {t("resultCount", { count: total })}
           </h2>
         </div>
         <div className="flex min-w-0 flex-wrap items-center gap-2">
-          <div role="group" className="inline-flex rounded-full border border-white/10 bg-black/20 p-1" aria-label={t("viewLabel")}>
+          <div role="group" className="inline-flex flex-wrap gap-1 border border-line-strong bg-canvas p-1" aria-label={t("viewLabel")}>
             {(["all", "watched", "unwatched"] as const).map((view) => (
-              <button
+              <Button
                 key={view}
                 type="button"
                 aria-pressed={query.view === view}
                 onClick={() => onView(view)}
-                className={`rounded-full px-3 py-1.5 text-xs outline-none transition focus-visible:ring-2 focus-visible:ring-gold/60 ${
-                  query.view === view ? "bg-white/10 text-white" : "text-white/40 hover:text-white/70"
-                }`}
+                size="sm"
+                variant={query.view === view ? "primary" : "ghost"}
               >
                 {t(`views.${view}`)}
-              </button>
+              </Button>
             ))}
           </div>
-          <div role="group" className="inline-flex rounded-full border border-white/10 bg-black/20 p-1" aria-label={t("sortLabel")}>
+          <div role="group" className="inline-flex flex-wrap gap-1 border border-line-strong bg-canvas p-1" aria-label={t("sortLabel")}>
             {(["title", "year"] as const).map((sort) => (
-              <button
+              <Button
                 key={sort}
                 type="button"
                 aria-pressed={query.sort === sort}
                 onClick={() => onSort(sort)}
-                className={`rounded-full px-3 py-1.5 text-xs outline-none transition focus-visible:ring-2 focus-visible:ring-gold/60 ${
-                  query.sort === sort ? "bg-white/10 text-white" : "text-white/40 hover:text-white/70"
-                }`}
+                size="sm"
+                variant={query.sort === sort ? "primary" : "ghost"}
               >
                 {t(`sorts.${sort}`)}
-              </button>
+              </Button>
             ))}
-            <button
-              type="button"
+            <IconButton
+              variant="ghost"
               onClick={onDirection}
-              className="rounded-full p-1.5 text-white/45 outline-none transition hover:bg-white/5 hover:text-white focus-visible:ring-2 focus-visible:ring-gold/60"
               aria-label={query.dir === "asc" ? t("ascending") : t("descending")}
-            >
-              {query.dir === "asc" ? <ArrowUp className="h-3.5 w-3.5" /> : <ArrowDown className="h-3.5 w-3.5" />}
-            </button>
+              icon={query.dir === "asc" ? <ArrowUp className="h-3.5 w-3.5" /> : <ArrowDown className="h-3.5 w-3.5" />}
+            />
           </div>
         </div>
       </div>
@@ -520,13 +514,13 @@ export function ResultStage({
 
       <div className="relative min-h-[32rem] pt-6">
         {pending ? (
-          <div className="pointer-events-none absolute inset-x-0 top-0 z-10 h-0.5 overflow-hidden bg-white/5">
-            <span className="block h-full w-1/3 animate-pulse bg-gold/70" />
+          <div className="pointer-events-none absolute inset-x-0 top-0 z-10 h-0.5 overflow-hidden bg-surface-hover">
+            <span className="block h-full w-1/3 animate-pulse bg-ink/70" />
           </div>
         ) : null}
         {!results ? (
           <div className="flex min-h-80 items-center justify-center">
-            <Spinner className="text-gold" />
+            <Spinner className="text-ink" />
           </div>
         ) : results.items.length > 0 ? (
           <motion.div
@@ -540,7 +534,7 @@ export function ResultStage({
               <div key={item.film.id} className="min-w-0">
                 <LibraryMovieCard movie={item.film} />
                 {item.matched_facts.length > 0 ? (
-                  <p className="mt-2 line-clamp-2 text-[10px] leading-4 text-white/35">
+                  <p className="mt-2 line-clamp-2 text-[10px] leading-4 text-ink-subtle">
                     {item.matched_facts
                       .map((fact) =>
                         formatExploreFacetLabel(
@@ -558,10 +552,10 @@ export function ResultStage({
             ))}
           </motion.div>
         ) : (
-          <div className="flex min-h-80 flex-col items-center justify-center rounded-[1.5rem] border border-dashed border-white/10 px-6 text-center">
-            <Compass className="h-8 w-8 text-white/25" />
-            <h3 className="mt-4 font-serif text-2xl text-white">{t("zeroTitle")}</h3>
-            <p className="mt-2 max-w-lg text-sm leading-6 text-white/45">{t("zeroDetail")}</p>
+          <div className="flex min-h-80 flex-col items-center justify-center rounded-structural border border-dashed border-line-strong px-6 text-center">
+            <Compass className="h-8 w-8 text-ink/25" />
+            <h3 className="mt-4 font-serif text-2xl text-ink">{t("zeroTitle")}</h3>
+            <p className="mt-2 max-w-lg text-sm leading-6 text-ink-muted">{t("zeroDetail")}</p>
             <Button className="mt-5" variant="secondary" onClick={onClear}>
               {t("clearAll")}
             </Button>
@@ -570,7 +564,7 @@ export function ResultStage({
       </div>
 
       {results && (previousOffset !== null || nextOffset !== null) ? (
-        <nav className="mt-8 flex items-center justify-between border-t border-white/8 pt-5" aria-label={t("paginationLabel")}>
+        <nav className="mt-8 flex items-center justify-between border-t border-line pt-5" aria-label={t("paginationLabel")}>
           <Button
             variant="ghost"
             disabled={previousOffset === null || pending}
@@ -579,7 +573,7 @@ export function ResultStage({
             <ChevronLeft className="h-4 w-4" />
             {t("previous")}
           </Button>
-          <span className="text-xs text-white/35">
+          <span className="text-xs text-ink-subtle">
             {pageStart}–{pageEnd} / {total}
           </span>
           <Button
@@ -605,21 +599,21 @@ export function ExploreHeader({
 }) {
   const t = useTranslations("Explore");
   return (
-    <header className="flex flex-col gap-5 border-b border-white/8 pb-7 md:flex-row md:items-end md:justify-between">
+    <header className="flex flex-col gap-5 border-b border-line pb-7 md:flex-row md:items-end md:justify-between">
       <div>
-        <p className="eyebrow">{t("eyebrow")}</p>
-        <h1 className="mt-2 font-serif text-5xl text-white md:text-6xl">{t("title")}</h1>
-        <p className="mt-3 max-w-2xl text-sm leading-6 text-white/55">{t("description")}</p>
-        <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-white/40">
+        <p className="type-label text-ink-muted">{t("eyebrow")}</p>
+        <h1 className="mt-2 font-serif text-5xl text-ink md:text-6xl">{t("title")}</h1>
+        <p className="mt-3 max-w-2xl text-sm leading-6 text-ink-muted">{t("description")}</p>
+        <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-ink-muted">
           <span>{t("filmCount", { count: total })}</span>
           <span aria-hidden="true">·</span>
           <span>{t("policy")}</span>
         </div>
       </div>
-      <Button variant="secondary" onClick={onFind}>
+      <Button variant="secondary" onClick={onFind} aria-keyshortcuts="/">
         <Search className="h-4 w-4" />
         {t("findFact")}
-        <kbd className="ml-1 rounded border border-white/15 px-1.5 py-0.5 text-[10px] text-white/45">/</kbd>
+        <kbd aria-hidden="true" className="ml-1 rounded-small border border-line-strong px-1.5 py-0.5 text-[10px] text-ink-muted">/</kbd>
       </Button>
     </header>
   );

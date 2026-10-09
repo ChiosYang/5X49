@@ -97,12 +97,12 @@ export function DisclosurePanel({
 }) {
   return (
     <details className="group border-b border-line pb-6">
-      <summary className="focus-ring flex cursor-pointer list-none items-center justify-between gap-5 py-1">
+      <summary className="focus-ring flex min-h-11 cursor-pointer list-none items-center justify-between gap-5 py-1">
         <span className="min-w-0">
           <span className="block text-sm font-medium tracking-widest text-ink uppercase">
             {title}
           </span>
-          <span className="mt-1 block text-xs leading-5 text-ink-disabled">{description}</span>
+          <span className="mt-1 block text-xs leading-5 text-ink-muted">{description}</span>
         </span>
         <span className="flex shrink-0 items-center gap-3">
           {summary && (
