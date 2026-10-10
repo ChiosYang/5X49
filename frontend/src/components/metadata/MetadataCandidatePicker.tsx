@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import Image from "next/image";
 import { useTranslations } from "next-intl";
 import { Search } from "lucide-react";
@@ -15,6 +15,12 @@ export {
 } from "@/lib/metadata-search";
 
 const DEFAULT_VISIBLE_CANDIDATES = 5;
+
+/** Let a containing disclosure preserve the candidate's inner Escape step. */
+export function closeMetadataCandidateInspection(target: HTMLElement) {
+  const candidate = target.closest("[data-metadata-candidate-inspected]");
+  return candidate ? !candidate.dispatchEvent(new CustomEvent("metadata-candidate-escape", { bubbles: true, cancelable: true })) : false;
+}
 
 export function MetadataCandidatePicker({
   busyCandidateId,
@@ -53,17 +59,30 @@ export function MetadataCandidatePicker({
 }) {
   const t = useTranslations("LibraryManagement");
   const detailsId = useId();
+  const root = useRef<HTMLDivElement>(null);
   const [inspectedId, setInspectedId] = useState<number | null>(null);
   const [expandedCandidateKey, setExpandedCandidateKey] = useState<string | null>(null);
   const candidateKey = candidates.map((candidate) => candidate.tmdb_id).join(",");
   const showAll = expandedCandidateKey === candidateKey;
+
+  useEffect(() => {
+    const element = root.current;
+    const escape = (event: Event) => {
+      event.preventDefault();
+      const candidate = (event.target as HTMLElement).closest("[data-metadata-candidate-inspected]");
+      setInspectedId(null);
+      candidate?.querySelector<HTMLButtonElement>("button[aria-expanded]")?.focus();
+    };
+    element?.addEventListener("metadata-candidate-escape", escape);
+    return () => element?.removeEventListener("metadata-candidate-escape", escape);
+  }, []);
 
   const visibleCandidates = showAll
     ? candidates
     : candidates.slice(0, DEFAULT_VISIBLE_CANDIDATES);
 
   return (
-    <div className="space-y-2">
+    <div ref={root} className="space-y-2">
       <div className="flex gap-2">
         <TextInput
           type="text"
@@ -103,7 +122,7 @@ export function MetadataCandidatePicker({
             const inspected = inspectedId === candidate.tmdb_id;
             const panelId = `${detailsId}-${candidate.tmdb_id}`;
             return (
-              <div key={candidate.tmdb_id} className="border border-line-strong bg-surface-raised">
+              <div key={candidate.tmdb_id} data-metadata-candidate-inspected={inspected ? "" : undefined} className="border border-line-strong bg-surface-raised">
                 <button
                   type="button"
                   onClick={() => setInspectedId(inspected ? null : candidate.tmdb_id)}

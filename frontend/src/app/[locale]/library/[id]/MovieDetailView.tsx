@@ -84,7 +84,7 @@ export default async function MovieDetailView({ film }: { film: LibraryFilmDetai
             <span className="block font-serif text-xl text-ink italic md:text-2xl">{film.year || "—"}</span>
           </div>
           <MovieRefreshButton
-            key={`${film.id}:${film.profile_state.updated_at || "initial"}`}
+            key={film.id}
             film={film}
           />
         </div>

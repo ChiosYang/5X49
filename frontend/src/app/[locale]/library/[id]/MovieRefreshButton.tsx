@@ -1,6 +1,6 @@
 "use client";
 
-import { Award, Check, Clapperboard, EyeOff, RefreshCw, Star } from "lucide-react";
+import { Award, Check, Clapperboard, EyeOff, Network, RefreshCw, Star } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 
@@ -10,7 +10,7 @@ import {
   parseTmdbId,
   prependMetadataCandidate,
 } from "@/components/metadata/MetadataCandidatePicker";
-import { Button, IconButton } from "@/components/ui/Button";
+import { Button } from "@/components/ui/Button";
 import { InlineFeedback } from "@/components/ui/Feedback";
 import {
   useConfirmScrapeFilm,
@@ -27,6 +27,7 @@ import { metadataActionError } from "@/lib/metadata-review";
 import { useRouter } from "@/i18n/routing";
 import type { LibraryFilmDetail, MetadataSearchResult } from "@/types/movie";
 import MovieArtworkPicker from "./MovieArtworkPicker";
+import FilmMoreActions from "./FilmMoreActions";
 
 
 
@@ -36,12 +37,20 @@ export default function MovieRefreshButton({ film }: { film: LibraryFilmDetail }
   const filmId = film.id;
   const itemId = film.primary_item.id;
   const [state, setState] = useState(film.profile_state);
+  const [profileVersion, setProfileVersion] = useState(film.profile_state.updated_at);
   const [candidates, setCandidates] = useState<MetadataSearchResult[]>([]);
   const [message, setMessage] = useState("");
   const [messageError, setMessageError] = useState(false);
   const [reviewOpen, setReviewOpen] = useState(false);
   const [reviewSearchDraft, setReviewSearchDraft] = useState("");
   const [isSearching, setIsSearching] = useState(false);
+  const [artworkOpen, setArtworkOpen] = useState(false);
+
+  // Refresh profile labels without remounting an open disclosure or artwork dialog.
+  if (profileVersion !== film.profile_state.updated_at) {
+    setProfileVersion(film.profile_state.updated_at);
+    setState(film.profile_state);
+  }
 
   const profile = useUpdateFilmProfileState(filmId);
   const refresh = useRefreshLibraryItem(itemId);
@@ -148,17 +157,19 @@ export default function MovieRefreshButton({ film }: { film: LibraryFilmDetail }
         busy={scrape.isMutating || confirmScrape.isMutating}
         aria-expanded={reviewOpen}
         icon={<Clapperboard className="h-4 w-4" />}
-      >{matchLabel}</Button> : <IconButton
+      >{matchLabel}</Button> : <Button
         onClick={() => reviewOpen ? setReviewOpen(false) : void handleScrape()}
         disabled={busy}
         busy={scrape.isMutating || confirmScrape.isMutating}
         aria-expanded={reviewOpen}
         aria-label={t("scrapeMetadata")}
         title={t("scrapeMetadata")}
+        variant="ghost"
+        className="w-full justify-start px-3"
         icon={<Clapperboard className="h-4 w-4" />}
-      />}
+      >{t("scrapeMetadata")}</Button>}
       {reviewOpen && (
-        <div className="z-popover absolute top-full right-0 w-[min(24rem,calc(100vw-4rem))] pt-3">
+        <div className={needsMetadataMatch ? "z-popover absolute top-full right-0 w-[min(24rem,calc(100vw-4rem))] pt-3" : "mt-2"}>
           <div className="liquid-glass-popover border border-line/80 p-4">
             <MetadataCandidatePicker
               candidates={candidates}
@@ -181,7 +192,7 @@ export default function MovieRefreshButton({ film }: { film: LibraryFilmDetail }
   );
 
   return (
-    <div className="relative flex min-w-0 flex-col items-start justify-between gap-4 p-8 md:px-16 2xl:flex-row 2xl:items-center">
+    <div data-profile-version={film.profile_state.updated_at || "initial"} className="relative flex min-w-0 flex-col items-start justify-between gap-4 p-8 md:px-8 lg:px-16">
       <div className="space-y-2">
         <span className="type-label block text-ink-subtle">{t("filmControls")}</span>
         <div role="status" aria-live="polite">
@@ -190,52 +201,76 @@ export default function MovieRefreshButton({ film }: { film: LibraryFilmDetail }
           {action.feedback?.kind === "refreshFailed" && <button type="button" disabled={busy} onClick={() => void action.retryRefresh()} className="focus-ring min-h-11 text-sm underline">{t("retryRefresh")}</button>}
         </div>
       </div>
-      <div className="flex max-w-full flex-wrap items-center gap-2 sm:shrink-0">
+      <div className="w-full min-w-0 space-y-2">
         {needsMetadataMatch && metadataControl}
-        <IconButton
+        <div className="grid min-w-0 grid-cols-2 gap-2 md:grid-cols-1 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]">
+        <Button
           onClick={handleWatched}
           disabled={busy}
           busy={profile.isMutating}
           variant={state.watched ? "primary" : "secondary"}
           aria-label={state.watched && !state.manual_watched ? t("viewDiary") : state.manual_watched ? t("markUnwatched") : t("markWatched")}
           title={state.watched && !state.manual_watched ? t("viewDiary") : state.manual_watched ? t("markUnwatched") : t("markWatched")}
+          aria-pressed={state.watched}
+          size="sm"
+          className="min-w-0 px-2"
           icon={<Check className="h-4 w-4" />}
-        />
-        <IconButton
+        >{state.watched && !state.manual_watched ? t("viewDiary") : t("watchedAction")}</Button>
+        <Button
           onClick={() => updateProfile({ favorite: !state.favorite })}
           disabled={busy}
           busy={profile.isMutating}
           variant={state.favorite ? "primary" : "secondary"}
           aria-label={state.favorite ? t("removeFavorite") : t("favorite")}
           title={state.favorite ? t("removeFavorite") : t("favorite")}
+          aria-pressed={state.favorite}
+          size="sm"
+          className="min-w-0 px-2"
           icon={<Star className={`h-4 w-4 ${state.favorite ? "fill-current" : ""}`} />}
-        />
-        <MovieArtworkPicker movieId={filmId} />
-        <IconButton
+        >{t("favoriteAction")}</Button>
+        <FilmMoreActions label={t("moreFilmActions")} modalOpen={artworkOpen}>
+        <MovieArtworkPicker movieId={filmId} menuItem disabled={busy} onOpenChange={setArtworkOpen} />
+        <Button
           onClick={() => { setMessage(""); void action.run(() => scores.trigger(), t("scoresRefreshFailed"), () => {}, t("scoresQueued")); }}
           disabled={busy}
           busy={scores.isMutating}
           aria-label={t("refreshExternalScores")}
           title={t("refreshExternalScores")}
+          variant="ghost"
+          className="w-full justify-start px-3"
           icon={<Award className="h-4 w-4" />}
-        />
+        >{t("refreshExternalScores")}</Button>
         {!needsMetadataMatch && metadataControl}
-        <IconButton
+        <Button
           onClick={() => { setMessage(""); void action.run(() => ignore.trigger(), t("ignoreFailed"), () => {}, t("editionIgnored")); }}
           disabled={busy}
           busy={ignore.isMutating}
           aria-label={t("ignorePrimaryEdition")}
           title={t("ignorePrimaryEdition")}
+          variant="ghost"
+          className="w-full justify-start px-3"
           icon={<EyeOff className="h-4 w-4" />}
-        />
-        <IconButton
+        >{t("ignorePrimaryEdition")}</Button>
+        <Button
           onClick={() => { setMessage(""); void action.run(() => refresh.trigger(), t("editionRefreshFailed"), () => {}, t("editionRefreshQueued")); }}
           disabled={busy}
           busy={refresh.isMutating}
           aria-label={t("refreshPrimaryEdition")}
           title={t("refreshPrimaryEdition")}
+          variant="ghost"
+          className="w-full justify-start px-3"
           icon={<RefreshCw className="h-4 w-4" />}
-        />
+        >{t("refreshPrimaryEdition")}</Button>
+        <Button variant="ghost" className="w-full justify-start px-3" data-film-more-close=""
+          onClick={() => {
+            const section = document.getElementById("film-analysis");
+            section?.scrollIntoView({ behavior: "instant", block: "start" });
+            section?.focus({ preventScroll: true });
+          }}>
+          <Network className="h-4 w-4" />{t("analysisControls")}
+        </Button>
+        </FilmMoreActions>
+        </div>
       </div>
     </div>
   );

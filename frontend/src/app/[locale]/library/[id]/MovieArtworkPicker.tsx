@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { createPortal } from "react-dom";
 import Image from "next/image";
 import { Check, ImageIcon, X } from "lucide-react";
 import { useTranslations } from "next-intl";
@@ -16,6 +17,9 @@ type ArtworkTab = "poster" | "backdrop";
 
 interface MovieArtworkPickerProps {
   movieId: string;
+  menuItem?: boolean;
+  disabled?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
 const imageLabel = (image: ArtworkImage, noText: string, unknownSize: string) => {
@@ -24,7 +28,7 @@ const imageLabel = (image: ArtworkImage, noText: string, unknownSize: string) =>
   return `${language} - ${size}`;
 };
 
-export default function MovieArtworkPicker({ movieId }: MovieArtworkPickerProps) {
+export default function MovieArtworkPicker({ movieId, menuItem = false, disabled, onOpenChange }: MovieArtworkPickerProps) {
   const t = useTranslations("FilmDetail");
   const { mutate } = useSWRConfig();
   const { updateFromFilm } = useMovieArtwork();
@@ -36,6 +40,10 @@ export default function MovieArtworkPicker({ movieId }: MovieArtworkPickerProps)
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
+  const changeOpen = (value: boolean) => {
+    setOpen(value);
+    onOpenChange?.(value);
+  };
 
   const loadArtwork = async () => {
     setLoading(true);
@@ -58,7 +66,7 @@ export default function MovieArtworkPicker({ movieId }: MovieArtworkPickerProps)
   };
 
   const handleOpen = () => {
-    setOpen(true);
+    changeOpen(true);
     if (!options) {
       void loadArtwork();
     }
@@ -92,7 +100,7 @@ export default function MovieArtworkPicker({ movieId }: MovieArtworkPickerProps)
       updateFromFilm(data.film);
       await mutate(API.libraryFilm(movieId), data.film, false);
       setOptions(null);
-      setOpen(false);
+      changeOpen(false);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : t("artworkSaveFailed"));
     } finally {
@@ -105,16 +113,20 @@ export default function MovieArtworkPicker({ movieId }: MovieArtworkPickerProps)
 
   return (
     <>
-      <IconButton
+      {menuItem ? <Button
+        onClick={handleOpen} disabled={disabled} variant="ghost" className="w-full justify-start px-3"
+        icon={<ImageIcon className="h-4 w-4" />}>
+        {t("chooseArtwork")}
+      </Button> : <IconButton
         onClick={handleOpen}
         aria-label={t("chooseArtwork")}
         title={t("chooseArtwork")}
         icon={<ImageIcon className="h-4 w-4" />}
-      />
+      />}
 
-      <Dialog
+      {open && createPortal(<Dialog
         open={open}
-        onClose={() => setOpen(false)}
+        onClose={() => changeOpen(false)}
         closeLabel={t("closeArtworkPicker")}
         closeOnBackdrop={false}
         closeOnEscape={false}
@@ -129,7 +141,7 @@ export default function MovieArtworkPicker({ movieId }: MovieArtworkPickerProps)
                 <p id="artwork-picker-title" className="text-lg font-bold tracking-widest text-ink uppercase">{t("chooseImages")}</p>
               </div>
               <IconButton
-                onClick={() => setOpen(false)}
+                onClick={() => changeOpen(false)}
                 variant="ghost"
                 className="h-10 w-10"
                 aria-label={t("closeArtworkPicker")}
@@ -219,7 +231,7 @@ export default function MovieArtworkPicker({ movieId }: MovieArtworkPickerProps)
 
             <div className="flex items-center justify-end gap-3 border-t border-line-strong px-4 py-3 md:px-6">
               <Button
-                onClick={() => setOpen(false)}
+                onClick={() => changeOpen(false)}
                 className="h-10"
               >
                 {t("cancel")}
@@ -234,7 +246,7 @@ export default function MovieArtworkPicker({ movieId }: MovieArtworkPickerProps)
                 {t("save")}
               </Button>
             </div>
-      </Dialog>
+      </Dialog>, document.body)}
     </>
   );
 }
