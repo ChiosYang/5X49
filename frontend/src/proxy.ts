@@ -20,5 +20,5 @@ export function proxy(request: NextRequest) {
 
 export const config = {
     // Match only internationalized pathnames
-    matcher: ['/', '/(zh|en)/:path*', '/((?!api|_next|_vercel|.*\\..*).*)']
+    matcher: ['/', '/(zh|en)/:path*', '/((?!api|media|_next|_vercel|.*\\..*).*)']
 };

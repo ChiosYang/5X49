@@ -13,12 +13,7 @@ import type {
 } from "@/types/movie";
 import { buildExploreContextSearchParams, buildExploreSearchParams, type ExploreQueryState } from "@/lib/explore";
 
-const backendUrl = () =>
-  process.env.BACKEND_URL || (
-    process.env.NODE_ENV === "development"
-      ? "http://127.0.0.1:8000"
-      : "http://backend:8000"
-  );
+import { getBackendUrl as backendUrl } from "@/lib/backend-proxy";
 
 export async function getLibraryFilm(filmId: string): Promise<LibraryFilmDetail | null> {
   const response = await fetch(`${backendUrl()}/library/films/${encodeURIComponent(filmId)}`, {
