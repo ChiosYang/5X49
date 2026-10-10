@@ -14,6 +14,11 @@ async function control(request: APIRequestContext, action: string, payload: Reco
 async function read(request: APIRequestContext, url: string) {
   const r = await request.get(`${backend}${url}`); expect(r.ok()).toBeTruthy(); return r.json();
 }
+async function openFilmMore(page: Page) {
+  const more = page.getByRole('button', { name: 'More', exact: true }).and(page.locator('[aria-controls]'));
+  if (await more.getAttribute('aria-expanded') !== 'true') await more.click();
+  return page.getByRole('group', { name: 'More', exact: true });
+}
 async function settleWorkflow(request: APIRequestContext, id: string) {
   await expect.poll(async () => (await read(request, `/workflows/${id}`)).status, { timeout: 45000 }).toBe('succeeded');
 }
@@ -100,7 +105,7 @@ test('empty scrape feedback is specific and rejected requests are handled', asyn
     status: 409, json: { detail: { status: 'failed', message: 'No TMDB matches found', candidates: [] } },
   }));
   await page.goto(`/en/library/${films[0].id}`);
-  await page.getByText('Film controls', { exact: true }).click();
+  await openFilmMore(page);
   await page.getByRole('button', { name: 'Scrape metadata', exact: true }).click();
   await expect(page.getByText('No TMDB matches found. Check the title and year, or choose a match using a TMDB ID.', { exact: true })).toBeVisible();
   await expect(page.getByText('Film action failed', { exact: true })).toHaveCount(0);
@@ -301,9 +306,26 @@ test('detail operations consume failures and saved-read retry never replays a wr
   await favorite().click();
   await expect(page.getByText('Changes saved, but the page could not be refreshed. You do not need to save again.',{exact:true})).toBeVisible();
   expect((await read(request,`/films/${film.id}/profile-state`)).favorite).toBe(!state.favorite);
+  const persistedProfile=await read(request,`/films/${film.id}/profile-state`);
+  const controls=page.locator('[data-profile-version]');
+  await expect(controls).not.toHaveAttribute('data-profile-version',persistedProfile.updated_at);
   rejectRead=false;
+  let releaseRefresh!: () => void;
+  const refreshGate=new Promise<void>(resolve=>{releaseRefresh=resolve;});
+  await page.route(url=>url.pathname===`/en/library/${film.id}`&&url.searchParams.has('_rsc'),async route=>{
+    const response=await route.fetch();await refreshGate;await route.fulfill({response});
+  });
+  const refreshed=page.waitForResponse(response=>new URL(response.url()).pathname===`/en/library/${film.id}`&&response.request().headers()['rsc']==='1');
   await page.getByRole('button',{name:'Refresh page',exact:true}).click();
   await expect(page.getByRole('button',{name:'Refresh page',exact:true})).toHaveCount(0);
+  expect(writes).toBe(2);
+  const resumedMore=await openFilmMore(page);
+  await expect(page.getByRole('button',{name:'More',exact:true})).toHaveAttribute('aria-expanded','true');
+  releaseRefresh();await (await refreshed).finished();
+  await expect(controls).toHaveAttribute('data-profile-version',persistedProfile.updated_at);
+  await expect(page.getByRole('button',{name:state.favorite?'Favorite':'Remove favorite',exact:true})).toHaveAttribute('aria-pressed',String(!state.favorite));
+  await expect(resumedMore.getByRole('button',{name:'Refresh external scores',exact:true})).toBeVisible();
+  await expect(page.getByRole('button',{name:'More',exact:true})).toHaveAttribute('aria-expanded','true');
   expect(writes).toBe(2);
   for (const [label,endpoint,prefix] of [
     ['Refresh external scores',`/api/films/${film.id}/external-scores/refresh`,'The score refresh could not be started.'],
@@ -311,16 +333,133 @@ test('detail operations consume failures and saved-read retry never replays a wr
     ['Ignore primary edition',`/api/library/items/${film.primary_item.id}/ignore`,'The edition was not ignored.'],
   ]) {
     await page.route(url => url.pathname===endpoint,route => route.fulfill({status:503,json:{detail:'Test operation failure'}}));
+    await openFilmMore(page);
     await page.getByRole('button',{name:label,exact:true}).click();
     await expect(page.getByText(`${prefix} The service is unavailable. Try again later.`,{exact:true})).toBeVisible();
   }
   expect(errors).toEqual([]);
 });
 
+test('film More preserves mouse, keyboard, artwork return and analysis navigation', async ({ page, request }) => {
+  const film = (await read(request, '/library/films')).find((item: {primary_item:{status:string;metadata:{scrape_status:string}}}) => item.primary_item.status === 'available' && item.primary_item.metadata.scrape_status === 'matched');
+  await page.route(`**/api/films/${film.id}/artwork`, route => route.fulfill({status:503,json:{detail:'Fixture artwork load failure'}}));
+  for (const width of [390, 768, 1440]) {
+    await page.setViewportSize({width,height:844});
+    await page.goto(`/en/library/${film.id}`);
+    const more = page.getByRole('button',{name:'More',exact:true});
+    await expect(page.locator('button[aria-pressed]')).toHaveCount(2);
+    for (const action of await page.locator('button[aria-pressed]').all()) {
+      const icon=await action.locator('svg').boundingBox();expect(icon!.width).toBeGreaterThanOrEqual(16);
+    }
+    await expect(page.getByRole('button',{name:'Choose artwork',exact:true})).toBeHidden();
+    await more.click();await expect(more).toHaveAttribute('aria-expanded','true');
+    await more.click();await expect(more).toHaveAttribute('aria-expanded','false');
+    await more.focus();await page.keyboard.press('ArrowDown');
+    await expect(page.getByRole('button',{name:'Choose artwork',exact:true})).toBeFocused();
+    await page.keyboard.press('Escape');await expect(more).toBeFocused();
+    await page.keyboard.press('Enter');
+    const panel = page.getByRole('group',{name:'More',exact:true});
+    const bounds = await panel.boundingBox();
+    expect(bounds!.x).toBeGreaterThanOrEqual(0);expect(bounds!.x+bounds!.width).toBeLessThanOrEqual(width);
+    await panel.getByRole('button',{name:'Choose artwork',exact:true}).click();
+    const artwork = page.getByRole('dialog',{name:'Choose Images',exact:true});
+    await expect(artwork).toBeVisible();
+    await expect(artwork.getByText('Fixture artwork load failure',{exact:true})).toBeVisible();
+    await page.keyboard.press('Escape');await expect(artwork).toBeVisible();
+    await artwork.getByRole('button',{name:'Close artwork picker',exact:true}).click();
+    await expect(panel.getByRole('button',{name:'Choose artwork',exact:true})).toBeFocused();
+    await expect(more).toHaveAttribute('aria-expanded','true');
+    await panel.getByRole('button',{name:'Film analysis',exact:true}).focus();await page.keyboard.press('Tab');
+    await expect(more).toHaveAttribute('aria-expanded','false');
+    await openFilmMore(page);
+    await page.getByText('Film controls',{exact:true}).click();await expect(more).toHaveAttribute('aria-expanded','false');
+    const beforeAnalysis = page.url();
+    await openFilmMore(page);await panel.getByRole('button',{name:'Film analysis',exact:true}).click();
+    await expect(page).toHaveURL(beforeAnalysis);await expect(more).toHaveAttribute('aria-expanded','false');
+    await expect(page.locator('#film-analysis')).toBeFocused();
+    expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+  }
+});
+
+test('candidate Escape precedes More and detail overlay; analysis returns in one step', async ({ page, request }) => {
+  const film=(await read(request,'/library/films')).find((item:{primary_item:{status:string;metadata:{scrape_status:string}}})=>item.primary_item.status==='available'&&item.primary_item.metadata.scrape_status==='matched');
+  await page.route(`**/api/films/${film.id}/scrape`,route=>route.fulfill({json:{status:'needs_review',message:'Synthetic comparison fixture',candidates:[{tmdb_id:5514,title:'Escape fixture candidate',year:2001,score:96,overview:'Synthetic synopsis for keyboard comparison.',poster_path:null}]}}));
+  for (const overlay of [false,true]) {
+    if (overlay) {
+      await page.goto('/en/library');await page.locator(`#film-link-${film.id}`).click();
+      await expect(page.getByRole('dialog').first()).toBeVisible();
+    } else await page.goto(`/en/library/${film.id}`);
+    const panel=await openFilmMore(page);
+    await panel.getByRole('button',{name:'Scrape metadata',exact:true}).click();
+    const candidate=panel.getByRole('button',{name:/Escape fixture candidate/});
+    await candidate.click();await panel.getByRole('button',{name:'Confirm this match',exact:true}).focus();
+    await page.keyboard.press('Escape');await expect(candidate).toBeFocused();
+    await expect(candidate).toHaveAttribute('aria-expanded','false');
+    await expect(page.getByRole('button',{name:'More',exact:true})).toHaveAttribute('aria-expanded','true');
+    await candidate.click();await page.keyboard.press('Escape');
+    await expect(candidate).toBeFocused();await expect(candidate).toHaveAttribute('aria-expanded','false');
+    await page.keyboard.press('Escape');
+    await expect(page.getByRole('button',{name:'More',exact:true})).toBeFocused();
+    await expect(page.getByRole('button',{name:'More',exact:true})).toHaveAttribute('aria-expanded','false');
+    if (overlay) {await page.keyboard.press('Escape');await expect(page).toHaveURL(/\/en\/library$/);}
+  }
+  for (const closeWith of ['return','escape']) {
+    await page.goto('/en/library');await page.locator(`#film-link-${film.id}`).click();
+    await expect(page).toHaveURL(new RegExp(`/en/library/${film.id}$`));
+    const detailURL=page.url();const panel=await openFilmMore(page);
+    await panel.getByRole('button',{name:'Film analysis',exact:true}).click();
+    await expect(page.locator('#film-analysis')).toBeFocused();await expect(page).toHaveURL(detailURL);
+    if (closeWith==='return') await page.getByRole('button',{name:/^(Return to library|Back)$/i}).click();
+    else await page.keyboard.press('Escape');
+    await expect(page).toHaveURL(/\/en\/library$/);
+    await expect(page.locator(`#film-link-${film.id}`)).toBeFocused();
+  }
+});
+
+test('film More can close during a pending operation and consumes a repeated click and failure', async ({ page, request }) => {
+  const film=(await read(request,'/library/films'))[0];
+  let writes=0;
+  let release!: () => void;
+  const gate=new Promise<void>(resolve=>{release=resolve;});
+  await page.route(`**/api/films/${film.id}/external-scores/refresh`, async route=>{
+    writes++;await gate;await route.fulfill({status:503,json:{detail:'Fixture queued operation failure'}});
+  });
+  await page.goto(`/en/library/${film.id}`);
+  const panel=await openFilmMore(page);
+  const refresh=panel.getByRole('button',{name:'Refresh external scores',exact:true});
+  await refresh.click();await expect(refresh).toBeDisabled();
+  await refresh.dispatchEvent('click');expect(writes).toBe(1);
+  await page.keyboard.press('Escape');
+  const more=page.getByRole('button',{name:'More',exact:true});
+  await expect(more).toBeFocused();await expect(more).toHaveAttribute('aria-expanded','false');
+  await openFilmMore(page);await expect(refresh).toBeDisabled();
+  await expect(panel.getByRole('button',{name:'Choose artwork',exact:true})).toBeDisabled();
+  release();
+  await expect(page.getByText('The score refresh could not be started. The service is unavailable. Try again later.',{exact:true})).toBeVisible();
+  await expect(refresh).toBeEnabled();expect(writes).toBe(1);
+});
+
+test('Explore exposes all four cinematic entries in the first narrow-screen viewport', async ({ page }) => {
+  for (const locale of ['en','zh']) {
+    await page.setViewportSize({width:390,height:844});await page.goto(`/${locale}/explore`);
+    const deck=page.locator('section[aria-labelledby="lens-deck-title"]');
+    const entries=deck.locator('button');await expect(entries).toHaveCount(4);
+    for (const entry of await entries.all()) {
+      const rect=await entry.boundingBox();expect(rect!.y+rect!.height).toBeLessThanOrEqual(844);
+      await entry.focus();await page.keyboard.press('Enter');
+      await expect(page.getByRole('dialog').first()).toBeVisible();await page.keyboard.press('Escape');
+      await expect(entry).toBeFocused();
+    }
+    expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+  }
+});
+
 test('same-directory editions expose stable default selection and mobile title wrapping', async ({ page, request }) => {
   const folder=path.join(root,'normal/media/Core.Quality.1967');
   await mkdir(folder,{recursive:true});
-  await writeFile(path.join(folder,`Core.Quality.1967.${'long-edition-name-'.repeat(8)}Cut.A.mkv`),'edition A');
+  // Keep the long title scenario without exceeding Windows filesystem path limits.
+  const repeats=process.platform==='win32'?Math.max(1,Math.min(8,Math.floor((240-folder.length-'Core.Quality.1967.Cut.A.mkv'.length-1)/'long-edition-name-'.length))):8;
+  await writeFile(path.join(folder,`Core.Quality.1967.${'long-edition-name-'.repeat(repeats)}Cut.A.mkv`),'edition A');
   await writeFile(path.join(folder,'Core.Quality.1967.Cut.B.mp4'),'edition B');
   await writeFile(path.join(folder,'Core.Quality.1967.trailer.mkv'),'extra');
   const title='UnbrokenTitle'.repeat(7);
@@ -414,6 +553,8 @@ test('cinematic matching promotes unresolved films and returns to the quiet matc
   expect(await confirm.evaluate(node=>node.getBoundingClientRect().height)).toBeGreaterThanOrEqual(44);
   const response=page.waitForResponse(r=>r.request().method()==='POST'&&new URL(r.url()).pathname.endsWith('/scrape/confirm'));
   await confirm.click();expect((await response).ok()).toBeTruthy();
+  await expect(page.getByRole('button',{name:'More',exact:true})).toHaveAttribute('aria-expanded','false');
+  await openFilmMore(page);
   await expect(page.getByRole('button',{name:'Scrape metadata',exact:true})).toBeVisible();
   await expect(page.getByRole('button',{name:'Review match',exact:true})).toHaveCount(0);
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);

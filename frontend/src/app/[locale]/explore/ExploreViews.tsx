@@ -151,19 +151,9 @@ export function LensDeck({
 
   return (
     <section aria-labelledby="lens-deck-title">
-      <div className="mb-6">
-        <div>
-          <p className="type-label text-ink-muted">{t("lensDeckEyebrow")}</p>
-          <h2 id="lens-deck-title" className="mt-2 font-serif text-3xl text-ink md:text-4xl">
-            {t("lensDeckTitle")}
-          </h2>
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-ink-muted">
-            {t("lensDeckDescription")}
-          </p>
-        </div>
-      </div>
+      <h2 id="lens-deck-title" className="sr-only">{t("lensDeckTitle")}</h2>
 
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid grid-cols-2 gap-3 md:gap-4">
         {EXPLORE_DIMENSIONS.map((dimension) => {
           const overviewDimension = overview.dimensions.find((item) => item.dimension === dimension);
           const dimensionContext = contextDimension(context, dimension);
@@ -180,24 +170,25 @@ export function LensDeck({
               key={dimension}
               type="button"
               onClick={() => onOpenLens(dimension)}
-              className="group relative min-h-64 overflow-hidden rounded-media border border-line-strong text-left focus-ring duration-standard transition-colors hover:border-ink-muted"
+              className="group relative min-w-0 overflow-hidden rounded-media border border-line-strong text-left focus-ring duration-standard transition-colors hover:border-ink-muted"
               aria-label={t("openLens", { dimension: t(`dimensions.${dimension}`) })}
             >
               <ExploreArtwork item={clue} label={label} />
-              <div className="relative flex min-h-64 flex-col justify-between p-6">
-                <div className="flex items-center justify-between gap-3">
+              <div className="relative flex min-h-48 flex-col justify-between gap-6 p-3 sm:p-6 md:min-h-64">
+                <div className="flex items-center justify-between gap-2">
                   <span className="inline-flex h-10 w-10 items-center justify-center rounded-control border border-line-strong bg-canvas/70 text-ink">
                     <Icon className="h-4 w-4" />
                   </span>
-                  <span className="rounded-full border border-line-strong bg-black/35 px-3 py-1 text-[11px] uppercase tracking-[0.15em] text-ink-muted backdrop-blur">
-                    {t("coverage", { covered: coverage, total })}
+                  <span aria-label={t("coverage", { covered: coverage, total })} className="rounded-full border border-line-strong bg-black/35 px-2 py-1 text-[11px] uppercase tracking-[0.15em] text-ink-muted backdrop-blur">
+                    <span className="sm:hidden">{coverage}/{total}</span>
+                    <span className="hidden sm:inline">{t("coverage", { covered: coverage, total })}</span>
                   </span>
                 </div>
                 <div>
                   <p className="text-xs uppercase tracking-[0.2em] text-ink-muted">
                     {t(`dimensions.${dimension}`)}
                   </p>
-                  <p className="mt-2 font-serif text-3xl text-ink">{label}</p>
+                  <p title={label} className="mt-2 truncate font-serif text-3xl text-ink">{label}</p>
                   <p className="mt-2 line-clamp-1 text-sm text-ink-muted">
                     {clue?.preview_film?.title || t("lensFallback")}
                   </p>

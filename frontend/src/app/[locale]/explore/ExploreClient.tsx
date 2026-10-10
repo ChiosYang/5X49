@@ -268,7 +268,7 @@ export default function ExploreClient({
         </div>
       ) : null}
 
-      <div className={`mt-9 min-w-0 ${resolvedLens ? "xl:grid xl:grid-cols-[minmax(0,1fr)_21rem] xl:gap-8" : ""}`}>
+      <div className={`mt-6 min-w-0 ${resolvedLens ? "xl:grid xl:grid-cols-[minmax(0,1fr)_21rem] xl:gap-8" : ""}`}>
         <div className="min-w-0">
           {hasFilters ? (
             <ResultStage
