@@ -3,12 +3,6 @@ import createNextIntlPlugin from 'next-intl/plugin';
 
 const withNextIntl = createNextIntlPlugin();
 
-const backendUrl = process.env.BACKEND_URL || (
-  process.env.NODE_ENV === 'development'
-    ? 'http://127.0.0.1:8000'
-    : 'http://backend:8000'
-);
-
 const nextConfig: NextConfig = {
   output: "standalone",
   // next-intl must rewrite against the public request host. Normalizing
@@ -31,18 +25,6 @@ const nextConfig: NextConfig = {
         pathname: "/t/p/**",
       },
     ],
-  },
-  async rewrites() {
-    return [
-      {
-        source: "/api/:path*",
-        destination: `${backendUrl}/:path*`, // Proxy to Backend
-      },
-      {
-        source: "/media/:path*",
-        destination: `${backendUrl}/media/:path*`, // Proxy media to Backend
-      }
-    ];
   },
 };
 
