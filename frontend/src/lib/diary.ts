@@ -1,4 +1,4 @@
-import type { FilmProfileState, ViewingTimelineEntry, ViewingView } from "@/types/movie";
+import type { FilmProfileState, ViewingTimelineEntry, ViewingView, ViewingWriteRequest } from "@/types/movie";
 
 export type WatchedAction = "mark_watched" | "mark_unwatched" | "open_diary";
 export type DiaryView = "timeline" | "recent" | "dna";
@@ -112,4 +112,13 @@ export function todayLocalDate(now = new Date()) {
   const month = String(now.getMonth() + 1).padStart(2, "0");
   const day = String(now.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
+}
+
+export function viewingReviewChanges(draft: ViewingDateDraft, rating: number | null, notes: string, viewing?: ViewingView | null): ViewingWriteRequest {
+  const changes: ViewingWriteRequest = {};
+  if (viewingDateDraftDirty(draft, viewing)) changes.watched_at = viewingDraftWatchedAt(draft);
+  if (rating !== (viewing?.rating ?? null)) changes.rating = rating;
+  const normalizedNotes = notes.trim() ? notes : null;
+  if (normalizedNotes !== (viewing?.notes ?? null)) changes.notes = normalizedNotes;
+  return changes;
 }

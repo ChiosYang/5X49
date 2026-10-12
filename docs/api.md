@@ -342,7 +342,8 @@ Returns one `FilmProfileState` with:
 Accepts any subset of `favorite`, `rating` (1–5 or null), `notes` (up to 10,000
 characters), `watched`, and `watched_at`.
 
-- `watched=true` creates or restores a confirmed manual Viewing.
+- `watched=true` creates or restores a confirmed manual Viewing. Restoration keeps
+  its date precision, rating and notes; it does not create a new Diary entry.
 - `watched=false` revokes only the manual Viewing.
 - Other confirmed sources, including future Diary entries, are preserved.
 - Derived `watched` is true when any active confirmed Viewing exists.
@@ -356,14 +357,46 @@ characters), `watched`, and `watched_at`.
 | `GET` | `/profile/viewings?view=timeline|recent&limit=100&offset=0&film_id=...` | Return the complete timeline or one latest Viewing per Film; `film_id` is optional. |
 | `GET` | `/films/{film_id}/viewings` | Return every active confirmed Viewing for one Film. |
 | `POST` | `/films/{film_id}/viewings` | Create a new confirmed Diary Viewing. |
-| `PATCH` | `/viewings/{viewing_id}` | Change only the Viewing date/precision. |
-| `DELETE` | `/viewings/{viewing_id}` | Idempotently soft-delete one editable Viewing. |
+| `PATCH` | `/viewings/{viewing_id}` | Partially update date, rating or notes using the opened revision. |
+| `DELETE` | `/viewings/{viewing_id}?revision=...` | Soft-delete one editable Viewing with a revision guard. |
 
-Create and update requests use `{"watched_at": ...}`. Accepted values are an
+Create requires `watched_at`; PATCH accepts any nonempty subset of `watched_at`,
+`rating` and `notes`. Accepted date values are an
 exact `YYYY-MM-DD` date, a four-digit year, a timezone-aware RFC 3339 timestamp,
 or `null` for unknown. Duplicate dates remain independent records. Manual and
 Diary sources are editable; other sources return `409` with code
 `viewing_read_only`.
+
+Rating is a strict integer 1–5 or null. Notes are text up to 10,000 Unicode
+characters, without NUL; empty/whitespace-only text normalizes to null. Omitted
+fields are preserved, explicit null clears. Changing only a review preserves
+the exact timestamp and precision. Viewing reviews and Film profile reviews
+are independent and never synchronize in either direction.
+
+Every Viewing response includes an opaque 64-character `revision`. PATCH must
+include the revision captured when opening the form; DELETE passes it as a
+query parameter. Missing revisions return `409 viewing_revision_required`;
+stale revisions return `409 viewing_changed`. Reload before submitting a new
+edit. Unversioned historical forms cannot overwrite current state.
+
+Clients should send `idempotency_key` (16–64 ASCII letters, digits, `_` or `-`)
+on every POST/PATCH. It is required whenever rating or notes is supplied.
+Date-only legacy POST remains accepted without a key. Persist the request and
+key before sending; after an uncertain response retry the identical payload.
+The SQLite transaction atomically commits the Viewing, event and retry receipt.
+An identical retry returns the same Viewing with `replayed:true`; reused keys
+with another payload return `409 viewing_retry_conflict`. If that saved Viewing
+has subsequently changed or been deleted, retry returns 409 and never overwrites
+or recreates it. Repeated DELETE on an already deleted row succeeds. Restored
+manual records require their current revision. Database write failures return
+503, allowing an identical retry. Review text is not copied into event payloads.
+
+```json
+{"watched_at":"2026-08-31","rating":4,"notes":"A different impression on rewatch.","idempotency_key":"viewing-create-0001"}
+```
+
+For PATCH, for example, send `{"rating":null,"revision":"<revision from GET>",
+"idempotency_key":"viewing-update-0001"}` to clear only this Viewing's score.
 
 `GET /profile/viewings` returns `items`, `total`, `limit`, `offset`, and
 `next_offset`. Each item contains the Viewing, a lightweight Film identity with
@@ -371,6 +404,14 @@ Diary sources are editable; other sources return `409` with code
 and returns every active confirmed Viewing. `view=recent` selects the latest
 Viewing for each Film before pagination. Known dates sort descending, unknown
 dates sort last, and the default/maximum page sizes are 100/200.
+
+Viewing reads also include nullable `rating` (integer 1–5) and `notes` (up to
+10,000 characters, without NUL). Schema v9 adds these columns without assigning historical
+Film ratings/notes to any Viewing. Existing Film-level reviews remain in place.
+Retry receipts survive restart and stay out of portable exports.
+`library-export.v1` includes these two fields on each exported Viewing and
+continues accepting older packages that omit either field. Explicit null means
+no saved value; present invalid values and unknown fields are rejected.
 
 ## Metadata, artwork and external scores
 

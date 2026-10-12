@@ -21,6 +21,7 @@ import type {
   ViewingDeleteResult,
   ViewingPage,
   ViewingView,
+  ViewingWriteRequest,
 } from "@/types/movie";
 
 
@@ -78,7 +79,7 @@ export function useFilmViewings(filmId: string) {
 export function useCreateFilmViewing(filmId: string) {
   return useSWRMutation(
     filmId ? API.filmViewings(filmId) : null,
-    async (_key: string, { arg }: { arg: { watched_at: string | null } }): Promise<ViewingView> => {
+    async (_key: string, { arg }: { arg: ViewingWriteRequest }): Promise<ViewingView> => {
       const response = await fetch(API.filmViewings(filmId), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -94,7 +95,7 @@ export function useCreateFilmViewing(filmId: string) {
 export function useUpdateViewing(viewingId?: string | null) {
   return useSWRMutation(
     viewingId ? API.viewing(viewingId) : null,
-    async (_key: string, { arg }: { arg: { watched_at: string | null } }): Promise<ViewingView> => {
+    async (_key: string, { arg }: { arg: ViewingWriteRequest }): Promise<ViewingView> => {
       const response = await fetch(API.viewing(viewingId || ""), {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -110,8 +111,8 @@ export function useUpdateViewing(viewingId?: string | null) {
 export function useDeleteViewing(viewingId?: string | null) {
   return useSWRMutation(
     viewingId ? API.viewing(viewingId) : null,
-    async (): Promise<ViewingDeleteResult> => {
-      const response = await fetch(API.viewing(viewingId || ""), { method: "DELETE" });
+    async (_key: string, { arg }: { arg: { revision: string } }): Promise<ViewingDeleteResult> => {
+      const response = await fetch(`${API.viewing(viewingId || "")}?revision=${encodeURIComponent(arg.revision)}`, { method: "DELETE" });
       if (!response.ok) throw await responseError(response, "Failed to delete Viewing");
       return response.json();
     },

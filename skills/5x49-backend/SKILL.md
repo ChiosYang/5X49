@@ -5,6 +5,26 @@ description: 5X49 Fresh Canonical FastAPI 的 Film、LibraryItem、Factual Explo
 
 # 5X49 Backend API
 
+## Per-viewing reviews
+
+- Schema v9 adds nullable Viewing `rating` (integer 1–5) and `notes` (up to
+  10,000 characters, without NUL), returned by both Viewing list APIs.
+- Migration does not attribute or copy historical FilmProfileState reviews.
+  Viewing and Film reviews are independent; neither direction synchronizes.
+- POST requires `watched_at`, with optional `rating`/`notes`. PATCH accepts a
+  nonempty subset; omission preserves and null clears. Whitespace notes clear.
+- Retain the GET `revision` when opening a form. PATCH requires it in JSON;
+  DELETE requires it in the query. Missing/stale revisions return 409: reload
+  before editing. This deliberately rejects old unversioned edits/deletes.
+- Send a fresh 16–64 character ASCII `idempotency_key` per POST/PATCH operation;
+  review writes require it. Retry an uncertain write with identical body/key.
+  Receipts persist across restart. Reused keys with different payloads or with
+  subsequently changed/deleted results return 409; they never overwrite data.
+- Manual watched off/on restores the same record including unknown date and
+  review. Quick diary creation leaves review fields empty unless supplied.
+- `library-export.v1` exports the fields and validates both new rows and old
+  rows that omit them. Retry receipts are private operational state, not exports.
+
 ## Database-only basic metadata editing
 
 - GET `/films/{film_id}/metadata` before editing; retain its opaque `revision`.
@@ -158,8 +178,8 @@ curl -s http://127.0.0.1:8000/films/<film_id>/viewings
 curl -s -X POST http://127.0.0.1:8000/films/<film_id>/viewings \
   -H "Content-Type: application/json" -d '{"watched_at":"2026-08-31"}'
 curl -s -X PATCH http://127.0.0.1:8000/viewings/<viewing_id> \
-  -H "Content-Type: application/json" -d '{"watched_at":"2026"}'
-curl -s -X DELETE http://127.0.0.1:8000/viewings/<viewing_id>
+  -H "Content-Type: application/json" -d '{"watched_at":"2026","revision":"<revision from GET>","idempotency_key":"viewing-edit-0001"}'
+curl -s -X DELETE "http://127.0.0.1:8000/viewings/<viewing_id>?revision=<revision from GET>"
 ```
 
 `watched=true` 创建或恢复 manual confirmed Viewing；`watched=false` 只撤销

@@ -398,7 +398,7 @@ class ApiRouteContractTests(unittest.TestCase):
         ):
             response = self.client.patch(
                 f"/viewings/{viewing_id}",
-                json={"watched_at": "2026"},
+                json={"watched_at": "2026", "revision": "a" * 64},
             )
         self.assertEqual(response.status_code, 409)
         self.assertEqual(response.json()["detail"]["code"], "viewing_read_only")
@@ -407,7 +407,7 @@ class ApiRouteContractTests(unittest.TestCase):
             "app.api.library.viewing_manager.delete",
             side_effect=ViewingNotFound("Viewing not found"),
         ):
-            response = self.client.delete(f"/viewings/{viewing_id}")
+            response = self.client.delete(f"/viewings/{viewing_id}?revision={'a' * 64}")
         self.assertEqual(response.status_code, 404)
 
         response = self.client.put(

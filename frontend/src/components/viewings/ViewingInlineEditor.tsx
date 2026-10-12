@@ -9,13 +9,13 @@ import { InlineFeedback } from "@/components/ui/Feedback";
 import { useFilmViewings } from "@/hooks/useFilm";
 import { Link } from "@/i18n/routing";
 import { useViewingWrite } from "./useViewingWrite";
+import ViewingReview from "./ViewingReview";
 import { cn } from "@/lib/cn";
 import {
   createViewingDateDraft,
   todayLocalDate,
-  viewingDateDraftDirty,
   viewingDateDraftValid,
-  viewingDraftWatchedAt,
+  viewingReviewChanges,
   type ViewingDateMode,
 } from "@/lib/diary";
 import type { ViewingView } from "@/types/movie";
@@ -38,21 +38,25 @@ export default function ViewingInlineEditor({
   viewing,
 }: ViewingInlineEditorProps) {
   const t = useTranslations("Diary");
-  const [draft, setDraft] = useState(() => createViewingDateDraft(viewing));
+  // Keep the opened snapshot: background revalidation must not bless a stale draft.
+  const [original] = useState(viewing);
+  const [draft, setDraft] = useState(() => createViewingDateDraft(original));
+  const [rating, setRating] = useState<number | null>(original?.rating ?? null);
+  const [notes, setNotes] = useState(original?.notes ?? "");
   const [advancedOpen, setAdvancedOpen] = useState(() => draft.mode !== "date");
   const [actionsOpen, setActionsOpen] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
-  const actions = useViewingWrite(filmId, viewing, onSaved);
+  const actions = useViewingWrite(filmId, original, onSaved);
   const { busy, completed: succeeded, feedback } = actions;
   useEffect(() => {
-    onBusyChange?.(busy);
+    onBusyChange?.(busy || actions.retryPending);
     return () => onBusyChange?.(false);
-  }, [busy, onBusyChange]);
+  }, [busy, actions.retryPending, onBusyChange]);
   const editable = viewing?.editable ?? true;
-  const watchedAt = viewingDraftWatchedAt(draft);
-  const valid = viewingDateDraftValid(draft);
-  const dirty = viewingDateDraftDirty(draft, viewing);
-  const save = () => { if (valid && dirty) void actions.save(watchedAt); };
+  const changes = viewingReviewChanges(draft, rating, notes, original);
+  const valid = viewingDateDraftValid(draft) && Array.from(notes).length <= 10000 && !notes.includes("\0");
+  const dirty = Object.keys(changes).length > 0;
+  const save = () => { if (actions.retryPending || (valid && dirty)) void actions.save(changes); };
   const remove = () => { void actions.remove(); };
   const setMode = (mode: ViewingDateMode) => setDraft((current) => ({ ...current, mode }));
 
@@ -70,7 +74,7 @@ export default function ViewingInlineEditor({
       className={cn("mt-4 space-y-4 border-t border-line pt-4", className)}
       aria-label={viewing ? t("editViewing") : t("otherDate")}
     >
-      <fieldset disabled={busy || succeeded} className="space-y-4">
+      <fieldset disabled={busy || succeeded || actions.retryPending || actions.conflict} className="space-y-4">
       {draft.mode === "date" ? (
         <label className="block space-y-2">
           <span className="type-label text-ink-subtle">{t("date")}</span>
@@ -141,12 +145,29 @@ export default function ViewingInlineEditor({
         ) : null}
       </div>
 
+      <p className="text-xs leading-5 text-ink-subtle">{t("independentReview")}</p>
+      <label className="block space-y-2">
+        <span className="type-label text-ink-subtle">{t("viewingRating")}</span>
+        <select value={rating ?? ""} onChange={(event) => setRating(event.target.value ? Number(event.target.value) : null)}
+          className="focus-ring h-11 w-full border border-line-strong bg-surface-raised px-3 text-ink">
+          <option value="">{t("unrated")}</option>
+          {[1, 2, 3, 4, 5].map(value => <option key={value} value={value}>{value}/5</option>)}
+        </select>
+      </label>
+      <label className="block space-y-2">
+        <span className="type-label text-ink-subtle">{t("viewingNotes")}</span>
+        <textarea rows={4} value={notes} onChange={(event) => setNotes(event.target.value)}
+          aria-invalid={Array.from(notes).length > 10000 || notes.includes("\0")}
+          className="focus-ring w-full resize-y border border-line-strong bg-surface-raised px-3 py-2 text-sm leading-6 text-ink" />
+        <span className="block text-xs text-ink-subtle">{t("notesLimit", { count: Array.from(notes).length })}</span>
+      </label>
       </fieldset>
       <div aria-live="polite" className="min-h-5">
         {feedback ? <InlineFeedback tone={feedback.tone}>{feedback.text}</InlineFeedback> : null}
       </div>
 
       <ViewingReceipt filmId={filmId} actions={actions} />
+      {actions.conflict ? <Button size="sm" variant="secondary" busy={busy} onClick={async () => { if (await actions.retryRefresh()) onCancel(); }}>{t("reloadViewing")}</Button> : null}
       <div className="flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           {viewing && !succeeded ? (
@@ -174,7 +195,7 @@ export default function ViewingInlineEditor({
                   variant="ghost"
                   size="sm"
                   icon={<Trash2 className="h-4 w-4" />}
-                  disabled={busy} onClick={() => setConfirmDelete(true)}
+                  disabled={busy || actions.retryPending || actions.conflict} onClick={() => setConfirmDelete(true)}
                 >
                   {t("delete")}
                 </Button>
@@ -183,16 +204,16 @@ export default function ViewingInlineEditor({
           ) : null}
         </div>
         <div className="flex flex-col gap-2 sm:flex-row">
-          <Button variant="ghost" size="sm" disabled={busy} onClick={onCancel}>{succeeded ? t("close") : t("cancel")}</Button>
+          <Button variant="ghost" size="sm" disabled={busy || actions.retryPending} onClick={onCancel}>{succeeded ? t("close") : t("cancel")}</Button>
           <Button
             variant="primary"
             size="sm"
             icon={<CalendarPlus className="h-4 w-4" />}
             busy={busy}
-            disabled={busy || !valid || !dirty || succeeded}
+            disabled={busy || (!actions.retryPending && (!valid || !dirty)) || succeeded || actions.conflict}
             onClick={save}
           >
-            {viewing ? t("save") : t("record")}
+            {actions.retryPending ? t("retrySave") : viewing ? t("save") : t("record")}
           </Button>
         </div>
       </div>
@@ -214,7 +235,7 @@ export function ViewingQuickAdd({ className, filmId, onSaved }: ViewingQuickAddP
   const { data: existingViewings } = useFilmViewings(filmId);
   const todayCount = existingViewings?.filter((item) => item.watched_at?.slice(0, 10) === todayLocalDate()).length || 0;
   const { busy, feedback, completed } = actions;
-  const recordToday = () => { void actions.save(todayLocalDate()); };
+  const recordToday = () => { void actions.save({ watched_at: todayLocalDate() }); };
 
   return (
     <div className={cn("w-full sm:w-auto", className)}>
@@ -224,16 +245,16 @@ export function ViewingQuickAdd({ className, filmId, onSaved }: ViewingQuickAddP
           variant="primary"
           icon={<CalendarPlus className="h-4 w-4" />}
           busy={busy}
-          disabled={otherDateOpen || completed || busy}
+          disabled={otherDateOpen || completed || busy || actions.conflict}
           responsiveWidth
           onClick={recordToday}
         >
-          {t("watchToday")}
+          {actions.retryPending ? t("retrySave") : t("watchToday")}
         </Button>
         <Button
           variant="secondary"
           responsiveWidth
-          disabled={busy || editorBusy}
+          disabled={busy || editorBusy || actions.retryPending}
           aria-expanded={otherDateOpen}
           onClick={() => setOtherDateOpen((current) => !current)}
         >
@@ -262,13 +283,14 @@ function ViewingReceipt({ filmId, actions }: { filmId: string; actions: ReturnTy
   const t = useTranslations("Diary");
   return <div className="space-y-2">
     {actions.refreshFailed ? <div role="status">
-      <InlineFeedback tone="warning">{t("savedRefreshFailed")}</InlineFeedback>
+      <InlineFeedback tone="warning">{t(actions.conflict ? "conflictRefreshFailed" : "savedRefreshFailed")}</InlineFeedback>
       <Button size="sm" variant="ghost" disabled={actions.busy} onClick={actions.retryRefresh}>{t("retryRefresh")}</Button>
     </div> : null}
     {actions.receipt ? <div className="flex flex-wrap gap-3">
       <details className="w-full">
         <summary className="focus-ring cursor-pointer py-2 text-sm underline">{t("viewSaved")}</summary>
         <p className="py-2 text-sm text-ink-muted">{t("date")}: {actions.receipt.watched_at || t("unknownDate")}</p>
+        <ViewingReview viewing={actions.receipt} />
         <Link className="focus-ring inline-flex min-h-10 items-center text-sm underline" href={`/diary?film=${encodeURIComponent(filmId)}`}>{t("viewAll")}</Link>
       </details>
       <Button size="sm" variant="ghost" disabled={actions.busy} onClick={actions.undo}>{t("undoNew")}</Button>

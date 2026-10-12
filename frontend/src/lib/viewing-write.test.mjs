@@ -1,6 +1,17 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { commitViewingWrite } from './viewing-write.ts';
+import { clearPendingViewingRequest, commitViewingWrite } from './viewing-write.ts';
+
+test('late completion cannot clear the next pending Viewing request', () => {
+  const data = new Map([['film:new', JSON.stringify({ idempotency_key: 'new-request-0002' })]]);
+  const storage = { getItem: key => data.get(key) ?? null, removeItem: key => data.delete(key) };
+  clearPendingViewingRequest(storage, 'film:new', 'old-request-0001');
+  assert.equal(data.size, 1);
+  clearPendingViewingRequest(storage, 'film:new');
+  assert.equal(data.size, 1);
+  clearPendingViewingRequest(storage, 'film:new', 'new-request-0002');
+  assert.equal(data.size, 0);
+});
 
 test('commits exact new ID before refreshing; read failure cannot become write failure', async () => {
   const events = [];
