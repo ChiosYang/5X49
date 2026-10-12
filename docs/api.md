@@ -1,5 +1,37 @@
 # 5X49 Backend API
 
+## Deterministic Library filters
+
+`GET /library/films/page` combines every supplied condition with AND before
+counting, sorting or pagination. Existing `q`, `filter=all|watched|unwatched|favorite`,
+`sort=title|added|duration`, `direction`, `metadata_status`, `limit` and `offset`
+remain supported. `favorite=true` independently narrows watched/unwatched results.
+The response shape is unchanged.
+
+- `duration_min` / `duration_max`: integer minutes, 1–10000. Compare against the
+  primary edition's positive measured seconds, falling back to positive Film
+  runtime minutes. Do not round measured seconds before comparison. Duration
+  sorting uses this same value; unknown durations remain last in either direction.
+- `year_min` / `year_max`: integer years, 1870–2100. Use the effective Film year,
+  including a manually protected value or protected null, never the automatic
+  source underneath an override.
+- `rating_min` / `rating_max`: integer stars, 1–5, from FilmProfileState's personal
+  overall rating only. External scores and per-Viewing reviews are independent
+  and never substitute for a missing personal overall rating.
+- Bounds are inclusive; omit either for an open bound. A Film with an unknown
+  value is excluded only when a bound for that value is supplied. Without range
+  conditions, unknown values remain eligible. A malformed/out-of-domain value or
+  lower bound greater than upper bound returns 422. No writes/provider calls occur.
+- `total` counts the entire intersection, `library_total` and `metadata_reviews`
+  remain global. Pagination is bounded, stale offsets clamp to the final page,
+  and sort ties retain the existing title/year/Film ID order.
+
+The Library UI stores applied conditions in the URL. Apply resets pagination;
+sort and care navigation preserve conditions. Clear all removes search, watched,
+favorite and all three ranges, preserves sorting and returns to page one. Search offers a
+Library handoff retaining `q`. Invalid URL ranges display an error without an
+unfiltered result grid. Unsaved form drafts do not filter results.
+
 ## Identity review and conservative decisions
 
 `GET /library/identity-reviews` lists identity/reconnection reviews, separately

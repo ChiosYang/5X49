@@ -18,6 +18,7 @@ import { Link } from "@/i18n/routing";
 import {
   buildLibraryCareState,
   buildLibraryHref,
+  appendLibraryFilters,
   normalizeLibraryView,
   type LibraryFilterKey,
   type LibraryQueryState,
@@ -33,6 +34,8 @@ import {
 } from "@/lib/server-api";
 import type { MissingLibraryItemsResponse } from "@/types/movie";
 import { FILM_PAGE_SIZE, normalizeFilmPage } from "@/lib/film-pagination";
+import { normalizeLibrarySearch } from "@/lib/library-search";
+import { clearLibraryFilters, invalidLibraryRanges, readLibraryRanges } from "@/lib/library-filters";
 import FilmPagination from "@/components/FilmPagination";
 import { Disclosure } from "@/components/ui/Disclosure";
 import LibraryFilmGrid from "./LibraryFilmGrid";
@@ -41,16 +44,11 @@ import LibraryInboxCare from "./LibraryInboxCare";
 import LibraryMetadataCare from "./LibraryMetadataCare";
 import LibraryOfflineCare from "./LibraryOfflineCare";
 import LibraryOnboarding from "./LibraryOnboarding";
+import LibraryFilters from "./LibraryFilters";
 
 interface LibraryPageProps {
   params: Promise<{ locale: string }>;
-  searchParams?: Promise<{
-    view?: string | string[];
-    sort?: string | string[];
-    dir?: string | string[];
-    filter?: string | string[];
-    page?: string | string[];
-  }>;
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
 }
 const SORT_OPTIONS: Array<{
   key: LibrarySortKey;
@@ -109,15 +107,22 @@ export default async function LibraryPage({ searchParams }: LibraryPageProps) {
   const locale = await getLocale();
   const t = await getTranslations("Library");
   const careT = await getTranslations("LibraryCare");
+  const filtersT = await getTranslations("LibraryFilters");
   const resolvedSearchParams = searchParams ? await searchParams : {};
   const view = normalizeLibraryView(firstParam(resolvedSearchParams.view));
   const sort = normalizeSort(firstParam(resolvedSearchParams.sort));
   const direction = normalizeDirection(firstParam(resolvedSearchParams.dir), sort);
-  const filter = normalizeFilter(firstParam(resolvedSearchParams.filter));
+  const legacyFilter = normalizeFilter(firstParam(resolvedSearchParams.filter));
+  const filter = legacyFilter === "favorite" ? "all" : legacyFilter;
+  const favorite = legacyFilter === "favorite" || firstParam(resolvedSearchParams.favorite) === "true";
+  const query = normalizeLibrarySearch(resolvedSearchParams.q);
+  const ranges = readLibraryRanges(resolvedSearchParams);
+  const invalidRanges = invalidLibraryRanges(ranges);
   const page = normalizeFilmPage(resolvedSearchParams.page);
-  const queryState: LibraryQueryState = { view, sort, direction, filter, page };
+  const queryState: LibraryQueryState = { view, sort, direction, filter, favorite, query, ...ranges, page };
 
-  const filmsPromise = getLibraryFilmPage(new URLSearchParams({filter,sort,direction,limit:String(FILM_PAGE_SIZE),offset:String((page-1)*FILM_PAGE_SIZE)}));
+  const filmParams = appendLibraryFilters(new URLSearchParams({filter,sort,direction,limit:String(FILM_PAGE_SIZE),offset:String((page-1)*FILM_PAGE_SIZE)}), queryState);
+  const filmsPromise = getLibraryFilmPage(invalidRanges.length ? new URLSearchParams({limit:"1"}) : filmParams);
   const auxiliaryPromise = Promise.allSettled([
     getLibraryOrganizationCandidates(),
     getMissingLibraryItems(),
@@ -155,13 +160,16 @@ export default async function LibraryPage({ searchParams }: LibraryPageProps) {
             <a href={`/${locale}/library/identity-review`} className="focus-ring inline-flex min-h-10 items-center px-3 type-label text-ink-subtle hover:text-ink">{careT("identityReview")}</a>
             {view === "all" && filmPage.library_total > 0 ? (
               <>
-                <span className="mr-1 hidden text-xs font-bold tracking-widest text-ink-subtle uppercase md:inline-block">{t("filmsCount", {count:filmPage.total})}</span>
-                <Disclosure label={t("filter")} icon={<ListFilter className="h-4 w-4" />} active={filter !== "all"}>
+                {!invalidRanges.length && <span className="mr-1 hidden text-xs font-bold tracking-widest text-ink-subtle uppercase md:inline-block">{t("filmsCount", {count:filmPage.total})}</span>}
+                <Disclosure label={t("filter")} icon={<ListFilter className="h-4 w-4" />} active={filter !== "all" || favorite}>
                       {FILTER_OPTIONS.map((option) => {
                         const Icon = option.icon;
-                        const active = filter === option.key;
+                        const active = option.key === "favorite" ? favorite : filter === option.key && (option.key !== "all" || !favorite);
+                        const nextState = option.key === "favorite"
+                          ? { ...queryState, favorite: !favorite, page: 1 }
+                          : { ...queryState, filter: option.key, favorite: option.key === "all" ? false : favorite, page: 1 };
                         return (
-                          <Link key={option.key} href={buildLibraryHref({ ...queryState, filter: option.key, page: 1 }, "all")} className={`focus-ring duration-standard flex h-10 items-center justify-between rounded-control px-3 text-sm transition-colors ${active ? "bg-inverse text-inverse-ink" : "text-ink-muted hover:bg-surface-raised hover:text-ink"}`}>
+                          <Link key={option.key} href={buildLibraryHref(nextState, "all")} className={`focus-ring duration-standard flex h-10 items-center justify-between rounded-control px-3 text-sm transition-colors ${active ? "bg-inverse text-inverse-ink" : "text-ink-muted hover:bg-surface-raised hover:text-ink"}`}>
                             <span className="flex min-w-0 items-center gap-2"><Icon className={`h-4 w-4 shrink-0 ${option.key === "favorite" && active ? "fill-current" : ""}`} /><span className="truncate">{t(option.labelKey)}</span></span>
                             {active ? <CheckCircle2 className="h-3.5 w-3.5" /> : null}
                           </Link>
@@ -187,6 +195,9 @@ export default async function LibraryPage({ searchParams }: LibraryPageProps) {
             {view !== "all" || emptyState !== "onboarding" ? <LibraryActions /> : null}
           </div>
         </header>
+
+        {view === "all" && (filmPage.library_total > 0 || invalidRanges.length > 0) ? <LibraryFilters key={buildLibraryHref(queryState)} state={queryState} locale={locale} /> : null}
+        {view === "all" && !invalidRanges.length && filmPage.library_total > 0 ? <p role="status" className="mt-4 text-xs text-ink-subtle md:hidden">{t("filmsCount", {count:filmPage.total})}</p> : null}
 
         {care.visibleViews.length > 0 ? (
           <nav aria-label={careT("careNavigation")} className="scrollbar-minimal flex max-w-full gap-1 overflow-x-auto border-b border-line py-3">
@@ -226,15 +237,18 @@ export default async function LibraryPage({ searchParams }: LibraryPageProps) {
           <div className="mt-12"><LibraryInboxCare actionableCount={care.actionableInbox} waitingCount={care.waitingInbox} /></div>
         ) : view === "offline" ? (
           <div className="mt-12"><LibraryOfflineCare initialData={missingData} /></div>
+        ) : invalidRanges.length > 0 ? (
+          <p className="py-16 text-center text-ink-subtle">{filtersT("correctRanges")}</p>
         ) : emptyState === "onboarding" ? (
           <LibraryOnboarding rootVideoCount={organizationCandidates.length} />
         ) : emptyState === "filtered-empty" ? (
           <div className="mt-20 space-y-4 py-24 text-center">
             <p className="font-serif text-xl text-ink-subtle italic">{t("emptyFiltered")}</p>
-            <Link href={buildLibraryHref({ ...queryState, filter: "all", page: 1 }, "all")} className="focus-ring inline-flex min-h-10 items-center border border-line-strong px-4 text-xs font-medium tracking-widest text-ink-muted uppercase hover:border-ink-disabled hover:text-ink">{t("resetFilter")}</Link>
+            <Link href={buildLibraryHref(clearLibraryFilters(queryState), "all")} className="focus-ring inline-flex min-h-10 items-center border border-line-strong px-4 text-xs font-medium tracking-widest text-ink-muted uppercase hover:border-ink-disabled hover:text-ink">{t("resetFilter")}</Link>
           </div>
         ) : (
-          <><LibraryFilmGrid key={`${filter}:${sort}:${direction}:${filmPage.offset}`} films={sortedMovies} filter={filter} /><FilmPagination data={filmPage} href={buildLibraryHref(queryState)} /></>
+          <><LibraryFilmGrid key={buildLibraryHref(queryState)} films={sortedMovies} filter={filter} favorite={favorite}
+            ratingMin={ranges.rating_min ? Number(ranges.rating_min) : undefined} ratingMax={ranges.rating_max ? Number(ranges.rating_max) : undefined} /><FilmPagination data={filmPage} href={buildLibraryHref(queryState)} /></>
         )}
       </div>
     </main>

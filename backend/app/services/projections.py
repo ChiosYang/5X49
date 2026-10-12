@@ -6,7 +6,7 @@ import re
 from datetime import datetime, timezone
 from typing import Any, Iterable
 
-from sqlalchemy import event, inspect, func
+from sqlalchemy import event, inspect, func, case
 from sqlmodel import Session, delete, select
 
 from app.canonical_models import (
@@ -714,7 +714,9 @@ class ProjectionCoordinator:
 
 class ProjectionReader:
     def film_page(self, engine, *, query=None, filter="all", sort="title", direction="asc",
-                  metadata_status="all", limit=40, offset=0) -> dict[str, Any]:
+                  metadata_status="all", favorite=False, duration_min=None, duration_max=None,
+                  year_min=None, year_max=None, rating_min=None, rating_max=None,
+                  limit=40, offset=0) -> dict[str, Any]:
         with Session(engine) as session:
             self._require(session, "library")
             model = LibraryFilmReadModel
@@ -730,8 +732,24 @@ class ProjectionReader:
             profile = model.payload["profile_state"]
             if filter in {"watched", "unwatched"}:
                 conditions.append(profile["watched"].as_boolean() == (filter == "watched"))
-            elif filter == "favorite":
+            if filter == "favorite" or favorite:
                 conditions.append(profile["favorite"].as_boolean().is_(True))
+            # Use the same effective duration for both filtering and sorting.
+            # Zero/negative imported lengths are unknown, not short films.
+            seconds = model.payload["primary_item"]["video"]["duration_seconds"].as_float()
+            minutes = model.payload["runtime_minutes"].as_integer()
+            duration = func.coalesce(case((seconds > 0, seconds)), case((minutes > 0, minutes * 60)))
+            # The payload already includes manually protected metadata overlays.
+            year = model.payload["year"].as_integer()
+            # Film personal overall rating only: never aggregate Viewings or
+            # substitute an external score when the Film has no personal rating.
+            rating = profile["rating"].as_integer()
+            for value, lower, upper, factor in ((duration, duration_min, duration_max, 60),
+                    (year, year_min, year_max, 1), (rating, rating_min, rating_max, 1)):
+                if lower is not None:
+                    conditions.append(value >= lower * factor)
+                if upper is not None:
+                    conditions.append(value <= upper * factor)
             if metadata_status != "all":
                 conditions.append(model.payload["primary_item"]["metadata"]["scrape_status"].as_string() == metadata_status)
             total = session.exec(select(func.count()).select_from(model).where(*conditions)).one()
@@ -739,8 +757,7 @@ class ProjectionReader:
             if sort == "added":
                 value = model.payload["primary_item"]["added_at"].as_string()
             elif sort == "duration":
-                value = func.coalesce(model.payload["primary_item"]["video"]["duration_seconds"].as_float(),
-                    model.payload["runtime_minutes"].as_integer() * 60)
+                value = duration
             else:
                 value = model.sort_title
             order = value.desc() if direction == "desc" else value.asc()

@@ -81,6 +81,37 @@ def control(payload: dict, x_e2e_token: str = Header(default='')):
         rows = [viewing_manager.create(film['id'], date) for date in
             ['2025', '2026-01-02', '2026-01-02T23:30:00+08:00', None]]
         return {'film_id': film['id'], 'viewings': rows}
+    elif action == 'library_filter_fixture':
+        from app.services.library import library_manager
+        from app.services.user_state import film_profile_state_manager
+        from app.models import FilmMetadataOverride, FilmExternalScore
+        from app.services.viewings import viewing_manager
+        from app.database import engine
+        from sqlmodel import Session
+        observations = []
+        entries = [('Orbit Dawn', 1980, 90, None), ('Orbit Echo', 2001, 120, None),
+                   ('Orbit Else', 2000, 95, None), ('Orbit Unknown', None, None, None),
+                   ('Orbit Measured', 2000, 120, 5401)]
+        entries += [(f'Shelf {i:02}', 1980, 80, None) for i in range(42)]
+        for title, year, runtime, seconds in entries:
+            video = root / (title + '.mkv')
+            video.write_bytes(('filter-fixture-' + title).encode())
+            observations.append(dict(title=title, folder_name=title, media_path=str(video),
+                year=year, runtime=runtime, video_duration=seconds, scrape_status='matched'))
+        library_manager.add_observations(observations)
+        films = {film['title']: film['id'] for film in library_manager.list_films()}
+        for title in ('Orbit Dawn', 'Orbit Echo', 'Orbit Else'):
+            film_profile_state_manager.upsert(films[title], favorite=True, watched=title != 'Orbit Else',
+                rating={'Orbit Dawn': 3, 'Orbit Echo': 5, 'Orbit Else': 4}[title],
+                fields_set={'favorite', 'watched', 'rating'})
+        with Session(engine) as session:
+            session.add(FilmMetadataOverride(film_id=films['Orbit Dawn'], values={'year': 1999}, revision=1))
+            session.add(FilmExternalScore(film_id=films['Orbit Unknown'], source='tmdb', label='TMDB',
+                kind='rating', value=9.0, scale=10.0, fetched_at='2026-10-12T00:00:00Z'))
+            session.commit()
+        viewing_manager.create(films['Orbit Unknown'], '2026-10-12', rating=5,
+            idempotency_key='filter-viewing-0001')
+        return films
     elif action == 'manual_metadata_fixture':
         from app.services.library_sync import library_sync_service
         from app.services.canonical_runtime import canonical_runtime_writer
@@ -110,6 +141,17 @@ def control(payload: dict, x_e2e_token: str = Header(default='')):
     elif action == 'identity_cleanup':
         # This entrypoint asserts the owned synthetic database/root at startup.
         from app.services.library import library_manager
+        from app.models import Film, GraphEntity
+        from app.database import engine
+        from sqlmodel import Session, update
+        # Previous matching tests create merged aliases. Unlink their synthetic
+        # self-references before teardown: SQLite RESTRICT otherwise makes the
+        # bulk delete depend on randomly generated ID order. Production reset
+        # behavior is outside this test fixture's scope.
+        with Session(engine) as session:
+            session.exec(update(Film).values(merged_into_id=None))
+            session.exec(update(GraphEntity).values(merged_into_id=None))
+            session.commit()
         library_manager.clear_all_data()
     elif action == 'identity_fixtures':
         from sqlmodel import Session, select
