@@ -9,9 +9,11 @@ import RootVideoReviewQueue from "./manage/RootVideoReviewQueue";
 export default function LibraryInboxCare({
   actionableCount,
   waitingCount,
+  filmsHref,
 }: {
   actionableCount: number;
   waitingCount: number;
+  filmsHref: string;
 }) {
   const t = useTranslations("LibraryCare");
   const total = actionableCount + waitingCount;
@@ -22,7 +24,7 @@ export default function LibraryInboxCare({
         <CheckCircle2 className="mx-auto h-8 w-8 text-success" />
         <h2 className="mt-5 type-section-title text-ink">{t("inboxEmpty")}</h2>
         <p className="mx-auto mt-3 max-w-xl text-sm leading-6 text-ink-subtle">{t("inboxEmptyDesc")}</p>
-        <Link href="/library" className="focus-ring mt-7 inline-flex min-h-10 items-center border border-line-strong px-4 type-label text-ink-muted hover:border-ink-disabled hover:text-ink">
+        <Link href={filmsHref} className="focus-ring mt-7 inline-flex min-h-10 items-center border border-line-strong px-4 type-label text-ink-muted hover:border-ink-disabled hover:text-ink">
           {t("backToFilms")}
         </Link>
       </div>

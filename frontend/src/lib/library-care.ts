@@ -16,6 +16,7 @@ export interface LibraryQueryState extends LibraryRanges {
   direction: LibrarySortDirection;
   filter: LibraryFilterKey;
   page?: number;
+  metadataPage?: number;
   query?: string;
   favorite?: boolean;
 }
@@ -45,7 +46,10 @@ export function buildLibraryHref(state: LibraryQueryState, nextView = state.view
   params.set("dir", state.direction);
   if (state.filter !== "all") params.set("filter", state.filter);
   appendLibraryFilters(params, state);
-  if (nextView === state.view && (state.page || 1) > 1) params.set("page", String(state.page));
+  if ((state.page || 1) > 1) params.set("page", String(state.page));
+  if (nextView === "metadata" && state.view === "metadata" && (state.metadataPage || 1) > 1) {
+    params.set("metadata_page", String(state.metadataPage));
+  }
   return `/library?${params.toString()}`;
 }
 

@@ -112,6 +112,18 @@ def control(payload: dict, x_e2e_token: str = Header(default='')):
         viewing_manager.create(films['Orbit Unknown'], '2026-10-12', rating=5,
             idempotency_key='filter-viewing-0001')
         return films
+    elif action == 'library_filter_care_fixture':
+        from app.services.library import library_manager
+        from app.services.user_state import film_profile_state_manager
+        if payload.get('mode') == 'offline':
+            return {'missing': library_manager.mark_path_missing(str(root / 'Orbit Unknown.mkv'))}
+        for film in library_manager.list_films():
+            if film['title'].startswith('Shelf '):
+                film_profile_state_manager.upsert(film['id'], favorite=True, watched=True, rating=3,
+                    fields_set={'favorite', 'watched', 'rating'})
+                library_manager.update_film_observation(film['id'], {
+                    'scrape_status': 'matched' if payload.get('mode') == 'empty' else 'needs_review'})
+        return {'updated': True}
     elif action == 'manual_metadata_fixture':
         from app.services.library_sync import library_sync_service
         from app.services.canonical_runtime import canonical_runtime_writer
@@ -146,7 +158,7 @@ def control(payload: dict, x_e2e_token: str = Header(default='')):
         from sqlmodel import Session, update
         # Previous matching tests create merged aliases. Unlink their synthetic
         # self-references before teardown: SQLite RESTRICT otherwise makes the
-        # bulk delete depend on randomly generated ID order. Production reset
+        # bulk delete depend on row deletion order. Production reset
         # behavior is outside this test fixture's scope.
         with Session(engine) as session:
             session.exec(update(Film).values(merged_into_id=None))

@@ -17,13 +17,27 @@ test('all conditions survive care navigation, pagination and URL serialization',
   assert.deepEqual(readLibraryRanges(Object.fromEntries(params)), {
     duration_min:'90',duration_max:'120',rating_min:'3',rating_max:'5',year_min:'1999',year_max:'2001'});
   const care = new URL(buildLibraryHref(state, 'metadata'), 'http://localhost').searchParams;
-  assert.equal(care.has('page'), false);
+  assert.equal(care.get('page'), '3');
+  assert.equal(care.has('metadata_page'), false);
   assert.equal(care.get('duration_min'), '90');
   const next = new URL(filmPageHref(href, 4), 'http://localhost').searchParams;
   assert.equal(next.get('page'), '4');
   next.set('page', '3');
   assert.equal(next.toString(), params.toString());
   assert.equal(appendLibraryFilters(new URLSearchParams(), state).get('year_max'), '2001');
+});
+
+test('metadata pagination keeps the Film page independent and returning drops only maintenance state', () => {
+  const maintenance = {...state, view:'metadata', metadataPage:2};
+  const params = new URL(buildLibraryHref(maintenance), 'http://localhost').searchParams;
+  assert.equal(params.get('page'), '3');
+  assert.equal(params.get('metadata_page'), '2');
+  assert.equal(params.get('q'), state.query);
+  assert.equal(params.get('rating_max'), '5');
+  assert.equal(buildLibraryHref(maintenance, 'all'), buildLibraryHref(state));
+  const previous = new URL(buildLibraryHref({...maintenance, metadataPage:1}), 'http://localhost').searchParams;
+  assert.equal(previous.get('page'), '3');
+  assert.equal(previous.has('metadata_page'), false);
 });
 
 test('one-sided and inclusive equal bounds are valid; malformed, fractional and reversed ranges are explicit errors', () => {

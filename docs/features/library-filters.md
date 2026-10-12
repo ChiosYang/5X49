@@ -27,6 +27,11 @@ only; no backup-download work, multiple roots, deployment or real media changes.
 - Applied state lives in the URL. A native GET form applies drafts together and
   cancels superseded document navigation. Sort, paging, care links and detail
   return preserve the complete condition set. Apply/sort changes reset the page.
+- `page` always remembers the Film grid page; `metadata_page` separately selects
+  the metadata-review queue page. Maintenance pagination preserves the applied
+  Film conditions, and every maintenance return (including empty/completed
+  metadata, inbox and offline states) restores those conditions and Film page.
+  Maintenance queues remain library-wide, independent of the Film filters.
 - Clear all removes search, watched, favorite and ranges, preserves sorting and
   starts at page one. Search hands its query to the Library for refinement.
 - Invalid URL ranges show a correction message without an unfiltered grid.
@@ -49,27 +54,36 @@ only; no backup-download work, multiple roots, deployment or real media changes.
   and merge; no release or deployment was performed.
 - `python -X utf8 -m unittest discover -s . -p 'test_*.py' -q`: 340 tests,
   2 Windows platform skips (symlinks and POSIX permission semantics), no failures.
-- `npm run test:unit`: 88 passed.
+- `npm run test:unit`: 89 passed.
 - `npm run lint` and `npm run typecheck`: passed.
 - Production `next build`, executed by `npm run test:e2e`: passed.
-- `npm run test:e2e`: 43 passed, including seven new filter scenarios. Coverage
+- `npm run test:e2e`: 47 passed, including eleven new filter scenarios. Coverage
   includes every condition together, boundaries/unknowns, personal-rating source
   isolation, empty/clear/invalid ranges, pagination, search handoff, reload,
   detail return, browser back, repeated submits, SSE reconciliation and a delayed
-  superseded document response. Existing metadata/identity/Viewing suites pass.
-- `git diff --check`: passed. A separate post-implementation code review covered
+  superseded document response. Four follow-up browser cases exercise metadata
+  previous/next/reload/history at desktop and narrow sizes, every empty care
+  return, and a real completed offline cleanup. Film page 2 and every applied
+  condition/sort survive these round trips. Existing metadata/identity/Viewing
+  suites pass. An interrupted run was discarded after the host disconnected;
+  no task processes remained, and the complete fresh rerun passed.
+- `git diff --check`: passed. The implementation author's post-implementation review covered
   source separation, manual metadata protection, URL propagation, SQL ordering,
-  local profile reconciliation, response compatibility and test isolation; no
-  blocking findings remain in this feature.
+  local profile reconciliation, response compatibility and test isolation.
+  Parent-task independent review found missing condition propagation in
+  maintenance paging and empty/completed return links. The follow-up fixes those
+  paths and adds browser round trips; final parent re-review remains required.
 - Inspected actual 1440px desktop and 390px Chinese screenshot pixels: original
   title/font/navigation presentation preserved, all ranges readable, no horizontal
-  overflow. Screenshots contain only synthetic fixtures.
+  overflow. Also inspected the final desktop/narrow metadata-review paging
+  screenshots. Screenshots contain only synthetic fixtures.
 
 ## Remaining limits
 
 - Implementation and local verification are complete. Library retention is
   blocked: the current helper reports `Library prepare_uploads is not available`.
-  No Library IDs were issued; a direct-save exception was requested, not assumed.
+  No Library IDs were issued. One authorized retry failed before transfer with
+  the same capability error; the parent declined switching to direct writes.
 - Windows requires the canonical long TEMP path for existing ESLint glob tests;
   SQLite/loopback tests need execution outside the restrictive sandbox.
 - The local task browser tool currently fails to initialize with a missing

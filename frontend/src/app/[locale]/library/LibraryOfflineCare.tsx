@@ -16,7 +16,7 @@ import { Link, useRouter } from "@/i18n/routing";
 import { API } from "@/lib/api";
 import type { MissingLibraryItemsResponse, WorkflowAccepted } from "@/types/movie";
 
-export default function LibraryOfflineCare({ initialData }: { initialData: MissingLibraryItemsResponse }) {
+export default function LibraryOfflineCare({ initialData, filmsHref }: { initialData: MissingLibraryItemsResponse; filmsHref: string }) {
   const t = useTranslations("LibraryCare");
   const locale = useLocale();
   const router = useRouter();
@@ -84,7 +84,7 @@ export default function LibraryOfflineCare({ initialData }: { initialData: Missi
         <CheckCircle2 className="mx-auto h-8 w-8 text-success" />
         <h2 className="mt-5 type-section-title text-ink">{completed ? t("offlineComplete") : t("offlineEmpty")}</h2>
         <p className="mx-auto mt-3 max-w-xl text-sm leading-6 text-ink-subtle">{t("offlineEmptyDesc")}</p>
-        <Link href="/library" className="focus-ring mt-7 inline-flex min-h-10 items-center border border-line-strong px-4 type-label text-ink-muted hover:border-ink-disabled hover:text-ink">
+        <Link href={filmsHref} className="focus-ring mt-7 inline-flex min-h-10 items-center border border-line-strong px-4 type-label text-ink-muted hover:border-ink-disabled hover:text-ink">
           {t("backToFilms")}
         </Link>
       </div>

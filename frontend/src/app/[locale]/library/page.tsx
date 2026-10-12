@@ -119,7 +119,9 @@ export default async function LibraryPage({ searchParams }: LibraryPageProps) {
   const ranges = readLibraryRanges(resolvedSearchParams);
   const invalidRanges = invalidLibraryRanges(ranges);
   const page = normalizeFilmPage(resolvedSearchParams.page);
-  const queryState: LibraryQueryState = { view, sort, direction, filter, favorite, query, ...ranges, page };
+  const metadataPage = normalizeFilmPage(resolvedSearchParams.metadata_page);
+  const queryState: LibraryQueryState = { view, sort, direction, filter, favorite, query, ...ranges, page, metadataPage };
+  const filmsHref = buildLibraryHref(queryState, "all");
 
   const filmParams = appendLibraryFilters(new URLSearchParams({filter,sort,direction,limit:String(FILM_PAGE_SIZE),offset:String((page-1)*FILM_PAGE_SIZE)}), queryState);
   const filmsPromise = getLibraryFilmPage(invalidRanges.length ? new URLSearchParams({limit:"1"}) : filmParams);
@@ -232,11 +234,11 @@ export default async function LibraryPage({ searchParams }: LibraryPageProps) {
         ) : null}
 
         {view === "metadata" ? (
-          <div className="mt-12"><LibraryMetadataCare key={page} page={page} /></div>
+          <div className="mt-12"><LibraryMetadataCare key={metadataPage} state={queryState} /></div>
         ) : view === "inbox" ? (
-          <div className="mt-12"><LibraryInboxCare actionableCount={care.actionableInbox} waitingCount={care.waitingInbox} /></div>
+          <div className="mt-12"><LibraryInboxCare actionableCount={care.actionableInbox} waitingCount={care.waitingInbox} filmsHref={filmsHref} /></div>
         ) : view === "offline" ? (
-          <div className="mt-12"><LibraryOfflineCare initialData={missingData} /></div>
+          <div className="mt-12"><LibraryOfflineCare initialData={missingData} filmsHref={filmsHref} /></div>
         ) : invalidRanges.length > 0 ? (
           <p className="py-16 text-center text-ink-subtle">{filtersT("correctRanges")}</p>
         ) : emptyState === "onboarding" ? (
