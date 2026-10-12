@@ -2,7 +2,7 @@
 
 Status: Blocked
 Last updated: 2026-10-12
-Related: User-authorized sequential plan, item 4
+Related: User-authorized sequential plan, item 4; draft PR #22
 
 ## Goal and scope
 
@@ -40,10 +40,13 @@ only; no backup-download work, multiple roots, deployment or real media changes.
 - [x] Full backend/frontend checks, production build, complete E2E.
 - [x] Implementation-following diff review and desktop/narrow pixel review.
 - [ ] Confirmed Library screenshot IDs (upload capability unavailable).
-- [ ] Commit, push and draft PR for parent-task CI verification and merge.
+- [x] Commit, push and draft PR #22 for parent-task CI verification and merge.
 
 ## Verification evidence
 
+- Implementation commit: `89a40b2650aa61f23cbe332d876effb7ed9d8ba2`.
+- Draft PR: https://github.com/ChiosYang/5X49/pull/22. Parent owns CI verification
+  and merge; no release or deployment was performed.
 - `python -X utf8 -m unittest discover -s . -p 'test_*.py' -q`: 340 tests,
   2 Windows platform skips (symlinks and POSIX permission semantics), no failures.
 - `npm run test:unit`: 88 passed.
