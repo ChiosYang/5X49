@@ -5,6 +5,40 @@ description: 5X49 Fresh Canonical FastAPI 的 Film、LibraryItem、Factual Explo
 
 # 5X49 Backend API
 
+## Identity review and conservative decisions
+
+- `GET /library/identity-reviews?status=open&limit=40&offset=0` returns
+  `items,total,limit,offset`; status also accepts resolved, dismissed and all.
+- `GET /library/identity-reviews/irev_<32 lowercase hex>` returns conflict reason,
+  Film/edition previews, saved candidate comparisons and personal-data flags/counts.
+- Invalid IDs/queries return 422; absent IDs return 404. Unknown reasons map to
+  `unknown`. `evidence_available=false` means a historical review lacks candidates;
+  `candidates_truncated=true` means the retained 50-candidate preview is incomplete.
+- Candidate `evidence_status` compares database records, not current files.
+  No paths or notes content appear. Reads do not invoke providers or mutate data.
+- `actions` lists `keep_separate` and/or `reconnect` when eligible; `blocked_code`
+  explains why historical, changed, incomplete or identity-conflict evidence is
+  inspection-only. This queue is distinct from TMDB scrape candidates.
+- POST `.../{review_id}/preview` with `action` and (only for reconnect)
+  `target_item_id`; retain its `confirmation_token`. Preview reads source files
+  under the configured root and writes nothing.
+- POST `.../{review_id}/confirm` with the same request, token and a 16..64 character
+  ASCII alphanumeric/underscore/hyphen `idempotency_key`. Reuse the exact payload
+  and key after a lost response. A conflicting replay or stale evidence is 409
+  with `detail.code`; invalid body is 422, absent review 404.
+- Keep separate dismisses only this review. Reconnect keeps an existing edition
+  ID in the same Film/profile, requires its old file to be absent and complete
+  hashes to match, and retains the new discovery/assets as retired history.
+  A preferred-edition pointer to the discovery follows the preserved target.
+  Preview lists `effects.expiring_snapshot_ids`; prior undo actions for the two
+  editions expire on reconnect, retaining their audit/history and manifests.
+  Ratings, notes, favorites and Viewing ownership never change. No file moves,
+  deletion, provider reassignment or cross-Film merge/split is available.
+- Confirmation, decision record and `IdentityReviewDecided` audit event are
+  atomic. Reads and writes retain historical candidate evidence; unchanged scans
+  neither reopen nor recreate the decided review. See `docs/api.md` and
+  `docs/features/identity-review.md` for the complete contract.
+
 ## 基础契约
 
 - 后端默认地址：`http://127.0.0.1:8000`。

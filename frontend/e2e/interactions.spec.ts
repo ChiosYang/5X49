@@ -321,7 +321,9 @@ test('detail operations consume failures and saved-read retry never replays a wr
   expect(writes).toBe(2);
   const resumedMore=await openFilmMore(page);
   await expect(page.getByRole('button',{name:'More',exact:true})).toHaveAttribute('aria-expanded','true');
-  releaseRefresh();await (await refreshed).finished();
+  // A streamed RSC response can remain open after React applies the refresh.
+  // Assert the received response and rendered version instead of its transport end.
+  releaseRefresh();await refreshed;
   await expect(controls).toHaveAttribute('data-profile-version',persistedProfile.updated_at);
   await expect(page.getByRole('button',{name:state.favorite?'Favorite':'Remove favorite',exact:true})).toHaveAttribute('aria-pressed',String(!state.favorite));
   await expect(resumedMore.getByRole('button',{name:'Refresh external scores',exact:true})).toBeVisible();

@@ -2,7 +2,7 @@
 
 - Status: Adopted
 - Database epoch: `fresh-canonical-v1`
-- Schema version: `5`
+- Schema version: `7`
 
 ## Boundaries
 
@@ -65,6 +65,14 @@ are not embedded in IDs.
 `ExternalIdentity` is the only exact provider identity binding. Active provider
 identities are unique. Identity conflicts do not merge by title; they create a
 bounded `IdentityReview` associated with Film and optionally LibraryItem.
+
+Schema v7 retains bounded candidate/source evidence for new identity reviews and
+the idempotent result of a manual decision. Historical evidence is not inferred.
+Users can retain independent editions or reconnect a missing edition within the
+same Film using verified complete hashes. Cross-Film identity conflicts remain
+inspection-only. Reconnection preserves the target edition ID, retires the new
+discovery as history, and never changes Film-level personal or Viewing ownership.
+See `docs/features/identity-review.md` for the approved contract and safeguards.
 
 ## Library and media
 

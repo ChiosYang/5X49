@@ -67,6 +67,7 @@ class OperationSnapshotService:
 
     def restore(self, snapshot_id: str, confirmation_token: str) -> dict:
         with Session(engine) as session:
+            session.connection().exec_driver_sql("BEGIN IMMEDIATE")
             snapshot = session.get(OperationSnapshot, snapshot_id)
             if snapshot is None:
                 raise LookupError("Operation snapshot not found")

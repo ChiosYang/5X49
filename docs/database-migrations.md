@@ -2,7 +2,14 @@
 
 - Status: Adopted
 - Epoch: `fresh-canonical-v1`
-- Current version: `5`
+- Current version: `7`
+
+Schema v7 adds nullable `identity_review.candidate_snapshot` and `decision`. It preserves every
+existing row/status/hash and leaves old evidence null. The existing verified
+pre-migration backup and transactional migration rules apply. New snapshots retain
+bounded identity/candidate IDs and state hashes; no source documents or paths.
+The decision stores the idempotency key, request hash and original result for
+safe retries. It does not rewrite historical reviews or infer missing evidence.
 
 ## Baseline decision
 
@@ -162,7 +169,7 @@ entry point.
 
 ## Future migrations
 
-Future changes start at version 6. Each migration must have a monotonically
+Future changes start at version 8. Each migration must have a monotonically
 increasing integer version, stable name, deterministic checksum and one
 transactional upgrade.
 

@@ -1,5 +1,67 @@
 # 5X49 Backend API
 
+## Identity review and conservative decisions
+
+`GET /library/identity-reviews` lists identity/reconnection reviews, separately
+from TMDB metadata candidates. Query: `status=open|resolved|dismissed|all`
+(default open), `limit=1..100` (default 40), `offset=0..1000000`. Response:
+`items,total,limit,offset`, ordered by creation time then opaque review ID.
+
+`GET /library/identity-reviews/{review_id}` accepts `irev_<32 lowercase hex>`.
+Invalid ID is 422; absent review is 404. Summary fields are `id,reason_code,status,
+created_at,resolved_at,film,library_item`. Detail adds `incoming_identities`,
+`evidence_available`, `candidates`, `candidates_truncated`, `source_evidence_current`,
+`blocked_code`, `revision`, and `actions`.
+Film previews contain title/year/lifecycle, safe TMDB/IMDb IDs and personal-data
+counts/flags, never notes content. Candidate previews include Film/edition IDs,
+summaries and `evidence_status=current|changed|unavailable` compared to captured
+database state. They do not verify live file availability. Unrecognized reasons
+are returned as `unknown`.
+
+Schema v7 retains at most 50 candidates for newly created reviews. Older reviews
+have `evidence_available=false`; original candidates cannot be inferred from a
+hash. Truncated evidence is explicitly marked. All reads are side-effect free.
+`actions` contains eligible `keep_separate` and/or `reconnect` actions, or is empty
+with a `blocked_code`. Identity conflicts, unknown reasons, historical/incomplete
+evidence and changed candidate/source records are inspection-only. Cross-Film
+merge, split, provider reassignment and personal-data transfers are not exposed.
+
+`POST /library/identity-reviews/{review_id}/preview` takes
+`{"action":"keep_separate"}` or `{"action":"reconnect","target_item_id":"lib_..."}`.
+It reads files under the configured root and returns `review_id,action,effects,
+confirmation_token`. Effects identify the Film, source/target editions, resulting
+availability, and preserved personal records/files. Preview writes nothing.
+
+- `keep_separate` closes the review as `dismissed`, preserving all editions and
+  identities. It verifies the observed source file before allowing confirmation.
+- `reconnect` requires a captured target in the same Film/profile, a single video
+  on each edition, a missing old path, and matching retained complete file hashes.
+  It keeps the old target edition ID, attaches the new locator/assets, and retains
+  the discovery edition/assets as retired history. Ratings, favorites, notes and
+  Viewing rows remain on the same Film. A preferred edition pointing to the
+  retired discovery is redirected to the preserved target edition. No media file
+  is moved/deleted and no identity, metadata or personal record is merged.
+  `effects.expiring_snapshot_ids` lists earlier undo snapshots tied to these two
+  editions. Reconnect expires them atomically while retaining their history, so
+  an old file-organization undo cannot move the reconnected file. Undo restores
+  acquire the same lock and reject expired snapshots even with an old token.
+
+`POST /library/identity-reviews/{review_id}/confirm` takes the preview request plus
+its `confirmation_token` (64 lowercase hex) and `idempotency_key` (16..64 ASCII
+letters, digits, underscore or hyphen). It revalidates evidence and live files,
+then commits the decision, edition references and `IdentityReviewDecided` event
+in one SQLite transaction. Response: `review_id,status,action,film_id,
+library_item_id,event_id`. Same key/payload replay returns the exact saved response;
+changed reuse gives `idempotency_conflict`, another key on a closed review gives
+`already_decided`. Confirmations serialize with competing scan writes.
+
+Invalid requests return 422, missing reviews 404, and state/file conflicts 409
+with `detail.code` (for example `stale_review`, `evidence_missing`,
+`identity_conflict_read_only`, `target_file_exists`, `full_hash_required`,
+`source_file_changed`, `unsafe_locator`). Clients must refresh/preview after a
+conflict. A network retry must reuse the same confirmation payload/key. Unknown
+fields are rejected. Decisions never invoke metadata providers or modify files.
+
 This document describes the Fresh Canonical resource API. The backend normally
 listens on `http://127.0.0.1:8000`; the frontend proxies `/api/*` and `/media/*`
 from port `5549`.

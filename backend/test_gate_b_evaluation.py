@@ -406,7 +406,7 @@ class GateBEvaluationTests(unittest.TestCase):
                 version = connection.execute(
                     "SELECT MAX(version) FROM schema_migrations WHERE status='applied'"
                 ).fetchone()[0]
-                self.assertEqual(version, 6)
+                self.assertEqual(version, 7)
                 for case in self.dataset.cases:
                     for provider, external_id in case.input.external_identities.items():
                         entity_id = connection.execute(
@@ -457,7 +457,9 @@ class GateBEvaluationTests(unittest.TestCase):
     @staticmethod
     def _new_run_dir(label: str) -> Path:
         RUNS_ROOT.mkdir(parents=True, exist_ok=True)
-        return RUNS_ROOT / f"test-{label}-{uuid.uuid4().hex}"
+        # Leave room for the verified backup's descriptive manifest filename
+        # when the repository lives under a long Windows workspace path.
+        return RUNS_ROOT / f"{label[:1]}-{uuid.uuid4().hex[:12]}"
 
     @staticmethod
     def _file_hash(path: Path):
