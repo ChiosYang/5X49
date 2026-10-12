@@ -50,6 +50,7 @@ export const API = {
   exploreFilms: (params: URLSearchParams) => `${API_BASE_URL}/explore/films${params.size ? `?${params}` : ""}`,
   libraryFilm: (filmId: string) => `${API_BASE_URL}/library/films/${segment(filmId)}`,
   filmProfileState: (filmId: string) => `${API_BASE_URL}/films/${segment(filmId)}/profile-state`,
+  filmMetadata: (filmId: string) => `${API_BASE_URL}/films/${segment(filmId)}/metadata`,
   filmAnalysis: (filmId: string) => `${API_BASE_URL}/films/${segment(filmId)}/analysis`,
   filmAnalysisReview: (filmId: string, offset = 0) => `${API_BASE_URL}/films/${segment(filmId)}/analysis-review?offset=${offset}`,
   filmAnalysisTargets: (filmId: string, predicate: string, query: string, entityType?: string) => `${API_BASE_URL}/films/${segment(filmId)}/analysis-review/targets?${new URLSearchParams({ predicate, q: query, ...(entityType ? { entity_type: entityType } : {}) })}`,

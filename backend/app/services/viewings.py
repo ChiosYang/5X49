@@ -243,7 +243,9 @@ class ViewingManager:
         return statement.where(Viewing.film_id == film_id) if film_id else statement
 
     def _timeline_entry(self, session: Session, profile_id: str, viewing: Viewing) -> dict:
-        film = session.get(Film, viewing.film_id)
+        from app.services.film_metadata import effective_film
+
+        film = effective_film(session, session.get(Film, viewing.film_id))
         in_library = session.exec(
             select(LibraryItem.id)
             .where(LibraryItem.film_id == viewing.film_id)

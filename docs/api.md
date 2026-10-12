@@ -695,3 +695,57 @@ Contributor items contain `film_id`, `title`, `year`, `rating`, `viewing_count`,
 casefolded title then Film ID. Link to `/diary?film={film_id}` for its original
 Viewing facts. Notes, media paths, provider input and credentials are excluded.
 Each response reads projection readiness and inputs from one SQLite snapshot.
+# Film basic metadata corrections
+
+`GET /films/{film_id}/metadata` returns `film_id`, opaque `revision`, and `fields`
+for `title`, `original_title`, `year`, `overview`. Each field contains `value`,
+`manual`, `automatic_value`, and `automatic_source` (`source_kind`, `observed_at`,
+`policy_version`, `conflicted`). Reads do not write or call providers. Historical
+year/synopsis columns lack per-field provenance and are labelled `library`, never
+guessed as NFO/TMDB from an edition. Existing title provenance is retained.
+
+`PATCH /films/{film_id}/metadata` accepts only:
+
+```json
+{
+  "revision": "<64 lowercase hex returned by GET>",
+  "idempotency_key": "<16..64 ASCII letters/digits/underscore/hyphen>",
+  "changes": {
+    "title": {"action": "set", "value": "Corrected title"},
+    "year": {"action": "set", "value": null},
+    "overview": {"action": "reset"}
+  }
+}
+```
+
+- Submit only changed fields. `set` requires an explicit value; `reset` must
+  omit it. Unknown fields (including TMDB/IMDb IDs, rating and notes) are 422.
+- Title is required, trimmed, 1–300 Unicode characters. Original title permits
+  0–300 and synopsis 0–10000; blank optional text is a protected null. Year is a
+  strict integer 1870–2100 or null; booleans, strings and fractional years fail.
+- Null year means manually unknown and remains protected. `reset` alone removes
+  that field's override and resumes the current automatic value and future scans.
+  Resetting an automatic field is harmless. Other fields are unchanged.
+- Automatic Film/source rows are never changed by this endpoint. The separate
+  override, retained edit receipt (before/after values and automatic snapshot),
+  bounded `FilmMetadataEdited` event and read projections commit atomically.
+  Edits do not write NFO/media or change identity, profile state or Viewing rows.
+- Revision checks include manual revision, automatic values/sources, identities,
+  lifecycle and editions. Stale state is 409 `metadata_stale`; an inactive Film
+  is 409 `metadata_film_changed`. No rebasing or following a merged ID on write.
+- Retry the same normalized body and key after an uncertain response. A repeat
+  returns current metadata with `replayed: true`, without reapplying an older
+  edit. Different content with a used key is 409 `metadata_retry_conflict`.
+  Initial success returns `replayed: false`. Records survive process restarts.
+- Invalid IDs/bodies return 422; missing Film 404; database contention 503
+  `metadata_temporarily_unavailable`; persistence failure 500
+  `metadata_save_failed`. Retryable failures keep the same request and key.
+- Late identity matching cannot move an edition away from a Film with any
+  manual override, including a null override. Restore every corrected field to
+  automatic first, then retry the existing conservative identity workflow.
+  The check is repeated in the actual observation transaction. Corrections are
+  never automatically migrated or merged into another Film.
+- Existing portable exports additionally preserve active corrections under the
+  optional `curated_metadata.manual_overrides` array (`film_id`, `values`,
+  `revision`, `updated_at`). Old v1 exports without this member remain valid;
+  database backups retain the complete edit history and automatic records.

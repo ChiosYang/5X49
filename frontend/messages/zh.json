@@ -1,4 +1,25 @@
 {
+  "FilmMetadata": {
+    "heading": "基础资料", "edit": "编辑基础资料",
+    "help": "人工修正只保存在 5X49，重新扫描和刮削不会覆盖。编辑不会改写 NFO 或改变影片身份。",
+    "title": "标题", "original_title": "原始标题", "year": "年份", "overview": "简介",
+    "manual": "人工修正 · 已保护", "automatic": "自动来源",
+    "sourceNfo": "NFO", "sourceTmdb": "TMDB", "sourceFilename": "文件名",
+    "sourceLibrary": "片库自动资料", "source": "查看自动值 · {source}",
+    "sourceConflict": "自动来源存在分歧，显示值沿用现有来源选择规则。",
+    "unknown": "未知", "yearHelp": "1870–2100。手动留空表示未知，仍受保护。",
+    "reset": "为{field}恢复自动来源", "protect": "保护当前{field}值",
+    "resetPending": "保存后将移除此字段的人工修正，使用上方自动值；以后扫描可继续更新它。",
+    "save": "保存修改", "cancel": "取消", "retry": "重试保存", "reload": "重新载入当前资料",
+    "refresh": "刷新显示", "loading": "正在载入当前资料…", "saved": "基础资料已保存。",
+    "refreshFailed": "已保存，但显示未能刷新。请刷新显示，无需重复提交。",
+    "loadFailed": "基础资料载入失败，请重试。",
+    "stale": "影片或自动资料已发生变化，草稿仍保留。请重新载入当前资料后核对并编辑；重新载入将替换此草稿。",
+    "failed": "暂时无法确认保存结果，草稿已保留。",
+    "retryHelp": "重试会安全地发送同一请求，即使上次已保存也不会重复修改。取消将关闭草稿并刷新当前状态。",
+    "invalidYear": "请输入 1870–2100 之间的四位年份，或留空表示受保护的未知。",
+    "invalidText": "标题必填，最多 300 字；原始标题最多 300 字，简介最多 10000 字。保存时移除首尾空白。"
+  },
   "IdentityReview": {
     "keepSeparate": "保留独立版本",
     "reconnect": "重连至此版本",

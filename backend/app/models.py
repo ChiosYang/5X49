@@ -164,6 +164,8 @@ from app.canonical_models import (  # noqa: E402, F401
     ExploreFacetReadModel,
     ExploreFilmReadModel,
     Film,
+    FilmMetadataOverride,
+    FilmMetadataEdit,
     FilmCountry,
     FilmCountryProvenance,
     FilmExternalScore,

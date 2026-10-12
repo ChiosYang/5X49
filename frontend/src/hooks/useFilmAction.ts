@@ -8,7 +8,7 @@ import { invalidateViewingCaches } from "@/hooks/useFilm";
 import { API } from "@/lib/api";
 import { executeFilmAction } from "@/lib/viewing-write";
 
-export function useFilmAction(filmId: string) {
+export function useFilmAction(filmId: string, options: { metadata?: boolean } = {}) {
   const t = useTranslations("FilmDetail");
   const router = useRouter();
   const { cache } = useSWRConfig();
@@ -19,7 +19,7 @@ export function useFilmAction(filmId: string) {
   const refreshViews = async () => {
     const keys = new Set(cache.keys());
     keys.add(API.libraryFilm(filmId));
-    await invalidateViewingCaches(filmId, keys);
+    await invalidateViewingCaches(filmId, keys, options.metadata);
     router.refresh();
   };
 

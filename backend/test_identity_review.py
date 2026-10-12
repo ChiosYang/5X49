@@ -542,7 +542,7 @@ class IdentityReviewTests(unittest.TestCase):
                     "candidate_hash,review_key,status,created_at,updated_at) VALUES "
                     "('irev_old','local','private-ref','identity_conflict','hash','key','dismissed','then','then')"))
             result = run_migrations(engine, path, backup_dir=self.root / "backups")
-            self.assertEqual(result.applied_versions, (7,))
+            self.assertEqual(result.applied_versions, (7, 8))
             self.assertIsNotNone(result.backup)
             with engine.connect() as connection:
                 row = connection.execute(text("SELECT status,candidate_hash,candidate_snapshot FROM identity_review")).one()

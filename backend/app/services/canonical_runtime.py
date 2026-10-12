@@ -18,6 +18,7 @@ from app.models import (
     ExternalIdentity,
     EventRecord,
     Film,
+    FilmMetadataOverride,
     FilmProfileState,
     GraphEntity,
     IdentityReview,
@@ -319,6 +320,12 @@ class CanonicalRuntimeWriter:
                 known.setdefault(identity.provider, set()).add(identity.external_id)
             if any(len(values) > 1 for values in known.values()):
                 raise RelinkIdentityConflict("Conflicting Film identity; identity review required")
+        if target_id != film_id:
+            corrections = session.get(FilmMetadataOverride, film_id)
+            if corrections is not None and corrections.values:
+                raise RelinkIdentityConflict(
+                    "Manual metadata corrections protect this Film; restore automatic sources "
+                    "for every corrected field before moving an edition to another Film")
         return target_id
 
     @staticmethod

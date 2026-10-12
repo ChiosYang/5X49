@@ -1,4 +1,25 @@
 {
+  "FilmMetadata": {
+    "heading": "Basic information", "edit": "Edit basic information",
+    "help": "Corrections are saved only in 5X49. Scanning and scraping keep them protected; NFO files and film identity are unchanged by editing.",
+    "title": "Title", "original_title": "Original title", "year": "Year", "overview": "Synopsis",
+    "manual": "Manually corrected · protected", "automatic": "Automatic source",
+    "sourceNfo": "NFO", "sourceTmdb": "TMDB", "sourceFilename": "Filename",
+    "sourceLibrary": "Library automatic data", "source": "View automatic value · {source}",
+    "sourceConflict": "Automatic sources disagree; the displayed value follows the existing selection policy.",
+    "unknown": "Unknown", "yearHelp": "1870–2100. A blank manual year means unknown and remains protected.",
+    "reset": "Restore automatic source for {field}", "protect": "Protect current {field} value",
+    "resetPending": "Saving will remove this correction and use the automatic value shown above. Future scans may update it.",
+    "save": "Save changes", "cancel": "Cancel", "retry": "Retry save", "reload": "Reload current values",
+    "refresh": "Refresh display", "loading": "Loading current values…", "saved": "Basic information saved.",
+    "refreshFailed": "Saved, but the display could not refresh. Refresh the display without submitting again.",
+    "loadFailed": "Could not load basic information. Please try again.",
+    "stale": "The film or its automatic data changed. Your draft is still here. Reload current values to review and edit again; reloading replaces this draft.",
+    "failed": "Could not confirm the save. Your draft has been kept.",
+    "retryHelp": "Retry sends the same request safely, even if the previous save already succeeded. Cancel closes this draft and refreshes the current state.",
+    "invalidYear": "Enter a four-digit year from 1870 to 2100, or leave it blank for protected unknown.",
+    "invalidText": "Title is required (up to 300 characters). Original title allows 300 and synopsis 10,000 characters. Outer whitespace is removed."
+  },
   "IdentityReview": {
     "keepSeparate": "Keep independent edition",
     "reconnect": "Reconnect to this edition",

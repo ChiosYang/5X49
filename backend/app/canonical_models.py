@@ -359,6 +359,27 @@ class Film(SQLModel, table=True):
     updated_at: str = Field(default_factory=canonical_utc_now_iso)
 
 
+class FilmMetadataOverride(SQLModel, table=True):
+    __tablename__ = "film_metadata_override"
+    film_id: str = Field(primary_key=True, foreign_key="film.id", ondelete="CASCADE")
+    values: dict = Field(default_factory=dict, sa_column=Column(JSON, nullable=False))
+    revision: int = 0
+    updated_at: str = Field(default_factory=canonical_utc_now_iso)
+
+
+class FilmMetadataEdit(SQLModel, table=True):
+    __tablename__ = "film_metadata_edit"
+    __table_args__ = (UniqueConstraint("film_id", "idempotency_key", name="uq_film_metadata_retry"),)
+    id: str = Field(primary_key=True)
+    film_id: str = Field(foreign_key="film.id", ondelete="CASCADE", index=True)
+    idempotency_key: str
+    request_hash: str
+    before_values: dict = Field(sa_column=Column(JSON, nullable=False))
+    after_values: dict = Field(sa_column=Column(JSON, nullable=False))
+    automatic_snapshot: dict = Field(sa_column=Column(JSON, nullable=False))
+    created_at: str = Field(default_factory=canonical_utc_now_iso)
+
+
 class ExternalIdentity(SQLModel, table=True):
     __tablename__ = "external_identity"
     __table_args__ = (
