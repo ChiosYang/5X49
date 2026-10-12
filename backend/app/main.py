@@ -13,17 +13,20 @@ from app.services.artwork_cache import ARTWORK_CACHE_DIR
 from app.services.settings import get_watch_library
 from app.services.projections import ProjectionUnavailable
 from app.services.watcher import library_watcher
+from app.services.maintenance_backup import maintenance_backups
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     try:
         create_db_and_tables()
+        maintenance_backups.start()
         job_runtime.start()
         if get_watch_library():
             library_watcher.start()
         yield
     finally:
+        maintenance_backups.stop()
         try:
             library_watcher.stop()
         finally:

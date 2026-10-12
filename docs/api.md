@@ -822,3 +822,67 @@ guessed as NFO/TMDB from an edition. Existing title provenance is retained.
   optional `curated_metadata.manual_overrides` array (`film_id`, `values`,
   `revision`, `updated_at`). Old v1 exports without this member remain valid;
   database backups retain the complete edit history and automatic records.
+
+# Maintenance database backups
+
+These endpoints create a restorable SQLite package, **not** `library-export.v1`.
+They use the existing trusted/local application access boundary. Packages contain
+private library paths and personal records; do not expose the application publicly.
+
+- `GET /maintenance/backups`: `{last_attempt, last_success, retention_hours:24}`.
+  Missing records are `null`; read/storage failure is 503, never a fabricated
+  "never backed up" result. Only backups created by this service are tracked.
+- `POST /maintenance/backups`: `{request_id:"<32 lowercase hex>"}`, no other fields.
+  Returns 202 with the attempt. Retain the ID across uncertain responses and retry
+  the same ID; persisted receipts never regenerate a prior failed, interrupted,
+  expired or superseded request. Use a new ID for a deliberate new attempt.
+  Concurrent different requests return 409 `backup_busy`.
+- `GET /maintenance/backups/{id}`: that attempt, or 410 `backup_not_found`.
+- `GET /maintenance/backups/{id}/download`: verified ZIP attachment; unavailable,
+  expired, superseded or corrupt packages return 410 `backup_unavailable`.
+- `POST /maintenance/backups/{id}/download-triggered`: idempotently records a
+  browser-reported trigger on a successfully generated attempt. This is **not**
+  a server transfer receipt or proof of the user saving a file to disk.
+
+Attempt fields: `id,status,created_at,finished_at,expires_at,size_bytes,sha256,
+schema_version,error_code,download_triggered_at,artifact_state,available,filename`.
+Status is `generating|succeeded|failed|interrupted`; artifact state is nullable or
+`available|expired|superseded|missing|corrupt`. Timestamps are UTC ISO strings;
+size and SHA-256 describe the ZIP. Generation errors are bounded codes:
+`backup_tasks_active`, `backup_sensitive_content`, `backup_interrupted`, or
+`backup_failed`. Invalid input is 422. Storage access failure is 503
+`backup_storage_unavailable`; errors never return source paths or credentials.
+
+The ZIP contains the SQLite database, its existing v1 checksum/row-count manifest,
+and `RESTORE.txt`. It preserves Film identities including merged aliases, manual
+metadata/edit history, viewing dates/reviews, Film reviews and other business facts.
+It excludes the entire Setting table, external configuration/environment files,
+artwork files, videos, NFO and external operation manifests. Diagnostic errors and
+credential-bearing automatic fields are cleaned on the copy. Derived read models
+are cleared and rebuilt by normal startup. Known credentials and credential-shaped
+personal content cause refusal instead of silent personal-data edits; this is not
+semantic detection of arbitrary secrets typed into notes. Deleted pages are removed
+with VACUUM; the sanitized database gets a new verified manifest. The source is
+never changed. Source integrity/counts/backup use one SQLite read transaction,
+including committed WAL data.
+
+Active Job/Workflow/Analysis work in the completed snapshot causes refusal: wait
+for tasks to finish. File-organization undo snapshots are marked expired and their
+external manifest references removed in the copy. History is retained, but file
+undo is unavailable. Extract the ZIP and use the existing offline restore CLI;
+first verify in a fresh temporary environment, with no credentials/media and
+`WATCH_LIBRARY=false`. Stop writers, checkpoint the target and explicitly confirm
+its current SHA-256 before replacement. Reconfigure media directories and API keys
+after recovery; no web reset/restore endpoint is introduced.
+
+State and durable idempotency receipts live separately in
+`<database-directory>/maintenance-backups/state.sqlite3`. OS file locks serialize
+generation across processes; process death releases ownership and the next status
+read/startup marks unfinished work interrupted. Failure preserves the previous
+successful package. Only the latest successful package is downloadable for 24
+hours after generation. Expiry is enforced on reads/downloads; an idle sweep runs
+every 60 seconds while the backend is running. Offline time is reconciled on
+restart. Downloads already opened may finish; Windows files still held by a stream
+are removed on a later sweep. Cleanup only touches owned package/staging names,
+never CLI backups or the source database. A backup-storage fault does not prevent
+the main library application starting.

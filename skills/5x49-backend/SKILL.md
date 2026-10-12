@@ -5,6 +5,29 @@ description: 5X49 Fresh Canonical FastAPI 的 Film、LibraryItem、Factual Explo
 
 # 5X49 Backend API
 
+## Maintenance database backups
+
+- GET `/maintenance/backups` reads separate `last_attempt` / `last_success` state.
+  POST the same route with a fresh 32-lowercase-hex `request_id` to generate;
+  replay the same ID after uncertain delivery. GET `/{id}` polls that receipt.
+- GET `/{id}/download` returns a verified SQLite+v1 manifest+RESTORE.txt ZIP.
+  POST `/{id}/download-triggered` only records a browser-reported trigger; never
+  call it proof of disk saving. These are not the portable JSON export endpoints.
+- The user-approved package excludes the entire Setting table, credentials,
+  external configuration, artwork/media/NFO files and external operation manifests.
+  Personal metadata, edit history, Film reviews and Viewing reviews are preserved.
+  Diagnostic content is sanitized, derived projections rebuild on startup, and
+  unsafe personal-content redaction causes refusal. File-organization undo is
+  expired; recovery requires configuring directories/API keys again.
+- Active jobs/workflows/analysis in the snapshot refuse packaging. Wait for them
+  to finish; never use a real reset to make a backup possible. Restore uses the
+  existing offline CLI after a fresh isolated rehearsal, with watchers disabled.
+- Only the latest success is downloadable for 24 hours. Failed/interrupted/new
+  attempts do not erase the old success. OS locks and durable request receipts
+  cover concurrency and restart; expiry, missing and corrupt artifacts are distinct
+  from historical generation success. No live restore or source mutation occurs.
+- Codes, fields and retention/cleanup semantics are documented in `docs/api.md`.
+
 ## Deterministic Library filters
 
 - `/library/films/page` intersects `q`, legacy `filter`, independent `favorite=true`,
