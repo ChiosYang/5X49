@@ -14,6 +14,7 @@ import MovieHeroTitle from "./MovieHeroTitle";
 import MovieRefreshButton from "./MovieRefreshButton";
 import MovieViewingSection from "./MovieViewingSection";
 import FilmPersonalState from "@/components/FilmPersonalState";
+import FilmMetadataEditor from "@/components/FilmMetadataEditor";
 
 function formatResolution(width?: number | null, height?: number | null) {
   return width && height ? `${width} × ${height}` : null;
@@ -131,6 +132,7 @@ export default async function MovieDetailView({ film }: { film: LibraryFilmDetai
           </section>
         )}
 
+        <FilmMetadataEditor key={film.id} filmId={film.id} />
         <FilmPersonalState filmId={film.id} initialState={film.profile_state} />
         <MovieViewingSection filmId={film.id} filmTitle={film.title} />
 

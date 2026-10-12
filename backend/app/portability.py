@@ -19,6 +19,7 @@ from app.canonical_models import (
     CreditProvenance,
     ExternalIdentity,
     Film,
+    FilmMetadataOverride,
     FilmCountry,
     FilmCountryProvenance,
     FilmProfileState,
@@ -201,6 +202,10 @@ def build_export_payload(database_engine=engine) -> tuple[dict[str, Any], int]:
                 "film_title_ids": sorted(curated_title_ids),
                 "countries": curated_countries,
                 "credits": curated_credits,
+                "manual_overrides": [_row(row, "film_id", "values", "revision", "updated_at")
+                    for row in session.exec(select(FilmMetadataOverride)
+                        .where(FilmMetadataOverride.film_id.in_(film_ids or {""}))
+                        .order_by(FilmMetadataOverride.film_id)).all() if row.values],
             },
             "assertion_decisions": [
                 _row(
@@ -463,11 +468,10 @@ def _validate_payload(payload: Any) -> None:
     for field in expected - {"format_version", "curated_metadata", "decision_entities"}:
         if not isinstance(payload[field], list):
             raise PortabilityError(f"library payload field {field} must be an array")
-    if not isinstance(payload["curated_metadata"], dict) or set(payload["curated_metadata"]) != {
-        "film_title_ids",
-        "countries",
-        "credits",
-    }:
+    if not isinstance(payload["curated_metadata"], dict) or set(payload["curated_metadata"]) not in (
+        {"film_title_ids", "countries", "credits"},
+        {"film_title_ids", "countries", "credits", "manual_overrides"},
+    ):
         raise PortabilityError("curated metadata contract is invalid")
     if not isinstance(payload["decision_entities"], dict) or set(payload["decision_entities"]) != {
         "concepts",
@@ -608,6 +612,23 @@ def _validate_nested_payload(payload: dict[str, Any]) -> None:
         raise PortabilityError("decision entity types do not match their rows")
 
     film_ids = {row["id"] for row in payload["films"]}
+    overrides = curated.get("manual_overrides", [])
+    _require_row_contract(overrides, "manual overrides", {"film_id", "values", "revision", "updated_at"})
+    if any(not isinstance(row["film_id"], str) for row in overrides):
+        raise PortabilityError("manual override Film identifiers are invalid")
+    if len({row["film_id"] for row in overrides}) != len(overrides):
+        raise PortabilityError("manual overrides contain duplicate Films")
+    from app.contracts.film_metadata import MetadataUpdate
+    from pydantic import ValidationError
+    for row in overrides:
+        if (row["film_id"] not in film_ids or type(row["revision"]) is not int or row["revision"] < 1
+                or not isinstance(row["updated_at"], str) or not isinstance(row["values"], dict)):
+            raise PortabilityError("manual override record is invalid")
+        try:
+            MetadataUpdate(revision="0" * 64, idempotency_key="export-validation",
+                changes={key: {"action": "set", "value": value} for key, value in row["values"].items()})
+        except ValidationError as exc:
+            raise PortabilityError("manual override values are invalid") from exc
     title_ids = {row["id"] for row in payload["film_titles"]}
     decision_entity_ids = set(entities["types"])
     if any(row["entity_id"] not in film_ids for row in payload["external_identities"]):

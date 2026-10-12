@@ -29,6 +29,8 @@ from app.models import (
     ExternalScoreRefreshState,
     Evidence,
     Film,
+    FilmMetadataOverride,
+    FilmMetadataEdit,
     FilmCountry,
     FilmCountryProvenance,
     FilmExternalScore,
@@ -382,6 +384,8 @@ class LibraryManager:
                 .join(Film, Film.id == LibraryItem.film_id)
                 .where(LibraryItem.availability_status == "missing")
             ).all()
+            from app.services.film_metadata import effective_film
+            rows = [(item, effective_film(session, film)) for item, film in rows]
         summaries = [
             {
                 "library_item_id": item.id,
@@ -426,7 +430,7 @@ class LibraryManager:
         """Return the bounded flat input used by scan/metadata command services."""
         with Session(engine) as session:
             film_id = self._resolved_film_id(session, film_id)
-            film = self._canonical_film_view(session, film_id, include_editions=False)
+            film = self._canonical_film_view(session, film_id, include_editions=False, apply_manual=False)
             if film is None:
                 return None
             film_id = film["id"]
@@ -770,6 +774,8 @@ class LibraryManager:
             session.exec(delete(FilmExternalScore))
             session.exec(delete(Viewing))
             session.exec(delete(FilmProfileState))
+            session.exec(delete(FilmMetadataEdit))
+            session.exec(delete(FilmMetadataOverride))
             session.exec(delete(StructuredMetadataReview))
             session.exec(delete(CreditProvenance))
             session.exec(delete(Credit))
@@ -824,8 +830,13 @@ class LibraryManager:
         film_id: str,
         *,
         include_editions: bool,
+        apply_manual: bool = True,
     ) -> dict[str, Any] | None:
+        from app.services.film_metadata import effective_film
+
         film = session.get(Film, film_id)
+        if apply_manual:
+            film = effective_film(session, film)
         if film is None or film.lifecycle_status != "active":
             return None
         items = session.exec(

@@ -5,6 +5,32 @@ description: 5X49 Fresh Canonical FastAPI 的 Film、LibraryItem、Factual Explo
 
 # 5X49 Backend API
 
+## Database-only basic metadata editing
+
+- GET `/films/{film_id}/metadata` before editing; retain its opaque `revision`.
+  Fields `title`, `original_title`, `year`, `overview` expose current/automatic
+  values, per-field `manual` protection and safe automatic source summaries.
+- PATCH the same path with `revision`, a 16..64 ASCII alphanumeric/underscore/
+  hyphen `idempotency_key`, and only changed fields under `changes`. Each change
+  is `{action:"set",value:...}` or `{action:"reset"}` without value.
+- Trimmed title is required and at most 300 characters; original title allows
+  300, synopsis 10000. Blank optional text normalizes to protected null. Year
+  accepts strict integers 1870–2100 or protected null. Reset removes protection
+  and uses the latest automatic source, not the source from the first edit.
+- Never edit TMDB/IMDb IDs or personal fields through this API. No NFO/media
+  writes occur. Source data and each edit's automatic snapshot are retained.
+- Reuse the same body/key after uncertain delivery. Successful retries return
+  current state with `replayed:true` without applying the edit again. Stale
+  versions and conflicting retries return 409 with `detail.code`; refresh and
+  explicitly review before making a new request. Invalid input is 422, missing
+  Film 404, contention 503, persistence failure 500. Writes are transactional.
+- Any manual field prevents moving an edition from its Film to another Film;
+  reset every manual field before retrying identity matching. No implicit
+  correction transfer/merge occurs. Historical year/synopsis source is honestly
+  labelled `library` when more precise provenance was never recorded.
+- `library-export.v1` optionally includes `curated_metadata.manual_overrides`;
+  existing exports without it remain valid. See `docs/api.md` for the contract.
+
 ## Identity review and conservative decisions
 
 - `GET /library/identity-reviews?status=open&limit=40&offset=0` returns

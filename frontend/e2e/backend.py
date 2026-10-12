@@ -67,6 +67,32 @@ def control(payload: dict, x_e2e_token: str = Header(default='')):
     elif action == 'set_title':
         from app.services.library import library_manager
         library_manager.update_film_observation(payload['film_id'], {'title': payload['title'], 'title_cn': None})
+    elif action == 'manual_metadata_fixture':
+        from app.services.library_sync import library_sync_service
+        from app.services.canonical_runtime import canonical_runtime_writer
+        from app.database import engine
+        from sqlmodel import Session
+        folder = root / 'Manual metadata fixture'
+        folder.mkdir(exist_ok=True)
+        (folder / 'movie.mkv').write_bytes(b'manual-metadata-synthetic-video')
+        (folder / 'movie.nfo').write_text('<movie><title>Source Film</title><originaltitle>Source Original</originaltitle>'
+            '<year>1999</year><genre>Drama</genre><plot>Automatic source synopsis.</plot><uniqueid type="tmdb">900101</uniqueid></movie>', encoding='utf-8')
+        film = library_sync_service.scan_folder(folder)
+        with Session(engine) as session:
+            canonical_runtime_writer.sync_user_state(session, film['id'], rating=4, notes='Synthetic retained note',
+                favorite=True, watched=True, fields_set={'rating', 'notes', 'favorite', 'watched'})
+            session.commit()
+        return {'film_id': film['id']}
+    elif action == 'manual_metadata_rescan':
+        from app.services.library_sync import library_sync_service
+        import hashlib
+        folder = root / 'Manual metadata fixture'
+        nfo = folder / 'movie.nfo'
+        if payload.get('change_source'):
+            nfo.write_text('<movie><title>Updated Source Film</title><originaltitle>Updated Original</originaltitle>'
+                '<year>2001</year><genre>Drama</genre><plot>Updated automatic synopsis.</plot><uniqueid type="tmdb">900101</uniqueid></movie>', encoding='utf-8')
+        film = library_sync_service.scan_folder(folder)
+        return {'film': film, 'nfo_digest': hashlib.sha256(nfo.read_bytes()).hexdigest()}
     elif action == 'identity_cleanup':
         # This entrypoint asserts the owned synthetic database/root at startup.
         from app.services.library import library_manager

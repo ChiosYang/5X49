@@ -6,6 +6,7 @@ import { API } from "@/lib/api";
 import { fetcher, responseError } from "@/lib/fetcher";
 import { refreshViewingReadCaches } from "@/lib/viewing-write";
 import { isDnaCacheKey } from "@/lib/cinema-dna";
+import { isMetadataReadCache } from "@/lib/film-metadata";
 import type {
   FilmAnalysisView,
   FilmGraphView,
@@ -118,10 +119,11 @@ export function useDeleteViewing(viewingId?: string | null) {
   );
 }
 
-export async function invalidateViewingCaches(filmId: string, cacheKeys?: Iterable<string>) {
+export async function invalidateViewingCaches(filmId: string, cacheKeys?: Iterable<string>, metadata = false) {
   if (cacheKeys) {
     const directKeys = new Set([API.filmViewings(filmId), API.filmProfileState(filmId), API.libraryFilm(filmId), API.libraryFilms()]);
     const keys = [...cacheKeys].filter((key) => directKeys.has(key) || key.startsWith(`${API.libraryFilmPage()}?`)
+      || (metadata && isMetadataReadCache(key))
       || isDnaCacheKey(key, API.cinemaDna())
       || key === API.profileViewings() || key.startsWith(`${API.profileViewings()}?`));
     // SWR revalidation resolves with stale data on HTTP errors. Supply an explicit

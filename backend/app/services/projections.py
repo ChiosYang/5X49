@@ -46,6 +46,7 @@ from app.canonical_models import (
 from app.contracts.structured_metadata import normalize_metadata_text
 from app.services.provenance_resolver import provenance_resolver
 from app.services.factual_facets import FACT_DIMENSIONS, build_factual_facets
+from app.services.film_metadata import effective_film, display_sources
 
 
 PROJECTION_VERSIONS = {
@@ -117,17 +118,18 @@ class ProjectionCoordinator:
     ) -> None:
         from app.services.library import library_manager
 
-        film = session.get(Film, film_id)
+        film = effective_film(session, session.get(Film, film_id))
         detail = library_manager._canonical_film_view(session, film_id, include_editions=True)
         summary = library_manager._canonical_film_view(session, film_id, include_editions=False)
         if detail is None:
             self._delete_film_views(session, film_id)
         else:
             resolved = provenance_resolver.resolve_film(session, film_id)
-            detail = self._safe_payload({**detail, "resolved_sources": resolved.public_sources()})
+            sources = display_sources(session, film_id, resolved.public_sources())
+            detail = self._safe_payload({**detail, "resolved_sources": sources})
             summary_payload = summary or {key: value for key, value in detail.items() if key != "editions"}
             summary_payload = self._safe_payload(
-                {**summary_payload, "resolved_sources": resolved.public_sources()}
+                {**summary_payload, "resolved_sources": sources}
             )
             self._upsert_library(session, film_id, summary_payload, visible=summary is not None)
             self._upsert_detail(session, film_id, detail)
@@ -463,7 +465,7 @@ class ProjectionCoordinator:
             state = session.get(FilmProfileState, (profile_id, film_id))
             payload = self._safe_payload({
                 "film_id": film_id,
-                "title": resolved.canonical_title.value or film.canonical_title,
+                "title": film.canonical_title,
                 "year": film.release_year,
                 "rating": state.rating if state else None,
                 "viewing_count": viewing_count,
@@ -518,7 +520,7 @@ class ProjectionCoordinator:
         owned = False
         payload: dict[str, Any] = {}
         if graph.entity_type == "film":
-            film = session.get(Film, entity_id)
+            film = effective_film(session, session.get(Film, entity_id))
             if film is None:
                 return
             label = film.canonical_title
