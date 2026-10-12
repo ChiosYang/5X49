@@ -141,6 +141,23 @@ Changed evidence is displayed explicitly and cannot silently approve old choices
 - Hosted CI and the two platform-specific tests still require confirmation on
   the draft PR before merge. Local checks do not claim hosted CI completion.
 
+### Hosted CI follow-up
+
+Run `38201291973` passed Backend and Frontend, plus all five new identity-review
+browser cases. Its only failure was the existing cinematic TMDB matching case:
+the confirmation returned a different canonical Film, but the test opened the
+source Film's More menu before navigation replaced the toolbar. The trace shows
+the click at 50966-51039 ms and the new, collapsed toolbar at 51079 ms.
+
+The test now explicitly exercises this redirect, holds the real post-confirmation
+read to verify the intermediate state, then waits for the canonical URL and
+matched page before checking the toolbar. All existing assertions remain; new
+checks cover the returned identity, persisted source edition and single write.
+No production matching behavior, retries, timeouts or test exclusions changed.
+The complete local browser suite passed again: 26/26 (1.4 minutes), including the
+production build. Lint, typecheck and independent review passed. Updated hosted
+CI remains a merge prerequisite.
+
 ## Remaining limitations
 
 - Cross-Film resolution and historical/incomplete/stale evidence are inspection-only.
