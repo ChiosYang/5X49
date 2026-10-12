@@ -27,6 +27,23 @@ from app.services.scanner import NFOScanner
 from app.services.metadata.scraper import metadata_scraper
 from app.workflows.store import workflow_store
 from app.services.operation_manifests import operation_manifest_store
+from app.services import maintenance_backup as backup_module
+
+backup_gate = threading.Event()
+backup_gate.set()
+backup_failure = False
+original_sanitize_backup = backup_module.sanitize_snapshot
+
+def controlled_sanitize_backup(path):
+    global backup_failure
+    if not backup_gate.wait(60):
+        raise RuntimeError('Synthetic backup gate timed out')
+    if backup_failure:
+        backup_failure = False
+        raise OSError('Synthetic backup storage failure')
+    return original_sanitize_backup(path)
+
+backup_module.sanitize_snapshot = controlled_sanitize_backup
 
 # Deterministic external TMDB transport. Production matcher/confirmation/persistence remain real.
 def candidate(tmdb_id=900001):
@@ -50,10 +67,42 @@ NFOScanner.scan_observed = controlled_scan
 
 @app.post('/__e2e/control', include_in_schema=False)
 def control(payload: dict, x_e2e_token: str = Header(default='')):
+    global backup_failure
     if x_e2e_token != os.environ['E2E_TOKEN']:
         raise HTTPException(403)
     action = payload['action']
-    if action == 'hold_scan':
+    if action == 'backup_fixture':
+        from app.services.library import library_manager
+        from app.services.user_state import film_profile_state_manager
+        from app.services.viewings import viewing_manager
+        from app.models import Setting, FilmMetadataOverride
+        from app.database import engine
+        from sqlmodel import Session
+        video = root / 'Backup Synthetic Film.mkv'
+        video.write_bytes(b'backup-synthetic-media')
+        film_id = library_manager.upsert_observation(dict(title='Backup Synthetic Film',
+            folder_name='Backup Synthetic Film', media_path=str(video), tmdb_id='981111',
+            scrape_error='https://example.test?token=E2E-HISTORICAL-TOKEN-CANARY'))['film_id']
+        film_profile_state_manager.upsert(film_id, favorite=True, rating=3, notes='Backup Film review', fields_set={'favorite', 'rating', 'notes'})
+        viewing_manager.create(film_id, '2025', rating=5, notes='Backup Viewing review', idempotency_key='backup-viewing-00001')
+        with Session(engine) as session:
+            session.add(Setting(key='tmdb_api_key', value='E2E-CONFIG-CREDENTIAL-CANARY'))
+            session.add(FilmMetadataOverride(film_id=film_id, values={'title': 'Backup Manual Title', 'year': None}, revision=1))
+            session.commit()
+        return {'film_id': film_id}
+    elif action == 'hold_backup':
+        backup_gate.clear()
+    elif action == 'release_backup':
+        backup_gate.set()
+    elif action == 'fail_backup':
+        backup_failure = True
+    elif action == 'expire_backup':
+        with backup_module.maintenance_backups.state() as db:
+            db.execute("UPDATE attempt SET expires_at='2000-01-01T00:00:00+00:00' WHERE artifact_state='available'")
+    elif action == 'backup_receipts':
+        with backup_module.maintenance_backups.state() as db:
+            return {'count': db.execute('SELECT COUNT(*) FROM attempt').fetchone()[0]}
+    elif action == 'hold_scan':
         scan_gate.clear()
     elif action == 'release_scan':
         scan_gate.set()

@@ -52,6 +52,8 @@ def create_verified_backup(
         raise BackupValidationError("SQLite source database does not exist")
 
     with closing(_open_read_only(source_path)) as source:
+        # Counts and the online backup must observe the same committed snapshot.
+        source.execute("BEGIN")
         _require_integrity(source, "source")
         source_counts = _row_counts(source)
 

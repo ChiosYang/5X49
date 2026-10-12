@@ -7,6 +7,8 @@ const mediaPath = (path: string) => {
 };
 
 export const API = {
+  backups: () => `${API_BASE_URL}/maintenance/backups`,
+  backup: (id: string) => `${API_BASE_URL}/maintenance/backups/${segment(id)}`,
   diagnostics: () => `${API_BASE_URL}/diagnostics`,
   providerDiagnostics: () => `${API_BASE_URL}/diagnostics/providers`,
   askStatus: () => `${API_BASE_URL}/ask/status`,
