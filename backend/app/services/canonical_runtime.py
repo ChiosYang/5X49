@@ -75,6 +75,7 @@ class CanonicalRuntimeWriter:
         ) = None,
     ) -> RuntimeLibraryResolution:
         now = utc_now_iso()
+        created_review = None
         requested_id = preserve_id or observation.get("library_item_id")
         existing = (
             self._resolution_for_item(session, force_library_item_id)
@@ -103,7 +104,44 @@ class CanonicalRuntimeWriter:
                 review_reason = review_reason or "relink_live_copy_conflict"
 
         if existing is not None:
-            resolution = self._resolve_existing_identity(session, existing, observation, now)
+            try:
+                resolution = self._resolve_existing_identity(session, existing, observation, now)
+            except RelinkIdentityConflict:
+                if not preserve_scrape_state:
+                    raise
+                # A scan cannot adjudicate conflicting provider IDs. Preserve the
+                # entire existing record and create one stable evidence review.
+                from app.services.identity_review import capture_candidates, seal_source_evidence
+
+                snapshot = capture_candidates(session, item_id=existing.library_item_id,
+                    incoming=self._identities(observation), file_observation=file_observation)
+                key = canonical_json_hash({"item": existing.library_item_id, "reason": "identity_conflict",
+                    "incoming": snapshot["incoming_identities"], "candidates": snapshot["candidates"]})
+                review = session.exec(select(IdentityReview).where(IdentityReview.review_key == key)).first()
+                item = session.get(LibraryItem, existing.library_item_id)
+                # Reconcile must not mark an observed conflicting item missing.
+                # Observation time does not approve its incoming metadata/identity.
+                item.last_seen_at = observation.get("last_seen_at") or now
+                if file_observation is not None and item.availability_status == "missing":
+                    item.availability_status = "available"
+                    item.missing_since = None
+                    for asset in session.exec(select(MediaAsset).where(MediaAsset.library_item_id == item.id)
+                        .where(MediaAsset.asset_kind == "video")
+                        .where(MediaAsset.locator == (observation.get("media_path") or observation.get("video_file")))).all():
+                        asset.availability_status = "present"
+                        asset.missing_since = None
+                        session.add(asset)
+                session.add(item)
+                session.flush()
+                if review is None:
+                    review = IdentityReview(film_id=existing.film_id, library_item_id=existing.library_item_id,
+                        source_instance_id=SOURCE_INSTANCE_ID, source_ref=existing.library_item_id,
+                        reason_code="identity_conflict", candidate_hash=canonical_json_hash(snapshot),
+                        review_key=key, candidate_snapshot=snapshot)
+                    seal_source_evidence(session, review)
+                    item.resolution_status = "review_required"
+                    session.add(item)
+                return existing
             self._update_film(session, resolution.film_id, observation, now)
             self._update_library_item(
                 session, resolution.library_item_id, observation, now,
@@ -160,6 +198,13 @@ class CanonicalRuntimeWriter:
                 )
             )
             if conflict or review_reason:
+                from app.services.identity_review import capture_candidates
+
+                candidate_snapshot = capture_candidates(
+                    session, item_id=library_item_id, incoming=identities,
+                    file_observation=file_observation,
+                    candidate_item_ids=(review_context or {}).get("candidate_item_ids"),
+                )
                 review_payload = {
                     "film_id": film_id,
                     "library_item_id": library_item_id,
@@ -169,19 +214,22 @@ class CanonicalRuntimeWriter:
                     "candidates": conflict or {},
                 }
                 candidate_hash = canonical_json_hash(review_payload["candidates"])
-                session.add(
-                    IdentityReview(
+                created_review = IdentityReview(
                         film_id=film_id,
                         library_item_id=library_item_id,
                         source_instance_id=SOURCE_INSTANCE_ID,
                         source_ref=library_item_id,
                         reason_code=review_reason or "identity_conflict",
                         candidate_hash=candidate_hash,
-                        review_key=canonical_json_hash({**review_payload, "candidate_hash": candidate_hash}),
+                        candidate_snapshot=candidate_snapshot,
+                        review_key=canonical_json_hash({"item": library_item_id,
+                            "reason": review_reason or "identity_conflict",
+                            "incoming": candidate_snapshot["incoming_identities"],
+                            "candidates": candidate_snapshot["candidates"]}),
                         created_at=now,
                         updated_at=now,
                     )
-                )
+                session.add(created_review)
                 sanitized_context = {
                     key: value
                     for key, value in (review_context or {}).items()
@@ -211,6 +259,10 @@ class CanonicalRuntimeWriter:
                 observation=bound_observation,
             )
         session.flush()
+        if created_review is not None:
+            from app.services.identity_review import seal_review_evidence
+
+            seal_review_evidence(session, created_review)
         return resolution
 
     def _resolve_existing_identity(
@@ -682,7 +734,10 @@ class CanonicalRuntimeWriter:
         elif item.scrape_status == "pending" and observation.get("scrape_status") == "matched":
             item.scrape_status = "matched"
         if self._identities(observation):
-            item.resolution_status = "matched"
+            open_review = session.exec(select(IdentityReview.id)
+                .where(IdentityReview.library_item_id == item.id)
+                .where(IdentityReview.status == "open")).first()
+            item.resolution_status = "review_required" if open_review else "matched"
         item.retired_at = now if item.availability_status == "retired" else None
         item.updated_at = now
         session.add(item)
@@ -846,6 +901,8 @@ class CanonicalRuntimeWriter:
             else:
                 asset.availability_status = "unknown"
             if kind == "video":
+                same_file_stat = (asset.file_size == observation.get("file_size")
+                                  and asset.file_mtime == observation.get("file_mtime"))
                 asset.file_size = observation.get("file_size")
                 asset.file_mtime = observation.get("file_mtime")
                 asset.width = observation.get("video_width")
@@ -858,9 +915,13 @@ class CanonicalRuntimeWriter:
                 asset.bit_depth = observation.get("video_bit_depth")
                 asset.stream_metadata = observation.get("audio_tracks")
                 if file_observation is not None:
+                    # A sampled rescan must not erase a complete hash obtained by
+                    # the relink worker for the same unchanged file.
+                    retained_hash = asset.content_hash if same_file_stat and (
+                        asset.content_fingerprint == file_observation.content_fingerprint) else None
                     asset.platform_file_id = file_observation.platform_file_id
                     asset.content_fingerprint = file_observation.content_fingerprint
-                    asset.content_hash = file_observation.content_hash
+                    asset.content_hash = file_observation.content_hash or retained_hash
             elif kind == "nfo":
                 asset.file_size = observation.get("nfo_size")
                 asset.file_mtime = observation.get("nfo_mtime")

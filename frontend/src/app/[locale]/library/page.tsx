@@ -1,4 +1,4 @@
-import { getTranslations } from "next-intl/server";
+import { getLocale, getTranslations } from "next-intl/server";
 import {
   ArrowDown,
   ArrowUp,
@@ -106,6 +106,7 @@ function viewCount(view: LibraryView, care: ReturnType<typeof buildLibraryCareSt
 }
 
 export default async function LibraryPage({ searchParams }: LibraryPageProps) {
+  const locale = await getLocale();
   const t = await getTranslations("Library");
   const careT = await getTranslations("LibraryCare");
   const resolvedSearchParams = searchParams ? await searchParams : {};
@@ -151,6 +152,7 @@ export default async function LibraryPage({ searchParams }: LibraryPageProps) {
             {view !== "all" ? <p className="mt-3 type-label text-ink-subtle">{careT(VIEW_LABELS[view])}</p> : null}
           </div>
           <div className="flex flex-wrap items-center gap-3 lg:justify-end">
+            <a href={`/${locale}/library/identity-review`} className="focus-ring inline-flex min-h-10 items-center px-3 type-label text-ink-subtle hover:text-ink">{careT("identityReview")}</a>
             {view === "all" && filmPage.library_total > 0 ? (
               <>
                 <span className="mr-1 hidden text-xs font-bold tracking-widest text-ink-subtle uppercase md:inline-block">{t("filmsCount", {count:filmPage.total})}</span>

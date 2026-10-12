@@ -67,6 +67,66 @@ def control(payload: dict, x_e2e_token: str = Header(default='')):
     elif action == 'set_title':
         from app.services.library import library_manager
         library_manager.update_film_observation(payload['film_id'], {'title': payload['title'], 'title_cn': None})
+    elif action == 'identity_cleanup':
+        # This entrypoint asserts the owned synthetic database/root at startup.
+        from app.services.library import library_manager
+        library_manager.clear_all_data()
+    elif action == 'identity_fixtures':
+        from sqlmodel import Session, select
+        from app.database import engine
+        from app.models import IdentityReview
+        from app.services.library import library_manager
+        from app.services.canonical_runtime import canonical_runtime_writer
+        for name in ('Identity original', 'Identity copy'):
+            video = root / (name + '.mkv')
+            video.write_bytes(b'identity synthetic duplicate')
+            library_manager.add_observations([dict(title=name, folder_name=name, media_path=str(video))])
+        with Session(engine) as session:
+            review = session.exec(select(IdentityReview)).one()
+            candidate = review.candidate_snapshot['candidates'][0]
+            canonical_runtime_writer.sync_user_state(session, candidate['film_id'], notes='Identity private notes',
+                rating=4, favorite=True, watched=True, fields_set={'notes', 'rating', 'favorite', 'watched'})
+            session.add(IdentityReview(source_instance_id='local', source_ref='legacy',
+                reason_code='identity_conflict', candidate_hash='a'*64, review_key='e2e-legacy'))
+            session.commit()
+            return dict(review_id=review.id, candidate_item_id=candidate['library_item_id'], film_id=candidate['film_id'])
+    elif action == 'identity_candidate_changed':
+        from sqlmodel import Session
+        from app.database import engine
+        from app.models import LibraryItem
+        with Session(engine) as session:
+            item = session.get(LibraryItem, payload['library_item_id'])
+            item.availability_status = 'missing'
+            session.add(item)
+            session.commit()
+    elif action == 'identity_decision_fixtures':
+        from sqlmodel import Session, select
+        from app.database import engine
+        from app.models import IdentityReview
+        from app.services.library import library_manager
+        from app.services.canonical_runtime import canonical_runtime_writer
+        created = {}
+        for name, content, identities in [('Decision original', b'decision-keep', {}),
+                ('Decision copy', b'decision-keep', {}), ('Reconnect old', b'decision-reconnect', {'tmdb_id': '900099'}),
+                ('Reconnect discovery', b'decision-reconnect', {'tmdb_id': '900099'})]:
+            video = root / (name + '.mkv')
+            video.write_bytes(content)
+            created[name] = library_manager.upsert_observation(dict(title=name, folder_name=name,
+                media_path=str(video), **identities))
+        discovery = created['Reconnect discovery']
+        library_manager.record_file_organization(discovery['film_id'], discovery['library_item_id'],
+            'synthetic-e2e-manifest', command_id='synthetic-e2e-organization', tmdb_id=900099,
+            sidecar_count=0, scrape_status='success')
+        with Session(engine) as session:
+            canonical_runtime_writer.sync_user_state(session, created['Reconnect old']['film_id'],
+                notes='Reconnect retained notes', rating=5, favorite=True, watched=True,
+                fields_set={'notes', 'rating', 'favorite', 'watched'})
+            session.commit()
+            review = session.exec(select(IdentityReview).where(
+                IdentityReview.library_item_id == created['Reconnect discovery']['library_item_id'])).one()
+            return dict(keep=created['Decision copy'], reconnect=created['Reconnect old'], review_id=review.id)
+    elif action == 'identity_old_disappeared':
+        (root / 'Reconnect old.mkv').unlink()
     else:
         raise HTTPException(400)
     return {'ok': True}

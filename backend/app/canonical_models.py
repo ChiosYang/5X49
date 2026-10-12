@@ -1288,6 +1288,9 @@ class IdentityReview(SQLModel, table=True):
     updated_at: str = Field(default_factory=canonical_utc_now_iso)
     resolved_at: str | None = None
 
+    candidate_snapshot: dict[str, Any] | None = Field(default=None, sa_column=Column(JSON))
+    decision: dict[str, Any] | None = Field(default=None, sa_column=Column(JSON))
+
 
 class FilmProfileState(SQLModel, table=True):
     __tablename__ = "film_profile_state"

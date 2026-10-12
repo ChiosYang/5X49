@@ -1,6 +1,7 @@
 import { test, expect, type APIRequestContext, type Page } from '@playwright/test';
 import { writeFile, access, mkdir } from 'node:fs/promises';
 import path from 'node:path';
+import type { LibraryFilmSummary } from '../src/types/movie';
 
 test.describe.configure({ mode: 'serial' });
 const backend = process.env.E2E_BACKEND!;
@@ -321,7 +322,9 @@ test('detail operations consume failures and saved-read retry never replays a wr
   expect(writes).toBe(2);
   const resumedMore=await openFilmMore(page);
   await expect(page.getByRole('button',{name:'More',exact:true})).toHaveAttribute('aria-expanded','true');
-  releaseRefresh();await (await refreshed).finished();
+  // A streamed RSC response can remain open after React applies the refresh.
+  // Assert the received response and rendered version instead of its transport end.
+  releaseRefresh();await refreshed;
   await expect(controls).toHaveAttribute('data-profile-version',persistedProfile.updated_at);
   await expect(page.getByRole('button',{name:state.favorite?'Favorite':'Remove favorite',exact:true})).toHaveAttribute('aria-pressed',String(!state.favorite));
   await expect(resumedMore.getByRole('button',{name:'Refresh external scores',exact:true})).toBeVisible();
@@ -539,9 +542,13 @@ test('cinematic Explore has neutral cards and a keyboard-accessible fact finder'
 });
 
 test('cinematic matching promotes unresolved films and returns to the quiet matched toolbar', async ({ page, request }) => {
-  const film=(await read(request,'/library/films')).find((item: {primary_item:{status:string;metadata:{scrape_status:string}}})=>
-    item.primary_item.status==='available' && item.primary_item.metadata.scrape_status==='needs_review');
+  const library: LibraryFilmSummary[]=await read(request,'/library/films');
+  const film=library.find(item=>item.primary_item.status==='available' &&
+    item.primary_item.metadata.scrape_status==='needs_review' && !item.identities.tmdb)!;
+  // The earlier metadata-review scenario owns this identity: confirmation must redirect.
+  const matchedFilm=library.find(item=>item.identities.tmdb==='900001')!;
   expect(film).toBeTruthy();
+  expect(matchedFilm).toBeTruthy();expect(matchedFilm.id).not.toBe(film.id);
   await page.goto(`/en/library/${film.id}`);
   const match=page.getByRole('button',{name:'Review match',exact:true});
   expect(await match.evaluate(node=>node.getBoundingClientRect().height)).toBeGreaterThanOrEqual(44);
@@ -551,11 +558,38 @@ test('cinematic matching promotes unresolved films and returns to the quiet matc
   await page.getByRole('button',{name:/E2E Candidate/}).first().click();
   const confirm=page.getByRole('button',{name:'Confirm this match',exact:true});
   expect(await confirm.evaluate(node=>node.getBoundingClientRect().height)).toBeGreaterThanOrEqual(44);
+  // Hold a real refresh to exercise the gap between a successful write and navigation.
+  let refreshHeld=false;
+  let releaseRefresh!: () => void;
+  const refreshGate=new Promise<void>(resolve=>{releaseRefresh=resolve;});
+  await page.route(`**/api/library/films/${film.id}`, async route=>{
+    refreshHeld=true;
+    await refreshGate;
+    await route.continue();
+  });
+  let confirmations=0;
+  page.on('request',r=>{if(r.method()==='POST' && new URL(r.url()).pathname.endsWith('/scrape/confirm')) confirmations++;});
   const response=page.waitForResponse(r=>r.request().method()==='POST'&&new URL(r.url()).pathname.endsWith('/scrape/confirm'));
-  await confirm.click();expect((await response).ok()).toBeTruthy();
+  try {
+    await confirm.click();
+    const confirmed=await response;expect(confirmed.ok()).toBeTruthy();
+    expect((await confirmed.json()).film.id).toBe(matchedFilm.id);
+    await expect.poll(()=>refreshHeld).toBe(true);
+    await expect(page).toHaveURL(`/en/library/${film.id}`);
+    await expect(match).toBeDisabled();
+  } finally {releaseRefresh();}
+  // POST completion alone can still expose the old Film's soon-to-be-replaced toolbar.
+  await expect(page).toHaveURL(`/en/library/${matchedFilm.id}`);
+  await expect(page.getByRole('heading',{name:'E2E Candidate',exact:true,level:1})).toBeVisible();
+  await expect(match).toHaveCount(0);
   await expect(page.getByRole('button',{name:'More',exact:true})).toHaveAttribute('aria-expanded','false');
   await openFilmMore(page);
+  await expect(page.getByRole('button',{name:'More',exact:true})).toHaveAttribute('aria-expanded','true');
   await expect(page.getByRole('button',{name:'Scrape metadata',exact:true})).toBeVisible();
   await expect(page.getByRole('button',{name:'Review match',exact:true})).toHaveCount(0);
+  const persisted=await read(request,`/library/films/${matchedFilm.id}`);
+  expect(persisted.identities.tmdb).toBe('900001');
+  expect(persisted.editions.find((edition:{id:string})=>edition.id===film.primary_item.id).metadata.scrape_status).toBe('matched');
+  expect(confirmations).toBe(1);
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
 });

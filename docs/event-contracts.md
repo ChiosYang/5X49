@@ -60,6 +60,7 @@ or opaque private manifest references.
 | `LibraryItemMarkedMissing` | `library_item` | `film_id`, missing timestamp. |
 | `LibraryItemRestored` | `library_item` | `film_id`, availability. |
 | `LibraryItemIgnored` | `library_item` | `film_id`, resulting status. |
+| `IdentityReviewDecided` | `film` | `review_id`, `action`, `source_item_id`, nullable `target_item_id`; user actor, idempotency key as command ID. |
 | `LibraryCleared` | `library` | retired count. |
 | `LibraryDataCleared` | `library` | bounded deleted-count map. |
 | `MissingLibraryItemsCleaned` | `library` | retired count. |

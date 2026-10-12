@@ -1,9 +1,11 @@
 from fastapi import APIRouter
+from app.api import identity_review
 
 from app.api import analysis_review, ask, cinema_dna, core, events, explore, library, media, metadata, settings, system, workflows
 
 
 api_router = APIRouter()
+api_router.include_router(identity_review.router)
 api_router.include_router(analysis_review.router)
 api_router.include_router(ask.router)
 api_router.include_router(cinema_dna.router)

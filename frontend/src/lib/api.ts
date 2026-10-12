@@ -33,6 +33,10 @@ export const API = {
   metadataMovie: (tmdbId: number) => `${API_BASE_URL}/metadata/movie/${tmdbId}`,
 
   libraryFilms: () => `${API_BASE_URL}/library/films`,
+  identityReviews: (offset = 0) => `${API_BASE_URL}/library/identity-reviews?limit=40&offset=${offset}`,
+  identityReview: (id: string) => `${API_BASE_URL}/library/identity-reviews/${segment(id)}`,
+  identityPreview: (id: string) => `${API_BASE_URL}/library/identity-reviews/${segment(id)}/preview`,
+  identityConfirm: (id: string) => `${API_BASE_URL}/library/identity-reviews/${segment(id)}/confirm`,
   libraryFilmPage: (params = new URLSearchParams()) => `${API_BASE_URL}/library/films/page${params.size ? `?${params}` : ""}`,
   exploreOverview: () => `${API_BASE_URL}/explore`,
   exploreContext: (params: URLSearchParams) => `${API_BASE_URL}/explore/context?${params}`,

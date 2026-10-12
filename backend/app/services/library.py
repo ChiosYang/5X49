@@ -79,6 +79,7 @@ class LibraryManager:
             raise ValueError("structured observations must align with scan observations")
         created = 0
         with Session(engine) as session:
+            session.connection().exec_driver_sql("BEGIN IMMEDIATE")
             for payload, structured in zip(observations, metadata, strict=True):
                 source_key = canonical_runtime_writer.source_item_key(payload)
                 existed = session.exec(
@@ -134,6 +135,7 @@ class LibraryManager:
         preserve_scrape_state: bool = False,
     ) -> dict[str, Any] | None:
         with Session(engine) as session:
+            session.connection().exec_driver_sql("BEGIN IMMEDIATE")
             requested_item_id = force_library_item_id or library_item_id
             existing_item = (
                 session.get(LibraryItem, requested_item_id) if requested_item_id else None
@@ -315,6 +317,7 @@ class LibraryManager:
             review_reason=reason,
             review_context={
                 "candidate_count": len(candidate_ids),
+                "candidate_item_ids": sorted(candidate_ids),
                 "fingerprint_id": payload.get("fingerprint_id"),
                 "source_instance_id": SOURCE_INSTANCE_ID,
             },
@@ -555,6 +558,7 @@ class LibraryManager:
         now = utc_now_iso()
         changed = 0
         with Session(engine) as session:
+            session.connection().exec_driver_sql("BEGIN IMMEDIATE")
             items = session.exec(
                 select(LibraryItem).where(LibraryItem.availability_status == "available")
             ).all()
@@ -595,6 +599,7 @@ class LibraryManager:
         now = utc_now_iso()
         changed = 0
         with Session(engine) as session:
+            session.connection().exec_driver_sql("BEGIN IMMEDIATE")
             assets = session.exec(
                 select(MediaAsset)
                 .where(MediaAsset.library_item_id.is_not(None))
@@ -640,6 +645,7 @@ class LibraryManager:
 
     def ignore_item(self, library_item_id: str) -> dict[str, Any] | None:
         with Session(engine) as session:
+            session.connection().exec_driver_sql("BEGIN IMMEDIATE")
             item = session.get(LibraryItem, library_item_id)
             if item is None or item.availability_status == "retired":
                 return None
@@ -678,8 +684,9 @@ class LibraryManager:
         scrape_status: str,
     ) -> str:
         with Session(engine) as session:
+            session.connection().exec_driver_sql("BEGIN IMMEDIATE")
             item = session.get(LibraryItem, library_item_id)
-            if item is None or item.film_id != film_id:
+            if item is None or item.film_id != film_id or item.availability_status == "retired":
                 raise ValueError("Organized LibraryItem does not match the Film")
             event = self._append_event(
                 session,
@@ -712,6 +719,7 @@ class LibraryManager:
     def cleanup_missing(self) -> int:
         now = utc_now_iso()
         with Session(engine) as session:
+            session.connection().exec_driver_sql("BEGIN IMMEDIATE")
             items = session.exec(
                 select(LibraryItem).where(LibraryItem.availability_status == "missing")
             ).all()
@@ -731,6 +739,7 @@ class LibraryManager:
     def clear_library(self) -> int:
         now = utc_now_iso()
         with Session(engine) as session:
+            session.connection().exec_driver_sql("BEGIN IMMEDIATE")
             items = session.exec(
                 select(LibraryItem).where(LibraryItem.availability_status != "retired")
             ).all()
@@ -974,6 +983,7 @@ class LibraryManager:
 
     def select_primary_item(self, film_id: str, item_id: str) -> dict[str, Any]:
         with Session(engine) as session:
+            session.connection().exec_driver_sql("BEGIN IMMEDIATE")
             film = session.get(Film, film_id)
             item = session.get(LibraryItem, item_id)
             if film is None or film.lifecycle_status != "active" or item is None or item.film_id != film_id:
