@@ -31,6 +31,7 @@ export default async function SearchPage({ params, searchParams }: {
           placeholder={t("placeholder")} className="min-w-0 flex-1" />
         <Button type="submit" variant="primary">{t("submit")}</Button>
         {query && <ButtonLink href="/search" variant="ghost">{t("clear")}</ButtonLink>}
+        {query && <ButtonLink href={`/library?${new URLSearchParams({q:query})}`} variant="ghost">{t("refine")}</ButtonLink>}
       </form>
       <p className="mb-8 break-words text-ink-muted" role="status">
         {!query ? t("initial") : films.length ? t("results", { count: data!.total, query }) : t("empty", { query })}

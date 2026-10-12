@@ -316,6 +316,7 @@
     }
   },
   "LibrarySearch": {
+    "refine": "在影视库中组合筛选",
     "askLink": "用自然语言查片 →",
     "title": "搜索资料库",
     "description": "按片名、原名、类型、国家或导演查找电影。",
@@ -449,6 +450,29 @@
     "zeroDetail": "这是严格筛选结果。5X49 不会自动放宽国家、年代、人物或类型条件。",
     "previous": "上一页",
     "next": "下一页"
+  },
+  "LibraryFilters": {
+    "label": "影视库组合筛选",
+    "query": "搜索影视库",
+    "searchPlaceholder": "片名、影人、年份或关键词",
+    "watched": "观看状态",
+    "favorite": "仅收藏",
+    "duration": "片长 · 分钟",
+    "durationMin": "最短片长",
+    "durationMax": "最长片长",
+    "rating": "影片个人总评 · 星",
+    "ratingMin": "最低影片个人总评",
+    "ratingMax": "最高影片个人总评",
+    "year": "上映年份",
+    "yearMin": "最早年份",
+    "yearMax": "最晚年份",
+    "minimum": "不限下限",
+    "maximum": "不限上限",
+    "help": "所有条件同时满足才会显示。范围包含端点，留空表示不限；启用范围后不含该项未知的影片。片长优先使用主版本实测时长，其次为元数据片长。年份包含人工修正。评分仅使用影片个人总评，独立于外部评分和每次观看评分。",
+    "invalid": "请检查{fields}：填写允许范围内的整数，且下限不得大于上限。",
+    "correctRanges": "请修正上方范围，再查看筛选结果。",
+    "apply": "应用筛选",
+    "clear": "清除所有条件"
   },
   "Library": {
     "metadataNeedsReview": "待确认",

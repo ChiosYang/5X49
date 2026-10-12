@@ -68,11 +68,24 @@ def get_library_film_page(
     sort: Literal["title", "added", "duration"] = "title",
     direction: Literal["asc", "desc"] = "asc",
     metadata_status: Literal["all", "pending", "needs_review", "failed", "matched"] = "all",
+    favorite: bool = False,
+    duration_min: int | None = Query(default=None, ge=1, le=10000),
+    duration_max: int | None = Query(default=None, ge=1, le=10000),
+    year_min: int | None = Query(default=None, ge=1870, le=2100),
+    year_max: int | None = Query(default=None, ge=1870, le=2100),
+    rating_min: int | None = Query(default=None, ge=1, le=5),
+    rating_max: int | None = Query(default=None, ge=1, le=5),
     limit: int = Query(default=40, ge=1, le=100),
     offset: int = Query(default=0, ge=0, le=1_000_000),
 ):
+    for name, lower, upper in (("duration", duration_min, duration_max), ("year", year_min, year_max),
+                               ("rating", rating_min, rating_max)):
+        if lower is not None and upper is not None and lower > upper:
+            raise HTTPException(status_code=422, detail=f"{name}_min must not exceed {name}_max")
     return library_manager.film_page(query=q, filter=filter, sort=sort, direction=direction,
-        metadata_status=metadata_status, limit=limit, offset=offset)
+        metadata_status=metadata_status, favorite=favorite, duration_min=duration_min,
+        duration_max=duration_max, year_min=year_min, year_max=year_max,
+        rating_min=rating_min, rating_max=rating_max, limit=limit, offset=offset)
 
 
 @router.get("/library/films/{film_id}")

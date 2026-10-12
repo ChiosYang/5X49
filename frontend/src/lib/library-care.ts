@@ -3,18 +3,22 @@ import type {
   MissingLibraryItemSummary,
   OrganizationCandidate,
 } from "@/types/movie";
+import type { LibraryRanges } from "./library-filters.ts";
 
 export type LibraryView = "all" | "metadata" | "inbox" | "offline";
 export type LibrarySortKey = "title" | "added" | "duration";
 export type LibrarySortDirection = "asc" | "desc";
 export type LibraryFilterKey = "all" | "watched" | "unwatched" | "favorite";
 
-export interface LibraryQueryState {
+export interface LibraryQueryState extends LibraryRanges {
   view: LibraryView;
   sort: LibrarySortKey;
   direction: LibrarySortDirection;
   filter: LibraryFilterKey;
   page?: number;
+  metadataPage?: number;
+  query?: string;
+  favorite?: boolean;
 }
 
 export interface LibraryCareState {
@@ -41,8 +45,21 @@ export function buildLibraryHref(state: LibraryQueryState, nextView = state.view
   params.set("sort", state.sort);
   params.set("dir", state.direction);
   if (state.filter !== "all") params.set("filter", state.filter);
-  if (nextView === state.view && (state.page || 1) > 1) params.set("page", String(state.page));
+  appendLibraryFilters(params, state);
+  if ((state.page || 1) > 1) params.set("page", String(state.page));
+  if (nextView === "metadata" && state.view === "metadata" && (state.metadataPage || 1) > 1) {
+    params.set("metadata_page", String(state.metadataPage));
+  }
   return `/library?${params.toString()}`;
+}
+
+export function appendLibraryFilters(params: URLSearchParams, state: LibraryQueryState) {
+  if (state.query) params.set("q", state.query);
+  if (state.favorite) params.set("favorite", "true");
+  for (const field of ["duration_min", "duration_max", "rating_min", "rating_max", "year_min", "year_max"] as const) {
+    if (state[field]) params.set(field, state[field]);
+  }
+  return params;
 }
 
 export function buildLibraryCareState({

@@ -316,6 +316,7 @@
     }
   },
   "LibrarySearch": {
+    "refine": "Refine in Library",
     "askLink": "Ask in your own words →",
     "title": "Search your library",
     "description": "Find films by title, original title, genre, country or director.",
@@ -449,6 +450,29 @@
     "zeroDetail": "This is the strict result. 5X49 will not automatically relax a Country, Decade, Person, or Genre constraint.",
     "previous": "Previous",
     "next": "Next"
+  },
+  "LibraryFilters": {
+    "label": "Library filters",
+    "query": "Search library",
+    "searchPlaceholder": "Title, person, year or keyword",
+    "watched": "Watched status",
+    "favorite": "Favorites only",
+    "duration": "Duration · minutes",
+    "durationMin": "Minimum duration",
+    "durationMax": "Maximum duration",
+    "rating": "Film personal rating · stars",
+    "ratingMin": "Minimum Film personal rating",
+    "ratingMax": "Maximum Film personal rating",
+    "year": "Release year",
+    "yearMin": "Earliest year",
+    "yearMax": "Latest year",
+    "minimum": "No minimum",
+    "maximum": "No maximum",
+    "help": "All conditions combine. Bounds are inclusive; blank means unlimited. Active ranges exclude unknown values. Duration uses the primary edition’s measured length, then metadata. Year includes your corrections. Rating uses only your Film overall rating, independent of external scores and viewing reviews.",
+    "invalid": "Check {fields}: enter whole numbers within the allowed range, with the minimum no greater than the maximum.",
+    "correctRanges": "Correct the ranges above to see matching films.",
+    "apply": "Apply filters",
+    "clear": "Clear all conditions"
   },
   "Library": {
     "metadataNeedsReview": "Needs review",

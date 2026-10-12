@@ -9,6 +9,7 @@ import { reviewSession } from "@/lib/metadata-review";
 import { InlineFeedback, StateMessage } from "@/components/ui/Feedback";
 import { useLibraryPage } from "@/hooks/useLibrary";
 import { Link } from "@/i18n/routing";
+import { buildLibraryHref, type LibraryQueryState } from "@/lib/library-care";
 import type { LibraryFilmSummary } from "@/types/movie";
 import { MetadataReviewInspector } from "./manage/MetadataReviewQueue";
 
@@ -22,7 +23,8 @@ function reviewFilms(films: LibraryFilmSummary[], locale: string) {
     ));
 }
 
-export default function LibraryMetadataCare({page}: {page:number}) {
+export default function LibraryMetadataCare({state}: {state: LibraryQueryState}) {
+  const page = state.metadataPage ?? 1;
   const t = useTranslations("LibraryCare");
   const locale = useLocale();
   const reviewT = useTranslations("LibraryManagement");
@@ -66,7 +68,7 @@ export default function LibraryMetadataCare({page}: {page:number}) {
         <CheckCircle2 className="mx-auto h-8 w-8 text-success" />
         <h2 className="mt-5 type-section-title text-ink">{completed ? t("metadataComplete") : t("metadataEmpty")}</h2>
         <p className="mx-auto mt-3 max-w-xl text-sm leading-6 text-ink-subtle">{t("metadataEmptyDesc")}</p>
-        <Link href="/library" className="focus-ring mt-7 inline-flex min-h-10 items-center border border-line-strong px-4 type-label text-ink-muted hover:border-ink-disabled hover:text-ink">
+        <Link href={buildLibraryHref(state, "all")} className="focus-ring mt-7 inline-flex min-h-10 items-center border border-line-strong px-4 type-label text-ink-muted hover:border-ink-disabled hover:text-ink">
           {t("backToFilms")}
         </Link>
       </div>
@@ -111,8 +113,8 @@ export default function LibraryMetadataCare({page}: {page:number}) {
           })}
         </ul>
         {library.data && library.data.total > library.data.limit && <nav aria-label={t("reviewPagination")} className="mt-4 flex justify-between gap-4">
-          {library.data.offset > 0 ? <Link className="focus-ring min-h-11 py-3 text-sm underline" href={`/library?view=metadata&page=${Math.floor(library.data.offset/40)}`}>{t("previousPage")}</Link> : <span />}
-          {library.data.offset+library.data.limit < library.data.total && <Link className="focus-ring min-h-11 py-3 text-sm underline" href={`/library?view=metadata&page=${Math.floor(library.data.offset/40)+2}`}>{t("nextPage")}</Link>}
+          {library.data.offset > 0 ? <Link className="focus-ring min-h-11 py-3 text-sm underline" href={buildLibraryHref({...state, metadataPage: Math.floor(library.data.offset/40)})}>{t("previousPage")}</Link> : <span />}
+          {library.data.offset+library.data.limit < library.data.total && <Link className="focus-ring min-h-11 py-3 text-sm underline" href={buildLibraryHref({...state, metadataPage: Math.floor(library.data.offset/40)+2})}>{t("nextPage")}</Link>}
         </nav>}
       </aside>
 

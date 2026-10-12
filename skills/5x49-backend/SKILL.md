@@ -5,6 +5,24 @@ description: 5X49 Fresh Canonical FastAPI 的 Film、LibraryItem、Factual Explo
 
 # 5X49 Backend API
 
+## Deterministic Library filters
+
+- `/library/films/page` intersects `q`, legacy `filter`, independent `favorite=true`,
+  `duration_min/max` (integer minutes 1–10000), `year_min/max` (1870–2100),
+  `rating_min/max` (integer personal overall stars 1–5), and
+  metadata status before count/sort/pagination. The response shape is unchanged.
+- Bounds include endpoints; an omitted bound is unlimited. Active ranges exclude
+  unknown values. Invalid/out-of-domain/reversed ranges return 422.
+- Duration uses positive primary-edition measured seconds, then positive Film
+  runtime minutes. Compare exact seconds to minute bounds; use the same duration
+  for sorting and keep unknowns last in both directions.
+- Year uses the current effective metadata, including manual overrides/nulls.
+  Reads never modify protection, Film data, NFO files or provider state.
+- Rating uses only FilmProfileState.rating. Never use external scores or per-
+  Viewing reviews as substitutes. Active rating ranges exclude unrated Films.
+- Existing filter=favorite links remain valid. For watched favorites, use
+  `filter=watched&favorite=true`. Sort ties and pagination remain deterministic.
+
 ## Per-viewing reviews
 
 - Schema v9 adds nullable Viewing `rating` (integer 1–5) and `notes` (up to
