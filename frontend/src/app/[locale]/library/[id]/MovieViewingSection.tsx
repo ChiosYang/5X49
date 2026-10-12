@@ -5,6 +5,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { useState } from "react";
 
 import ViewingInlineEditor, { ViewingQuickAdd } from "@/components/viewings/ViewingInlineEditor";
+import ViewingReview from "@/components/viewings/ViewingReview";
 import { StateMessage } from "@/components/ui/Feedback";
 import { useFilmViewings } from "@/hooks/useFilm";
 import { Link } from "@/i18n/routing";
@@ -51,6 +52,11 @@ export default function MovieViewingSection({ filmId }: { filmId: string; filmTi
       </div>
 
       <div className="mt-6">
+        {selected ? <div id="film-viewing-editor" className="mb-6 max-w-2xl border border-line p-4">
+          <p className="font-bold text-ink">{formatDate(selected, locale, t("unknownDate"))}</p>
+          <ViewingInlineEditor key={selected.id} filmId={filmId} viewing={selected}
+            onBusyChange={setEditorBusy} onCancel={() => setSelected(null)} />
+        </div> : null}
         {isLoading ? <StateMessage state="loading">{t("loadingFilm")}</StateMessage> : null}
         {error ? <StateMessage state="error">{t("errorFilm")}</StateMessage> : null}
         {!isLoading && !error && viewings.length === 0 ? <StateMessage>{t("emptyFilm")}</StateMessage> : null}
@@ -76,20 +82,15 @@ export default function MovieViewingSection({ filmId }: { filmId: string; filmTi
                     aria-label={viewing.editable ? t("editViewing") : t("viewViewing")}
                     title={viewing.editable ? t("editViewing") : t("viewViewing")}
                     aria-expanded={selected?.id === viewing.id}
-                    onClick={() => setSelected((current) => current?.id === viewing.id ? null : viewing)}
+                    onClick={() => {
+                      setSelected((current) => current?.id === viewing.id ? null : viewing);
+                      requestAnimationFrame(() => document.getElementById("film-viewing-editor")?.scrollIntoView({ block: "center" }));
+                    }}
                   >
                     {viewing.editable ? <Edit3 className="h-4 w-4" /> : <Info className="h-4 w-4" />}
                   </button>
                 </div>
-                {selected?.id === viewing.id ? (
-                  <ViewingInlineEditor
-                    key={viewing.id}
-                    filmId={filmId}
-                    viewing={viewing}
-                    onBusyChange={setEditorBusy}
-                    onCancel={() => setSelected(null)}
-                          />
-                ) : null}
+                <ViewingReview viewing={viewing} />
               </div>
             ))}
           </div>

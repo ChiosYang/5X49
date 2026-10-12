@@ -190,6 +190,8 @@ def build_export_payload(database_engine=engine) -> tuple[dict[str, Any], int]:
                     "film_id",
                     "watched_at",
                     "watched_at_precision",
+                    "rating",
+                    "notes",
                     "source",
                     "review_status",
                     "created_at",
@@ -508,7 +510,14 @@ def _validate_payload(payload: Any) -> None:
         payload["viewings"],
         "viewings",
         {"id", "film_id", "watched_at", "watched_at_precision", "source", "review_status", "created_at", "updated_at", "deleted_at"},
+        optional_fields={"rating", "notes"},
     )
+    for viewing in payload["viewings"]:
+        rating, notes = viewing.get("rating"), viewing.get("notes")
+        if rating is not None and (type(rating) is not int or not 1 <= rating <= 5):
+            raise PortabilityError("Viewing rating is invalid")
+        if notes is not None and (not isinstance(notes, str) or "\0" in notes or len(notes) > 10_000):
+            raise PortabilityError("Viewing notes are invalid")
     _require_row_contract(
         payload["assertion_decisions"],
         "assertion decisions",
@@ -552,9 +561,12 @@ def _require_unique_ids(rows: Any, label: str) -> None:
         raise PortabilityError(f"{label} contain invalid or duplicate IDs")
 
 
-def _require_row_contract(rows: Any, label: str, fields: set[str]) -> None:
+def _require_row_contract(
+    rows: Any, label: str, fields: set[str], *, optional_fields: set[str] | None = None,
+) -> None:
+    allowed_fields = fields | (optional_fields or set())
     if not isinstance(rows, list) or any(
-        not isinstance(row, dict) or set(row) != fields for row in rows
+        not isinstance(row, dict) or not fields <= set(row) <= allowed_fields for row in rows
     ):
         raise PortabilityError(f"{label} row contract is invalid")
 

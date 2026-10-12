@@ -12,7 +12,17 @@ import {
   viewingDraftWatchedAt,
   viewingDateMode,
   watchedActionFor,
+  viewingReviewChanges,
 } from "./diary.ts";
+
+test("review changes preserve timestamp precision and omit unchanged fields", () => {
+  const viewing = { watched_at: "2026-01-02T23:30:00+08:00", watched_at_precision: "timestamp", rating: 4, notes: "old" };
+  const draft = createViewingDateDraft(viewing);
+  assert.deepEqual(viewingReviewChanges(draft, 5, "new", viewing), { rating: 5, notes: "new" });
+  assert.deepEqual(viewingReviewChanges(draft, null, "   ", viewing), { rating: null, notes: null });
+  assert.deepEqual(viewingReviewChanges(draft, 4, "old", viewing), {});
+  assert.deepEqual(viewingReviewChanges({ ...draft, mode: "unknown" }, 4, "old", viewing), { watched_at: null });
+});
 
 const entry = (id, watchedAt, precision) => ({
   viewing: {

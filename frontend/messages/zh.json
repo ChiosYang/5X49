@@ -688,6 +688,17 @@
     }
   },
   "Diary": {
+    "viewingRating": "本次观看评分",
+    "viewingNotes": "本次观看感想",
+    "filmRating": "影片总评",
+    "unrated": "未评分",
+    "independentReview": "选填，仅保存到本次观看，不改变影片总评和笔记。",
+    "notesLimit": "{count}/10,000 字符 · 留空即可清除",
+    "conflict": "这条观看记录已改变或不再可用，请重新加载后再编辑。",
+    "reloadViewing": "重新加载观看记录",
+    "retrySameRequest": "尚未确认保存结果。重试将核对并完成同一请求。",
+    "retrySave": "重试保存",
+    "conflictRefreshFailed": "未能重新加载观看记录。草稿仍已保留，请重试加载。",
     "eyebrow": "个人时间线",
     "title": "观影日记",
     "subtitle": "每一次确认观看都独立留存，组成你的电影生活时间线。",

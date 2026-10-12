@@ -67,6 +67,20 @@ def control(payload: dict, x_e2e_token: str = Header(default='')):
     elif action == 'set_title':
         from app.services.library import library_manager
         library_manager.update_film_observation(payload['film_id'], {'title': payload['title'], 'title_cn': None})
+    elif action == 'viewing_review_fixture':
+        from app.services.library import library_manager
+        from app.services.user_state import film_profile_state_manager
+        from app.services.viewings import viewing_manager
+        video = root / 'Synthetic Rewatch.mkv'
+        video.write_bytes(b'viewing-review-synthetic-video')
+        library_manager.add_observations([dict(title='Synthetic Rewatch', folder_name='Synthetic Rewatch',
+            media_path=str(video), year=1999, scrape_status='matched')])
+        film = next(item for item in library_manager.list_films() if item['title'] == 'Synthetic Rewatch')
+        film_profile_state_manager.upsert(film['id'], rating=3, notes='Historical Film note',
+            fields_set={'rating', 'notes'})
+        rows = [viewing_manager.create(film['id'], date) for date in
+            ['2025', '2026-01-02', '2026-01-02T23:30:00+08:00', None]]
+        return {'film_id': film['id'], 'viewings': rows}
     elif action == 'manual_metadata_fixture':
         from app.services.library_sync import library_sync_service
         from app.services.canonical_runtime import canonical_runtime_writer

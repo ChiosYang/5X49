@@ -688,6 +688,17 @@
     }
   },
   "Diary": {
+    "viewingRating": "This viewing's rating",
+    "viewingNotes": "This viewing's notes",
+    "filmRating": "Film rating",
+    "unrated": "No rating",
+    "independentReview": "Optional, for this viewing only. Your Film rating and notes stay unchanged.",
+    "notesLimit": "{count}/10,000 characters · Leave empty to clear",
+    "conflict": "This viewing changed or is no longer available. Reload it before editing again.",
+    "reloadViewing": "Reload viewing",
+    "retrySameRequest": "The save could not be confirmed. Retry to check and complete this same request.",
+    "retrySave": "Retry save",
+    "conflictRefreshFailed": "Could not reload this viewing. Your draft is still here; try reloading again.",
     "eyebrow": "Personal Timeline",
     "title": "Diary",
     "subtitle": "Every confirmed viewing, kept as an independent moment in your film life.",

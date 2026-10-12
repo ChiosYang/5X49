@@ -6,9 +6,11 @@ from typing import Literal
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, Field as PydanticField
 from sqlmodel import Session
+from sqlalchemy.exc import SQLAlchemyError
 
 from app.api.common import DEFAULT_MEDIA_DIR, workflow_response
 from app.database import engine
+from app.contracts.viewings import ViewingCreate, ViewingWrite
 from app.services.analysis_runtime import analysis_runtime_persistence
 from app.services.event_bus import library_event_bus
 from app.services.graph_query import graph_query_service
@@ -20,6 +22,7 @@ from app.services.settings import get_media_dir
 from app.services.user_state import film_profile_state_manager
 from app.services.viewings import (
     ViewingDateError,
+    ViewingConflict,
     ViewingNotFound,
     ViewingReadOnly,
     normalize_watched_at,
@@ -41,8 +44,10 @@ class FilmProfileStateUpdate(BaseModel):
     notes: str | None = PydanticField(default=None, max_length=10_000)
 
 
-class ViewingDateRequest(BaseModel):
-    watched_at: str | None
+def _require_viewing_revision(revision):
+    if revision is None:
+        raise HTTPException(status_code=409, detail={"code": "viewing_revision_required",
+            "message": "Reload the Viewing before editing"})
 
 
 @router.get("/library/films")
@@ -134,12 +139,17 @@ def get_film_viewings(film_id: str):
 
 
 @router.post("/films/{film_id}/viewings")
-def create_film_viewing(film_id: str, request: ViewingDateRequest):
+def create_film_viewing(film_id: str, request: ViewingCreate):
     _validate_id(film_id, "film")
     try:
-        viewing = viewing_manager.create(film_id, request.watched_at)
+        viewing = viewing_manager.create(film_id, request.watched_at, rating=request.rating,
+            notes=request.notes, idempotency_key=request.idempotency_key)
     except ViewingDateError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except ViewingConflict as exc:
+        raise HTTPException(status_code=409, detail={"code": exc.code, "message": str(exc)}) from exc
+    except SQLAlchemyError as exc:
+        raise HTTPException(status_code=503, detail="Viewing write failed; retry the same request") from exc
     if viewing is None:
         raise HTTPException(status_code=404, detail="Film not found")
     library_event_bus.publish_library_changed("viewing_created", film_id=film_id)
@@ -147,35 +157,42 @@ def create_film_viewing(film_id: str, request: ViewingDateRequest):
 
 
 @router.patch("/viewings/{viewing_id}")
-def update_viewing(viewing_id: str, request: ViewingDateRequest):
+def update_viewing(viewing_id: str, request: ViewingWrite):
     _validate_id(viewing_id, "viewing")
+    _require_viewing_revision(request.revision)
     try:
-        viewing = viewing_manager.update(viewing_id, request.watched_at)
+        viewing = viewing_manager.update(viewing_id, changes=request.changes(),
+            revision=request.revision, idempotency_key=request.idempotency_key)
     except ViewingDateError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     except ViewingNotFound as exc:
         raise HTTPException(status_code=404, detail="Viewing not found") from exc
-    except ViewingReadOnly as exc:
+    except (ViewingReadOnly, ViewingConflict) as exc:
         raise HTTPException(
             status_code=409,
             detail={"code": exc.code, "message": str(exc)},
         ) from exc
+    except SQLAlchemyError as exc:
+        raise HTTPException(status_code=503, detail="Viewing write failed; retry the same request") from exc
     library_event_bus.publish_library_changed("viewing_updated", film_id=viewing["film_id"])
     return viewing
 
 
 @router.delete("/viewings/{viewing_id}")
-def delete_viewing(viewing_id: str):
+def delete_viewing(viewing_id: str, revision: str | None = Query(default=None, pattern=r"^[0-9a-f]{64}$")):
     _validate_id(viewing_id, "viewing")
+    _require_viewing_revision(revision)
     try:
-        result = viewing_manager.delete(viewing_id)
+        result = viewing_manager.delete(viewing_id, revision=revision)
     except ViewingNotFound as exc:
         raise HTTPException(status_code=404, detail="Viewing not found") from exc
-    except ViewingReadOnly as exc:
+    except (ViewingReadOnly, ViewingConflict) as exc:
         raise HTTPException(
             status_code=409,
             detail={"code": exc.code, "message": str(exc)},
         ) from exc
+    except SQLAlchemyError as exc:
+        raise HTTPException(status_code=503, detail="Viewing write failed; retry the same request") from exc
     if result["changed"]:
         library_event_bus.publish_library_changed("viewing_deleted", film_id=result["film_id"])
     return {"status": result["status"], "viewing_id": result["viewing_id"]}

@@ -432,12 +432,11 @@ class CanonicalRuntimeWriter:
                     review_status="confirmed",
                     created_at=now,
                     updated_at=now,
+                    watched_at=now,
                 )
             manual_viewing.deleted_at = None
             if "watched_at" in fields_set:
                 manual_viewing.watched_at = watched_at
-            elif manual_viewing.watched_at is None:
-                manual_viewing.watched_at = now
             manual_viewing.watched_at_precision = self._watched_at_precision(manual_viewing.watched_at)
             manual_viewing.review_status = "confirmed"
             manual_viewing.updated_at = now

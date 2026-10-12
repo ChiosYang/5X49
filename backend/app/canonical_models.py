@@ -1337,6 +1337,14 @@ class Viewing(SQLModel, table=True):
     __tablename__ = "viewing"
     __table_args__ = (
         CheckConstraint(
+            "rating IS NULL OR (typeof(rating) = 'integer' AND rating >= 1 AND rating <= 5)",
+            name="ck_viewing_rating",
+        ),
+        CheckConstraint(
+            "notes IS NULL OR (typeof(notes) = 'text' AND instr(notes, char(0)) = 0 AND length(notes) <= 10000)",
+            name="ck_viewing_notes_length",
+        ),
+        CheckConstraint(
             "watched_at_precision IN ('timestamp', 'date', 'year', 'unknown')",
             name="ck_viewing_precision",
         ),
@@ -1369,6 +1377,19 @@ class Viewing(SQLModel, table=True):
     created_at: str = Field(default_factory=canonical_utc_now_iso)
     updated_at: str = Field(default_factory=canonical_utc_now_iso)
     deleted_at: str | None = Field(default=None, index=True)
+    rating: int | None = Field(default=None, ge=1, le=5)
+    notes: str | None = Field(default=None, max_length=10_000)
+
+
+class ViewingWriteReceipt(SQLModel, table=True):
+    __tablename__ = "viewing_write_receipt"
+
+    profile_id: str = Field(primary_key=True, foreign_key="local_profile.id", ondelete="RESTRICT")
+    idempotency_key: str = Field(primary_key=True)
+    viewing_id: str = Field(foreign_key="viewing.id", ondelete="CASCADE")
+    request_hash: str
+    result_revision: str
+    created_at: str = Field(default_factory=canonical_utc_now_iso)
 
 
 class FilmExternalScore(SQLModel, table=True):

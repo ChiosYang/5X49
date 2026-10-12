@@ -1,4 +1,5 @@
 "use client";
+import ViewingReview from "@/components/viewings/ViewingReview";
 
 import { CalendarDays, Edit3, Heart, Info, Star } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
@@ -128,6 +129,12 @@ function ViewingDiaryClient() {
         </div>
       ) : null}
 
+      {selectedViewing && editorFilmId ? <div id="viewing-editor" className="max-w-2xl border border-line p-4">
+        <p className="font-bold text-ink">{entries.find(entry => entry.film.id === editorFilmId)?.film.title || t("filmFallback")}</p>
+        <p className="mt-1 text-sm text-ink-subtle">{selectedViewing.watched_at || t("unknownDate")}</p>
+        <ViewingInlineEditor key={selectedViewing.id} filmId={editorFilmId} viewing={selectedViewing}
+          onBusyChange={setEditorBusy} onCancel={() => setSelectedViewing(null)} onSaved={() => setContinuation(null)} />
+      </div> : null}
       {entries.length === 0 ? (
         <StateMessage>{filmId ? t("emptyFilm") : t("empty")}</StateMessage>
       ) : (
@@ -168,9 +175,10 @@ function ViewingDiaryClient() {
                       aria-label={entry.viewing.editable ? t("editViewing") : t("viewViewing")}
                       title={entry.viewing.editable ? t("editViewing") : t("viewViewing")}
                       aria-expanded={selectedViewing?.id === entry.viewing.id}
-                      onClick={() => setSelectedViewing((current) =>
-                        current?.id === entry.viewing.id ? null : entry.viewing
-                      )}
+                      onClick={() => {
+                        setSelectedViewing((current) => current?.id === entry.viewing.id ? null : entry.viewing);
+                        requestAnimationFrame(() => document.getElementById("viewing-editor")?.scrollIntoView({ block: "center" }));
+                      }}
                     >
                       {entry.viewing.editable ? <Edit3 className="h-4 w-4" /> : <Info className="h-4 w-4" />}
                     </button>
@@ -187,10 +195,11 @@ function ViewingDiaryClient() {
                     {entry.profile_state.favorite ? <Heart className="h-3.5 w-3.5 fill-current text-ink" aria-label={t("favorite")} /> : null}
                     {entry.profile_state.rating ? (
                       <span className="inline-flex items-center gap-1 text-ink">
-                        <Star className="h-3.5 w-3.5 fill-current" /> {entry.profile_state.rating}/5
+                        <Star className="h-3.5 w-3.5 fill-current" /> {t("filmRating")}: {entry.profile_state.rating}/5
                       </span>
                     ) : null}
                   </div>
+                  <ViewingReview viewing={entry.viewing} />
                   {view === "recent" ? (
                     <Link
                       href={`/diary?film=${entry.film.id}`}
@@ -198,16 +207,6 @@ function ViewingDiaryClient() {
                     >
                       {t("viewAll")}
                     </Link>
-                  ) : null}
-                  {selectedViewing?.id === entry.viewing.id && editorFilmId ? (
-                    <ViewingInlineEditor
-                      key={entry.viewing.id}
-                      filmId={editorFilmId}
-                      viewing={entry.viewing}
-                      onBusyChange={setEditorBusy}
-                      onCancel={() => setSelectedViewing(null)}
-                      onSaved={() => setContinuation(null)}
-                    />
                   ) : null}
                 </article>
               ))}

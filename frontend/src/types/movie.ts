@@ -36,14 +36,26 @@ export interface FilmProfileState {
 export type ViewingPrecision = "timestamp" | "date" | "year" | "unknown";
 
 export interface ViewingView {
+  revision: string;
+  replayed?: boolean;
   id: string;
   film_id: string;
   watched_at?: string | null;
   watched_at_precision: ViewingPrecision;
+  rating?: number | null;
+  notes?: string | null;
   source: string;
   editable: boolean;
   created_at: string;
   updated_at: string;
+}
+
+export interface ViewingWriteRequest {
+  watched_at?: string | null;
+  rating?: number | null;
+  notes?: string | null;
+  revision?: string;
+  idempotency_key?: string;
 }
 
 export interface ViewingTimelineEntry {

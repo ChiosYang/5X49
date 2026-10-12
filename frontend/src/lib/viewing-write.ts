@@ -1,3 +1,10 @@
+/** A late response cannot discard the next request's recovery identity. */
+export function clearPendingViewingRequest(storage: Pick<Storage, "getItem" | "removeItem">, key: string, requestKey?: string) {
+  if (!requestKey) return;
+  const value = storage.getItem(key);
+  if (value && JSON.parse(value).idempotency_key === requestKey) storage.removeItem(key);
+}
+
 /** A committed write stays successful even when subsequent reads fail. */
 export async function commitViewingWrite<T>(
   write: () => Promise<T>,
