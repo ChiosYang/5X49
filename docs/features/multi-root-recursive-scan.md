@@ -104,7 +104,8 @@ in the task; the parent owns Linux CI verification and merge.
 ## Remaining risks and limits
 
 - Library upload is blocked as recorded above; screenshots are local only.
-- Linux native filesystem behavior will be verified by repository CI; local
+- Linux backend and frontend checks passed in CI run `38333585548`; its browser
+  suite exposed an existing event-delivery timing failure described below.
   Windows tests also reject both Windows and POSIX traversal grammars.
 - Host cannot create real symlinks; deterministic link boundary tests and native
   Windows junction creation/traversal rejection both passed.
@@ -113,3 +114,52 @@ in the task; the parent owns Linux CI verification and merge.
   claimed. Large/network libraries and Docker runtime are not benchmarked/tested.
 - Existing deep-reset FK RESTRICT issue remains outside this task.
 - Parent owns checking CI and merging the draft PR. No release/deploy authorized.
+
+## CI follow-up: reliable scan and personal-state invalidations
+
+Run `38333585548` at `cd41857` passed Backend and Frontend, but Real API E2E
+finished 60/61: after a successful external favorite mutation, the combined
+filter still showed the removed Film. The retained browser trace showed both
+SSE connections being rebuilt alongside the mutation and no subsequent Library
+refresh. This is a delivery timing failure, not an API rejection or media scan
+failure. The trace alone does not establish exactly when the subscriber was
+registered relative to publication.
+
+Two reproducible mechanisms were fixed without changing the event API:
+
+- Each old SSE subscription waited in `asyncio.to_thread(Queue.get, ..., 25)`.
+  Cancelling a disconnected subscription cannot interrupt that blocking worker.
+  Rapid navigation can exhaust the shared executor and delay current subscribers.
+  Per-subscriber asynchronous queues now receive thread-safe callbacks on their
+  owning event loops, retaining the 20-message bound and 25-second heartbeat.
+- Changes between a server-rendered read and subscription (or during reconnect)
+  are not replayed. Library now reconciles once on `connected`, using its existing
+  debounced refresh; ordinary invalidations retain their existing behavior.
+  Refresh synchronizes next-intl's session locale cookie to the currently
+  rendered locale, so a late prefetch from a previous language cannot switch a
+  Chinese page back to English. The first follow-up E2E run exposed this race in
+  the backup locale assertion after a successful download; its trace showed the
+  old `/en/search` prefetch overwriting `NEXT_LOCALE` before the refresh.
+  Locale-cookie writes are also removed from prefetch responses (other cookies
+  are retained), preventing late prefetch completion from undoing that choice;
+  real navigations still write their selected locale normally.
+
+Before the fix, a deterministic occupied-executor backend test timed out and a
+real-API browser test that held subscriptions until after the favorite write
+retained both cards. These red results are saved locally in
+`backend/data/task6-event-bus-red-elevated.log` and
+`frontend/e2e-artifacts/task6-ci-red.log`. Post-fix coverage also checks worker
+thread publication, queue ordering/overflow and cancelled-subscription cleanup.
+The browser regression runs in both English and Chinese with an intentionally
+stale locale cookie, checking the filtered result and retained language before
+and after reload. Backup behavior was not changed.
+
+Post-fix backend verification: 377 tests (374 passed, the same three Windows
+platform/privilege skips) and compilation passed, recorded in
+`backend/data/task6-ci-full.log`. Independent incremental reviews approved the
+event queue and refresh changes without blocking findings.
+Final frontend verification: 89/89 unit tests, lint, typecheck, production build
+and full 64/64 real-API E2E passed. Logs are
+`frontend/e2e-artifacts/task6-ci-{unit,lint,typecheck,e2e}-verified.log` and
+`build.log`; the Chinese narrow backup screenshot was visually rechecked.
+The proxy follow-up also received independent review with no blocking findings.
