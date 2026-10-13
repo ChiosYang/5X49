@@ -211,6 +211,8 @@ test('real Viewing exact undo and committed POST with injected failed GET, retry
 });
 
 test('generated abnormal media and TMDB transport fixture: inspect/skip/confirm uses real persistence', async ({ page, request }) => {
+  const configuration = await request.put(`${backend}/settings/media-dirs`, { data: { media_dirs: [path.join(root, 'normal/media'), path.join(root, 'mixed/media')] } });
+  expect(configuration.ok()).toBeTruthy();
   const scan = await request.post(`${backend}/library/scan?media_dir=${encodeURIComponent(path.join(root, 'mixed/media'))}`);
   expect(scan.ok()).toBeTruthy(); await settleWorkflow(request, (await scan.json()).workflow_id);
   const pending = (await read(request, '/library/films')).filter((f: {primary_item: {metadata: {scrape_status: string}}}) => f.primary_item.metadata.scrape_status === 'pending');

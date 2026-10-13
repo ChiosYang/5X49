@@ -62,7 +62,7 @@ export default function LibraryOnboarding({ rootVideoCount }: { rootVideoCount: 
   const directoryValue = directoryDraft ?? mediaDirectory?.media_dir ?? "";
 
   useEffect(() => {
-    if ((scanState !== "success" && scanState !== "empty") || !scanWorkflow?.finished_at) return;
+    if ((scanState !== "success" && scanState !== "empty" && scanState !== "partial") || !scanWorkflow?.finished_at) return;
     if (refreshedScan.current === scanWorkflow.finished_at) return;
     refreshedScan.current = scanWorkflow.finished_at;
     router.refresh();
@@ -94,6 +94,7 @@ export default function LibraryOnboarding({ rootVideoCount }: { rootVideoCount: 
     if (scanState === "success") {
       return <InlineFeedback tone="success">{scanWorkflow?.progress?.counts ? t("scanSuccess", { scanned: scanWorkflow.progress.counts.scanned ?? 0, added: scanWorkflow.progress.counts.added ?? 0 }) : t("scanCompleted")}</InlineFeedback>;
     }
+    if (scanState === "partial") return <InlineFeedback tone="warning">{t("scanPartial")}</InlineFeedback>;
     if (scanState === "empty") return <InlineFeedback tone="warning">{t("scanEmpty")}</InlineFeedback>;
     if (scanState === "error") {
       const message = scanError || scanWorkflow?.error_message || t(scanWorkflow === null ? "scanNoLongerAvailable" : "scanFailed");

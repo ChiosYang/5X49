@@ -70,11 +70,12 @@ export function getWorkflowScanState(
   workflow: { status: string; cancel_requested?: boolean; progress?: { counts?: Record<string, number> } | null } | undefined,
   preparing: boolean,
   requested: boolean,
-): FirstScanState | "cancelled" | "cancelling" {
+): FirstScanState | "cancelled" | "cancelling" | "partial" {
   if (preparing) return "queueing";
   if (!workflow) return requested ? "queued" : "idle";
   if (workflow.status === "cancelled") return "cancelled";
   if (workflow.status === "failed") return "error";
+  if (workflow.status === "succeeded" && (workflow.progress?.counts?.incomplete_roots ?? 0) > 0) return "partial";
   if (workflow.status === "succeeded") return workflow.progress?.counts?.scanned === 0 ? "empty" : "success";
   if (workflow.cancel_requested) return "cancelling";
   return workflow.status === "running" ? "running" : "queued";

@@ -18,7 +18,8 @@ from app.services.library import library_manager
 from app.services.library_sync import library_sync_service
 from app.services.metadata.organizer import root_video_organizer
 from app.services.operation_manifests import OperationManifestError, operation_manifest_store
-from app.services.settings import get_media_dir
+from app.services.settings import get_media_dir, get_media_dirs
+from app.services.media_roots import configured_root, root_id
 from app.services.user_state import film_profile_state_manager
 from app.services.viewings import (
     ViewingDateError,
@@ -214,10 +215,10 @@ def delete_viewing(viewing_id: str, revision: str | None = Query(default=None, p
 @router.get("/library/root-videos", deprecated=True)
 def get_library_root_videos():
     try:
-        return root_video_organizer.list_root_videos(get_media_dir() or DEFAULT_MEDIA_DIR)
+        return root_video_organizer.list_root_videos(get_media_dir()) if get_media_dir() else []
     except FileNotFoundError:
         return []
-    except PermissionError as exc:
+    except (PermissionError, ValueError) as exc:
         raise HTTPException(status_code=400, detail=str(exc))
 
 
@@ -231,35 +232,34 @@ def seed_library():
 @router.post("/library/scan")
 @router.post("/library/reconcile")
 def reconcile_library(media_dir: str = Query(default=None)):
-    target_dir = media_dir or get_media_dir() or DEFAULT_MEDIA_DIR
-    if not os.path.exists(target_dir):
-        raise HTTPException(status_code=400, detail=f"Directory not found: {target_dir}")
-    try:
-        path_ref = operation_manifest_store.create_path_reference(
-            Path(target_dir),
-            Path(target_dir),
-        )
-    except OperationManifestError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
-    target_hash = hashlib.sha256(str(Path(target_dir).resolve()).encode("utf-8")).hexdigest()[:16]
-    workflow = workflow_runtime.enqueue(
-        "library.reconcile",
-        {"media_root_ref": path_ref},
-        dedupe_key=f"library.reconcile:{target_hash}",
-    )
+    roots = get_media_dirs()
+    if media_dir:
+        try:
+            root = configured_root(Path(media_dir).absolute())
+            if Path(media_dir).absolute() != root:
+                raise ValueError("Select a configured root for a full scan")
+            roots = [str(root)]
+        except (ValueError, OSError) as exc:
+            raise HTTPException(400, detail=str(exc)) from None
+    if not roots:
+        raise HTTPException(400, detail="No media directories configured")
+    identifiers = [root_id(root) for root in roots]
+    workflow = workflow_runtime.enqueue("library.reconcile", {"root_ids": identifiers},
+        dedupe_key="library.reconcile:" + hashlib.sha256("|".join(identifiers).encode()).hexdigest()[:16])
     return workflow_response(workflow, "Library reconcile queued")
 
 
 @router.post("/library/scan-folder")
 def scan_library_folder(folder_path: str):
-    if not Path(folder_path).exists():
-        raise HTTPException(status_code=404, detail="Movie folder or video file not found")
     try:
+        root = configured_root(Path(folder_path).absolute())
+        if not Path(folder_path).exists():
+            raise HTTPException(status_code=404, detail="Movie folder or video file not found")
         path_ref = operation_manifest_store.create_path_reference(
-            Path(get_media_dir() or DEFAULT_MEDIA_DIR),
-            Path(folder_path),
+            root,
+            Path(folder_path).absolute(),
         )
-    except OperationManifestError as exc:
+    except (OperationManifestError, ValueError, OSError) as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     path_hash = hashlib.sha256(str(Path(folder_path).resolve()).encode("utf-8")).hexdigest()[:16]
     workflow = workflow_runtime.enqueue(

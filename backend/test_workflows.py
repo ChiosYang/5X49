@@ -53,12 +53,15 @@ class WorkflowRuntimeTests(unittest.TestCase):
             patch.object(service, "_video_probe_cache", return_value={}),
         ):
             scanner.return_value.scan_observed.return_value = []
+            scanner.return_value.errors = []
+            scanner.return_value.skipped_links = 0
             manager.add_observations.return_value = 0
             manager.mark_missing_not_seen_since.return_value = 0
             result = service.reconcile(self._tmp.name, ctx=context)
-        self.assertEqual(result, {"scanned": 0, "added": 0, "missing": 0})
+        self.assertEqual({key: result[key] for key in ("scanned", "added", "missing")}, {"scanned": 0, "added": 0, "missing": 0})
+        self.assertTrue(result["complete"])
         context.progress.assert_called_with(
-            stage="finalize", message="Finalizing Library reconcile", counts=result,
+            stage="finalize", message="Finalizing Library reconcile", counts={key: result[key] for key in ("scanned", "added", "missing", "incomplete_roots")},
         )
 
     def test_recent_listing_keeps_all_active_and_respects_type_and_status(self):
@@ -220,7 +223,8 @@ class WorkflowRuntimeTests(unittest.TestCase):
             patch.object(actors_module.root_video_organizer, "organize_file_confirmed") as organize,
         ):
             with self.assertRaisesRegex(RuntimeError, "stale"):
-                actors_module.confirm_root_video(payload, Context())
+                with patch("app.jobs.actors.configured_root", return_value=Path("/media")):
+                    actors_module.confirm_root_video(payload, Context())
         organize.assert_not_called()
 
 

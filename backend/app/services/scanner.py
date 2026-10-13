@@ -3,6 +3,7 @@ NFO File Scanner for tinyMediaManager (TMM) scraped movies.
 Parses .nfo XML files to extract rich metadata.
 """
 import hashlib
+import os
 import re
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass
@@ -11,6 +12,7 @@ from pathlib import Path
 from typing import Optional
 
 from app.services.artwork_cache import artwork_cache
+from app.services.media_roots import safe_path, is_link, media_url
 from app.services.video_probe import video_probe_service
 from app.contracts.structured_metadata import (
     CountryObservation,
@@ -50,7 +52,10 @@ class NFOScanner:
     )
 
     def __init__(self, media_dir: str, video_probe_cache: Optional[dict[str, dict]] = None):
-        self.media_dir = Path(media_dir)
+        self.media_dir = Path(media_dir).absolute()
+        self.errors: list[dict] = []
+        self.skipped_links = 0
+        self.check_cancelled = lambda: None
         self.video_probe_cache = video_probe_cache or {}
 
     def scan(self) -> list[dict]:
@@ -60,21 +65,28 @@ class NFOScanner:
     def scan_observed(self) -> list[FilmObservation]:
         """Scan movies while retaining the internal structured metadata observation."""
         movies = []
-        
-        if not self.media_dir.exists():
-            print("Media directory not found")
-            return movies
-        
-        for folder in self.media_dir.iterdir():
-            if not folder.is_dir() or folder.name.startswith('.'):
-                continue
-            
-            observations = self.scan_folder_editions_observed(folder)
-            movies.extend(observations)
-            if observations:
-                print("  Parsed movie editions")
-        
-        print(f"\nTotal movies scanned: {len(movies)}")
+        self.errors = []
+        self.skipped_links = 0
+        pending = [self.media_dir]
+        while pending:
+            self.check_cancelled()
+            folder = pending.pop()
+            try:
+                safe_path(folder, self.media_dir)
+                with os.scandir(folder) as entries:
+                    children = sorted(entries, key=lambda item: item.name.casefold())
+                movies.extend(self.scan_folder_editions_observed(folder))
+                for entry in reversed(children):
+                    if entry.name.startswith('.'):
+                        continue
+                    path = Path(entry.path)
+                    if is_link(path):
+                        self.skipped_links += 1
+                    elif entry.is_dir(follow_symlinks=False):
+                        pending.append(path)
+            except (OSError, ValueError, RuntimeError) as exc:
+                self.errors.append({"directory": str(folder.relative_to(self.media_dir)),
+                                    "code": "permission_denied" if isinstance(exc, PermissionError) else "scan_failed"})
         return movies
 
     def scan_folder(self, folder: Path | str) -> Optional[dict]:
@@ -83,7 +95,7 @@ class NFOScanner:
         return observed.film if observed else None
 
     def scan_folder_editions_observed(self, folder: Path | str, *, video_path: str | None = None) -> list[FilmObservation]:
-        folder = Path(folder)
+        folder = safe_path(Path(folder).absolute(), self.media_dir)
         if not folder.is_dir():
             return []
         groups = self._find_video_groups(folder)
@@ -105,7 +117,7 @@ class NFOScanner:
 
     def scan_folder_observed(self, folder: Path | str, *, video_file: Path | None = None) -> Optional[FilmObservation]:
         """Scan one folder into Film and structured metadata observations."""
-        folder = Path(folder)
+        folder = safe_path(Path(folder).absolute(), self.media_dir)
         if not folder.exists() or not folder.is_dir():
             return None
 
@@ -199,8 +211,8 @@ class NFOScanner:
             
             # Image paths (local files)
             folder_name = folder.name
-            poster_local = self._find_image(folder, "-poster")
-            fanart_local = self._find_image(folder, "-fanart")
+            poster_local = self._find_image(folder, "-poster", video_file)
+            fanart_local = self._find_image(folder, "-fanart", video_file)
             poster_thumb_local = artwork_cache.generate(folder / poster_local, "poster") if poster_local else None
             backdrop_thumb_local = artwork_cache.generate(folder / fanart_local, "backdrop") if fanart_local else None
             
@@ -237,8 +249,8 @@ class NFOScanner:
                 "imdb_rating": imdb_rating,
                 "actors": actors,
                 # Local paths (relative to media mount point)
-                "poster_local": f"/media/{folder_name}/{poster_local}" if poster_local else None,
-                "backdrop_local": f"/media/{folder_name}/{fanart_local}" if fanart_local else None,
+                "poster_local": media_url(folder / poster_local, self.media_dir) if poster_local else None,
+                "backdrop_local": media_url(folder / fanart_local, self.media_dir) if fanart_local else None,
                 "poster_thumb_local": poster_thumb_local,
                 "backdrop_thumb_local": backdrop_thumb_local,
                 # TMDB CDN fallbacks
@@ -286,9 +298,11 @@ class NFOScanner:
             return FilmObservation(film=film_observation, structured_metadata=observation)
 
         except ET.ParseError as e:
+            self.errors.append({"directory": str(folder.relative_to(self.media_dir)), "code": "invalid_nfo"})
             print(f"  NFO XML parse error: {e}")
             return None
         except Exception as e:
+            self.errors.append({"directory": str(folder.relative_to(self.media_dir)), "code": "scan_failed"})
             print(f"  NFO parse error: {type(e).__name__}")
             return None
 
@@ -354,12 +368,30 @@ class NFOScanner:
             return "zh-CN"
         return normalized
 
-    def _find_image(self, folder: Path, suffix: str) -> Optional[str]:
+    def _safe_file(self, path: Path) -> bool:
+        try:
+            safe_path(path, self.media_dir)
+            return path.is_file()
+        except ValueError:
+            return False
+        except OSError:
+            self.errors.append({"directory": str(path.parent.relative_to(self.media_dir)), "code": "scan_failed"})
+            return False
+
+    def _find_image(self, folder: Path, suffix: str, video_file: Optional[Path] = None) -> Optional[str]:
         """Find an image file with the given suffix (-poster, -fanart, etc.)."""
-        for ext in ['.jpg', '.jpeg', '.png', '.webp']:
+        if video_file:
+            for ext in ['.jpg', '.jpeg', '.png', '.webp']:
+                preferred = folder / f"{video_file.stem}{suffix}{ext}"
+                if self._safe_file(preferred):
+                    return preferred.name
+        single_video = len(self._find_video_groups(folder)) <= 1
+        for ext in ['.jpg', '.jpeg', '.png', '.webp'] if single_video else []:
             matches = sorted(folder.glob(f"*{suffix}{ext}"), key=lambda path: path.name.lower())
             if matches:
-                return matches[0].name
+                matches = [p for p in matches if self._safe_file(p)]
+                if matches:
+                    return matches[0].name
 
         fallback_names = {
             "-poster": ["poster"],
@@ -368,7 +400,7 @@ class NFOScanner:
         for name in fallback_names:
             for ext in ['.jpg', '.jpeg', '.png', '.webp']:
                 image_path = folder / f"{name}{ext}"
-                if image_path.exists():
+                if self._safe_file(image_path):
                     return image_path.name
 
         return None
@@ -376,14 +408,14 @@ class NFOScanner:
     def _find_nfo_file(self, folder: Path, video_file: Optional[Path]) -> Optional[Path]:
         if video_file:
             preferred = folder / f"{video_file.stem}.nfo"
-            if preferred.exists():
+            if self._safe_file(preferred):
                 return preferred
 
         movie_nfo = folder / "movie.nfo"
-        if movie_nfo.exists():
+        if self._safe_file(movie_nfo):
             return movie_nfo
 
-        nfo_files = sorted(folder.glob("*.nfo"), key=lambda path: path.name.lower())
+        nfo_files = sorted((p for p in folder.glob("*.nfo") if self._safe_file(p)), key=lambda path: path.name.lower())
         # Never apply another video's per-file NFO to an unrelated edition.
         return nfo_files[0] if nfo_files and len(self._find_video_groups(folder)) <= 1 else None
 
@@ -450,7 +482,7 @@ class NFOScanner:
     def _find_video_groups(self, folder: Path) -> list[list[Path]]:
         extras = re.compile(r"(?:^|[ ._-])(sample|trailer|teaser|featurette|behind[ ._-]the[ ._-]scenes)$", re.I)
         videos = sorted((path for path in folder.iterdir()
-            if path.suffix.lower() in self.video_extensions and self._is_usable_video_file(path)
+            if not path.name.startswith(".") and path.suffix.lower() in self.video_extensions and self._is_usable_video_file(path)
             and not extras.search(path.stem)), key=lambda path: path.name.casefold())
         split = re.compile(r"^(.*?)[ ._-](cd|disc|disk|part)[ ._-]?([1-9][0-9]*)(.*)$", re.I)
         candidates = {}
@@ -483,8 +515,9 @@ class NFOScanner:
         if lower_name.endswith(self.ignored_file_suffixes):
             return False
         try:
-            return path.is_file() and path.stat().st_size > 0
+            return self._safe_file(path) and path.stat().st_size > 0
         except OSError:
+            self.errors.append({"directory": str(path.parent.relative_to(self.media_dir)), "code": "scan_failed"})
             return False
 
     def _with_file_info(self, film_observation: dict, folder: Path, video_file: Optional[Path]) -> dict:

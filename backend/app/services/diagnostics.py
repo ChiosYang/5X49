@@ -9,7 +9,8 @@ import requests
 import app.database as database
 from app.migrations.versions import MIGRATIONS
 from app.services.projections import PROJECTION_VERSIONS
-from app.services.settings import get_media_dir, get_tmdb_api_key
+from app.services.settings import get_media_dirs, get_media_dir, get_tmdb_api_key
+from app.services.media_roots import directory_status
 from app.services.metadata.tmdb import TMDBClient
 
 
@@ -28,14 +29,15 @@ def system_diagnostics() -> dict:
     except (OSError, sqlite3.Error):
         pass
     # A missing DB must stay missing; settings readers otherwise open SQLite.
-    media = Path(get_media_dir() if db["state"] != "unavailable" else os.getenv("MEDIA_DIR", "/media"))
-    media_state = "ready" if media.is_dir() and os.access(media,os.R_OK | os.X_OK) else "unavailable"
+    roots = get_media_dirs() if db["state"] != "unavailable" else [os.getenv("MEDIA_DIR", "/media")]
+    root_states = [directory_status(root)["state"] for root in roots]
+    media_state = "ready" if roots and all(state == "accessible" for state in root_states) else "unavailable"
     try:
         backup_space = shutil.disk_usage(path.parent).free >= max(100 * 1024 * 1024, path.stat().st_size * 3)
     except OSError:
         backup_space = False
     return {"backend":"ready", "database":db, "projections":projections,
-        "media":{"state":media_state,"writable":media_state == "ready" and os.access(media,os.W_OK)},
+        "media":{"state":media_state,"writable":media_state == "ready" and all(os.access(root, os.W_OK) for root in roots)},
         "backup_space":{"state":"ready" if backup_space else "needs_attention"},
         "tmdb":{"state":"configured" if (get_tmdb_api_key() if db["state"] != "unavailable" else os.getenv("TMDB_API_KEY")) else "not_configured"}}
 

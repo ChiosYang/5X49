@@ -31,13 +31,16 @@ from types import SimpleNamespace
 class IdentityReviewTests(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
-        self.root = Path(self.temp.name)
+        self.root = Path(self.temp.name).resolve()
+        roots_patch = patch("app.services.settings.get_media_dirs", return_value=[str(self.root)])
+        roots_patch.start()
+        self.addCleanup(roots_patch.stop)
         self.path = self.root / "synthetic.db"
         self.engine = create_engine(f"sqlite:///{self.path}")
         configure_sqlite_engine(self.engine)
         run_migrations(self.engine, self.path, backup_required=False)
         self.patches = [patch.object(module, "engine", self.engine) for module in (library_module, api_module, snapshots_module)]
-        self.patches.append(patch.object(api_module, "get_media_dir", return_value=str(self.root)))
+        self.patches.append(patch.object(api_module, "get_media_dirs", return_value=[str(self.root)]))
         for item in self.patches:
             item.start()
         self.client = TestClient(app)
@@ -251,13 +254,38 @@ class IdentityReviewTests(unittest.TestCase):
         (self.root / "moved.mkv").unlink()
         self.assertEqual(self.confirm(review_id, preview).json()["detail"]["code"], "source_file_missing")
 
+    def test_same_film_reconnect_across_two_roots_rechecks_removed_root(self):
+        first, second = self.root / 'first', self.root / 'second'
+        first.mkdir(); second.mkdir()
+        roots = [str(first), str(second)]
+        with patch('app.services.settings.get_media_dirs', return_value=roots), patch.object(api_module, 'get_media_dirs', return_value=roots):
+            old = library_manager.upsert_observation(self.observation('first/old.mkv', tmdb_id='42'))
+            (first / 'old.mkv').unlink()
+            with Session(self.engine) as session:
+                item = session.get(LibraryItem, old['library_item_id'])
+                item.availability_status = 'missing'; session.add(item); session.commit()
+            incoming = self.observation('second/new.mkv', tmdb_id='42')
+            new = library_manager.upsert_observation(incoming, review_reason='relink_full_hash_duplicate',
+                review_context={'candidate_item_ids': [old['library_item_id']]})
+            with Session(self.engine) as session:
+                review_id = session.exec(select(IdentityReview).where(IdentityReview.library_item_id == new['library_item_id'])).one().id
+            preview = self.preview(review_id, 'reconnect', old['library_item_id'])
+            self.assertEqual(preview.status_code, 200, preview.text)
+            with patch.object(api_module, 'get_media_dirs', return_value=[str(second)]):
+                self.assertEqual(self.confirm(review_id, preview.json()).json()['detail']['code'], 'unsafe_locator')
+            result = self.confirm(review_id, preview.json())
+            self.assertEqual(result.status_code, 200, result.text)
+            library_manager.add_observations([incoming])
+            with Session(self.engine) as session:
+                self.assertEqual(session.get(LibraryItem, old['library_item_id']).availability_status, 'available')
+                self.assertEqual(session.get(LibraryItem, new['library_item_id']).availability_status, 'retired')
     def test_candidate_drift_cross_film_and_outside_root_are_rejected(self):
         review_id = self.duplicate()
         detail = self.client.get(f"/library/identity-reviews/{review_id}").json()
         target = detail["candidates"][0]["library_item_id"]
         self.assertEqual(self.preview(review_id, "reconnect", target).status_code, 409)
         preview = self.preview(review_id).json()
-        with patch.object(api_module, "get_media_dir", return_value=str(self.root / "other")):
+        with patch.object(api_module, "get_media_dirs", return_value=[str(self.root / "other")]):
             self.assertEqual(self.confirm(review_id, preview).json()["detail"]["code"], "unsafe_locator")
         with Session(self.engine) as session:
             item = session.get(LibraryItem, target)

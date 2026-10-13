@@ -72,6 +72,7 @@ class LibraryManager:
         self,
         observations: list[dict[str, Any]],
         *,
+        check_observation=None,
         structured_observations: list[
             StructuredMetadataObservation | StructuredMetadataObservationDraft | None
         ] | None = None,
@@ -83,6 +84,8 @@ class LibraryManager:
         with Session(engine) as session:
             session.connection().exec_driver_sql("BEGIN IMMEDIATE")
             for payload, structured in zip(observations, metadata, strict=True):
+                if check_observation:
+                    check_observation(payload)
                 source_key = canonical_runtime_writer.source_item_key(payload)
                 existed = session.exec(
                     select(LibraryItem.id)
@@ -275,6 +278,8 @@ class LibraryManager:
         candidate_ids = {
             str(value) for value in private_payload.get("candidate_item_ids") or []
         }
+        from app.services.media_roots import configured_root
+        configured_root(Path(observation_payload.get("media_path") or observation_payload.get("video_file") or ""))
         observation = canonical_runtime_writer.observe_item(observation_payload)
         candidate_hashes: dict[str, str] = {}
         matches: set[str] = set()
@@ -298,8 +303,9 @@ class LibraryManager:
                 candidate_hash = asset.content_hash
                 if candidate_hash is None:
                     try:
+                        configured_root(Path(asset.locator))
                         candidate_hash = full_content_hash(asset.locator)
-                    except (FileNotFoundError, OSError):
+                    except (FileNotFoundError, OSError, ValueError):
                         continue
                     candidate_hashes[asset.id] = candidate_hash
                 if candidate_hash == complete_hash:
@@ -558,7 +564,11 @@ class LibraryManager:
         with Session(engine) as session:
             canonical_runtime_writer.identity_target(session, film_id, observation)
 
-    def mark_missing_not_seen_since(self, seen_at: str) -> int:
+    def mark_missing_not_seen_since(self, seen_at: str, *, roots: list[str] | None = None,
+                                    check_cancelled=None, path_prefix: str | None = None) -> int:
+        from app.services.media_roots import configured_root, explicitly_absent
+        from app.services.settings import get_media_dirs
+        roots = roots if roots is not None else get_media_dirs()
         now = utc_now_iso()
         changed = 0
         with Session(engine) as session:
@@ -567,6 +577,20 @@ class LibraryManager:
                 select(LibraryItem).where(LibraryItem.availability_status == "available")
             ).all()
             for item in items:
+                if check_cancelled:
+                    check_cancelled()
+                assets = session.exec(select(MediaAsset).where(MediaAsset.library_item_id == item.id)
+                    .where(MediaAsset.asset_kind == "video")
+                    .where(MediaAsset.availability_status != "retired")).all()
+                locator = assets[0].locator if len(assets) == 1 else item.source_item_key
+                if path_prefix and not Path(locator).is_relative_to(Path(path_prefix)):
+                    continue
+                try:
+                    root = configured_root(locator, roots)
+                except (ValueError, OSError):
+                    continue
+                if not explicitly_absent(locator, root):
+                    continue
                 if item.last_seen_at and item.last_seen_at >= seen_at:
                     continue
                 before = {
@@ -595,6 +619,8 @@ class LibraryManager:
                     {"availability_status": "missing", "missing_since": now},
                 )
                 changed += 1
+            if check_cancelled:
+                check_cancelled()
             session.commit()
         return changed
 

@@ -63,6 +63,8 @@ class MaintenanceBackupTests(unittest.TestCase):
                     watched_at_precision=precision, source="diary", rating=i+1, notes=f"观看评价 {i}"))
             session.add(Setting(key="tmdb_api_key", value=CANARY))
             session.add(Setting(key="watch_library", value=True))
+            session.add(Setting(key="media_dirs", value=[str(self.root / "first"), str(self.root / "second")]))
+            session.add(Setting(key="media_scan_status", value={"state": "partial", "last_result": {"complete": False}}))
             event = EventRecord(type="Synthetic", aggregate_type="film", aggregate_id=self.film,
                 payload={"scrape_error": f"Request failed https://example.test?api_key={CANARY}",
                          "source": "https://test-user:historical-credential@example.test?access_token=old-token"})

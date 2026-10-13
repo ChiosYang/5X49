@@ -317,11 +317,11 @@ class ApiRouteContractTests(unittest.TestCase):
         self.assertEqual(unreadable.status_code, 400)
         self.assertEqual(unreadable.json(), {"detail": "Media directory is not readable"})
 
-    def test_library_scan_rejects_a_missing_media_directory_with_actionable_detail(self):
-        with patch("app.api.library.get_media_dir", return_value="/definitely/missing/5x49"):
+    def test_library_scan_rejects_an_empty_configuration(self):
+        with patch("app.api.library.get_media_dirs", return_value=[]):
             response = self.client.post("/library/scan")
         self.assertEqual(response.status_code, 400)
-        self.assertEqual(response.json(), {"detail": "Directory not found: /definitely/missing/5x49"})
+        self.assertEqual(response.json(), {"detail": "No media directories configured"})
 
     def test_projection_unavailable_has_stable_503_contract(self):
         with patch(

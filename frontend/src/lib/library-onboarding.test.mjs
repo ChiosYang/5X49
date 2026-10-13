@@ -76,4 +76,6 @@ test("restored scan IDs follow their own terminal and cancellation states", () =
   assert.equal(getWorkflowScanState({ status: "failed" }, false, true), "error");
   assert.equal(getWorkflowScanState({ status: "succeeded" }, false, true), "success");
   assert.equal(getWorkflowScanState({ status: "succeeded", progress: { counts: { scanned: 0 } } }, false, true), "empty");
+  assert.equal(getWorkflowScanState({ status: "succeeded", progress: { counts: { scanned: 3, incomplete_roots: 1 } } }, false, true), "partial");
+  assert.equal(getWorkflowScanState({ status: "succeeded", progress: { counts: { scanned: 0, incomplete_roots: 1 } } }, false, true), "partial");
 });

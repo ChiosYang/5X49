@@ -7,6 +7,7 @@ const mediaPath = (path: string) => {
 };
 
 export const API = {
+  settingsMediaDirs: () => `${API_BASE_URL}/settings/media-dirs`,
   backups: () => `${API_BASE_URL}/maintenance/backups`,
   backup: (id: string) => `${API_BASE_URL}/maintenance/backups/${segment(id)}`,
   diagnostics: () => `${API_BASE_URL}/diagnostics`,

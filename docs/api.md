@@ -1,5 +1,68 @@
 # 5X49 Backend API
 
+## Multiple media roots and scan coverage
+
+`GET /settings/media-dirs` returns `{media_dirs: string[], roots: [{id, path,
+state}]}`. The list is ordered; each opaque root ID is stable for its canonical
+path. Availability is checked now, separately from the last scan. States are
+`accessible`, `offline`, `permission_denied`, or `unavailable`.
+
+`PUT /settings/media-dirs` accepts `{"media_dirs":["/media/movies","/archive"]}`.
+Use absolute paths visible to the backend host; at most 32 roots are allowed.
+Saving canonicalizes root aliases, deduplicates identical roots in order and
+rejects parent/child overlaps with 400. Offline paths may be saved. An empty list
+disables media access and scans. Saving does not scan or migrate files. Removing
+a root stops future access/queued work and watching, while retaining its Films,
+editions, manual corrections, Film reviews and Viewing records. Configuration
+read failure fails closed instead of restoring a revoked environment root.
+
+Legacy `GET /settings/media-dir` reports the first root. Its existing `PUT` still
+requires an accessible directory and replaces only the first root, preserving
+the others and applying overlap validation. When no list is saved, the old
+`media_dir` setting or `MEDIA_DIR` environment value supplies the single root.
+The root organizer UI continues to use the first root; automatic watchers use
+their own root. Container users must mount each configured root separately.
+
+`POST /library/scan` (also `/library/reconcile` and `/sys/scan-library`) queues
+recursive discovery across all saved roots, including direct-root videos and
+existing per-video NFO/multipart rules. The optional `media_dir` parameter selects
+one **already configured exact root**, never an arbitrary path. No roots returns
+400. Offline roots are queued so their failure appears in the result.
+`POST /library/scan-folder?folder_path=...` requires a current configured root.
+Queued root IDs/path manifests and refresh/file-write/identity operations are
+revalidated against the current configuration before use. Removing and later
+re-adding a root does not change Film or edition IDs.
+
+`GET /library/sync/status` retains its `sync` and `watcher` containers. The sync
+`last_result` adds `complete`, `incomplete_roots` and `roots` to `scanned`, `added`,
+`missing`. Each root has `id,state,scanned,added,errors,skipped_links`. Root states
+are `not_scanned`, `running`, `complete`, `partial`, `offline`,
+`permission_denied`, `unavailable`, or `interrupted`. `scanned` counts observed
+editions; `added` counts committed new editions after a successful root batch.
+A failed persistence batch can leave `scanned` positive and `added` zero.
+Missing is a whole-run
+count. The last receipt survives restart; an unfinished receipt becomes
+interrupted. `watcher.roots` reports each configured root and its current state.
+
+Any inaccessible root, parse/traversal/persistence failure, or cancellation
+suppresses missing reconciliation for that run. Positive discoveries may remain.
+Only fully covered roots followed by successful enumeration proving a locator
+absent can mark that edition missing. Existing-but-unparsed files, removed roots,
+and inaccessible paths are never deletion evidence. Nothing here deletes records
+or files. Same-Film reconnection and manual-correction cross-Film guards remain.
+
+Scanning and watching skip hidden directories, symlinks and Windows junctions;
+link aliases/cycles are not additional editions. A root/ancestor replaced with a
+link after saving becomes unavailable. Artwork URLs use
+`/media/_roots/{root_id}/{full-relative-path}` so nested/same-named folders cannot
+collide. The legacy `/media/{relative-path}` route remains first-root compatible.
+Both routes reject either OS's traversal/drive syntax and links. Namespaced URLs
+immediately return 404 for removed roots; legacy relative URLs always resolve
+against the current first root and cannot identify a previously configured root.
+As with existing pathname-based operations, an
+adversarial filesystem mutation between validation and OS access is not an atomic
+cross-platform filesystem sandbox.
+
 ## Deterministic Library filters
 
 `GET /library/films/page` combines every supplied condition with AND before
@@ -125,6 +188,7 @@ sources. Invalid resource IDs return `400`; missing resources return `404`.
 | `GET` | `/settings` | Combined non-secret settings. |
 | `GET/PUT` | `/settings/model` | Analysis and Ask model selection. |
 | `GET/PUT` | `/settings/media-dir` | Local media root and non-secret availability. `PUT` requires an existing readable directory and applies immediately without an application restart. |
+| `GET/PUT` | `/settings/media-dirs` | Ordered canonical roots and independent current accessibility; saving does not scan. |
 | `GET` | `/media/{relative_path}` | Serve a file from the current media root with traversal and symlink-escape protection. |
 | `GET/PUT` | `/settings/language` | Application language. |
 | `GET/PUT` | `/settings/artwork-language` | Preferred artwork language. |

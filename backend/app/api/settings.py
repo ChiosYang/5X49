@@ -12,6 +12,8 @@ from app.services.settings import (
     get_base_url,
     get_language,
     get_media_dir,
+    get_media_dirs,
+    set_media_dirs,
     get_scrape_require_confirmation,
     get_tmdb_key_status,
     get_watch_library,
@@ -28,6 +30,7 @@ from app.services.settings import (
     set_watch_library,
 )
 from app.services.watcher import library_watcher
+from app.services.media_roots import directory_status, MediaBoundaryError, safe_path
 
 
 router = APIRouter()
@@ -44,6 +47,7 @@ def _media_directory_status(media_dir: str | None) -> dict:
 
     try:
         path = Path(path_value).expanduser()
+        safe_path(path, path)
         exists = path.exists()
         readable = exists and path.is_dir() and os.access(path, os.R_OK)
     except (OSError, RuntimeError, ValueError):
@@ -86,6 +90,32 @@ def update_model_setting(model_name: str):
         raise HTTPException(status_code=500, detail="Failed to save settings")
 
 
+class MediaDirectoriesUpdate(BaseModel):
+    media_dirs: list[str]
+
+
+@router.get("/settings/media-dirs")
+def get_media_directories():
+    return {"media_dirs": get_media_dirs(), "roots": [directory_status(root) for root in get_media_dirs()]}
+
+
+@router.put("/settings/media-dirs")
+def update_media_directories(payload: MediaDirectoriesUpdate):
+    try:
+        if not set_media_dirs(payload.media_dirs):
+            raise HTTPException(500, detail="Failed to save settings")
+    except (MediaBoundaryError, OSError, RuntimeError) as exc:
+        raise HTTPException(400, detail=str(exc)) from None
+    _restart_watcher()
+    return {"status": "success", **get_media_directories()}
+
+
+def _restart_watcher():
+    library_watcher.stop()
+    if get_watch_library():
+        library_watcher.start()
+
+
 @router.get("/settings/media-dir")
 def get_media_directory():
     return _media_directory_status(get_media_dir())
@@ -104,8 +134,12 @@ def update_media_directory(media_dir: str):
         raise HTTPException(status_code=400, detail="Media directory is not readable")
 
     normalized_media_dir = str(resolved_media_dir)
-    success = set_media_dir(normalized_media_dir)
+    try:
+        success = set_media_dir(normalized_media_dir)
+    except (MediaBoundaryError, OSError, RuntimeError) as exc:
+        raise HTTPException(400, detail=str(exc)) from None
     if success:
+        _restart_watcher()
         return {
             "status": "success",
             "message": "Media directory updated and is available immediately.",

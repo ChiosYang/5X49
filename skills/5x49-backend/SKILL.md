@@ -5,6 +5,37 @@ description: 5X49 Fresh Canonical FastAPI 的 Film、LibraryItem、Factual Explo
 
 # 5X49 Backend API
 
+## Multiple media roots
+
+- GET/PUT `/settings/media-dirs`: ordered `{media_dirs: string[]}`; GET also
+  reports `roots: [{id,path,state}]`. Save absolute backend-host paths (maximum
+  32), canonicalize/deduplicate, reject overlapping parent/child roots. Offline
+  roots are allowed; `[]` disables access. Saving never scans or moves files.
+- Legacy `/settings/media-dir` reads/replaces only the first root and retains
+  its existing readable-directory requirement. An absent list falls back to
+  legacy settings/MEDIA_DIR; settings read failures fail closed. Removing a root
+  stops its access and queued work, preserving all identities and personal data.
+- `/library/scan` and `/library/reconcile` recurse across all roots, including
+  direct-root videos; optional `media_dir` must be an exact configured root.
+  `/library/scan-folder` targets must remain within configured roots. Watchers
+  cover the same nested tree. Hidden directories, links and junctions are skipped.
+- `/library/sync/status` adds `complete,incomplete_roots,roots` to sync.last_result;
+  each root has `id,state,scanned,added,errors,skipped_links`. States distinguish
+  complete/partial/offline/permission_denied/unavailable/not_scanned/interrupted.
+  Receipts survive restart. Accessibility is separate from saved configuration
+  and from historical coverage. A partial result is not a successful full scan.
+- Any failed root/cancellation suppresses missing reconciliation for the run;
+  positive discoveries may persist. Only complete coverage and explicit absence
+  under a still accessible root can mark an edition missing. Removed/offline
+  roots never authorize deletion or cross-Film merging. Same-Film reconnection
+  and the cross-Film manual-metadata block remain mandatory.
+- Artwork uses `/media/_roots/{root_id}/{full-relative-path}`; legacy `/media/*`
+  uses the first root. Removed roots are immediately revoked. Queued manifests,
+  scraping, organizer writes and identity decisions revalidate current bounds.
+  Root organizer UI uses the first root; each watcher uses its own root.
+- Database backups still exclude all Setting rows, including root configuration
+  and scan receipts; restoring requires explicit media reconfiguration.
+
 ## Maintenance database backups
 
 - GET `/maintenance/backups` reads separate `last_attempt` / `last_success` state.

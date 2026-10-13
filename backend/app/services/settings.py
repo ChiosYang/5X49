@@ -282,24 +282,39 @@ def refresh_models_cache():
     """Force refresh the models cache"""
     return get_available_models(force_refresh=True)
 
-def get_media_dir():
-    """Get current media directory"""
-    default_media_dir = os.getenv("MEDIA_DIR", "/media")
+def get_media_dirs() -> list[str]:
+    """An explicit empty list disables media access; legacy settings still work."""
     try:
         with Session(database.engine) as session:
-            row = session.get(Setting, "media_dir")
-        value = row.value if row is not None else None
-        return value if isinstance(value, str) and value.strip() else default_media_dir
+            roots = session.get(Setting, "media_dirs")
+            legacy = session.get(Setting, "media_dir")
+        if roots is not None and isinstance(roots.value, list):
+            return [value for value in roots.value if isinstance(value, str) and value.strip()]
+        value = legacy.value if legacy is not None else None
+        return [value if isinstance(value, str) and value.strip() else os.getenv("MEDIA_DIR", "/media")]
     except Exception as exc:
-        logger.warning("Media directory setting is unavailable; using default: %s", type(exc).__name__)
-        return default_media_dir
+        logger.warning("Media settings unavailable: %s", type(exc).__name__)
+        return []
+
+
+def get_media_dir():
+    roots = get_media_dirs()
+    return roots[0] if roots else ""
+
+
+def set_media_dirs(media_dirs: list[str]):
+    from app.services.media_roots import normalize_roots
+    roots = normalize_roots(media_dirs)
+    settings = load_settings()
+    settings["media_dirs"] = roots
+    settings["media_dir"] = roots[0] if roots else ""
+    return save_settings(settings)
+
 
 def set_media_dir(media_dir: str):
-    """Set media directory"""
-    # Simply save the path, validation happens at usage time
-    settings = load_settings()
-    settings["media_dir"] = media_dir
-    return save_settings(settings)
+    roots = get_media_dirs()
+    return set_media_dirs([media_dir, *roots[1:]])
+
 
 def get_language():
     """Get language preference, 'zh' or 'en'"""
