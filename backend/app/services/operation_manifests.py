@@ -6,6 +6,7 @@ import re
 import shutil
 from pathlib import Path
 from uuid import uuid4
+from app.services.media_roots import safe_path, configured_root
 
 
 MANIFEST_SCHEMA_VERSION = "file-operation-manifest.v1"
@@ -22,8 +23,11 @@ class OperationManifestStore:
         self.root = (root or configured).resolve()
 
     def create(self, media_root: Path, source: Path) -> str:
-        media_root = media_root.resolve()
-        source = source.resolve()
+        media_root = media_root.absolute()
+        try:
+            source = safe_path(source.absolute(), media_root)
+        except ValueError as exc:
+            raise OperationManifestError("Operation path escapes the media root or contains a link") from None
         self._require_within(source, media_root)
         if not source.is_file():
             raise OperationManifestError("Source file is unavailable")
@@ -36,8 +40,11 @@ class OperationManifestStore:
         *,
         allow_missing: bool = False,
     ) -> str:
-        media_root = media_root.resolve()
-        source = source.resolve()
+        media_root = media_root.absolute()
+        try:
+            source = safe_path(source.absolute(), media_root)
+        except ValueError as exc:
+            raise OperationManifestError("Operation path escapes the media root or contains a link") from None
         self._require_within(source, media_root)
         if not allow_missing and not source.exists():
             raise OperationManifestError("Referenced path is unavailable")
@@ -75,13 +82,13 @@ class OperationManifestStore:
         manifest = self.load(reference)
         if manifest.get("entry_kind") != "file_operation":
             raise OperationManifestError("Operation manifest is not a file operation")
-        root = Path(manifest["media_root"]).resolve()
-        target = target.resolve()
+        root = Path(manifest["media_root"])
+        target = safe_path(target.absolute(), root)
         self._require_within(target, root)
         sanitized_sidecars = []
         for item in sidecars:
-            source = Path(item["source"]).resolve()
-            sidecar_target = Path(item["target"]).resolve()
+            source = safe_path(Path(item["source"]).absolute(), root)
+            sidecar_target = safe_path(Path(item["target"]).absolute(), root)
             self._require_within(source, root)
             self._require_within(sidecar_target, root)
             sanitized_sidecars.append({"source": str(source), "target": str(sidecar_target)})
@@ -97,17 +104,29 @@ class OperationManifestStore:
             raise OperationManifestError("Operation manifest is unavailable") from exc
         if value.get("schema_version") != MANIFEST_SCHEMA_VERSION or value.get("reference") != reference:
             raise OperationManifestError("Operation manifest contract is invalid")
-        root = Path(value.get("media_root") or "").resolve()
-        source = Path(value.get("source") or "").resolve()
+        root = Path(value.get("media_root") or "").absolute()
+        try:
+            source = safe_path(Path(value.get("source") or ""), root)
+            if value.get("target"):
+                safe_path(Path(value["target"]), root)
+            for sidecar in value.get("sidecars", []):
+                safe_path(Path(sidecar["source"]), root)
+                safe_path(Path(sidecar["target"]), root)
+        except (ValueError, OSError) as exc:
+            raise OperationManifestError("Operation path is no longer safe") from exc
         self._require_within(source, root)
         target_value = value.get("target")
         if target_value:
-            self._require_within(Path(target_value).resolve(), root)
+            self._require_within(Path(target_value), root)
         return value
 
     def state(self, reference: str) -> str:
         manifest = self.load(reference)
         source = Path(manifest["source"])
+        try:
+            configured_root(source)
+        except (ValueError, OSError) as exc:
+            raise OperationManifestError("Operation root is no longer configured or accessible") from exc
         target_value = manifest.get("target")
         if not target_value:
             return "source" if source.is_file() else "invalid"
@@ -120,6 +139,7 @@ class OperationManifestStore:
 
     def restore(self, reference: str) -> None:
         manifest = self.load(reference)
+        configured_root(Path(manifest["source"]))
         source = Path(manifest["source"])
         target = Path(manifest.get("target") or "")
         if self.state(reference) != "target":
@@ -130,6 +150,8 @@ class OperationManifestStore:
         ]
         moves.append((target, source))
         for current, destination in moves:
+            configured_root(current)
+            configured_root(destination)
             if destination.exists() or not current.is_file():
                 raise OperationManifestError("A file restore destination is no longer safe")
         for current, destination in moves:

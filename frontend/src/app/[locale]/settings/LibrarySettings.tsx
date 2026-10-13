@@ -3,7 +3,7 @@
 import { ArrowUpRight } from "lucide-react";
 import { useEffect } from "react";
 import { useTranslations } from "next-intl";
-import MediaDirectoryControl from "@/components/settings/MediaDirectoryControl";
+import MediaRootsControl from "@/components/settings/MediaRootsControl";
 import {
   DisclosurePanel,
   SectionIntro,
@@ -36,6 +36,7 @@ function useTransientMutationResult(result: unknown, reset: () => void) {
 
 export default function LibrarySettings() {
   const t = useTranslations("Settings");
+  const roots = useTranslations("MediaRoots");
   const { data: artworkLanguageData } = useArtworkLanguageSetting();
   const { data: libraryWatchData, mutate: refreshLibraryWatch } = useLibraryWatchSetting();
   const { data: autoOrganizeData, mutate: refreshAutoOrganize } = useAutoOrganizeRootSetting();
@@ -137,10 +138,10 @@ export default function LibrarySettings() {
 
       <SettingsPanel title={t("librarySource")} description={t("librarySourceDesc")}>
         <SettingRow
-          title={t("mediaDir")}
-          description={t("mediaDirDesc")}
+          title={roots("title")}
+          description={roots("configuration")}
         >
-          <MediaDirectoryControl showDockerNote />
+          <MediaRootsControl />
         </SettingRow>
       </SettingsPanel>
 

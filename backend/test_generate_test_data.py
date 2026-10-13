@@ -4,6 +4,7 @@ import subprocess
 import tempfile
 import unittest
 from pathlib import Path
+from urllib.parse import unquote
 
 from app.services.scanner import NFOScanner
 from scripts.generate_test_data import GENERATOR_NAME, SCHEMA_VERSION, clean_dataset, generate_dataset
@@ -28,7 +29,7 @@ class FreshCanonicalTestDataGeneratorTests(unittest.TestCase):
         observed = NFOScanner(str(output / "media")).scan_observed()
         self.assertEqual(len(observed), 12)
         self.assertTrue(all(item.film["library_status"] == "available" for item in observed))
-        self.assertTrue(all(Path(item.film["poster_local"].replace("/media/", str(output / "media") + "/")).is_file() for item in observed))
+        self.assertTrue(all(Path(output / "media" / unquote(item.film["poster_local"].split("/", 4)[4])).is_file() for item in observed))
         self.assertEqual(len(list((output / "media").glob("*/film-fanart.jpg"))), 12)
 
     def test_generation_is_deterministic_and_force_only_replaces_owned_output(self):

@@ -192,17 +192,19 @@ def get_library_scrape_status():
 def get_library_organization_candidates():
     """List direct-root and legacy-inbox videos without exposing absolute paths."""
     try:
-        return root_video_organizer.list_organization_candidates(get_media_dir() or DEFAULT_MEDIA_DIR)
+        return root_video_organizer.list_organization_candidates(get_media_dir()) if get_media_dir() else []
     except FileNotFoundError:
         return []
-    except PermissionError as exc:
+    except (PermissionError, ValueError) as exc:
         raise HTTPException(status_code=400, detail="Media directory cannot be read") from exc
 
 
 def _preview_organization(payload: OrganizationPreviewRequest) -> dict:
+    if not get_media_dir():
+        raise HTTPException(400, detail="No media directories configured")
     try:
         return root_video_organizer.preview_organization(
-            get_media_dir() or DEFAULT_MEDIA_DIR,
+            get_media_dir(),
             payload.source_path,
             payload.tmdb_id,
             payload.rename_style,
@@ -235,8 +237,10 @@ def confirm_library_organization(payload: OrganizationConfirmRequest):
     if not preview["can_confirm"]:
         raise HTTPException(status_code=409, detail="Organization target has conflicts")
 
-    root = Path(get_media_dir() or DEFAULT_MEDIA_DIR).resolve()
-    source = (root / preview["source"]["source_path"]).resolve()
+    if not get_media_dir():
+        raise HTTPException(400, detail="No media directories configured")
+    root = Path(get_media_dir()).absolute()
+    source = root / preview["source"]["source_path"]
     try:
         manifest_ref = operation_manifest_store.create(root, source)
     except OperationManifestError as exc:

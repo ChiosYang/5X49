@@ -17,7 +17,10 @@ from app.services.scanner import NFOScanner
 class LibraryEditionTests(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
-        self.root = Path(self.tmp.name)
+        self.root = Path(self.tmp.name).resolve()
+        roots_patch = patch("app.services.settings.get_media_dirs", return_value=[str(self.root)])
+        roots_patch.start()
+        self.addCleanup(roots_patch.stop)
         self.folder = self.root / "Blade.Runner.1982"
         self.folder.mkdir()
         path = self.root / "library.db"

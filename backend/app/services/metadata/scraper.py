@@ -1,6 +1,7 @@
 from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
+from app.services.media_roots import configured_root, safe_path, media_url
 import shutil
 from threading import Lock, RLock
 from typing import Optional
@@ -239,6 +240,7 @@ class MetadataScraper:
         with self._persistence_lock:
             updated_movie = library_sync_service.scan_folder(
                 folder,
+                media_root=str(configured_root(folder)),
                 library_item_id=movie["library_item_id"],
                 command_id=operation_command_id,
                 correlation_id=operation_command_id,
@@ -272,12 +274,12 @@ class MetadataScraper:
         enriched.update(
             {
                 "poster_local": (
-                    f"/media/{folder.name}/{filename_prefix}-poster.jpg"
+                    media_url(folder / f"{filename_prefix}-poster.jpg", configured_root(folder))
                     if selection.poster_path
                     else updated_movie.get("poster_local") or movie.get("poster_local")
                 ),
                 "backdrop_local": (
-                    f"/media/{folder.name}/{filename_prefix}-fanart.jpg"
+                    media_url(folder / f"{filename_prefix}-fanart.jpg", configured_root(folder))
                     if selection.backdrop_path
                     else updated_movie.get("backdrop_local") or movie.get("backdrop_local")
                 ),
@@ -512,6 +514,7 @@ class MetadataScraper:
             with self._persistence_lock:
                 updated_movie = library_sync_service.scan_folder(
                     folder,
+                    media_root=str(configured_root(folder)),
                     library_item_id=movie["library_item_id"],
                     command_id=operation_command_id,
                     correlation_id=operation_correlation_id,
@@ -749,6 +752,7 @@ class MetadataScraper:
         correlation_id: str,
         operation: str,
     ) -> Optional[Path]:
+        configured_root(destination.with_suffix(destination.suffix + ".tmp"))
         before = self._file_snapshot(destination)
         backup = self._backup_file(destination, operation, command_id) if before.get("exists") else None
         downloaded = self.artwork.download(url, destination, overwrite=overwrite)
@@ -789,6 +793,7 @@ class MetadataScraper:
         operation: str,
     ) -> Path:
         nfo_path = folder / f"{filename_prefix}.nfo"
+        configured_root(nfo_path.with_suffix(".nfo.tmp"))
         before = self._file_snapshot(nfo_path)
         backup = self._backup_file(nfo_path, operation, command_id) if before.get("exists") else None
         written = self.nfo_writer.write_movie_nfo(
@@ -830,7 +835,10 @@ class MetadataScraper:
         correlation_id: str,
         operation: str,
     ) -> Optional[Path]:
+        configured_root(folder)
         nfo_path = self.nfo_writer.movie_nfo_path(folder, filename_prefix)
+        if nfo_path:
+            configured_root(nfo_path.with_suffix(".nfo.tmp"))
         before = self._file_snapshot(nfo_path) if nfo_path else None
         backup = self._backup_file(nfo_path, operation, command_id) if nfo_path and before and before.get("exists") else None
         written = self.nfo_writer.update_movie_artwork(
@@ -899,17 +907,23 @@ class MetadataScraper:
             )
 
     def _backup_file(self, path: Path, operation: str, command_id: str) -> Optional[dict]:
+        configured_root(path)
         if not path.exists() or not path.is_file():
             return None
         backup_dir = path.parent / ".5x49-backups" / command_id
+        configured_root(backup_dir)
         backup_dir.mkdir(parents=True, exist_ok=True)
         backup_path = backup_dir / f"{operation}-{path.name}"
+        configured_root(backup_path)
         if backup_path.exists():
             backup_path = backup_dir / f"{operation}-{uuid4().hex}-{path.name}"
+        configured_root(path)
+        configured_root(backup_path)
         shutil.copy2(path, backup_path)
         return self._file_snapshot(backup_path)
 
     def _file_snapshot(self, path: Path) -> dict:
+        configured_root(path)
         try:
             stat = path.stat()
         except OSError:
@@ -931,22 +945,24 @@ class MetadataScraper:
     def _film_folder(self, movie: dict) -> Optional[Path]:
         folder_path = movie.get("folder_path")
         if folder_path:
-            folder = Path(folder_path).resolve()
-            if folder.exists() and folder.is_dir():
-                return folder
+            configured_root(Path(folder_path))
+            folder = Path(folder_path)
+            return folder if folder.is_dir() else None
+
+        media_path = movie.get("media_path")
+        if media_path:
+            configured_root(Path(media_path))
+            folder = Path(media_path).parent
+            return folder if folder.is_dir() else None
 
         folder_name = movie.get("folder_name")
         media_dir = get_media_dir()
         if folder_name and media_dir:
-            folder = (Path(media_dir) / folder_name).resolve()
+            folder = Path(media_dir) / folder_name
+            configured_root(folder)
             if folder.exists() and folder.is_dir():
                 return folder
 
-        media_path = movie.get("media_path")
-        if media_path:
-            folder = Path(media_path).resolve().parent
-            if folder.exists() and folder.is_dir():
-                return folder
         return None
 
     def _filename_prefix(self, movie: dict, folder: Path) -> str:

@@ -71,7 +71,25 @@ def control(payload: dict, x_e2e_token: str = Header(default='')):
     if x_e2e_token != os.environ['E2E_TOKEN']:
         raise HTTPException(403)
     action = payload['action']
-    if action == 'backup_fixture':
+    if action == 'multi_root_fixture':
+        from PIL import Image
+        import shutil
+        sample = next((root / 'normal/media').rglob('*.mkv'), None) or next((root / 'normal/media').rglob('*.mp4'))
+        roots = [root / 'multi' / name for name in ('a', 'b')]
+        for index, (directory, relative) in enumerate([(roots[0], 'Direct.mkv'),
+                (roots[0], 'country/year/Same/Film.mkv'), (roots[1], 'other/Same/Film.mkv')]):
+            video = directory / relative
+            video.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(sample, video)
+            with video.open('ab') as handle: handle.write(f'multi-root-{index}'.encode())
+            video.with_suffix('.nfo').write_text(f'<movie><title>Multi Root {index}</title><year>2001</year><runtime>90</runtime><tmdbid>{982000+index}</tmdbid></movie>')
+            Image.new('RGB', (80, 120), ('red', 'green', 'blue')[index]).save(video.with_name(video.stem + '-poster.jpg'))
+        return {'roots': [str(path) for path in roots]}
+    elif action == 'multi_root_offline':
+        (root / 'multi/b').rename(root / 'multi/parked-b')
+    elif action == 'multi_root_online':
+        (root / 'multi/parked-b').rename(root / 'multi/b')
+    elif action == 'backup_fixture':
         from app.services.library import library_manager
         from app.services.user_state import film_profile_state_manager
         from app.services.viewings import viewing_manager
@@ -175,11 +193,13 @@ def control(payload: dict, x_e2e_token: str = Header(default='')):
         return {'updated': True}
     elif action == 'manual_metadata_fixture':
         from app.services.library_sync import library_sync_service
+        from app.services.settings import set_media_dirs
         from app.services.canonical_runtime import canonical_runtime_writer
         from app.database import engine
         from sqlmodel import Session
         folder = root / 'Manual metadata fixture'
         folder.mkdir(exist_ok=True)
+        set_media_dirs([str(folder)])
         (folder / 'movie.mkv').write_bytes(b'manual-metadata-synthetic-video')
         (folder / 'movie.nfo').write_text('<movie><title>Source Film</title><originaltitle>Source Original</originaltitle>'
             '<year>1999</year><genre>Drama</genre><plot>Automatic source synopsis.</plot><uniqueid type="tmdb">900101</uniqueid></movie>', encoding='utf-8')

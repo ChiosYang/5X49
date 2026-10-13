@@ -35,6 +35,7 @@ import ManagementCommandLayer from "./ManagementCommandLayer";
 import ManagementConstellation from "./ManagementConstellation";
 import ManagementInspector, { type InspectorServiceDetails } from "./ManagementInspector";
 import MaintenanceBackup from "./MaintenanceBackup";
+import MediaScanResults from "@/components/settings/MediaScanResults";
 
 type Feedback = { message: string; tone: "success" | "error" | "warning" };
 
@@ -325,6 +326,7 @@ export default function LibraryManagementClient() {
       </header>
 
       <MaintenanceBackup />
+      <section className="page-x pt-6"><MediaScanResults /></section>
       <section className="page-x py-5 sm:py-7">
         <div className="overflow-hidden border border-white/10 bg-black shadow-[0_35px_100px_rgba(0,0,0,.35)] xl:grid xl:grid-cols-[minmax(0,1fr)_24rem]">
           <ManagementConstellation

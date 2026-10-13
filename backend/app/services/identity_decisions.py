@@ -13,6 +13,7 @@ from app.models import FilmProfileState, IdentityReview, LibraryItem, LibraryIte
 from app.services.event_store import event_store
 from app.services.file_identity import full_content_hash, observe_file
 from app.services.identity_review import identity_review_reader
+from app.services.media_roots import configured_root, safe_path, root_id, relative_media_path, explicitly_absent
 
 
 class IdentityDecisionError(ValueError):
@@ -22,35 +23,44 @@ class IdentityDecisionError(ValueError):
         self.status = status
 
 
-def _safe_path(locator: str, root: Path) -> Path:
+def _safe_path(locator: str, roots) -> Path:
+    roots = [str(roots)] if isinstance(roots, (str, Path)) else roots
     try:
-        path = Path(locator).resolve()
-        if not path.is_relative_to(root) or path == root:
-            raise IdentityDecisionError("unsafe_locator")
+        root = configured_root(Path(locator), roots)
+        path = safe_path(locator, root)
+        if path == root:
+            raise ValueError()
         return path
-    except (OSError, ValueError) as exc:
+    except (OSError, ValueError, RuntimeError) as exc:
         raise IdentityDecisionError("unsafe_locator") from exc
 
 
-def _validate_asset_locator(asset: MediaAsset, root: Path) -> None:
-    # Scanner artwork is an application URL, despite the historical local_path
-    # locator kind. Copy the reference; never interpret it as an OS absolute path.
+def _validate_asset_locator(asset: MediaAsset, roots) -> None:
     if asset.asset_kind in {"poster", "backdrop", "poster_thumb", "backdrop_thumb"}:
-        locator = unquote(asset.locator).replace("\\", "/")
+        locator = unquote(asset.locator)
         if locator.startswith("/media/"):
-            _safe_path(str(root / locator.removeprefix("/media/")), root)
+            value = locator.removeprefix("/media/")
+            try:
+                if value.startswith("_roots/"):
+                    _, identifier, value = value.split("/", 2)
+                    root = next(root for root in roots if root_id(root) == identifier)
+                else:
+                    root = roots[0]
+                _safe_path(str(Path(root) / relative_media_path(value)), roots)
+            except (ValueError, StopIteration, IndexError):
+                raise IdentityDecisionError("unsafe_locator") from None
             return
         if locator.startswith("/artwork-cache/"):
             name = locator.removeprefix("/artwork-cache/")
-            if name and name not in {".", ".."} and "/" not in name and ":" not in name:
+            if name and name not in {".", ".."} and "/" not in name and "\\" not in name and ":" not in name:
                 return
             raise IdentityDecisionError("unsafe_locator")
-    _safe_path(asset.locator, root)
+    _safe_path(asset.locator, roots)
 
 
 class IdentityDecisionService:
     def preview(self, session: Session, review_id: str, action: str,
-                target_item_id: str | None, media_root: str) -> dict:
+                target_item_id: str | None, media_root: str | list[str]) -> dict:
         detail = identity_review_reader.detail(session, review_id)
         if detail is None:
             raise IdentityDecisionError("review_not_found", 404)
@@ -59,7 +69,7 @@ class IdentityDecisionService:
         if (action == "reconnect") != (target_item_id is not None):
             raise IdentityDecisionError("invalid_target", 422)
         source = session.get(LibraryItem, detail["library_item"]["id"])
-        root = Path(media_root).resolve()
+        root = [str(Path(value).absolute()) for value in (media_root if isinstance(media_root, list) else [media_root])]
         source_assets = self._assets(session, source.id)
         videos = [a for a in source_assets if a.asset_kind == "video"]
         if len(videos) != 1 or (action == "reconnect" and any(a.asset_kind == "video_part" for a in source_assets)):
@@ -101,7 +111,9 @@ class IdentityDecisionService:
             try:
                 target_path.stat()
             except FileNotFoundError:
-                pass
+                target_root = configured_root(target_path, root)
+                if not explicitly_absent(target_path, target_root):
+                    raise IdentityDecisionError("target_file_unreadable")
             except OSError as exc:
                 raise IdentityDecisionError("target_file_unreadable") from exc
             else:
@@ -120,7 +132,7 @@ class IdentityDecisionService:
                 "confirmation_token": token}
 
     def confirm(self, engine, review_id: str, *, action: str, target_item_id: str | None,
-                confirmation_token: str, idempotency_key: str, media_root: str) -> dict:
+                confirmation_token: str, idempotency_key: str, media_root: str | list[str]) -> dict:
         request_hash = canonical_json_hash({"action": action, "target_item_id": target_item_id,
                                             "confirmation_token": confirmation_token})
         with Session(engine) as session:

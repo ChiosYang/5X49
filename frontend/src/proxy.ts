@@ -15,7 +15,16 @@ const intlProxy = createMiddleware({
 });
 
 export function proxy(request: NextRequest) {
-    return intlProxy(request);
+    const response = intlProxy(request);
+    if (request.headers.get('next-router-prefetch') === '1') {
+        // Prefetching an old-language link must not change the user's language.
+        const cookies = response.headers.getSetCookie().filter(cookie => !cookie.startsWith('NEXT_LOCALE='));
+        response.headers.delete('set-cookie');
+        response.headers.delete('x-middleware-set-cookie');
+        cookies.forEach(cookie => response.headers.append('set-cookie', cookie));
+        if (cookies.length) response.headers.set('x-middleware-set-cookie', cookies.join(','));
+    }
+    return response;
 }
 
 export const config = {

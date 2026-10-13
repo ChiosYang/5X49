@@ -1,5 +1,6 @@
 import xml.etree.ElementTree as ET
 from pathlib import Path
+from app.services.media_roots import safe_path
 from typing import Optional
 
 
@@ -15,6 +16,7 @@ class NFOWriter:
     ) -> Path:
         nfo_name = f"{filename_prefix}.nfo" if filename_prefix else "movie.nfo"
         nfo_path = folder / nfo_name
+        safe_path(nfo_path, folder)
         if nfo_path.exists() and not overwrite:
             return nfo_path
 
@@ -78,6 +80,8 @@ class NFOWriter:
         tree = ET.ElementTree(root)
         ET.indent(tree, space="  ")
         temp_path = nfo_path.with_suffix(".nfo.tmp")
+        safe_path(temp_path, folder)
+        safe_path(nfo_path, folder)
         tree.write(temp_path, encoding="utf-8", xml_declaration=True)
         temp_path.replace(nfo_path)
         return nfo_path
@@ -117,6 +121,8 @@ class NFOWriter:
 
         ET.indent(tree, space="  ")
         temp_path = nfo_path.with_suffix(".nfo.tmp")
+        safe_path(temp_path, folder)
+        safe_path(nfo_path, folder)
         tree.write(temp_path, encoding="utf-8", xml_declaration=True)
         temp_path.replace(nfo_path)
         return nfo_path
@@ -144,6 +150,7 @@ class NFOWriter:
             if candidate in seen:
                 continue
             seen.add(candidate)
+            safe_path(candidate, folder)
             if candidate.exists():
                 return candidate
         return None

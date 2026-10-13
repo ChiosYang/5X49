@@ -1,4 +1,5 @@
 from pathlib import Path
+from app.services.media_roots import configured_root
 from threading import local
 from typing import Callable, Optional
 
@@ -13,6 +14,7 @@ class ArtworkDownloader:
     def download(self, url: Optional[str], destination: Path, overwrite: bool = False) -> Optional[Path]:
         if not url:
             return None
+        configured_root(destination)
         if destination.exists() and not overwrite:
             return destination
 
@@ -20,6 +22,8 @@ class ArtworkDownloader:
         response.raise_for_status()
 
         temp_path = destination.with_suffix(destination.suffix + ".tmp")
+        configured_root(destination)
+        configured_root(temp_path)
         temp_path.write_bytes(response.content)
         temp_path.replace(destination)
         return destination

@@ -29,6 +29,7 @@ from app.models import (
     Viewing,
     utc_now_iso,
 )
+from app.services.media_roots import configured_root, explicitly_absent
 from app.services.file_identity import FileIdentityObservation, observe_file
 from app.services.structured_metadata_sync import structured_metadata_synchronizer
 
@@ -602,10 +603,11 @@ class CanonicalRuntimeWriter:
             if incoming_normalized and locator_normalized == incoming_normalized:
                 continue
             try:
-                if Path(asset.locator).is_file():
+                root = configured_root(Path(asset.locator))
+                if not explicitly_absent(asset.locator, root):
                     return True
-            except OSError:
-                continue
+            except (OSError, ValueError):
+                return True
         return False
 
     @staticmethod

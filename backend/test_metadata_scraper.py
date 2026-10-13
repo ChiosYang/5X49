@@ -24,7 +24,10 @@ from app.services.operation_snapshots import operation_snapshot_service
 class MetadataScraperIntegrationTests(unittest.TestCase):
     def setUp(self):
         self._tmp = tempfile.TemporaryDirectory()
-        self.root = Path(self._tmp.name)
+        self.root = Path(self._tmp.name).resolve()
+        roots_patch = patch("app.services.settings.get_media_dirs", return_value=[str(self.root)])
+        roots_patch.start()
+        self.addCleanup(roots_patch.stop)
         database_path = self.root / "library.db"
         self.engine = create_engine(f"sqlite:///{database_path}")
         configure_sqlite_engine(self.engine)

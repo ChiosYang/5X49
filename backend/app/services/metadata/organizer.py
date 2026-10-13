@@ -5,6 +5,7 @@ import shutil
 import time
 from datetime import datetime, timezone
 from pathlib import Path
+from app.services.media_roots import safe_path, configured_root, is_link, relative_media_path
 from threading import Lock
 from typing import Optional
 from uuid import uuid4
@@ -44,7 +45,7 @@ class RootVideoOrganizer:
             return dict(self._status)
 
     def list_root_videos(self, media_dir: Optional[str] = None) -> list[dict]:
-        root = Path(media_dir or get_media_dir()).resolve()
+        root = self._root(media_dir)
         if not root.exists() or not root.is_dir():
             raise FileNotFoundError(f"Directory not found: {root}")
 
@@ -56,7 +57,7 @@ class RootVideoOrganizer:
         return videos
 
     def list_organization_candidates(self, media_dir: Optional[str] = None) -> list[dict]:
-        root = Path(media_dir or get_media_dir()).resolve()
+        root = self._root(media_dir)
         if not root.exists() or not root.is_dir():
             raise FileNotFoundError(f"Directory not found: {root}")
 
@@ -66,8 +67,8 @@ class RootVideoOrganizer:
             if video:
                 candidates.append(video)
 
-        inbox = (root / "inbox").resolve()
-        if inbox.is_dir():
+        inbox = root / "inbox"
+        if not is_link(inbox) and inbox.is_dir():
             for path in self._videos_in_directory(inbox):
                 video = self._video_view(path, root, source_location="legacy_inbox")
                 if video:
@@ -88,7 +89,7 @@ class RootVideoOrganizer:
         tmdb_id: int,
         rename_style: str = "preserve_stem",
     ) -> dict:
-        root = Path(media_dir).resolve()
+        root = self._root(media_dir)
         source = self._resolve_candidate_source(root, source_path)
         if not self._is_usable_pending_video(source, root):
             raise ValueError("Source video is not stable or cannot be organized")
@@ -105,7 +106,7 @@ class RootVideoOrganizer:
             target_year,
             rename_style,
         )
-        target_video = target_dir / target_video_name
+        target_video = safe_path(target_dir / target_video_name, root)
         sidecars = self._sidecar_plan(source, target_dir, target_video_name, rename_style)
         conflicts = []
         if target_video.exists():
@@ -151,7 +152,7 @@ class RootVideoOrganizer:
                 "source_path": source_relative,
                 "filename": source.name,
                 "size": stat.st_size,
-                "source_location": "legacy_inbox" if source.parent == (root / "inbox").resolve() else "root",
+                "source_location": "legacy_inbox" if source.parent == root / "inbox" else "root",
             },
             "match": candidate.model_dump(),
             "target": {
@@ -193,7 +194,7 @@ class RootVideoOrganizer:
 
     def organize_root(self, media_dir: Optional[str] = None, options: Optional[RootOrganizeOptions] = None) -> dict:
         options = options or RootOrganizeOptions(rename_style=get_organize_rename_style())
-        root = Path(media_dir or get_media_dir()).resolve()
+        root = self._root(media_dir)
         started_at = datetime.now(timezone.utc).isoformat()
         self._set_status(state="running", last_started_at=started_at, last_error=None)
         result = {
@@ -250,7 +251,7 @@ class RootVideoOrganizer:
         manifest_ref: str | None = None,
     ) -> dict:
         command_id = self._new_command_id("root_organize")
-        video_path = video_path.resolve()
+        video_path = safe_path(video_path.absolute(), root)
         if not self._is_usable_root_video(video_path, root):
             return {"status": "skipped", "source_name": video_path.name, "message": "Not a stable root video"}
 
@@ -299,7 +300,7 @@ class RootVideoOrganizer:
         manifest_ref: str | None = None,
     ) -> dict:
         command_id = self._new_command_id("root_organize")
-        video_path = video_path.resolve()
+        video_path = safe_path(video_path.absolute(), root)
         if not self._is_usable_pending_video(video_path, root):
             return {"status": "skipped", "source_name": video_path.name, "message": "Not a stable root video"}
 
@@ -335,6 +336,8 @@ class RootVideoOrganizer:
             candidate.year or parsed_year,
             options.rename_style,
         )
+        configured_root(video_path)
+        safe_path(target_video, root)
         if target_video.exists() and not options.overwrite:
             return {
                 "status": "failed",
@@ -359,6 +362,9 @@ class RootVideoOrganizer:
                     "message": "Target sidecar already exists",
                 }
 
+        configured_root(video_path)
+        safe_path(target_dir, root)
+        safe_path(target_video, root)
         manifest_ref = manifest_ref or operation_manifest_store.create(root, video_path)
         target_dir.mkdir(parents=True, exist_ok=True)
         moved_sidecars, sidecar_moves = self._move_sidecars(
@@ -379,6 +385,7 @@ class RootVideoOrganizer:
 
         film = library_sync_service.scan_folder(
             target_dir,
+            media_root=str(root),
             command_id=command_id,
             correlation_id=command_id,
         )
@@ -432,13 +439,22 @@ class RootVideoOrganizer:
     def _root_videos(self, root: Path) -> list[Path]:
         return self._videos_in_directory(root)
 
+    @staticmethod
+    def _root(media_dir: str | Path | None) -> Path:
+        value = media_dir or get_media_dir()
+        if not value:
+            raise ValueError("No media directories configured")
+        root = Path(value).absolute()
+        return safe_path(root, root)
+
     def _videos_in_directory(self, directory: Path) -> list[Path]:
+        safe_path(directory, directory)
         videos = []
         try:
             entries = directory.iterdir()
             for path in entries:
                 try:
-                    is_video_file = path.is_file() and path.suffix.lower() in self.video_extensions
+                    is_video_file = not is_link(path) and path.is_file() and path.suffix.lower() in self.video_extensions
                 except OSError:
                     continue
                 if is_video_file:
@@ -449,13 +465,13 @@ class RootVideoOrganizer:
         return sorted(videos, key=lambda path: path.name.lower())
 
     def _is_usable_root_video(self, path: Path, root: Path) -> bool:
-        if path.parent.resolve() != root:
+        if path.parent != root:
             return False
         return self._is_stable_video(path)
 
     def _is_usable_pending_video(self, path: Path, root: Path) -> bool:
-        allowed_parents = {root.resolve(), (root / "inbox").resolve()}
-        if path.parent.resolve() not in allowed_parents:
+        allowed_parents = {root, root / "inbox"}
+        if path.parent not in allowed_parents:
             return False
         return self._is_stable_video(path)
 
@@ -494,7 +510,7 @@ class RootVideoOrganizer:
         parsed_title, parsed_year = parse_title_year(path.name)
         stable = self._is_usable_pending_video(path, root)
         try:
-            source_path = path.resolve().relative_to(root).as_posix()
+            source_path = safe_path(path, root).relative_to(root).as_posix()
         except ValueError:
             return None
         view = {
@@ -509,14 +525,15 @@ class RootVideoOrganizer:
             "status": "needs_organize" if stable else "waiting_for_stability",
         }
         if include_absolute_path:
-            view["path"] = str(path.resolve())
+            view["path"] = str(path)
         return view
 
     def _resolve_candidate_source(self, root: Path, source_path: str) -> Path:
         if not source_path or Path(source_path).is_absolute():
             raise ValueError("Organization source path must be relative")
-        source = (root / source_path).resolve()
-        allowed_parents = {root.resolve(), (root / "inbox").resolve()}
+        relative_media_path(source_path)
+        source = safe_path(root / source_path, root)
+        allowed_parents = {root, root / "inbox"}
         if source.parent not in allowed_parents:
             raise ValueError("Organization source path is outside the pending-file locations")
         try:
@@ -547,6 +564,9 @@ class RootVideoOrganizer:
         rename_style: str,
     ) -> list[dict]:
         plans = []
+        root = target_dir.parent
+        safe_path(source, root)
+        safe_path(target_dir, root)
         target_stem = Path(target_video_name).stem
         for sidecar in sorted(source.parent.glob(f"{source.stem}.*"), key=lambda path: path.name.lower()):
             if sidecar == source or sidecar.suffix.lower() not in self.sidecar_extensions:
@@ -554,6 +574,8 @@ class RootVideoOrganizer:
             suffix = sidecar.name[len(source.stem):]
             target_name = f"{target_stem}{suffix}" if rename_style == "title_year" else sidecar.name
             target = target_dir / target_name
+            safe_path(sidecar, root)
+            safe_path(target, root)
             plans.append({
                 "source": sidecar,
                 "target": target,
@@ -576,6 +598,8 @@ class RootVideoOrganizer:
         for item in self._sidecar_plan(source, target_dir, target_video_name, rename_style):
             sidecar = item["source"]
             target = item["target"]
+            configured_root(sidecar)
+            configured_root(target)
             if target.exists() and not overwrite:
                 continue
             shutil.move(str(sidecar), str(target))

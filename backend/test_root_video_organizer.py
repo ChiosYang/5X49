@@ -57,9 +57,10 @@ class RootVideoOrganizerTests(unittest.TestCase):
 
             self.assertRegex(reference, r"^manifest_[0-9a-f]{32}$")
             self.assertNotIn(str(media_root), reference)
-            self.assertEqual(store.state(reference), "target")
-            store.restore(reference)
-            self.assertEqual(store.state(reference), "source")
+            with patch("app.services.settings.get_media_dirs", return_value=[str(media_root.resolve())]):
+                self.assertEqual(store.state(reference), "target")
+                store.restore(reference)
+                self.assertEqual(store.state(reference), "source")
             self.assertTrue(source.is_file())
             self.assertTrue(source_sidecar.is_file())
 
@@ -203,13 +204,14 @@ class RootVideoOrganizerTests(unittest.TestCase):
             target_dir = root / "The Matrix (1999)"
             target_dir.mkdir()
 
-            moved, moves = organizer._move_sidecars(
-                source,
-                target_dir,
-                "The Matrix (1999).mkv",
-                "title_year",
-                False,
-            )
+            with patch("app.services.settings.get_media_dirs", return_value=[str(root.resolve())]):
+                moved, moves = organizer._move_sidecars(
+                    source,
+                    target_dir,
+                    "The Matrix (1999).mkv",
+                    "title_year",
+                    False,
+                )
 
             target = target_dir / "The Matrix (1999).en.forced.srt"
             self.assertEqual(moved, [target.name])

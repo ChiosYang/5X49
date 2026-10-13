@@ -1,13 +1,8 @@
 from pathlib import Path
-import hashlib
 import logging
 
 from fastapi import APIRouter, HTTPException, Query
 
-from app.api.common import DEFAULT_MEDIA_DIR, workflow_response
-from app.services.settings import get_media_dir
-from app.workflows import workflow_runtime
-from app.services.operation_manifests import OperationManifestError, operation_manifest_store
 
 
 router = APIRouter()
@@ -52,20 +47,5 @@ def list_directories(path: str = Query(default="/")):
 @router.post("/sys/scan-library")
 def trigger_manual_scan():
     """Manually trigger a library scan."""
-    try:
-        target_dir = get_media_dir() or DEFAULT_MEDIA_DIR
-        path_ref = operation_manifest_store.create_path_reference(
-            Path(target_dir),
-            Path(target_dir),
-        )
-        target_hash = hashlib.sha256(
-            str(Path(target_dir).resolve()).encode("utf-8")
-        ).hexdigest()[:16]
-        workflow = workflow_runtime.enqueue(
-            "library.reconcile",
-            {"media_root_ref": path_ref},
-            dedupe_key=f"library.reconcile:{target_hash}",
-        )
-        return workflow_response(workflow, "Library scan queued")
-    except (OperationManifestError, OSError):
-        raise HTTPException(status_code=500, detail="Failed to start scan") from None
+    from app.api.library import reconcile_library
+    return reconcile_library(media_dir=None)

@@ -111,6 +111,49 @@ test('favorite plus watched mutation reconciles without restoring a removed card
   expect((await request.put(`${backend}/films/${films['Orbit Dawn']}/profile-state`, { data: { favorite: true } })).ok()).toBeTruthy();
 });
 
+for (const locale of ['en', 'zh']) test(`a mutation before event subscription reconciles in ${locale} despite a stale locale cookie`, async ({ page, request }) => {
+  let release!: () => void;
+  const gate = new Promise<void>(resolve => { release = resolve; });
+  await page.route('**/api/library/events', async route => {
+    await gate;
+    // The initial document's stream can be cancelled by the filter navigation.
+    await route.continue().catch(() => {});
+  });
+  try {
+    await combine(page);
+    if (locale === 'zh') {
+      const localized = new URL(page.url());
+      localized.pathname = '/zh/library';
+      await page.goto(localized.toString());
+      await expect(cards(page)).toHaveCount(2);
+    }
+    await expect(page.locator('html')).toHaveAttribute('lang', locale);
+    expect((await request.put(`${backend}/films/${films['Orbit Dawn']}/profile-state`, { data: { favorite: false } })).ok()).toBeTruthy();
+    // No subscriber existed for this mutation; replaying an event is not required.
+    await expect(cards(page)).toHaveCount(2);
+    // A prefetch response from the previous locale can arrive after navigation.
+    await page.context().addCookies([{ name: 'NEXT_LOCALE', value: locale === 'zh' ? 'en' : 'zh', domain: new URL(page.url()).hostname, path: '/' }]);
+    release();
+    await expect.poll(() => titles(page)).toEqual(['Orbit Echo']);
+    await expect(page.locator('html')).toHaveAttribute('lang', locale);
+    await page.reload();
+    await expect.poll(() => titles(page)).toEqual(['Orbit Echo']);
+    await expect(page.locator('html')).toHaveAttribute('lang', locale);
+  } finally {
+    release();
+    expect((await request.put(`${backend}/films/${films['Orbit Dawn']}/profile-state`, { data: { favorite: true } })).ok()).toBeTruthy();
+  }
+});
+
+test('prefetching the previous language cannot overwrite the current locale cookie', async ({ request }) => {
+  const previous = await request.get('/en/search', { headers: { cookie: 'NEXT_LOCALE=zh', 'next-router-prefetch': '1' } });
+  expect(previous.ok()).toBeTruthy();
+  expect(previous.headers()['set-cookie'] || '').not.toContain('NEXT_LOCALE=');
+  const navigation = await request.get('/en/search', { headers: { cookie: 'NEXT_LOCALE=zh' } });
+  expect(navigation.ok()).toBeTruthy();
+  expect(navigation.headers()['set-cookie']).toContain('NEXT_LOCALE=en');
+});
+
 test('only personal overall stars match; external and Viewing scores cannot fill an unrated Film', async ({ page, request }) => {
   await page.goto('/en/library?q=Orbit&rating_min=5&rating_max=5');
   await expect.poll(() => titles(page)).toEqual(['Orbit Echo']);

@@ -7,7 +7,7 @@ from sqlmodel import Session
 from app.database import engine
 from app.services.identity_review import identity_review_reader
 from app.services.identity_decisions import IdentityDecisionError, identity_decision_service
-from app.services.settings import get_media_dir
+from app.services.settings import get_media_dirs
 from app.services.event_bus import library_event_bus
 from app.utils.security import validate_resource_id
 
@@ -63,7 +63,7 @@ def preview_identity_decision(review_id: str, request: IdentityPreviewRequest):
     try:
         with Session(engine) as session:
             return identity_decision_service.preview(session, review_id, request.action,
-                request.target_item_id, get_media_dir())
+                request.target_item_id, get_media_dirs())
     except IdentityDecisionError as exc:
         raise HTTPException(exc.status, detail={"code": exc.code}) from exc
 
@@ -73,7 +73,7 @@ def confirm_identity_decision(review_id: str, request: IdentityConfirmRequest):
     _validate_id(review_id)
     try:
         result = identity_decision_service.confirm(engine, review_id,
-            **request.model_dump(), media_root=get_media_dir())
+            **request.model_dump(), media_root=get_media_dirs())
     except IdentityDecisionError as exc:
         raise HTTPException(exc.status, detail={"code": exc.code}) from exc
     library_event_bus.publish_library_changed("identity_review_decided", film_id=result["film_id"])

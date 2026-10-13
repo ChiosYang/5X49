@@ -14,7 +14,8 @@ from app.services.metadata.models import BatchScrapeOptions, MetadataSearchResul
 from app.services.metadata.organizer import root_video_organizer
 from app.services.metadata.scraper import metadata_scraper
 from app.services.operation_manifests import operation_manifest_store
-from app.services.settings import get_media_dir, get_organize_rename_style, get_tmdb_scrape_concurrency
+from app.services.media_roots import configured_root, root_id
+from app.services.settings import get_media_dirs, get_media_dir, get_organize_rename_style, get_tmdb_scrape_concurrency
 from app.workflows.analysis import execute_analysis_workflow
 
 
@@ -25,17 +26,29 @@ logger = logging.getLogger(__name__)
 def _media_dir(payload: dict) -> str:
     if payload.get("media_root_ref"):
         media_root, _path = operation_manifest_store.resolve_path(payload["media_root_ref"])
+        configured_root(media_root)
         return str(media_root)
-    return get_media_dir() or DEFAULT_MEDIA_DIR
+    root = get_media_dir()
+    if not root:
+        raise ValueError("No media directories configured")
+    configured_root(Path(root))
+    return root
 
 
 def reconcile_library(payload: dict, ctx) -> dict:
-    return library_sync_service.reconcile(_media_dir(payload), ctx=ctx)
+    if payload.get("media_root_ref"):
+        return library_sync_service.reconcile(_media_dir(payload), ctx=ctx, enforce_config=True)
+    available = {root_id(root): root for root in get_media_dirs()}
+    identifiers = payload.get("root_ids", list(available))
+    if not identifiers or any(identifier not in available for identifier in identifiers):
+        raise ValueError("Media configuration changed before scan")
+    return library_sync_service.reconcile(roots=[available[key] for key in identifiers], ctx=ctx, enforce_config=True)
 
 
 def scan_folder(payload: dict, ctx) -> dict:
     _media_root, folder_path = operation_manifest_store.resolve_path(payload["path_ref"])
-    film = library_sync_service.scan_folder(folder_path, ctx=ctx)
+    root = configured_root(folder_path)
+    film = library_sync_service.scan_folder(folder_path, ctx=ctx, media_root=str(root))
     if not film:
         raise FileNotFoundError("Film folder or video file not found")
     if film.get("status") == "pending_relink":
@@ -295,6 +308,7 @@ def confirm_root_video(payload: dict, ctx) -> dict:
     ctx.progress(stage="resolve_subject", message="Resolving confirmed root video")
     manifest_ref = payload["manifest_ref"]
     manifest = operation_manifest_store.load(manifest_ref)
+    configured_root(Path(manifest["source"]))
     ctx.progress(stage="inspect", message="Inspecting confirmed root video")
     preview = root_video_organizer.validate_organization_confirmation(
         manifest["media_root"],
