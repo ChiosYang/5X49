@@ -219,20 +219,38 @@ def control(payload: dict, x_e2e_token: str = Header(default='')):
                 '<year>2001</year><genre>Drama</genre><plot>Updated automatic synopsis.</plot><uniqueid type="tmdb">900101</uniqueid></movie>', encoding='utf-8')
         film = library_sync_service.scan_folder(folder)
         return {'film': film, 'nfo_digest': hashlib.sha256(nfo.read_bytes()).hexdigest()}
+    elif action == 'deep_reset_fixture':
+        from app.database import engine
+        from app.models import Film, GraphEntity
+        from app.services.library import library_manager
+        from app.services.library_sync import library_sync_service
+        from app.services.settings import set_media_dirs
+        from sqlmodel import Session, select
+        import shutil
+        media = root / 'reset-media'
+        set_media_dirs([str(media)])
+        sample = next((root / 'normal/media').rglob('*.mkv'), None) or next((root / 'normal/media').rglob('*.mp4'))
+        for index, name in enumerate(('A target', 'B alias', 'C alias')):
+            folder = media / name
+            folder.mkdir(parents=True, exist_ok=True)
+            video = folder / 'film.mkv'
+            shutil.copyfile(sample, video)
+            with video.open('ab') as handle:
+                handle.write(f'reset-{index}'.encode())
+            nfo = video.with_suffix('.nfo')
+            nfo.write_text(f'<movie><title>{name}</title><tmdbid>983001</tmdbid></movie>')
+            observation = dict(title=name, folder_name=name, media_path=str(video))
+            library_manager.upsert_observation({**observation, **({'tmdb_id': '983001'} if index == 0 else {})})
+            if index:
+                library_sync_service.scan_folder(folder, media_root=str(media))
+        with Session(engine) as session:
+            aliases = session.exec(select(Film).where(Film.lifecycle_status == 'merged')).all()
+            assert len(aliases) == 2
+            assert all(session.get(GraphEntity, film.id).merged_into_id == film.merged_into_id for film in aliases)
+        return {'media': str(media), 'aliases': len(aliases)}
     elif action == 'identity_cleanup':
         # This entrypoint asserts the owned synthetic database/root at startup.
         from app.services.library import library_manager
-        from app.models import Film, GraphEntity
-        from app.database import engine
-        from sqlmodel import Session, update
-        # Previous matching tests create merged aliases. Unlink their synthetic
-        # self-references before teardown: SQLite RESTRICT otherwise makes the
-        # bulk delete depend on row deletion order. Production reset
-        # behavior is outside this test fixture's scope.
-        with Session(engine) as session:
-            session.exec(update(Film).values(merged_into_id=None))
-            session.exec(update(GraphEntity).values(merged_into_id=None))
-            session.commit()
         library_manager.clear_all_data()
     elif action == 'identity_fixtures':
         from sqlmodel import Session, select
