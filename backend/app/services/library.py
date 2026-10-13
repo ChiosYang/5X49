@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
-from sqlmodel import Session, delete, select
+from sqlmodel import Session, delete, select, update
 
 from app.contracts.structured_metadata import (
     StructuredMetadataObservation,
@@ -783,6 +783,7 @@ class LibraryManager:
         from app.services.projections import projection_coordinator
 
         with Session(engine) as session:
+            session.connection().exec_driver_sql("BEGIN IMMEDIATE")
             counts = {
                 "films": len(session.exec(select(Film.id)).all()),
                 "library_items": len(session.exec(select(LibraryItem.id)).all()),
@@ -813,6 +814,9 @@ class LibraryManager:
             session.exec(delete(LibraryItemLocatorHistory))
             session.exec(delete(LibraryItem))
             session.exec(delete(ExternalIdentity))
+            # RESTRICT checks each deleted row, even when its aliases are part
+            # of the same bulk delete. Unlink inside this reset transaction.
+            session.exec(update(Person).where(Person.merged_into_id.is_not(None)).values(merged_into_id=None))
             session.exec(delete(Person))
             reference_ids = {
                 concept.id
@@ -827,10 +831,18 @@ class LibraryManager:
                 if concept.id not in reference_ids
             ]
             if removable_entity_ids:
+                session.exec(update(Concept).where(Concept.merged_into_id.in_(removable_entity_ids))
+                    .values(merged_into_id=None))
                 session.exec(delete(Concept).where(Concept.id.in_(removable_entity_ids)))
             film_ids = list(session.exec(select(Film.id)).all())
+            session.exec(update(Film).where(Film.merged_into_id.is_not(None)).values(merged_into_id=None))
             session.exec(delete(Film))
             if [*film_ids, *removable_entity_ids]:
+                # Keep the existing GraphEntity retention scope, and preserve
+                # merge links whose targets survive the reset (e.g. genres).
+                session.exec(update(GraphEntity).where(
+                    GraphEntity.merged_into_id.in_([*film_ids, *removable_entity_ids]))
+                    .values(merged_into_id=None))
                 session.exec(
                     delete(GraphEntity).where(GraphEntity.id.in_([*film_ids, *removable_entity_ids]))
                 )
