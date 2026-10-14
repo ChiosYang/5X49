@@ -1,3 +1,4 @@
+from app.api import video_health
 from fastapi import APIRouter
 from app.api import identity_review, film_metadata, backups
 
@@ -5,6 +6,7 @@ from app.api import analysis_review, ask, cinema_dna, core, events, explore, lib
 
 
 api_router = APIRouter()
+api_router.include_router(video_health.router)
 api_router.include_router(backups.router)
 api_router.include_router(film_metadata.router)
 api_router.include_router(identity_review.router)

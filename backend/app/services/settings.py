@@ -202,9 +202,13 @@ def save_settings(settings: dict):
         with Session(database.engine) as session:
             existing = {row.key: row for row in session.exec(select(Setting)).all()}
             for key, row in existing.items():
-                if key not in settings_to_save:
+                if key not in {"video_health_config", "video_health_runtime"} and key not in settings_to_save:
                     session.delete(row)
             for key, value in settings_to_save.items():
+                # Health control/budget/cursor have their own transactional writers.
+                # A stale generic settings snapshot must never overwrite them.
+                if key in {"video_health_config", "video_health_runtime"}:
+                    continue
                 row = existing.get(key) or Setting(key=key, value=value, updated_at=now)
                 row.value = value
                 row.updated_at = now

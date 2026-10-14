@@ -40,6 +40,9 @@ jobs:
       - name: Install backend dependencies
         run: uv sync --locked
 
+      - name: Install media inspection tools
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg
+
       - name: Run backend tests
         run: uv run python -X utf8 -m unittest discover -s . -p "test_*.py" -q
 

@@ -84,7 +84,9 @@ class JobRuntime:
         try:
             handler = JOB_HANDLERS[job_type]
             ctx = JobContext(job_id)
-            result = handler(job.get("payload") or {}, ctx)
+            from app.services.video_health import video_health
+            with video_health.foreground():
+                result = handler(job.get("payload") or {}, ctx)
             updated = job_store.update(
                 job_id,
                 status="succeeded",

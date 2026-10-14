@@ -300,7 +300,7 @@ class MaintenanceBackupTests(unittest.TestCase):
                     writer.commit()
                 return counts
             with patch.object(backup_module, "_row_counts", count):
-                artifact = backup_module.create_verified_backup(self.source, self.root / "race", app_version="test", source_schema_version=9, target_schema_version=9)
+                artifact = backup_module.create_verified_backup(self.source, self.root / "race", app_version="test", source_schema_version=10, target_schema_version=10)
             self.assertEqual(writer.execute("SELECT COUNT(*) FROM setting").fetchone()[0], artifact.row_counts["setting"]+1)
 
 

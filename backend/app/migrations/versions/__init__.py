@@ -9,7 +9,8 @@ from app.migrations.versions.v0007_identity_review_preview import MIGRATION as V
 from app.migrations.versions.v0008_manual_metadata import MIGRATION as V0008
 from app.migrations.versions.v0009_viewing_reviews import MIGRATION as V0009
 
+from app.migrations.versions.v0010_video_health import MIGRATION as V0010
 
-MIGRATIONS: tuple[Migration, ...] = (V0001, V0002, V0003, V0004, V0005, V0006, V0007, V0008, V0009)
+MIGRATIONS: tuple[Migration, ...] = (V0001, V0002, V0003, V0004, V0005, V0006, V0007, V0008, V0009, V0010)
 
 __all__ = ["MIGRATIONS"]

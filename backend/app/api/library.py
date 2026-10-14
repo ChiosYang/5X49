@@ -360,7 +360,9 @@ def clear_library():
 
 @router.delete("/library/data")
 def clear_library_data():
-    deleted = library_manager.clear_all_data()
+    from app.services.video_health import video_health
+    with video_health.foreground():
+        deleted = library_manager.clear_all_data()
     library_event_bus.publish_library_changed("data_clear", deleted=deleted)
     return {"status": "success", "message": "Library data cleared", "deleted": deleted}
 

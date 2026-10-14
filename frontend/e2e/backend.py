@@ -29,6 +29,13 @@ from app.workflows.store import workflow_store
 from app.services.operation_manifests import operation_manifest_store
 from app.services import maintenance_backup as backup_module
 
+from app.services.video_health import video_health
+health_allowed = False
+class ControlledHealthLoad:
+    def sample(self, decoder_pid=None):
+        return {"observable": True, "cpu": 0 if health_allowed else 95, "disk": 0}
+video_health.observer = ControlledHealthLoad()
+
 backup_gate = threading.Event()
 backup_gate.set()
 backup_failure = False
@@ -70,7 +77,45 @@ def control(payload: dict, x_e2e_token: str = Header(default='')):
     global backup_failure
     if x_e2e_token != os.environ['E2E_TOKEN']:
         raise HTTPException(403)
+    global health_allowed
     action = payload['action']
+    if action == 'health_fixture':
+        import subprocess, json, shutil
+        from app.services.library import library_manager
+        from app.services.settings import set_media_dirs
+        media = root / 'health-media'; media.mkdir(exist_ok=True)
+        normal = media / 'Health normal.mp4'
+        subprocess.run([shutil.which('ffmpeg'), '-v', 'error', '-f', 'lavfi', '-i', 'testsrc2=size=144x96:rate=8',
+            '-f', 'lavfi', '-i', 'sine=frequency=440:sample_rate=16000', '-t', '6', '-c:v', 'mpeg4', '-g', '8',
+            '-c:a', 'aac', '-movflags', '+faststart', str(normal)], check=True, capture_output=True, timeout=30)
+        packets = json.loads(subprocess.run([shutil.which('ffprobe'), '-v', 'error', '-show_packets', '-select_streams', 'v', '-of', 'json', str(normal)],
+            check=True, capture_output=True).stdout)['packets']
+        packet = next(row for row in packets if float(row.get('pts_time', 0)) > 3 and int(row['size']) > 1000)
+        broken = bytearray(normal.read_bytes()); pos, size = int(packet['pos']), int(packet['size'])
+        broken[pos:pos+size] = b'\xff' * size
+        (media / 'Health corrupt.mp4').write_bytes(broken)
+        set_media_dirs([str(media)])
+        for index, path in enumerate(media.glob('*.mp4')):
+            library_manager.upsert_observation(dict(title=path.stem, folder_name=path.stem,
+                media_path=str(path), file_size=path.stat().st_size, file_mtime=path.stat().st_mtime, tmdb_id=str(987900+index)))
+        video_health.configure({'enabled': False, 'paused': True, 'stable_seconds': 0, 'idle_seconds': 0})
+        return {'root': str(media)}
+    elif action == 'health_allow':
+        health_allowed = True
+        return {'allowed': True}
+    elif action == 'health_replace':
+        from app.services.library import library_manager
+        media = root / 'health-media'; normal = media / 'Health normal.mp4'
+        target = media / 'Health corrupt.mp4'
+        target.write_bytes(normal.read_bytes() + b'replaced version')
+        from app.models import MediaAsset
+        from app import database
+        from sqlmodel import Session, select
+        with Session(database.engine) as session:
+            asset = session.exec(select(MediaAsset).where(MediaAsset.locator == str(target))).one()
+            asset.file_size = target.stat().st_size; asset.file_mtime = target.stat().st_mtime
+            session.add(asset); session.commit()
+        return {'changed': True}
     if action == 'matching_fixture':
         from app.services.library import library_manager
         from app.services.settings import set_media_dirs
