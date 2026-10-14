@@ -430,3 +430,29 @@ Settings/密钥、Job/Workflow/Event、Read Model 或模型原始内容。v1 没
   查看原始 Viewing。日期未知不影响全时间统计；收藏、外部评分、笔记和 AI 推断不参与。
 - 这是只读统计，不触发模型、文件操作或领域写入；投影缺失/失败/过期返回
   `503 projection_unavailable`。不得将其称为统计显著性或用户价值验证结果。
+
+## Video health
+
+- `/maintenance/video-health` is a durable, per-MediaAsset/stat-version queue,
+  separate from scan ffprobe metadata. GET reports counts/config/UTC budget,
+  schedule reason, observed host load and unread abnormal-version notifications.
+- PUT `/config` accepts strict enabled/paused booleans, UTC start/end minutes
+  0..1439 and daily budget minutes 1..1440. POST `/queue` requests a small-batch
+  sweep; it skips unchanged passes and never synchronously scans all disks.
+- GET `/files` provides bounded pages by state; GET `/files/{vh_id}` revalidates
+  live version/access. POST that ID with retry/cancel/acknowledge controls only
+  that receipt. Queue cancel is POST `/cancel`; it does not disable future auto
+  discoveries. Old unavailable versions are never certified by a retained pass.
+- Container status and full audio/video decoding status are separate. Only a
+  continuous all-stream EOF decode of an unchanged accessible version is passed.
+  Unknown/offline/permission/tool/cancel/write failures are not media damage.
+  Exact error time is unknown; decoded progress is not a corruption timestamp.
+- Worker is globally single-file, resource-limited, observes sustained idle and
+  yields to jobs. Host counters cannot establish all NAS clients or disk sleep;
+  missing counters need a narrowed allowed window. Budget stops new launches;
+  already-running long files may complete beyond it while idle. Pauses retain
+  the decoder; restart marks interrupted incomplete with explicit full retry.
+- No media writes, repairs/deletion, saved transcode, external notifications or
+  provider access. Health operational rows are omitted from downloadable backups
+  and portable export, and cascade on deep reset. See docs/api.md and
+  docs/features/video-health.md for limitations and full API contracts.

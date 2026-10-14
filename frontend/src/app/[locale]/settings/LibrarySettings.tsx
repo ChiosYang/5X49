@@ -24,6 +24,7 @@ import {
   useUpdateLibraryWatch,
   useUpdateScrapeConfirmation,
 } from "@/hooks/useSettings";
+import VideoHealthSettings from "@/components/settings/VideoHealthSettings";
 import LibraryDangerZone from "./LibraryDangerZone";
 
 function useTransientMutationResult(result: unknown, reset: () => void) {
@@ -260,6 +261,7 @@ export default function LibrarySettings() {
         </SettingRow>
       </DisclosurePanel>
 
+      <VideoHealthSettings />
       <LibraryDangerZone />
     </div>
   );

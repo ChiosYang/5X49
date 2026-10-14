@@ -36,7 +36,8 @@ README = """5X49 library database backup / 片库数据库备份
 Includes SQLite library data, manual metadata and edit history, personal Film
 reviews and Viewing reviews, identities and analysis. This is NOT library-export.v1.
 Configuration (the entire Setting table), API keys, artwork files, video, NFO,
-environment files and external operation manifests are NOT included. Diagnostic
+environment files, external operation manifests and host-specific video health
+receipts/queues are NOT included. Diagnostic
 errors and credential-bearing automatic fields are sanitized. Filesystem undo
 snapshots are expired: database history does not restore file undo capability.
 Reconfigure media directories and API keys after recovery. Paths stored in library
@@ -132,6 +133,8 @@ def sanitize_snapshot(path: Path) -> int:
             marks = ",".join("?" for _ in statuses)
             if db.execute(f'SELECT 1 FROM "{table}" WHERE status IN ({marks}) LIMIT 1', statuses).fetchone():
                 raise BackupError("backup_tasks_active")
+        # Host-specific receipts and queued work never replay after restoring.
+        db.execute("DELETE FROM video_health")
         secrets = {os.environ.get(key, "") for key in ("TMDB_API_KEY", "OPENROUTER_API_KEY")}
         for key, raw in db.execute("SELECT key, value FROM setting"):
             if SECRET_KEY.search(key):
@@ -297,7 +300,9 @@ class MaintenanceBackups:
         published = False
         try:
             stage.mkdir(mode=0o700)
-            raw = create_verified_backup(self.source, stage / "raw", app_version=database._app_version(), source_schema_version=0, target_schema_version=0)
+            from app.services.video_health import video_health
+            with video_health.foreground():
+                raw = create_verified_backup(self.source, stage / "raw", app_version=database._app_version(), source_schema_version=0, target_schema_version=0)
             schema = sanitize_snapshot(raw.database_path)
             artifact = create_verified_backup(raw.database_path, stage / "clean", app_version=database._app_version(), source_schema_version=schema, target_schema_version=schema)
             verify_backup_manifest(artifact.manifest_path)

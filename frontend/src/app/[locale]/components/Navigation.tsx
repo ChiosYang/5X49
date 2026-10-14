@@ -1,3 +1,4 @@
+import VideoHealthNotice from "@/components/VideoHealthNotice";
 import { Search } from "lucide-react";
 import { Link } from "@/i18n/routing";
 import WorkflowRuntimeStatus from "@/components/WorkflowRuntimeStatus";
@@ -21,6 +22,7 @@ export default async function Navigation() {
         <Link href="/search" aria-label={t("search")} className="focus-ring inline-flex h-11 w-11 items-center justify-center">
           <Search className="h-5 w-5 drop-shadow-lg" aria-hidden="true" />
         </Link>
+        <VideoHealthNotice />
         <WorkflowRuntimeStatus />
       </div>
     </nav>

@@ -7,6 +7,12 @@ const mediaPath = (path: string) => {
 };
 
 export const API = {
+  videoHealth: () => `${API_BASE_URL}/maintenance/video-health`,
+  videoHealthConfig: () => `${API_BASE_URL}/maintenance/video-health/config`,
+  videoHealthQueue: () => `${API_BASE_URL}/maintenance/video-health/queue`,
+  videoHealthCancel: () => `${API_BASE_URL}/maintenance/video-health/cancel`,
+  videoHealthFiles: (status = "abnormal", offset = 0) => `${API_BASE_URL}/maintenance/video-health/files?${new URLSearchParams({ status, offset: String(offset), limit: "20" })}`,
+  videoHealthFile: (id: string) => `${API_BASE_URL}/maintenance/video-health/files/${segment(id)}`,
   settingsMediaDirs: () => `${API_BASE_URL}/settings/media-dirs`,
   backups: () => `${API_BASE_URL}/maintenance/backups`,
   backup: (id: string) => `${API_BASE_URL}/maintenance/backups/${segment(id)}`,

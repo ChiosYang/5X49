@@ -42,8 +42,8 @@ class FreshCanonicalMigrationTests(unittest.TestCase):
             first = run_migrations(engine, path, app_version="test", backup_required=False)
             before = self._digest(engine)
             second = run_migrations(engine, path, app_version="test", backup_required=False)
-            self.assertEqual(first.current_version, 9)
-            self.assertEqual(first.applied_versions, (1, 2, 3, 4, 5, 6, 7, 8, 9))
+            self.assertEqual(first.current_version, 10)
+            self.assertEqual(first.applied_versions, (1, 2, 3, 4, 5, 6, 7, 8, 9, 10))
             self.assertEqual(second.applied_versions, ())
             self.assertIsNone(second.backup)
             self.assertEqual(before, self._digest(engine))
@@ -209,7 +209,7 @@ class FreshCanonicalMigrationTests(unittest.TestCase):
             engine.dispose()
 
     def test_all_supported_upgrade_versions_preserve_personal_facts_and_rebuild(self):
-        for version in range(1, 9):
+        for version in range(1, 10):
             with self.subTest(version=version):
                 path, engine = self._engine(f"upgrade-{version}.db")
                 try:
@@ -230,7 +230,7 @@ class FreshCanonicalMigrationTests(unittest.TestCase):
                             {"id": "view_" + "b" * 32, "profile": profile_id, "film": film_id})
                         session.commit()
                     report = run_migrations(engine, path, backup_dir=self.root / f"backup-{version}")
-                    self.assertEqual(report.applied_versions, tuple(range(version + 1, 10)))
+                    self.assertEqual(report.applied_versions, tuple(range(version + 1, 11)))
                     self.assertEqual(verify_backup_manifest(report.backup.manifest_path).source_schema_version, version)
                     projection_coordinator.bootstrap(engine)
                     with Session(engine) as session:
@@ -276,7 +276,7 @@ class FreshCanonicalMigrationTests(unittest.TestCase):
                 session.execute(text("INSERT INTO film_profile_state (profile_id,film_id,favorite,rating,notes,created_at,updated_at) VALUES (:profile,:film,1,4,'keep notes','2026-01-01','2026-01-01')"),{"profile":profile,"film":film_id})
                 session.commit()
             report=run_migrations(engine,path,backup_dir=self.root/"primary-backups")
-            self.assertEqual(report.applied_versions,(6,7,8,9))
+            self.assertEqual(report.applied_versions,(6,7,8,9,10))
             self.assertEqual(verify_backup_manifest(report.backup.manifest_path).source_schema_version,5)
             projection_coordinator.bootstrap(engine)
             with Session(engine) as session:

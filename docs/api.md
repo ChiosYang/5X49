@@ -950,3 +950,94 @@ restart. Downloads already opened may finish; Windows files still held by a stre
 are removed on a later sweep. Cleanup only touches owned package/staging names,
 never CLI backups or the source database. A backup-storage fault does not prevent
 the main library application starting.
+
+## Video health inspections (schema v10)
+
+All endpoints are under `/maintenance/video-health`. Inspection is read-only and
+independent of technical metadata probing during scans. A container pass never
+means a continuous full audio/video decode passed. `passed` on the main status
+requires every non-cover-art audio/video stream to decode from the beginning to
+EOF, with a final unchanged version/access/ownership check. FFmpeg output goes to
+the null muxer; there is no repair, deletion or saved transcode.
+
+- `GET /maintenance/video-health`: `{config,schedule_timezone:"UTC",reason,
+  counts,total,unread,load,active_id,budget_day,used_seconds,queue_sweep_pending,
+  manual_active,active_progress}`. `counts` distinguishes unchecked, queued, checking, passed,
+  abnormal, incomplete and unsupported. `load` contains `observable,cpu,disk`.
+- `PUT .../config`: strict nonempty subset of `enabled:bool`, `paused:bool`,
+  `start_minute/end_minute` (UTC minutes 0..1439), `daily_budget_minutes` (1..1440).
+  Unknown/null/coerced fields are 422. Equal endpoints mean all day; an overnight
+  interval is supported. Auto detection defaults enabled; budget defaults 30 min.
+- `POST .../queue`: 202 `{status:"queued",batched:true}` requests an idempotent
+  persistent sweep of DB-known media assets, including multipart files. It does
+  not scan directories or synchronously stat all disks. Unchanged passed versions
+  are skipped. Explicitly interrupted/cancelled/unsupported/abnormal versions
+  require per-file retry; queue-all does not erase those receipts.
+- `POST .../cancel`: cancels existing unchecked/queued/active receipts and pending
+  sweep, returning `{cancelled:N}`. Future discoveries still follow the auto
+  setting. Pause or disable automatic checks to stop future scheduling.
+- `GET .../files?status=abnormal&limit=20&offset=0`: page `{items,total,limit,offset}`;
+  status accepts all or any count state; limit 1..50, offset 0..1000000. Summary
+  polling reads DB metadata only. Rows carry asset/Film/edition IDs, filename,
+  title, status, separate `container_status`, filesystem `version_key/version`,
+  current flag, checked time, retained `passed_at`, decoded/duration seconds, safe error code/summary,
+  and unread flag. Raw tool errors and absolute paths are never returned.
+- `GET .../files/vh_<32 lowercase hex>`: on-demand detail revalidates live access
+  and the exact filesystem version; includes attempts and unavailable_reason.
+  Historical or unavailable results retain their original status with
+  `current:false`; they do not certify the current file.
+- `POST .../files/{id}`: `{action:"retry"|"cancel"|"acknowledge"}`. Retry requires
+  that exact version to remain available/current, observes stability again, and
+  starts from the beginning. Acknowledgement persists without deleting evidence.
+  Missing ID is 404, invalid grammar/body/query 422, unavailable/stale retry 409,
+  database failure 503 with a safe `detail.code`.
+
+Version identity combines locator hash, device/inode, size, mtime_ns and ctime_ns.
+It is a stat observation, not a content hash; an out-of-band change must be
+observed to invalidate it. Scan metadata/ownership changes immediately invalidate
+the old DB summary. The idle sampler gradually detects additional changes; unchanged passing scan
+metadata avoids another automatic file read for 24 hours. A manual sweep and live
+detail can perform a bounded explicit check sooner. Results belong to individual assets,
+not Film identities; removal/retirement/root revocation prevents inspection or
+notification transfer to a new edition.
+
+`error_position_seconds` is always null and `position_kind:"unknown"`: decoded
+progress is not falsely presented as the exact error timestamp. Full decoding
+does not establish audiovisual synchronization or intended content completeness,
+and valid-looking truncations with no declared duration can escape detection.
+Offline, denied reads, changing files, missing tools/codecs, timeouts, unknown tool
+failures and cancellation are incomplete/unsupported rather than abnormal.
+Retryable offline/access failures back off exponentially, capped at one day.
+Reconnection to the identical filesystem version preserves its prior full pass
+without decoding it again; a changed version requires a new stability/decode pass.
+
+One OS-locked worker per database runs one low-priority, single-thread decoder.
+Known-file stat samples are small batches at most once per 30 seconds during
+eligible idle windows; summary polling never stats all disks.
+Stable observations are at least 60 seconds apart by default. Starts require 60
+seconds of continuous quiet with CPU below 30% and disk busy below 20%; high
+activity (75% CPU or 65% disk) suspends active work, then quiet recovery is
+required. The owned decoder's CPU is excluded from host contention estimates.
+Foreground application jobs synchronously suspend decoding before execution.
+Only available backend-host counters are observed, never all NAS clients or disk
+sleep. When observations are unavailable, an explicitly narrowed allowed window
+is required; all-day permission is not a blind automatic-start override.
+
+The daily budget limits new starts. A single long file already started may exceed
+it while idle, avoiding a perpetual restart-at-budget loop. Outside allowed hours,
+on pause or under activity, suspend the same process rather than seeking to a
+checkpoint. Unsupported safe suspension terminates as incomplete. Linux uses a
+parent-death kill signal and Windows a kill-on-close Job Object so an abrupt
+backend exit cannot leave a decoder running beside a restarted worker. Other
+unsupported process lifecycles are honestly reported unsupported/incomplete.
+Queued receipts persist; interrupted decoders become incomplete and need explicit
+retry. Continuous decoder state cannot be restored across backend restarts.
+
+One durable unread notification per abnormal file version, surfaced by a navigation
+badge and the maintenance panel, avoids repeated popups/SSE alerts. Acknowledging
+or changing the version removes the current unread attention. No external
+notification is sent. Health records/queue are host-specific operational data:
+they are excluded from `library-export.v1` and downloadable maintenance backups;
+raw offline database backups naturally retain the whole DB. Restored raw queues
+still revalidate configured access and current versions before running. Deep reset
+cascades health rows with assets and never writes media.

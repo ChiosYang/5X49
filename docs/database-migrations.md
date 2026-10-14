@@ -257,3 +257,14 @@ Before releasing a migration change:
 Gate A and its legacy-fixture/Docker migration matrix are retired. Analysis V2
 continues to use Gate B independently; Gate B does not authorize a database
 epoch conversion.
+
+## Version 10: video health
+
+Adds the host-specific `video_health` table with a unique asset/filesystem-version
+receipt and an asset foreign key using ON DELETE CASCADE. Migration creates no
+health receipts, enumerates no files and writes no media. Existing v9 identities,
+reviews and personal state are preserved. The default enabled flag begins only
+conservative small-batch idle work after startup. Downloadable maintenance backup
+copies remove health receipts/queue; raw offline backups retain them and restore
+uses the existing stopped-writer discipline. Queued work revalidates configuration
+and file versions; interrupted active work is not silently reported passed.

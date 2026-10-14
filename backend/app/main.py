@@ -14,6 +14,7 @@ from app.services.settings import get_watch_library
 from app.services.projections import ProjectionUnavailable
 from app.services.watcher import library_watcher
 from app.services.maintenance_backup import maintenance_backups
+from app.services.video_health import video_health
 
 
 @asynccontextmanager
@@ -22,10 +23,12 @@ async def lifespan(app: FastAPI):
         create_db_and_tables()
         maintenance_backups.start()
         job_runtime.start()
+        video_health.start()
         if get_watch_library():
             library_watcher.start()
         yield
     finally:
+        video_health.stop()
         maintenance_backups.stop()
         try:
             library_watcher.stop()
