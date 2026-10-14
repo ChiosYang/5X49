@@ -29,7 +29,7 @@ export default async function InterceptedMovieDetailPage({ params }: Intercepted
 
   return (
     <MovieDetailOverlay dialogLabel={t("dialogLabel")} returnLabel={t("return")}>
-      <MovieDetailView film={film} />
+      <MovieDetailView film={film} routeFilmId={id} />
     </MovieDetailOverlay>
   );
 }

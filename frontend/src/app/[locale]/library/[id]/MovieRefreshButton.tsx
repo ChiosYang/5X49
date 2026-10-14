@@ -2,7 +2,7 @@
 
 import { Award, Check, Clapperboard, EyeOff, Network, RefreshCw, Star } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useState } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 
 import {
   MetadataCandidatePicker,
@@ -37,7 +37,8 @@ export default function MovieRefreshButton({ film }: { film: LibraryFilmDetail }
   const filmId = film.id;
   const itemId = film.primary_item.id;
   const [state, setState] = useState(film.profile_state);
-  const [profileVersion, setProfileVersion] = useState(film.profile_state.updated_at);
+  const profileKey = `${film.id}:${film.profile_state.updated_at || ""}`;
+  const [profileVersion, setProfileVersion] = useState(profileKey);
   const [candidates, setCandidates] = useState<MetadataSearchResult[]>([]);
   const [message, setMessage] = useState("");
   const [messageError, setMessageError] = useState(false);
@@ -46,9 +47,21 @@ export default function MovieRefreshButton({ film }: { film: LibraryFilmDetail }
   const [isSearching, setIsSearching] = useState(false);
   const [artworkOpen, setArtworkOpen] = useState(false);
 
+  const confirmationGuard = useRef(false);
+  const mounted = useRef(true);
+  const [isConfirming, setIsConfirming] = useState(false);
+  const [isNavigating, startNavigation] = useTransition();
+  const [confirmationControl, setConfirmationControl] = useState<{ needsMatch: boolean; label: string } | null>(null);
+  const confirmationPending = isConfirming || isNavigating;
+
+  useEffect(() => {
+    mounted.current = true;
+    return () => { mounted.current = false; };
+  }, []);
+
   // Refresh profile labels without remounting an open disclosure or artwork dialog.
-  if (profileVersion !== film.profile_state.updated_at) {
-    setProfileVersion(film.profile_state.updated_at);
+  if (profileVersion !== profileKey) {
+    setProfileVersion(profileKey);
     setState(film.profile_state);
   }
 
@@ -59,9 +72,14 @@ export default function MovieRefreshButton({ film }: { film: LibraryFilmDetail }
   const confirmScrape = useConfirmScrapeFilm(filmId);
   const ignore = useIgnoreLibraryItem(itemId);
   const action = useFilmAction(filmId);
-  const busy = action.pending || profile.isMutating || refresh.isMutating || scores.isMutating || scrape.isMutating || confirmScrape.isMutating || ignore.isMutating || isSearching;
-  const needsMetadataMatch = !film.identities.tmdb || film.primary_item.metadata.scrape_status !== "matched";
-  const matchLabel = t(film.primary_item.metadata.scrape_status === "needs_review" ? "reviewMatch" : "matchFilm");
+  const busy = confirmationPending || action.pending || profile.isMutating || refresh.isMutating || scores.isMutating || scrape.isMutating || confirmScrape.isMutating || ignore.isMutating || isSearching;
+  // Keep the submitting control in place while background RSC replaces Film data.
+  const needsMetadataMatch = confirmationPending && confirmationControl
+    ? confirmationControl.needsMatch
+    : !film.identities.tmdb || film.primary_item.metadata.scrape_status !== "matched";
+  const matchLabel = confirmationPending && confirmationControl
+    ? confirmationControl.label
+    : t(film.primary_item.metadata.scrape_status === "needs_review" ? "reviewMatch" : "matchFilm");
 
   const updateProfile = async (updates: { watched?: boolean; favorite?: boolean; watched_at?: string | null }) => {
     setMessage("");
@@ -102,18 +120,34 @@ export default function MovieRefreshButton({ film }: { film: LibraryFilmDetail }
   };
 
   const handleConfirm = async (tmdbId: number) => {
+    // State updates alone do not guard two clicks dispatched in the same render.
+    if (confirmationGuard.current || busy) return;
+    confirmationGuard.current = true;
+    setIsConfirming(true);
+    setConfirmationControl({ needsMatch: needsMetadataMatch, label: matchLabel });
     action.clear();
     setMessageError(false);
     try {
       const result = await confirmScrape.trigger(tmdbId);
+      if (!mounted.current) return;
       setCandidates([]);
       setReviewOpen(false);
       setMessage(result.message);
       if (await action.retryRefresh()) action.clear();
-      if (result.film && result.film.id !== filmId) router.replace(`/library/${result.film.id}`);
+      if (!mounted.current) return;
+      // router.replace/refresh return before the new RSC tree commits. The
+      // transition keeps controls locked through that final navigation gap.
+      startNavigation(() => {
+        if (result.film && result.film.id !== filmId) router.replace(`/library/${result.film.id}`);
+        else router.refresh();
+      });
     } catch (error) {
+      if (!mounted.current) return;
       setMessageError(true);
       setMessage(metadataActionError(error, t("actionFailed"), t("metadataNoMatches")));
+    } finally {
+      confirmationGuard.current = false;
+      if (mounted.current) setIsConfirming(false);
     }
   };
 
@@ -154,13 +188,13 @@ export default function MovieRefreshButton({ film }: { film: LibraryFilmDetail }
         responsiveWidth
         onClick={() => reviewOpen ? setReviewOpen(false) : void handleScrape()}
         disabled={busy}
-        busy={scrape.isMutating || confirmScrape.isMutating}
+        busy={scrape.isMutating || confirmationPending}
         aria-expanded={reviewOpen}
         icon={<Clapperboard className="h-4 w-4" />}
       >{matchLabel}</Button> : <Button
         onClick={() => reviewOpen ? setReviewOpen(false) : void handleScrape()}
         disabled={busy}
-        busy={scrape.isMutating || confirmScrape.isMutating}
+        busy={scrape.isMutating || confirmationPending}
         aria-expanded={reviewOpen}
         aria-label={t("scrapeMetadata")}
         title={t("scrapeMetadata")}
@@ -178,7 +212,7 @@ export default function MovieRefreshButton({ film }: { film: LibraryFilmDetail }
               onLookup={handleReviewLookup}
               onSelect={(candidate) => handleConfirm(candidate.tmdb_id)}
               lookupBusy={isSearching}
-              selectionBusy={confirmScrape.isMutating}
+              selectionBusy={confirmationPending}
               disabled={busy}
               lookupLabel={t("lookup")}
               placeholder={t("metadataSearchPlaceholder")}
