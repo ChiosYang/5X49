@@ -388,6 +388,45 @@ class HealthTests(unittest.TestCase):
         self.assertEqual(next(row for row in self.rows() if row.id == retried.id).error_code, 'file_changed')
         self.assertEqual(self.service.scheduling_reason(), 'disabled')
 
+    def assert_retry_backoff_changed_version_ends_intent(self, failure):
+        path, _ = self.add(self.corrupt)
+        row = self.queued(); self.service.inspect(row.id)
+        self.service.configure({'enabled': False})
+        self.service.control(row.id, 'retry')
+        stamp = time.time(); self.service.clock = lambda: stamp
+        if failure == 'offline':
+            parked = self.root / 'offline-media'
+            self.media.rename(parked)
+            try:
+                self.service.tick()
+                (parked / path.name).write_bytes(self.normal.read_bytes() + b'changed while offline')
+            finally:
+                parked.rename(self.media)
+        else:
+            with patch('app.services.video_health.file_version', side_effect=PermissionError()):
+                self.service.tick()
+            path.write_bytes(self.normal.read_bytes() + b'changed while denied')
+        waiting = self.rows()[0]
+        self.assertEqual((waiting.status, waiting.error_code, waiting.priority), ('incomplete', failure, 20))
+        due = waiting.next_attempt_at + 1
+        self.service.clock = lambda: due
+        self.service.tick()
+        finished = self.rows()[0]
+        self.assertEqual((finished.status, finished.error_code), ('incomplete', 'file_changed'))
+        self.assertEqual(len(self.rows()), 1)
+        self.assertEqual(self.service.scheduling_reason(), 'disabled')
+        with patch('app.services.video_health.file_version', side_effect=AssertionError('Ended intent must not stat again')):
+            for elapsed in (31, 61, 91):
+                self.service.clock = lambda elapsed=elapsed: due + elapsed
+                self.service.tick()
+                self.assertEqual(self.service.reason, 'disabled')
+
+    def test_single_retry_offline_then_replaced_version_ends_manual_intent(self):
+        self.assert_retry_backoff_changed_version_ends_intent('offline')
+
+    def test_single_retry_permission_then_replaced_version_ends_manual_intent(self):
+        self.assert_retry_backoff_changed_version_ends_intent('permission_denied')
+
     def test_notification_is_durable_deduplicated_and_stale_version_is_hidden(self):
         path, row = self.inspect(self.corrupt)
         with patch("app.services.video_health.library_event_bus.publish") as notify:

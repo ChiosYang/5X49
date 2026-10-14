@@ -365,7 +365,8 @@ class VideoHealthService:
                     continue
                 key = digest(version)
                 if previous and previous.version_key != key:
-                    if previous.status in {"unchecked", "queued"}:
+                    if (previous.status in {"unchecked", "queued"}
+                            or (previous.status == "incomplete" and previous.error_code in RETRYABLE)):
                         self._finish_row(previous, "incomplete", "file_changed")
                         session.add(previous)
                     if not config["enabled"] and not state["manual"]:

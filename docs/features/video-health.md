@@ -57,7 +57,7 @@ or detect every possible valid-looking truncation. No media writes occur.
 - `uv run python -X utf8 -m unittest discover -s . -p "test_*.py" -q`:
   412 tests passed, 3 existing platform/environment skips (Windows).
   Final settings-race/health/API/root regression: 71 passed, 1 existing skip.
-- `uv run python -X utf8 -m unittest test_video_health -q`: all 29 passed,
+- `uv run python -X utf8 -m unittest test_video_health -q`: all 31 passed,
   including real 6-second MPEG-4/AAC multi-audio-track media, middle-packet
   corruption with container pass/decode failure, truncation, native pause/resume,
   active cancellation, budget overrun fairness and abrupt owner-exit reaping.
@@ -98,6 +98,15 @@ or detect every possible valid-looking truncation. No media writes occur.
 - Linux parent-death signal / Windows kill-on-close Job Object prevents orphan
   decoder overlap after abrupt backend exit. Native Windows behavior was tested;
   Linux behavior is additionally exercised by Ubuntu CI with real FFmpeg.
+
+## Independent review follow-up
+
+- Explicit single-file retry remains bounded when automatic checking is disabled.
+  A transient offline/permission failure does not authorize a newer file version:
+  version mismatch terminates even an incomplete retryable receipt as
+  `file_changed`. Subsequent scheduler ticks return disabled without further stat.
+- Regression includes real media-root disconnection, replacement while offline,
+  reconnection after backoff, and the equivalent denied-access path.
 
 ## Remaining risks
 
