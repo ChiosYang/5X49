@@ -1,0 +1,61 @@
+# AI Film Finder phase one
+
+Status: Blocked
+Last updated: 2026-10-14
+Related: Ask MVP; Factual Explore
+Engineering implementation and offline acceptance are complete. Live model acceptance is blocked only by the missing exported evaluation credential.
+
+## Goal
+
+Interpret a Chinese/English question on Explore, let the user edit and confirm
+the entire plan, then show owned Films with verifiable local match reasons.
+
+## Scope
+
+- Reuse Ask and factual Explore, preserving genre/person role/country/decade,
+  watched state and title/year sorting.
+- Add exact effective duration and Film personal overall stars (1–5), with
+  unknowns excluded only when the corresponding condition is active.
+- Provider disclosure/consent, bounded validation, timeout, manual fallback,
+  cancellation and stale-response protection; no inferred Analysis V2 edges.
+- 50 bilingual acceptance cases and offline fixture evaluation. A separate
+  live evaluation entrypoint must require explicit authorization and budget.
+
+## Decisions
+
+- Duration uses positive primary-edition video seconds, then positive Film
+  runtime minutes. Inclusive/exclusive minute bounds compare exact seconds.
+- Rating is FilmProfileState.rating; external or per-Viewing scores never fill it.
+- A model receives only the question and static schema. No library/path/note
+  context is attached. Unsupported/ambiguous requests must not become queries.
+- Zero results offer condition removal, followed by another review/confirmation.
+- Single configured model, one provider request, no retries or model routing.
+- No live requests, credential changes, metadata/media writes or scraping in
+  this task. Evaluation-only provider/model is deepseek/deepseek-v4.1-flash on OpenRouter decart/fp4; cumulative task budget is US$1, already authorized. No global model or credential configuration was changed.
+
+## Acceptance criteria
+
+- [x] Review/edit/confirm/cancel/return and zero-result relaxation are explicit.
+- [x] Exact numeric bounds, null semantics and facts match confirmed conditions.
+- [x] Unsupported/negated/similar/taste requests never silently broaden results.
+- [x] Privacy, malicious output and interface failure cases fail closed.
+- [x] Complete backend/frontend checks and real-backend responsive UI E2E pass.
+- [ ] Draft PR is delivered for independent parent review.
+- [ ] Live supported parsing accuracy >=95% (pending explicit authorization).
+
+## Slices
+
+1. Acceptance corpus and backend contract/query — complete.
+2. Explore integration and interaction safety — complete.
+3. Evaluation guards and offline verification — complete; draft delivery in progress.
+4. Live synthetic evaluation — blocked: exported OPENROUTER_API_KEY missing; 0 requests, US$0 spent.
+
+## Verification evidence
+
+- 50/50 offline corpus; 12 budget/evaluation tests; full 435-test backend run (3 skipped); 93 frontend unit tests; lint/typecheck/build; all 87 real-backend UI E2E pass.
+- Details and exact commands: [quality evidence](../quality/ask-phase-one.md).
+- Self-review fixed atomic query snapshots, person-choice/editor race, stale responses and the zero-unsupported-failure evaluation gate. No live model quality is claimed.
+
+## Remaining risks
+
+- Real provider/model quality, usefulness and cost await separate authorization.

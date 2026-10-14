@@ -72,14 +72,81 @@ def controlled_scan(self, *args, **kwargs):
     return original_scan(self, *args, **kwargs)
 NFOScanner.scan_observed = controlled_scan
 
+# Ask substitutes only provider transport; resolve/query still use the real DB.
+from app.services.ask import AskInterpreter, AskError, ask_service
+from app.evaluation.ask import corpus, fixture_interpreter
+ask_mode = 'no_key'
+class ControlledAskInterpreter(AskInterpreter):
+    def configured(self):
+        return ask_mode != 'no_key'
+
+    def disclosure(self):
+        return {'provider_host':'fixture.local', 'model':'offline/fixture-v1'}
+
+    def interpret(self, question):
+        global ask_mode
+        if ask_mode == 'no_key':
+            raise AskError('ask_not_configured', 503)
+        if ask_mode == 'timeout_once':
+            ask_mode = 'fixture'
+            raise AskError('ask_timeout', 504)
+        case = next((case for case in corpus() if case['question'] == question.question), None)
+        if not case:
+            raise AskError('ask_invalid_response', 502)
+        interpreter = fixture_interpreter(case)
+        interpreter.configured = lambda: True
+        return interpreter.interpret(question)
+ask_service.interpreter = ControlledAskInterpreter()
+
 @app.post('/__e2e/control', include_in_schema=False)
 def control(payload: dict, x_e2e_token: str = Header(default='')):
     global backup_failure
     if x_e2e_token != os.environ['E2E_TOKEN']:
         raise HTTPException(403)
-    global health_allowed
+    global health_allowed, ask_mode
     action = payload['action']
-    if action == 'health_fixture':
+    if action == 'ask_mode':
+        assert payload['mode'] in ('no_key','fixture','timeout_once')
+        ask_mode = payload['mode']
+        return {'ok': True}
+    elif action == 'ask_cleanup':
+        from app.services.library import library_manager
+        from app.database import engine
+        from app.canonical_models import GraphEntity
+        from sqlmodel import Session, delete
+        library_manager.clear_all_data()
+        with Session(engine) as session:
+            session.exec(delete(GraphEntity).where(GraphEntity.id.in_([
+                'person_' + 'a' * 32, 'person_' + 'b' * 32])))
+            session.commit()
+        return {'ok': True}
+    elif action == 'ask_fixture':
+        import test_explore_query as fixture
+        from app.database import engine
+        from app.services.library import library_manager
+        from app.services.user_state import film_profile_state_manager
+        seed = fixture.ExploreQueryTests()
+        import tempfile
+        # A failed Playwright worker may rerun beforeAll. Each replay owns fresh files.
+        seed.root = Path(tempfile.mkdtemp(prefix='ask-synthetic-', dir=root))
+        seed.engine = engine
+        seed.films = seed._seed_library()
+        # clear_all_data deliberately retains orphan Person GraphEntity rows.
+        # Remove only the two known synthetic IDs before replaying this fixture.
+        from sqlmodel import Session, delete
+        from app.canonical_models import GraphEntity
+        with Session(engine) as session:
+            session.exec(delete(GraphEntity).where(GraphEntity.id.in_([
+                'person_' + 'a' * 32, 'person_' + 'b' * 32])))
+            session.commit()
+        seed._seed_facts()
+        for name, runtime, seconds, rating in (('Alpha',90,None,3),('Beta',120,5401,5),('Gamma',None,None,None)):
+            library_manager.update_film_observation(seed.films[name], {'runtime':runtime,'video_duration':seconds})
+            if rating:
+                film_profile_state_manager.upsert(seed.films[name], rating=rating, fields_set={'rating'})
+        ask_mode = 'fixture'
+        return seed.films
+    elif action == 'health_fixture':
         import subprocess, json, shutil
         from app.services.library import library_manager
         from app.services.settings import set_media_dirs

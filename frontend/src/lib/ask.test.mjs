@@ -42,3 +42,28 @@ test("explicit single-filter removal preserves every other condition and resets 
   assert.deepEqual(removeAskConstraint(plan, "view"), { ...plan, view: "all" });
   assert.equal(plan.country, "JP");
 });
+
+test("numeric range session validation and explicit relaxation preserve boundary semantics", async () => {
+  const { validAskNumbers, askNumericConditions, removeAskConstraint, parseAskSession } = await import("./ask.ts");
+  const plan = { ...emptyAskPlan, duration_min: 90, duration_max: 120, duration_max_inclusive: false, rating_min: 4 };
+  assert.equal(validAskNumbers(plan), true);
+  assert.deepEqual(askNumericConditions(plan), [{ field: "duration", value: 90, operator: "≥" }, { field: "duration", value: 120, operator: "<" }, { field: "rating", value: 4, operator: "≥" }]);
+  assert.deepEqual(removeAskConstraint(plan, "duration"), { ...plan, duration_min: null, duration_max: null, duration_min_inclusive: true, duration_max_inclusive: true });
+  for (const changes of [{ rating_min: 6 }, { rating_max: 3 }, { duration_min: 121 }, { duration_max: true }, { duration_min: 90.5 }, { duration_max: 90 }]) {
+    assert.equal(validAskNumbers({ ...plan, ...changes }), false);
+    assert.equal(parseAskSession(JSON.stringify({ plan: { ...plan, ...changes }, confirmed: true, person_id: null, offset: 0 })), null);
+  }
+});
+
+test("cancelled and earlier responses cannot commit after a later request or unmount", async () => {
+  const { createAskRequestGate } = await import("./ask.ts");
+  const gate = createAskRequestGate();
+  const earlier = gate.begin();
+  const later = gate.begin();
+  assert.equal(earlier.signal.aborted, true);
+  assert.equal(gate.current(earlier.id), false);
+  assert.equal(gate.current(later.id), true);
+  gate.cancel();
+  assert.equal(later.signal.aborted, true);
+  assert.equal(gate.current(later.id), false);
+});

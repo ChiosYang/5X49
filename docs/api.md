@@ -574,81 +574,102 @@ private controlled manifest; the Event and OperationSnapshot store only its
 opaque reference. File-location restore covers the video, associated sidecars,
 and database locator; generated NFO and artwork files remain.
 
-## Ask MVP
+## Ask / AI Film finder phase one
 
-Ask is a read-only planning and query interface over factual Explore projections.
-Its contract version is `ask.v1`; no schema migration is required.
+Ask is a read-only planner over factual Explore and current Library projections.
+Contract `ask.v2` adds scalar bounds, external-provider consent and observations;
+no schema migration is required. Explore embeds the existing Ask flow.
 
 | Method | Path | Purpose |
 | --- | --- | --- |
-| `GET` | `/ask/status` | Provider-key presence and availability of the local form. |
-| `POST` | `/ask/interpret` | Interpret one question using the configured model, then resolve local entities. |
-| `POST` | `/ask/resolve` | Validate and preview a plan locally, without a model call. |
-| `POST` | `/ask/query` | Execute explicitly confirmed conditions; pagination never calls the model. |
+| GET | `/ask/status` | Key presence, safe provider host/model disclosure, 20s timeout, consent requirement and local form availability. Presence never certifies provider availability. |
+| POST | `/ask/interpret` | One provider interpretation followed by local entity resolution, without running a Film query. |
+| POST | `/ask/resolve` | Validate and preview edited conditions locally; no model call. |
+| POST | `/ask/query` | Execute explicitly confirmed conditions; pagination remains local. |
 
-Interpretation accepts `{"question":"Find unwatched Japanese films from the 1990s.","locale":"en"}`.
-Question length is 1–600 characters, locale is `zh` or `en`. Only the question
-and static output schema reach the provider, not Library records, notes, media
-paths, selected results or private settings. Obvious pasted credentials and
-absolute paths are rejected before calling the provider. Questions and responses
-are not persisted, included in audit events or logged by Ask.
+Interpretation requires `{"question":"Films under two hours with my Film overall rating at least four stars.","locale":"en","provider_consent":true}`.
+The question is 1–600 characters, locale is zh/en. Only the question and a static
+schema/system instruction are sent. No Library records, paths, private notes,
+results, settings or credentials are attached. Obvious credentials and absolute
+paths fail before the provider. Questions/responses are neither logged nor saved.
+The UI shows provider host/model and requires consent before each changed question.
 
-Resolve accepts a plan and an optional explicit `person_id`:
+Resolve accepts `plan` and optional `person_id`; manual requests may omit fields
+to use these defaults. Provider output must include **all** plan fields:
 
 ```json
 {
   "plan": {
-    "genre": null,
-    "person": null,
-    "person_role": "any",
-    "country": "JP",
-    "decade": 1990,
-    "view": "unwatched",
-    "sort": "title",
-    "direction": "asc"
+    "genre": null, "person": null, "person_role": "any", "country": "JP",
+    "decade": 1990, "view": "unwatched", "sort": "title", "direction": "asc",
+    "duration_min": null, "duration_max": 120,
+    "duration_min_inclusive": true, "duration_max_inclusive": false,
+    "rating_min": 4, "rating_max": null
   },
   "person_id": null
 }
 ```
 
-Each dimension accepts at most one value and combines with AND. Genre/country
-values are resolved through the controlled multilingual vocabulary. Person
-names use active, eligible local entities: a unique exact match can resolve
-automatically; multiple exact matches or partial matches require selecting one
-of the returned candidates (at most nine, each with up to two sample Films).
-Unknown values block execution. A provided Person ID must still match the name;
-it cannot override an unrelated or vanished entity.
+- One genre/person/country/decade; all dimensions, watched state and numeric
+  bounds combine with AND. Existing controlled vocabulary and eligible factual
+  entities remain authoritative. A unique exact Person resolves automatically;
+  duplicate or fuzzy names require explicit choice from at most nine candidates,
+  each with up to two sample Films. Stale/forged/unknown selections block queries.
+- Roles are any/director/actor; decade is an integer divisible by ten in
+  1880–2190; view is all/watched/unwatched; sort is title/year; direction asc/desc.
+- `duration_min/max`: strict integer **minutes** 1–10000. Compare exact positive
+  primary-video `duration_seconds` first, otherwise positive `runtime_minutes*60`.
+  Missing/nonpositive durations are unknown. Inclusive flags preserve >=/<= or
+  >/<; omitted bounds must have inclusive=true. Reversed or empty ranges are 422.
+- `rating_min/max`: strict integer **Film personal overall stars** 1–5, inclusive.
+  This is `profile_state.rating` / FilmProfileState.rating, never a per-Viewing
+  score or external score. Missing values do not match active bounds; inactive
+  bounds retain unknown values. `<4 stars` is max=3; exactly three is min=max=3.
+- Exact release years, favorites, negation/exclusions, OR/multiple values in a
+  dimension, themes/styles/similarity, taste recommendations, notes and writes
+  remain unsupported. Unspecified rating source/scale or vague duration needs
+  clarification. Explicit unsupported phrases have conservative preflight guards;
+  the schema/prompt additionally require preserving the whole request.
 
-`person_role` is `any|director|actor`; decade is an integer divisible by ten in
-1880–2190; view is `all|watched|unwatched`; sort is `title|year`; direction is
-`asc|desc`. Model output must explicitly include every plan field. Manual form
-requests may omit fields to use null/any/all/title/asc defaults. Other fields,
-multiple values, arbitrary SQL, exact-year/rating/runtime filters, exclusions,
-recommendations and mutation instructions are outside the supported plan.
+Responses retain version/status/plan/person_id/constraints/issues. Interpretation
+also returns bounded `reason` codes and `observation` (or null for local guards).
+Unsupported/vague requests have no plan. Ready plans have no unresolved reason.
+Strict JSON rejects duplicates, nonfinite numbers, extras, missing fields, type
+coercions, truncated output and a non-stop finish. No arbitrary provider prose
+is used as a Film reason or error.
 
-Responses contain `version`, `status`, `plan`, `person_id`, `constraints` and
-`issues`. Status is `ready`, `needs_clarification`, `clarify` or `unsupported`.
-Unsupported/vague interpretations have no plan. Resolution issues name the
-unresolved field and include candidate identities when available.
+Query requires `confirmed:true`, optional offset 0–100000. It resolves the plan
+again; unresolved queries return results=null. Filters including numeric bounds
+and Person roles execute before count/sort/20-Film pagination. Results retain
+the existing ExploreFilmPage shape; Ask adds `matched_values` to each item,
+e.g. `{field:"duration",value:5401,unit:"seconds",source:"video"}` or
+`{field:"rating",value:4,unit:"stars",source:"film_profile"}`. Runtime fallback
+uses source=film_runtime. Existing matched_facts retain factual provenance.
+`confirmed_plan` echoes the executed conditions. Zero results never relax;
+the UI offers removal as a draft followed by a fresh review and confirmation.
+`/explore/films` behavior is unchanged. Cards are read-only.
 
-Query accepts the same payload plus required `"confirmed": true` and optional
-`offset` (0–100000). It resolves conditions again and returns `results: null`
-if anything remains unresolved. Otherwise `results` is the existing
-`ExploreFilmPage` shape with a fixed page size of 20. Person roles are enforced
-before total counts, sorting and pagination. The returned `matched_facts`,
-source kinds and viewing state provide deterministic explanations; zero results
-never trigger automatic relaxation. `/explore/films` behavior is unchanged.
+Provider transport: one configured model, max_tokens=1600, 20s timeout, zero
+automatic retries, two concurrent calls/process. Model/base URL use existing
+settings; no catalog refresh or settings writes. Unsafe URLs (credentials/query,
+non-HTTPS remote URLs) fail closed. Observation contains requested/response model,
+generation_id, latency_ms, nullable input/output/total tokens, nullable cost_usd,
+and cost_source=provider_usage.cost or unavailable. Only actual finite OpenRouter
+usage.cost is reported as USD; absent cost is never estimated or invented.
+Errors may include this same bounded observation under detail.observation.
 
-Interpretation makes one call with a 20-second transport timeout, a 1200-token
-output cap, zero retries and at most two concurrent calls per process. It uses
-the existing model/base URL settings and `OPENROUTER_API_KEY`; provider-key
-presence does not certify provider availability. Errors expose stable codes:
-`503 ask_not_configured`, `429 ask_busy`, `504 ask_timeout`,
-`502 ask_invalid_response|ask_provider_unavailable`,
-`422 ask_private_input|ask_invalid_selection`. Contract validation uses `422`;
-stale projections return `503 projection_unavailable`. The local form remains
-usable without a model key. Natural-language quality still requires live
-acceptance, independently of the offline query tests and Analysis Gate B.
+Codes: 503 ask_not_configured|ask_provider_configuration, 429 ask_busy,
+504 ask_timeout, 502 ask_invalid_response|ask_provider_unavailable,
+422 ask_private_input|ask_invalid_selection; validation=422, stale projections=
+503 projection_unavailable. Local resolve/query works without a key. Browser
+requests have a 25s bound and cancellation/generation checks reject stale results.
+Cancelling UI cannot guarantee a sent provider request stops billing. Only a
+confirmed structured plan is retained in sessionStorage; never questions/Films.
+
+See [AI Film finder quality](quality/ask-phase-one.md) for the 50-case fixture
+corpus and the separately authorized live evaluation guard. Offline acceptance
+does not certify model parsing accuracy, cost or usefulness, and never unlocks
+Analysis V2 inference relationships.
 
 ## Analysis V2
 

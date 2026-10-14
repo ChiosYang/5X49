@@ -289,24 +289,35 @@ TMDB 功能需要 `TMDB_API_KEY` 环境变量或托管设置；读取设置只�
 `GET /films/{film_id}/scrape/candidates` 只读取可用 Film 版本并返回有界候选，
 不会修改刮削状态、写 Event/NFO、下载图片或自动确认。
 
-## Ask 只读查片
+## Ask 只读找片（ask.v2）
 
-- `GET /ask/status` 只报告模型 Key 是否存在；不能据此认定模型可用。
-- `POST /ask/interpret` 接受 `question`（1–600 字符）与 `locale: zh|en`。
-  只发送问题和固定 schema；不附带片库、笔记、路径或查询结果。
-- `POST /ask/resolve` 接受 `plan` 与可选 `person_id`，在本地解析和预览条件。
-- `plan` 支持一个 `genre`、一个 `person`、`person_role: any|director|actor`、
-  一个 `country`、一个 `decade`、`view: all|watched|unwatched`、
-  `sort: title|year` 与 `direction: asc|desc`；不同维度之间为 AND。
-- 同名/部分匹配人物必须从返回的候选中明确选择；未知条件不能忽略。
-- `POST /ask/query` 使用相同参数，加 `confirmed: true` 和可选 `offset`。
-  只有用户确认条件后执行；每页 20 条，分页无模型调用。
-- `status` 为 `ready|needs_clarification|clarify|unsupported`。未解决的条件
-  返回 `results: null`，零结果不会自动放宽。命中原因来自 `matched_facts`。
-- 无 Key 时直接使用 resolve/query；不支持评分、精确年份、否定、OR、多值维度、
-  推荐或写操作。Ask 不保存提问/模型输出，也不产生含这些内容的 Activity 事件。
-- `ask_private_input`、`ask_invalid_response` 等错误不得通过删减约束重试。
-  完整请求、错误码和提供商限制见 `docs/api.md` 的 Ask MVP。
+- GET `/ask/status` 报告 Key 是否存在、经过约束的 provider_host/model、
+  consent_required 与20秒超时。不能据此认定服务商实际可用。
+- POST `/ask/interpret` 要求 question（1–600字符）、locale:zh|en 与
+  provider_consent:true。只外发问题和静态schema，不附带片库/路径/私人笔记。
+  返回待核对plan，尚未查询。外发前应向用户显示服务商和模型并取得同意。
+- POST `/ask/resolve` 接受plan和可选person_id，完全本地预览；同名/模糊人物
+  必须显式选择候选，未知、不支持或过期条件不得删除后悄悄重试。
+- 保留单个genre/person/person_role/country/decade、view、title/year排序。
+  增加duration_min/max（严格整数分钟1–10000）及duration_min/max_inclusive
+  （默认true，缺少边界时必须true）。使用正视频秒数，否则正影片runtime_minutes；
+  按精确秒数比较，不舍入。空值或非正时长不满足已启用的范围。
+- rating_min/max是影片个人总体整数评分1–5星，包含端点；不得替换为外部评分或
+  Viewing评分。空值不满足已启用范围。反向/空范围、布尔代整数等返回422。
+- POST `/ask/query` 增加confirmed:true、offset（0–100000）；重新本地解析，
+  跨维度AND和人物角色/数值条件先于计数排序分页。每页20条、无需模型。
+- Ask结果增加confirmed_plan和逐卡matched_values（实际秒数或总体星级与明确来源），
+  保留matched_facts。卡片只读；零结果只给可选删除草稿，必须重新核对并确认。
+- 否定、主题/风格/相似、口味推荐、OR/多值、精确年份、收藏和写入暂不支持。
+  评分来源/单位和模糊时长需澄清。不解锁Analysis V2推断关系。
+- 提供商只调用一次、20秒、最多1600输出token、零自动重试、固定一个配置模型。
+  严格JSON独立验证；错误只暴露稳定code和受限观测值，无提供商原文或私人内容。
+- observation包含延迟、模型版本、generation_id、可用token计数和实际usage.cost。
+  缺少成本则cost_usd=null/cost_source=unavailable，不得编造。取消UI不等于免计费。
+- 无Key或故障时使用本地表单。仅已确认的结构条件保留在会话，问题和结果不持久化。
+- 50条离线fixture只是工程证据。真实评估需显式启动、固定模型/provider、累计US$1
+  持久账本与逐次最大token费用预留；未知计费或异常路由立即停机，不充值、不改凭证。
+  完整请求和评估入口见docs/api.md与docs/quality/ask-phase-one.md。
 
 ## Analysis V2
 

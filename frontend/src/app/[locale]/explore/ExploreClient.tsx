@@ -36,6 +36,8 @@ import type {
   ExploreView,
 } from "@/types/movie";
 import ExploreFactFinder from "./ExploreFactFinder";
+import AskClient from "../ask/AskClient";
+import { ASK_SESSION_KEY } from "@/lib/ask";
 import {
   ExploreHeader,
   LensDeck,
@@ -99,6 +101,7 @@ export default function ExploreClient({
   const [activeLens, setActiveLens] = useState<ExploreDimension | null>(() => initialExploreLens(query));
   const [lensSheetOpen, setLensSheetOpen] = useState(false);
   const [finderOpen, setFinderOpen] = useState(false);
+  const [assistantActive, setAssistantActive] = useState(false);
   const [finderDimension, setFinderDimension] = useState<ExploreDimension>(
     () => initialExploreLens(query) ?? "genre",
   );
@@ -139,6 +142,7 @@ export default function ExploreClient({
 
   const navigate = (next: ExploreQueryState, intent: "filter" | "page" = "filter") => {
     const navigation = exploreNavigation(next, intent);
+    try { sessionStorage.removeItem(ASK_SESSION_KEY + ".explore"); } catch { /* Optional storage. */ }
     if (navigation.focusResults) {
       paginationTarget.current = next.offset;
       filterScrollTarget.current = null;
@@ -254,6 +258,9 @@ export default function ExploreClient({
     <div className="page-x min-h-screen bg-canvas pb-24 pt-32 text-ink selection:bg-inverse selection:text-inverse-ink">
       <ExploreHeader total={overview.total_films} onFind={() => openFinder()} />
 
+      <AskClient key={exploreNavigation(query, "filter").href} embedded onActiveChange={setAssistantActive} />
+
+      <div hidden={assistantActive}>
       {hasFilters ? (
         <div className="sticky top-0 z-sticky -mx-2 mt-5 bg-canvas/92 px-2 py-3 backdrop-blur-xl">
           <QueryRibbon
@@ -357,6 +364,8 @@ export default function ExploreClient({
           />
         ) : null}
       </Dialog>
+
+      </div>
 
       <ExploreFactFinder
         open={finderOpen}
