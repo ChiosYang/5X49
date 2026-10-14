@@ -272,11 +272,21 @@ class HealthTests(unittest.TestCase):
         self.assertEqual(self.service.scheduling_reason(), "waiting_idle")
         self.service.clock = lambda: stamp + 61
         self.assertIsNone(self.service.scheduling_reason())
+        self.service.active_tool = Mock(suspended=False, process=Mock(pid=123))
         self.observer.sample.return_value = {"observable": True, "cpu": 50, "disk": 30}
         self.assertIsNone(self.service.scheduling_reason(active=True))
         self.assertEqual(self.service.scheduling_reason(), "host_busy")
         self.observer.sample.return_value = {"observable": True, "cpu": 90, "disk": 0}
         self.assertEqual(self.service.scheduling_reason(active=True), "host_busy")
+        self.service.active_tool.suspended = True
+        self.observer.sample.return_value = {"observable": True, "cpu": 50, "disk": 30}
+        self.assertEqual(self.service.scheduling_reason(active=True), "host_busy")
+        self.observer.sample.return_value = {"observable": True, "cpu": 0, "disk": 0}
+        self.assertEqual(self.service.scheduling_reason(active=True), "waiting_idle")
+        self.service.clock = lambda: stamp + 122
+        self.assertIsNone(self.service.scheduling_reason(active=True))
+        self.service.active_tool = None
+        self.service.clock = lambda: stamp + 61
         self.observer.sample.return_value = {"observable": False, "cpu": None, "disk": None}
         self.assertEqual(self.service.scheduling_reason(), "load_unobservable")
         minute = datetime.fromtimestamp(stamp+61, timezone.utc).hour * 60 + datetime.fromtimestamp(stamp+61, timezone.utc).minute

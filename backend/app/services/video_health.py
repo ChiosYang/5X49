@@ -241,7 +241,10 @@ class VideoHealthService:
             if config["start_minute"] == config["end_minute"]:
                 self.idle_since = None
                 return "load_unobservable"
-        high = (self.load["cpu"] or 0) >= (75 if active else 30) or (self.load["disk"] or 0) >= (65 if active else 20)
+        running = active and self.active_tool is not None and not self.active_tool.suspended
+        # Hysteresis: an already-running decoder may tolerate moderate load,
+        # but a suspended decoder resumes only after the low idle thresholds.
+        high = (self.load["cpu"] or 0) >= (75 if running else 30) or (self.load["disk"] or 0) >= (65 if running else 20)
         if high:
             self.idle_since = None
             return "host_busy"
