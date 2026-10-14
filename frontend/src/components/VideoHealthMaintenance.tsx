@@ -56,7 +56,7 @@ export default function VideoHealthMaintenance() {
       {current ? <div className="mt-3 space-y-2 text-xs leading-6">
         <p className="break-words">{current.title} · {current.filename}</p>
         {!current.current ? <p className="text-warning">{t("versionStale")}{current.unavailable_reason ? ` · ${t(`error_${current.unavailable_reason}`)}` : ""}</p> : null}
-        <p>{t("container")}: {t(`state_${current.container_status}`)} · {t("deep")}: {t(`state_${current.status}`)}</p>
+        <p>{t("container")}: {t(`state_${current.container_status}`)} · {t("deep")}: {t(`state_${current.decode_status}`)}</p>
         <p className="break-all">{t("version")}: {current.version_key}</p>
         <p>{t("size")}: {current.version?.size ?? "—"} B · {t("checked")}: {current.checked_at ? new Date(current.checked_at * 1000).toLocaleString(locale) : "—"}</p>
         {current.error_code ? <p>{t(`error_${current.error_code}`)}</p> : null}

@@ -979,9 +979,10 @@ the null muxer; there is no repair, deletion or saved transcode.
 - `GET .../files?status=abnormal&limit=20&offset=0`: page `{items,total,limit,offset}`;
   status accepts all or any count state; limit 1..50, offset 0..1000000. Summary
   polling reads DB metadata only. Rows carry asset/Film/edition IDs, filename,
-  title, status, separate `container_status`, filesystem `version_key/version`,
+  title, overall status, separate `container_status`/`decode_status`, filesystem `version_key/version`,
   current flag, checked time, retained `passed_at`, decoded/duration seconds, safe error code/summary,
-  and unread flag. Raw tool errors and absolute paths are never returned.
+  and unread flag. A failed container check leaves `decode_status:"unchecked"`; it does not
+  pretend a deep decoder ran. Raw tool errors and absolute paths are never returned.
 - `GET .../files/vh_<32 lowercase hex>`: on-demand detail revalidates live access
   and the exact filesystem version; includes attempts and unavailable_reason.
   Historical or unavailable results retain their original status with

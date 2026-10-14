@@ -57,7 +57,7 @@ or detect every possible valid-looking truncation. No media writes occur.
 - `uv run python -X utf8 -m unittest discover -s . -p "test_*.py" -q`:
   412 tests passed, 3 existing platform/environment skips (Windows).
   Final settings-race/health/API/root regression: 71 passed, 1 existing skip.
-- `uv run python -X utf8 -m unittest test_video_health -q`: all 27 passed,
+- `uv run python -X utf8 -m unittest test_video_health -q`: all 28 passed,
   including real 6-second MPEG-4/AAC multi-audio-track media, middle-packet
   corruption with container pass/decode failure, truncation, native pause/resume,
   active cancellation, budget overrun fairness and abrupt owner-exit reaping.

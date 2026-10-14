@@ -2,7 +2,7 @@ export type HealthState = "unchecked" | "queued" | "checking" | "passed" | "abno
 export type HealthConfig = { enabled: boolean; paused: boolean; start_minute: number; end_minute: number; daily_budget_minutes: number };
 export type HealthFile = {
   id: string | null; asset_id: string; film_id: string | null; library_item_id: string | null;
-  title: string | null; filename: string | null; status: HealthState; container_status: HealthState;
+  title: string | null; filename: string | null; status: HealthState; container_status: HealthState; decode_status: HealthState;
   current: boolean; version_key: string | null; version: { size?: number; mtime_ns?: number } | null;
   decoded_seconds: number; duration_seconds: number | null; checked_at: number | null;
   error_code: string | null; error_summary: string | null; unread?: boolean; unavailable_reason?: string | null;

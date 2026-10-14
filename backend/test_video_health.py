@@ -137,6 +137,16 @@ class HealthTests(unittest.TestCase):
         _, row = self.inspect(self.truncated)
         self.assertEqual(row.status, "abnormal")
 
+    def test_broken_container_reports_deep_not_checked_instead_of_claiming_a_decode(self):
+        source = self.root / 'invalid-container.mp4'
+        source.write_bytes(b'generated invalid media container')
+        _, row = self.inspect(source)
+        self.assertEqual(row.status, 'abnormal')
+        self.assertEqual(row.container_status, 'abnormal')
+        detail = self.client.get(f'/maintenance/video-health/files/{row.id}').json()
+        self.assertEqual(detail['decode_status'], 'unchecked')
+        self.assertEqual(detail['decoded_seconds'], 0)
+
     def test_new_files_wait_for_two_stable_observations(self):
         self.service.configure({"stable_seconds": 60})
         path, _ = self.add()
