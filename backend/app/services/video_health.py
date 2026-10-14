@@ -157,6 +157,26 @@ class VideoHealthService:
             session.commit()
         return {"status": "queued", "batched": True}
 
+    def scoped_receipts(self, statement):
+        """Latest receipts in currently configured, active edition boundaries."""
+        receipt = aliased(VideoHealth)
+        latest = select(receipt.id).where(receipt.asset_id == VideoHealth.asset_id).order_by(
+            receipt.observed_at.desc(), receipt.id.desc()).limit(1).correlate(VideoHealth).scalar_subquery()
+        statement = statement.join(MediaAsset, MediaAsset.id == VideoHealth.asset_id).join(
+            LibraryItem, LibraryItem.id == MediaAsset.library_item_id).where(
+                VideoHealth.id == latest, MediaAsset.availability_status == "present",
+                LibraryItem.availability_status == "available")
+        prefixes = [str(Path(root)).rstrip('/\\') + os.sep for root in get_media_dirs()]
+        return statement.where(or_(*(MediaAsset.locator.startswith(prefix, autoescape=True)
+                                     for prefix in prefixes))) if prefixes else statement.where(False)
+
+    def has_manual_work(self, session):
+        statement = self.scoped_receipts(select(VideoHealth.id)).where(
+            VideoHealth.priority == 20, VideoHealth.cancel_requested == False,
+            or_(VideoHealth.status.in_(["unchecked", "queued", "checking"]),
+                and_(VideoHealth.status == "incomplete", VideoHealth.error_code.in_(RETRYABLE))))
+        return session.exec(statement.limit(1)).first() is not None
+
     def recover(self):
         with Session(database.engine) as session:
             for row in session.exec(select(VideoHealth).where(VideoHealth.status == "checking")).all():
@@ -222,7 +242,7 @@ class VideoHealthService:
             return "paused"
         if not config["enabled"]:
             with Session(database.engine) as session:
-                if not self.runtime(session)["manual"]:
+                if not self.runtime(session)["manual"] and not self.has_manual_work(session):
                     return "disabled"
         if not in_window(config, now):
             self.idle_since = None
@@ -265,7 +285,10 @@ class VideoHealthService:
             if due:
                 self.discover(batch=4)
             with Session(database.engine) as session:
-                row = session.exec(select(VideoHealth).where(VideoHealth.status == "queued")
+                statement = self.scoped_receipts(select(VideoHealth)).where(VideoHealth.status == "queued")
+                if not self.config(session)["enabled"] and not self.runtime(session)["manual"]:
+                    statement = statement.where(VideoHealth.priority == 20)
+                row = session.exec(statement
                     .where(VideoHealth.next_attempt_at <= self.clock())
                     .order_by(VideoHealth.priority.desc(), VideoHealth.observed_at).limit(1)).first()
                 identifier = row.id if row else None
@@ -292,7 +315,10 @@ class VideoHealthService:
             receipt = aliased(VideoHealth)
             latest_id = select(receipt.id).where(receipt.asset_id == MediaAsset.id).order_by(
                 receipt.observed_at.desc(), receipt.id.desc()).limit(1).correlate(MediaAsset).scalar_subquery()
-            pending = session.exec(base.join(VideoHealth, VideoHealth.asset_id == MediaAsset.id)
+            pending_statement = base.join(VideoHealth, VideoHealth.asset_id == MediaAsset.id)
+            if not config["enabled"] and not state["manual"]:
+                pending_statement = pending_statement.where(VideoHealth.priority == 20)
+            pending = session.exec(pending_statement
                 .where(VideoHealth.id == latest_id)
                 .where(or_(VideoHealth.status.in_(["unchecked", "queued"]),
                     and_(VideoHealth.status == "incomplete", VideoHealth.error_code.in_(RETRYABLE),
@@ -338,6 +364,13 @@ class VideoHealthService:
                         session.add(previous)
                     continue
                 key = digest(version)
+                if previous and previous.version_key != key:
+                    if previous.status in {"unchecked", "queued"}:
+                        self._finish_row(previous, "incomplete", "file_changed")
+                        session.add(previous)
+                    if not config["enabled"] and not state["manual"]:
+                        # A single retry grants no authority to a newer version.
+                        continue
                 identifier = "vh_" + digest([asset.id, key])[:32]
                 row = session.get(VideoHealth, identifier)
                 if row is None:
@@ -372,9 +405,7 @@ class VideoHealthService:
                 session.add(row)
             session.flush()
             if state["manual"] and not state["sweep"]:
-                pending_manual = session.exec(select(VideoHealth.id).where(VideoHealth.priority == 20)
-                    .where(VideoHealth.status.in_(["unchecked", "queued", "checking"])).limit(1)).first()
-                if pending_manual is None:
+                if not self.has_manual_work(session):
                     state["manual"] = False
             self._save_setting(session, "video_health_runtime", state)
             session.commit()
@@ -407,6 +438,8 @@ class VideoHealthService:
                 session.add(row); session.commit()
                 return
             row.status = "checking"
+            row.container_status = "unchecked"
+            row.decoded_seconds = 0
             row.passed_at = None  # A newly started decode supersedes an old certificate.
             row.attempts += 1
             session.add(row); session.commit()
@@ -589,6 +622,9 @@ class VideoHealthService:
                     row.error_summary = None
                     row.next_attempt_at = 0
                     row.priority = 20
+                    state = self.runtime(session)
+                    state["next_sample_at"] = 0
+                    self._save_setting(session, "video_health_runtime", state)
             session.add(row); session.commit()
 
 

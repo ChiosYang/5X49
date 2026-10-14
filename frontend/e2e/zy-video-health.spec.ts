@@ -49,6 +49,13 @@ test('maintenance separates quick/deep results, version evidence, unknown locati
   await expect(panel.getByText('Filesystem version:', { exact: false })).toBeVisible();
   const before = (await status(request)).unread;
   expect(before).toBeGreaterThan(0);
+  await page.setViewportSize({ width: 320, height: 844 });
+  const navigation = page.locator('nav').first();
+  await expect(navigation.getByRole('link', { name: /video version.*attention/ })).toBeVisible();
+  const logo = await navigation.getByRole('link', { name: '5X49', exact: true }).boundingBox();
+  const search = await navigation.getByRole('link', { name: 'Search', exact: true }).boundingBox();
+  expect(logo && search && logo.x + logo.width <= search.x).toBeTruthy();
+  await page.setViewportSize({ width: 1440, height: 1100 });
   await panel.getByRole('button', { name: 'Mark notification read' }).click();
   await expect.poll(async () => (await status(request)).unread).toBe(before - 1);
   await page.reload();

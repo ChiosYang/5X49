@@ -346,6 +346,48 @@ class HealthTests(unittest.TestCase):
         self.service.discover()
         self.assertEqual(self.service.scheduling_reason(), "disabled")
 
+    def test_explicit_single_retry_runs_scheduler_with_auto_off_and_does_not_drain_auto_queue(self):
+        target, _ = self.add(self.corrupt, name='Manual target.mp4')
+        other, _ = self.add(name='Unrelated automatic.mp4')
+        self.service.discover(); self.service.discover()
+        with Session(self.engine) as session:
+            target_asset = session.exec(select(MediaAsset.id).where(MediaAsset.locator == str(target))).one()
+            other_asset = session.exec(select(MediaAsset.id).where(MediaAsset.locator == str(other))).one()
+        target_row = next(row for row in self.rows() if row.asset_id == target_asset)
+        self.service.inspect(target_row.id)
+        self.service.configure({'enabled': False})
+        self.assertEqual(self.service.scheduling_reason(), 'disabled')
+        self.service.control(target_row.id, 'retry')
+        self.observer.sample.return_value = {'observable': True, 'cpu': 90, 'disk': 0}
+        self.service.tick(); self.assertEqual(self.service.reason, 'host_busy')
+        self.observer.sample.return_value = {'observable': True, 'cpu': 0, 'disk': 0}
+        minute = datetime.now(timezone.utc).hour * 60 + datetime.now(timezone.utc).minute
+        self.service.configure({'start_minute': (minute + 10) % 1440, 'end_minute': (minute + 11) % 1440})
+        self.service.tick(); self.assertEqual(self.service.reason, 'outside_window')
+        self.service.configure({'start_minute': 0, 'end_minute': 0, 'daily_budget_minutes': 1})
+        with Session(self.engine) as session:
+            state = self.service.runtime(session)
+            state.update(day=datetime.now(timezone.utc).date().isoformat(), used_seconds=61)
+            self.service._save_setting(session, 'video_health_runtime', state); session.commit()
+        self.service.tick(); self.assertEqual(self.service.reason, 'budget_used')
+        with Session(self.engine) as session:
+            state = self.service.runtime(session); state['used_seconds'] = 0
+            self.service._save_setting(session, 'video_health_runtime', state); session.commit()
+        self.service.tick()
+        rows = self.rows()
+        retried = next(row for row in rows if row.asset_id == target_asset)
+        unrelated = next(row for row in rows if row.asset_id == other_asset)
+        self.assertEqual((retried.status, retried.attempts), ('abnormal', 2))
+        self.assertEqual((unrelated.status, unrelated.attempts), ('queued', 0))
+        self.assertEqual(self.service.scheduling_reason(), 'disabled')
+        with Session(self.engine) as session:
+            self.assertFalse(self.service.runtime(session)['manual'])
+        self.service.control(retried.id, 'retry')
+        target.write_bytes(target.read_bytes() + b'changed after explicit retry')
+        self.service.tick()
+        self.assertEqual(next(row for row in self.rows() if row.id == retried.id).error_code, 'file_changed')
+        self.assertEqual(self.service.scheduling_reason(), 'disabled')
+
     def test_notification_is_durable_deduplicated_and_stale_version_is_hidden(self):
         path, row = self.inspect(self.corrupt)
         with patch("app.services.video_health.library_event_bus.publish") as notify:

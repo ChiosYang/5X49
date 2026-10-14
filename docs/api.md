@@ -989,7 +989,10 @@ the null muxer; there is no repair, deletion or saved transcode.
   `current:false`; they do not certify the current file.
 - `POST .../files/{id}`: `{action:"retry"|"cancel"|"acknowledge"}`. Retry requires
   that exact version to remain available/current, observes stability again, and
-  starts from the beginning. Acknowledgement persists without deleting evidence.
+  starts from the beginning. Explicit single-file retries retain a bounded manual
+  intent even with automatic checks disabled: they schedule only that file/version,
+  respect pause/load/hours/budget, and do not drain unrelated automatic rows.
+  A changed version ends that intent. Acknowledgement persists without deleting evidence.
   Missing ID is 404, invalid grammar/body/query 422, unavailable/stale retry 409,
   database failure 503 with a safe `detail.code`.
 
@@ -1042,3 +1045,11 @@ they are excluded from `library-export.v1` and downloadable maintenance backups;
 raw offline database backups naturally retain the whole DB. Restored raw queues
 still revalidate configured access and current versions before running. Deep reset
 cascades health rows with assets and never writes media.
+
+Supported deployment: one backend process/worker per library database (the default
+Uvicorn/container entrypoint). The OS lock prevents duplicate health decoders
+across processes, but a standby worker does not automatically take over if its
+owner exits, and active process/load/reason state is local to the owner. Compound
+runtime-setting updates and foreground preemption are not coordinated across
+multiple API workers. Multi-worker/multi-instance execution against one database
+is therefore unsupported for this feature; stop the prior owner before restart.

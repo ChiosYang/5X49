@@ -8,7 +8,7 @@ import { getTranslations } from "next-intl/server";
 export default async function Navigation() {
   const t = await getTranslations("Navigation");
   return (
-    <nav className="z-navigation fixed top-0 right-0 left-0 flex items-center justify-between p-8 text-ink">
+    <nav className="z-navigation fixed top-0 right-0 left-0 flex items-center justify-between p-8 pr-0 text-ink sm:pr-8">
       {/* Left: Menu Trigger */}
       <NavigationMenu />
 
@@ -18,7 +18,7 @@ export default async function Navigation() {
       </Link>
 
       {/* Right: Search and background jobs */}
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-0 sm:gap-4">
         <Link href="/search" aria-label={t("search")} className="focus-ring inline-flex h-11 w-11 items-center justify-center">
           <Search className="h-5 w-5 drop-shadow-lg" aria-hidden="true" />
         </Link>

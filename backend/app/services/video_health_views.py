@@ -59,13 +59,14 @@ def status():
     with Session(database.engine) as session:
         runtime = video_health.runtime(session)
         active = session.get(VideoHealth, video_health.active_id) if video_health.active_id else None
+        manual = runtime["manual"] or video_health.has_manual_work(session)
     today = datetime.fromtimestamp(video_health.clock(), timezone.utc).date().isoformat()
     return {"config": video_health.config(), "schedule_timezone": "UTC", "reason": video_health.reason,
             "counts": counts, "total": len(items), "unread": sum(item["unread"] for item in items),
             "load": video_health.load, "active_id": video_health.active_id,
             "budget_day": today, "used_seconds": runtime["used_seconds"] if runtime["day"] == today else 0,
             "active_progress": {"decoded_seconds": active.decoded_seconds, "duration_seconds": active.duration_seconds} if active else None,
-            "queue_sweep_pending": runtime["sweep"], "manual_active": runtime["manual"]}
+            "queue_sweep_pending": runtime["sweep"], "manual_active": manual}
 
 
 def detail(identifier):

@@ -57,7 +57,7 @@ or detect every possible valid-looking truncation. No media writes occur.
 - `uv run python -X utf8 -m unittest discover -s . -p "test_*.py" -q`:
   412 tests passed, 3 existing platform/environment skips (Windows).
   Final settings-race/health/API/root regression: 71 passed, 1 existing skip.
-- `uv run python -X utf8 -m unittest test_video_health -q`: all 28 passed,
+- `uv run python -X utf8 -m unittest test_video_health -q`: all 29 passed,
   including real 6-second MPEG-4/AAC multi-audio-track media, middle-packet
   corruption with container pass/decode failure, truncation, native pause/resume,
   active cancellation, budget overrun fairness and abrupt owner-exit reaping.
@@ -105,3 +105,11 @@ Native Windows suspension and owner-exit reaping passed; Ubuntu CI exercises
 the Linux implementation with real FFmpeg (see PR check results).
 Abrupt backend death cannot preserve an in-memory decoder. Idle scheduling is conservative and
 does not claim remote NAS observability. No external notifications or deployment.
+
+Supported deployment: one backend process/worker per library database (the default
+Uvicorn/container entrypoint). The OS lock prevents duplicate health decoders
+across processes, but a standby worker does not automatically take over if its
+owner exits, and active process/load/reason state is local to the owner. Compound
+runtime-setting updates and foreground preemption are not coordinated across
+multiple API workers. Multi-worker/multi-instance execution against one database
+is therefore unsupported for this feature; stop the prior owner before restart.
