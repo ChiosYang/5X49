@@ -29,7 +29,7 @@ export default async function MovieDetailPage({ params }: MovieDetailPageProps) 
   return (
     <>
       <MovieDetailReturn behavior="library" label={t("return")} />
-      <MovieDetailView film={film} />
+      <MovieDetailView film={film} routeFilmId={id} />
     </>
   );
 }

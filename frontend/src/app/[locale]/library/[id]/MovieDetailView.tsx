@@ -42,7 +42,7 @@ function editionLabel(edition: LibraryEdition, fallback: string) {
   return edition.display_name || fallback;
 }
 
-export default async function MovieDetailView({ film }: { film: LibraryFilmDetail }) {
+export default async function MovieDetailView({ film, routeFilmId }: { film: LibraryFilmDetail; routeFilmId: string }) {
   const t = await getTranslations("FilmDetail");
   const statusLabel = {
     available: t("editionAvailable"),
@@ -84,8 +84,9 @@ export default async function MovieDetailView({ film }: { film: LibraryFilmDetai
             <span className="type-label block text-ink-subtle">{t("released")}</span>
             <span className="block font-serif text-xl text-ink italic md:text-2xl">{film.year || "—"}</span>
           </div>
+          {/* RSC can resolve this URL to a different canonical Film during a write. */}
           <MovieRefreshButton
-            key={film.id}
+            key={routeFilmId}
             film={film}
           />
         </div>

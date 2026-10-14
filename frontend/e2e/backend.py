@@ -71,7 +71,25 @@ def control(payload: dict, x_e2e_token: str = Header(default='')):
     if x_e2e_token != os.environ['E2E_TOKEN']:
         raise HTTPException(403)
     action = payload['action']
-    if action == 'multi_root_fixture':
+    if action == 'matching_fixture':
+        from app.services.library import library_manager
+        from app.services.settings import set_media_dirs
+        name = payload['name']
+        set_media_dirs([str(root)])
+        target_video = root / f'{name} target.mkv'
+        target_video.write_bytes(f'{name} target synthetic media'.encode())
+        target = library_manager.upsert_observation(dict(title='E2E Candidate',
+            folder_name=f'{name} target', media_path=str(target_video),
+            tmdb_id='900001', scrape_status='matched'))
+        source_video = root / f'{name} unresolved.mkv'
+        source_video.write_bytes(f'{name} source synthetic media'.encode())
+        source = library_manager.upsert_observation(dict(title=f'{name} unresolved',
+            folder_name=f'{name} unresolved', media_path=str(source_video), scrape_status='needs_review'))
+        return {'source_id': source['film_id'], 'target_id': target['film_id']}
+    elif action == 'matching_event':
+        from app.services.event_bus import library_event_bus
+        library_event_bus.publish_library_changed('metadata_scraped', film_id=payload['film_id'])
+    elif action == 'multi_root_fixture':
         from PIL import Image
         import shutil
         sample = next((root / 'normal/media').rglob('*.mkv'), None) or next((root / 'normal/media').rglob('*.mp4'))
