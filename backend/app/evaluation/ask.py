@@ -22,6 +22,7 @@ from openai import APITimeoutError, OpenAI
 
 from app.contracts.ask import AskQuestion
 from app.evaluation.ask_budget import BudgetLedger, BudgetStop, amount, input_upper_bound, INPUT_LIMIT, OUTPUT_LIMIT, BILLING_INPUT_RESERVE, PROMPT_PRICE_CAP, COMPLETION_PRICE_CAP
+from app.evaluation.ask_review import release_review_hold
 from app.services.ask import AskError, AskInterpreter
 
 MODEL = "deepseek/deepseek-v4.1-flash"
@@ -362,6 +363,7 @@ def main():
     mode = parser.add_mutually_exclusive_group()
     mode.add_argument("--live", action="store_true")
     mode.add_argument("--reconcile-report", type=Path)
+    mode.add_argument("--release-review", type=Path, metavar="PRIVATE_APPROVAL_JSON")
     parser.add_argument("--expected-cost-usd", type=Decimal)
     parser.add_argument("--canary-only", action="store_true")
     parser.add_argument("--authorization")
@@ -370,21 +372,26 @@ def main():
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
     try:
-        if args.reconcile_report:
+        if args.release_review:
+            report = release_review_hold(args.release_review, authorization=args.authorization,
+                                         ledger_path=LEDGER, repo_root=Path(__file__).resolve().parents[3])
+        elif args.reconcile_report:
             report = reconcile_canary(args.reconcile_report, args.expected_cost_usd)
         else:
             report = live(args) if args.live else offline()
     except Exception as error:
         # Never emit provider/credential body strings.
-        report = {"version": "ask-evaluation.v1", "evidence_class": "read_only_historical_billing_reconciliation" if args.reconcile_report else "live_synthetic_questions" if args.live else "offline_fixture_contract_only",
+        report = {"version": "ask-evaluation.v1", "evidence_class": "audited_review_hold_release" if args.release_review else "read_only_historical_billing_reconciliation" if args.reconcile_report else "live_synthetic_questions" if args.live else "offline_fixture_contract_only",
                   "complete": False, "stop_reason": str(error) if isinstance(error, BudgetStop) else "evaluation_preflight_failed"}
         if args.live and report["stop_reason"] in {"explicit_1usd_authorization_required", "existing_exported_credential_missing"}:
             report.update(evidence_class="live_evaluation_preflight", paid_requests_in_run=0, cost_usd_in_run=0)
-        if args.reconcile_report:
+        if args.reconcile_report or args.release_review:
             report["paid_requests_in_run"] = 0
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
-    print(json.dumps({key: report.get(key) for key in ("evidence_class", "fixture_cases", "fixture_passed", "complete", "stop_reason", "live_supported_accuracy", "accuracy_gate_passed", "applied", "review_required")}))
+    print(json.dumps({key: report.get(key) for key in ("evidence_class", "fixture_cases", "fixture_passed", "complete", "stop_reason", "live_supported_accuracy", "accuracy_gate_passed", "applied", "review_required", "review_released")}))
+    if args.release_review:
+        return 0 if report.get("review_released") else 1
     if args.reconcile_report:
         return 0 if report.get("review_required") and "evidence" in report else 1
     return 0 if (report.get("fixture_cases", 0) >= 50 and report.get("fixture_passed") == report.get("fixture_cases") or report.get("accuracy_gate_passed") or args.canary_only and report.get("complete")) else 1

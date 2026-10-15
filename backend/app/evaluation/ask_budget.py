@@ -4,6 +4,7 @@ from decimal import Decimal, InvalidOperation
 import hashlib
 import json
 from pathlib import Path
+import re
 import sqlite3
 import uuid
 
@@ -56,6 +57,11 @@ class BudgetLedger:
                 attempt_id TEXT PRIMARY KEY, generation_id TEXT NOT NULL UNIQUE,
                 cost TEXT NOT NULL, original_state TEXT NOT NULL, original_outcome TEXT,
                 original_reserved TEXT NOT NULL, evidence_json TEXT NOT NULL,
+                evidence_sha256 TEXT NOT NULL,
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)""")
+            db.execute("""CREATE TABLE IF NOT EXISTS review_release (
+                attempt_id TEXT PRIMARY KEY, reconciliation_sha256 TEXT NOT NULL,
+                previous_state TEXT NOT NULL, evidence_json TEXT NOT NULL,
                 evidence_sha256 TEXT NOT NULL,
                 created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)""")
 
@@ -139,8 +145,11 @@ class BudgetLedger:
             row = db.execute("SELECT * FROM attempt WHERE id=?", (attempt,)).fetchone()
             audit = db.execute("SELECT * FROM reconciliation WHERE attempt_id=?", (attempt,)).fetchone()
             if audit is not None:
+                released = db.execute("SELECT 1 FROM review_release WHERE attempt_id=? AND reconciliation_sha256=?",
+                                      (attempt, digest)).fetchone()
                 if (row is None or audit["evidence_sha256"] != digest or audit["generation_id"] != generation_id
-                        or row["generation_id"] != generation_id or row["state"] != "blocked"
+                        or row["generation_id"] != generation_id
+                        or not (row["state"] == "blocked" or row["state"] == "settled" and released)
                         or row["reserved"] != audit["original_reserved"] or row["outcome"] != audit["original_outcome"]
                         or amount(audit["cost"]) != cost
                         or amount(row["cost"]) != cost):
@@ -157,12 +166,61 @@ class BudgetLedger:
             db.execute("UPDATE attempt SET cost=?,state='blocked' WHERE id=?", (str(cost), attempt))
         return True
 
+    def release_review(self, attempt, *, reconciliation_sha256, evidence):
+        """Release only an audited reconciliation hold; retain all billing rows."""
+        reviewed = evidence.get("reviewed_head", "")
+        run = evidence.get("ci_run_id")
+        if (evidence.get("version") != "ask-review-release.v1" or evidence.get("decision") != "approved"
+                or not isinstance(reviewed, str) or re.fullmatch(r"[0-9a-f]{40}", reviewed) is None
+                or evidence.get("ci_head") != reviewed or evidence.get("ci_conclusion") != "success"
+                or type(run) is not int or run <= 0
+                or type(evidence.get("ci_run_attempt")) is not int or evidence["ci_run_attempt"] <= 0
+                or evidence.get("ci_source") != f"https://api.github.com/repos/ChiosYang/5X49/actions/runs/{run}"
+                or not isinstance(evidence.get("current_head"), str)
+                or re.fullmatch(r"[0-9a-f]{40}", evidence["current_head"]) is None
+                or not isinstance(evidence.get("review_ref"), str)
+                or re.fullmatch(r"[A-Za-z0-9._:/-]{1,200}", evidence["review_ref"]) is None
+                or evidence.get("attempt_id") != attempt
+                or evidence.get("reconciliation_sha256") != reconciliation_sha256):
+            raise BudgetStop("review_approval_evidence_invalid")
+        payload = json.dumps(evidence, sort_keys=True, separators=(",", ":"))
+        digest = hashlib.sha256(payload.encode()).hexdigest()
+        with self._db() as db:
+            row = db.execute("SELECT * FROM attempt WHERE id=?", (attempt,)).fetchone()
+            audit = db.execute("SELECT * FROM reconciliation WHERE attempt_id=?", (attempt,)).fetchone()
+            previous = db.execute("SELECT * FROM review_release WHERE attempt_id=?", (attempt,)).fetchone()
+            if (row is None or audit is None or row["cost"] is None
+                    or audit["evidence_sha256"] != reconciliation_sha256
+                    or hashlib.sha256(audit["evidence_json"].encode()).hexdigest() != reconciliation_sha256
+                    or row["generation_id"] != audit["generation_id"] or amount(row["cost"]) != amount(audit["cost"])
+                    or row["reserved"] != audit["original_reserved"] or row["outcome"] != audit["original_outcome"]):
+                raise BudgetStop("review_hold_not_reconciled")
+            receipt = json.loads(audit["evidence_json"])
+            if (receipt.get("version") != "ask-reconciliation.v1"
+                    or receipt.get("generation_id") != row["generation_id"]
+                    or amount(receipt.get("cost_usd")) != amount(row["cost"])):
+                raise BudgetStop("review_hold_not_reconciled")
+            if previous is not None:
+                if (previous["evidence_sha256"] != digest or row["state"] != "settled"
+                        or previous["reconciliation_sha256"] != reconciliation_sha256
+                        or hashlib.sha256(previous["evidence_json"].encode()).hexdigest() != digest):
+                    raise BudgetStop("review_release_replay_mismatch")
+                return False
+            if row["state"] != "blocked":
+                raise BudgetStop("review_hold_not_reconciled")
+            db.execute("INSERT INTO review_release(attempt_id,reconciliation_sha256,previous_state,evidence_json,evidence_sha256) VALUES (?,?,?,?,?)",
+                       (attempt, reconciliation_sha256, row["state"], payload, digest))
+            db.execute("UPDATE attempt SET state='settled' WHERE id=?", (attempt,))
+        return True
+
     def summary(self):
         with self._db() as db:
             known, exposure, uncertain = self._totals(db)
             attempts = db.execute("SELECT id,run_id,case_id,reserved,cost,generation_id,state,outcome FROM attempt ORDER BY rowid").fetchall()
             audits = db.execute("SELECT attempt_id,cost,original_state,evidence_sha256 FROM reconciliation ORDER BY rowid").fetchall()
+            releases = db.execute("SELECT attempt_id,reconciliation_sha256,evidence_sha256 FROM review_release ORDER BY rowid").fetchall()
         return {"hard_limit_usd": str(HARD_LIMIT), "stop_limit_usd": str(STOP_LIMIT),
                 "known_cost_usd": str(known), "reserved_exposure_usd": str(exposure),
                 "uncertain_billing": uncertain, "blocked": any(row['state']=='blocked' for row in attempts),
-                "attempts": [dict(row) for row in attempts], "reconciliations": [dict(row) for row in audits]}
+                "attempts": [dict(row) for row in attempts], "reconciliations": [dict(row) for row in audits],
+                "review_releases": [dict(row) for row in releases]}

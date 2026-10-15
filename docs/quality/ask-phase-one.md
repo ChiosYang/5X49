@@ -5,8 +5,10 @@
 The evaluator now supports the locked SDK's typed dictionary responses and
 pins the official exact alias/canonical mapping. Audited reconciliation is
 transactional and idempotent, retains prior failure evidence, and preserves a
-blocking independent-review hold. All 21 evaluation/budget/reconciliation
-tests pass. The original canary's strict JSON and completion-receipt validation
+blocking independent-review hold. A targeted, audited release entrypoint verifies
+independent review and exact CI/head evidence before any state transition;
+the entrypoint itself awaits independent review. All 31 evaluation/budget/
+reconciliation/review-release tests pass. The original canary's strict JSON and completion-receipt validation
 remain incomplete; no bilingual live accuracy gate has passed.
 See [technical review status](ask-phase-one-cloud-20261015.md).
 
@@ -82,7 +84,7 @@ including canaries, failures and any separately authorized retries.
 
 ## Current results
 
-- Offline fixture contract: 58/58 passed; 21 evaluation/budget/reconciliation tests passed (including the zero-unsupported-failure gate).
+- Offline fixture contract: 58/58 passed; 31 evaluation/budget/reconciliation/review-release tests passed (including the zero-unsupported-failure gate).
 - The original canary did not complete strict JSON and completion-receipt validation.
 - Live supported parsing accuracy and usefulness remain unaccepted. Offline
   success and accounting recovery must not be reported as the >=95% model gate.

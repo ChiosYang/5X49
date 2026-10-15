@@ -4,7 +4,8 @@ Status: Blocked
 Last updated: 2026-10-15
 Related: Ask MVP; Factual Explore
 Engineering implementation and offline acceptance are complete. Evaluation
-compatibility and audited reconciliation are implemented. Independent parent
+compatibility, audited reconciliation and a targeted review-hold release
+entrypoint are implemented. The release entrypoint awaits independent review. Parent
 review, authorization and a fresh passing canary remain required for live
 acceptance.
 
@@ -61,8 +62,9 @@ the entire plan, then show owned Films with verifiable local match reasons.
 - Resumed 2026-10-15: 58/58 offline corpus; 12 budget/evaluation tests; full 438-test backend run (3 skipped); 95 frontend unit tests; lint/typecheck/build; all 95 real-backend UI E2E pass, including 21 Ask flows.
 - Details and exact commands: [quality evidence](../quality/ask-phase-one.md).
 - Compatibility review: [technical status](../quality/ask-phase-one-cloud-20261015.md).
-- Compatibility/reconciliation: 21 targeted tests passed, covering SDK parsing,
-  exact identity verification and audited/idempotent accounting recovery.
+- Evaluation/reconciliation/review-release: 31 targeted tests passed, covering
+  SDK parsing, exact identity verification, audited/idempotent accounting
+  recovery, precise review/CI binding and preservation of other unknowns.
 - Self-review fixed atomic query snapshots, person-choice/editor race, stale responses and the zero-unsupported-failure evaluation gate. No live model quality is claimed.
 
 ## Remaining risks
