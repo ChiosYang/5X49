@@ -1,20 +1,14 @@
 # AI Film finder phase one quality
 
-## 2026-10-15 cloud canary update
+## 2026-10-15 evaluation compatibility update
 
-The saved cloud environment started and the requested PR #28 head was checked
-out. An evaluation-only SDK dictionary-parsing repair allowed the credit
-preflight to complete. One real synthetic canary then stopped at strict model
-identity corroboration: OpenRouter returned the dated canonical model slug.
-Read-only generation evidence confirms **US$0.00012861** actual cost and zero
-reasoning tokens. Exact official alias/canonical mapping is now pinned and
-audited reconciliation accounts this cost once in the same ledger, preserves
-the original failure/reserve, and retains a blocking parent-review hold. The
-repeat was idempotent. All 21 evaluation/budget/reconciliation tests pass.
-No additional inference or bilingual live corpus was run and no live accuracy
-gate passed. Earlier zero-spend/missing-key results below are historical.
-See [cloud acceptance evidence](ask-phase-one-cloud-20261015.md) for the local
-patch, measurements, retained receipts and exact remaining blocker.
+The evaluator now supports the locked SDK's typed dictionary responses and
+pins the official exact alias/canonical mapping. Audited reconciliation is
+transactional and idempotent, retains prior failure evidence, and preserves a
+blocking independent-review hold. All 21 evaluation/budget/reconciliation
+tests pass. The original canary's strict JSON and completion-receipt validation
+remain incomplete; no bilingual live accuracy gate has passed.
+See [technical review status](ask-phase-one-cloud-20261015.md).
 
 ## Evidence classes
 
@@ -43,7 +37,7 @@ uv run --no-sync python -X utf8 -m unittest test_ask test_ask_evaluation test_ex
 
 ## Explicit live evaluation
 
-Only after user authorization and an existing, safely exported
+The live entrypoint requires explicit authorization and a process-provided
 OPENROUTER_API_KEY. The entrypoint never loads credential files or modifies
 credentials, settings, global model selection, media or Library data. Fixed model
 deepseek/deepseek-v4.1-flash; provider decart/fp4. Official endpoint directory is
@@ -75,7 +69,7 @@ provider/model are corroborated through generation metadata.
 The fixed ignored backend/.evaluation-artifacts/ask-live-budget.sqlite3 ledger
 persists across all runs. **Do not delete, replace or reset it to repeat testing.**
 For billing it also reserves the entire verified 1,048,576-token model context
-at the price cap plus 1600 output tokens (US$0.1051776 per in-flight request),
+at the price cap plus 1600 output tokens,
 even though the synthetic text bound is <=8000. This absolute fallback protects
 the lifetime budget from tokenizer/framing assumptions. Existing credits are
 checked before every paid attempt. Settled actual costs release unused reserves.
@@ -83,17 +77,15 @@ SQLite transactions reserve maximum input+output cost before transport and
 prevent concurrent paid attempts. Costs are actual usage.cost, with generation
 IDs; unresolved/crashed/failed requests retain reservations and block later runs.
 Reservation overruns or token/reasoning contract failures block future runs.
-The conservative stop is US$0.75; the user's lifetime task hard limit is US$1,
+The configured conservative stop is US$0.75 and the lifetime hard limit is US$1,
 including canaries, failures and any separately authorized retries.
 
 ## Current results
 
-- Offline fixture contract: 58/58 passed; 12 evaluation/budget tests passed (including the zero-unsupported-failure gate).
-- Live canary preflight: blocked before any inference because an existing
-  exported OPENROUTER_API_KEY is missing in this execution environment.
-- Actual paid model requests in this task: 0. Actual model spend: US$0.
-- Live supported parsing accuracy, actual provider latency/cost, and usefulness
-  are unverified. Offline success must not be reported as the >=95% model gate.
+- Offline fixture contract: 58/58 passed; 21 evaluation/budget/reconciliation tests passed (including the zero-unsupported-failure gate).
+- The original canary did not complete strict JSON and completion-receipt validation.
+- Live supported parsing accuracy and usefulness remain unaccepted. Offline
+  success and accounting recovery must not be reported as the >=95% model gate.
 - Complete backend replay on 2026-10-15: `uv run --no-sync python -X utf8 -m unittest discover -s . -p test_*.py -v` — 438 tests, 3 conditional skips, passed; includes all 12 evaluation/budget tests.
 - Frontend `npm run test:unit` — 95 passed; `npm run lint` and `npm run typecheck -- --incremental false` passed.
 - `npm run test:e2e` — production build and all 95 real-backend browser tests passed (including 21 Ask tests). English/Chinese, 1440px desktop and 390px narrow layouts were inspected. Existing four-entry Explore first-screen and transparent navigation checks remain passing.
@@ -127,6 +119,5 @@ including canaries, failures and any separately authorized retries.
 - Final replay: all 438 backend tests passed (3 conditional skips), 58/58 fixture
   cases, 95 frontend unit tests, lint/typecheck, production build and all 95 real
   backend UI tests passed, including 21 Ask flows and both new regressions.
-- Real model requests remain 0, cumulative model spend US$0; live accuracy,
-  provider compatibility/latency/cost and usefulness remain unverified. No
-  credential configuration or transfer occurred; the Key location is pending.
+- Live accuracy and usefulness remain unaccepted. Independent review and a
+  fresh passing canary are required before the bilingual live corpus.
