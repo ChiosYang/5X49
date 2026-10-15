@@ -582,17 +582,24 @@ no schema migration is required. Explore embeds the existing Ask flow.
 
 | Method | Path | Purpose |
 | --- | --- | --- |
-| GET | `/ask/status` | Key presence, safe provider host/model disclosure, 20s timeout, consent requirement and local form availability. Presence never certifies provider availability. |
+| GET | `/ask/status` | Key presence, safe provider host/model disclosure with disclosure_id, 20s timeout, consent requirement and local form availability. Presence never certifies provider availability. |
 | POST | `/ask/interpret` | One provider interpretation followed by local entity resolution, without running a Film query. |
 | POST | `/ask/resolve` | Validate and preview edited conditions locally; no model call. |
 | POST | `/ask/query` | Execute explicitly confirmed conditions; pagination remains local. |
 
-Interpretation requires `{"question":"Films under two hours with my Film overall rating at least four stars.","locale":"en","provider_consent":true}`.
+Interpretation requires `{"question":"Films under two hours with my Film overall rating at least four stars.","locale":"en","provider_consent":true,"provider_disclosure":"ask_target_<64 hex from /ask/status>"}`.
 The question is 1–600 characters, locale is zh/en. Only the question and a static
 schema/system instruction are sent. No Library records, paths, private notes,
 results, settings or credentials are attached. Obvious credentials and absolute
 paths fail before the provider. Questions/responses are neither logged nor saved.
 The UI shows provider host/model and requires consent before each changed question.
+Copy `disclosure_id` from GET `/ask/status` into `provider_disclosure` (the example
+uses a placeholder). It is a public SHA-256 identity of the model and full base
+URL, without credentials. The backend checks it against the actual frozen target
+before transport. A changed target returns 409 `ask_consent_changed`, with no
+provider call. Every explicit interpretation retry checks current consent and
+rebinds the payload to the current disclosure; withdrawing consent or a new
+SWR disclosure disables retry until the user approves the displayed target.
 
 Resolve accepts `plan` and optional `person_id`; manual requests may omit fields
 to use these defaults. Provider output must include **all** plan fields:
@@ -621,6 +628,9 @@ to use these defaults. Provider output must include **all** plan fields:
   primary-video `duration_seconds` first, otherwise positive `runtime_minutes*60`.
   Missing/nonpositive durations are unknown. Inclusive flags preserve >=/<= or
   >/<; omitted bounds must have inclusive=true. Reversed or empty ranges are 422.
+  Explicit English comparisons such as "90 minutes or less" (<=90) and
+  "shorter than 90 minutes" (<90) pass the local guard unchanged to the planner;
+  a genuine OR between alternatives and vague "shorter films" remain blocked.
 - `rating_min/max`: strict integer **Film personal overall stars** 1–5, inclusive.
   This is `profile_state.rating` / FilmProfileState.rating, never a per-Viewing
   score or external score. Missing values do not match active bounds; inactive
@@ -658,15 +668,19 @@ and cost_source=provider_usage.cost or unavailable. Only actual finite OpenRoute
 usage.cost is reported as USD; absent cost is never estimated or invented.
 Errors may include this same bounded observation under detail.observation.
 
-Codes: 503 ask_not_configured|ask_provider_configuration, 429 ask_busy,
+Codes: 409 ask_consent_changed (target changed before transport), 503 ask_not_configured|ask_provider_configuration, 429 ask_busy,
 504 ask_timeout, 502 ask_invalid_response|ask_provider_unavailable,
 422 ask_private_input|ask_invalid_selection; validation=422, stale projections=
 503 projection_unavailable. Local resolve/query works without a key. Browser
 requests have a 25s bound and cancellation/generation checks reject stale results.
 Cancelling UI cannot guarantee a sent provider request stops billing. Only a
 confirmed structured plan is retained in sessionStorage; never questions/Films.
+Embedded Explore state is scoped to both the normalized fact-query URL and a
+unique browser history entry. Returning to its Film source can revalidate the
+confirmed plan; a Person/Genre deep link, another fact query, or a fresh same-URL
+entry cannot inherit a different entry's AI plan or hide its URL conditions.
 
-See [AI Film finder quality](quality/ask-phase-one.md) for the 50-case fixture
+See [AI Film finder quality](quality/ask-phase-one.md) for the 52-case fixture
 corpus and the separately authorized live evaluation guard. Offline acceptance
 does not certify model parsing accuracy, cost or usefulness, and never unlocks
 Analysis V2 inference relationships.

@@ -320,6 +320,8 @@
       "yearAsc": "Oldest first"
     },
     "errors": {
+      "ask_consent_required": "Confirm sending this question to the currently disclosed provider and model before retrying.",
+      "ask_consent_changed": "The provider or model changed. Review the new disclosure and confirm before sending again.",
       "ask_not_configured": "A model key is required to interpret questions. The filter form works without one.",
       "ask_private_input": "This question appears to contain a path or credential. Remove it before sending.",
       "ask_busy": "Another interpretation is in progress. Try again shortly.",

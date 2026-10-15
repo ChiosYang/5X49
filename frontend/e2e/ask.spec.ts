@@ -24,6 +24,7 @@ test.beforeAll(async ({ request }) => { await control(request, 'identity_cleanup
 test.afterAll(async ({ request }) => { await control(request, 'ask_mode', { mode: 'no_key' }); await control(request, 'ask_cleanup'); });
 test.beforeEach(async ({ context, request }) => {
   await control(request, 'ask_mode', { mode: 'fixture' });
+  await control(request, 'ask_disclosure', { model:'offline/fixture-v1', host:'fixture.local' });
   await context.route('**/*', route => ['127.0.0.1', 'localhost'].includes(new URL(route.request().url()).hostname) ? route.continue() : route.abort('blockedbyclient'));
 });
 
@@ -119,7 +120,7 @@ test('cancel suppresses a delayed response and does not persist an unconfirmed p
   await page.getByRole('button', { name: 'Cancel request', exact: true }).click(); release();
   await expect(page.getByLabel('Your question', { exact: true })).toHaveValue('');
   await expect(page.getByRole('region', { name: 'Review conditions' })).toHaveCount(0);
-  await expect.poll(() => page.evaluate(() => sessionStorage.getItem('5x49.ask.confirmed.v2.explore'))).toBeNull();
+  await expect.poll(() => page.evaluate(() => Object.keys(sessionStorage).filter(key => key.startsWith('5x49.ask.confirmed.v2.explore.')))).toEqual([]);
 });
 
 test('a delayed earlier interpretation cannot replace a newer request', async ({ page }) => {
@@ -157,7 +158,7 @@ test('return from a Film restores only the previously confirmed local query', as
   await expect(cards(page)).toHaveCount(1); await cards(page).first().click();
   await expect(page).toHaveURL(/\/en\/library\/film_/);
   await page.goBack(); await expect.poll(() => titles(page)).toEqual(['Alpha']);
-  const stored = await page.evaluate(() => sessionStorage.getItem('5x49.ask.confirmed.v2.explore'));
+  const stored = await page.evaluate(() => Object.entries(sessionStorage).find(([key]) => key.startsWith('5x49.ask.confirmed.v2.explore.'))?.[1] ?? null);
   expect(stored).not.toContain('question'); expect(stored).not.toContain('results');
   await page.getByRole('button', { name: 'Return to factual Explore', exact: true }).click();
   await expect(page.getByRole('region', { name: 'Search results' })).toHaveCount(0);
@@ -193,4 +194,83 @@ test('invalid edited ranges and malicious provider formats fail without a local 
   await expect(page.getByRole('region',{name:'AI Film finder'}).getByRole('alert')).toContainText('The model returned an invalid plan');
   expect(queries).toBe(0);
   await expect(page.getByRole('button',{name:'Find films with these conditions',exact:true})).toHaveCount(0);
+});
+
+test('withdrawing consent disables interpretation retry until explicitly approved again', async ({ page, request }) => {
+  await control(request,'ask_mode',{mode:'timeout_once'});
+  let interpretations=0;
+  page.on('request', req=>{ if(req.url().endsWith('/ask/interpret')) interpretations+=1; });
+  await page.goto('/en/explore'); await describe(page,'Find Japanese films.');
+  await expect(page.getByRole('region',{name:'AI Film finder'}).getByRole('alert')).toContainText('The model timed out');
+  await page.getByRole('checkbox',{name:/^Send this question/}).uncheck();
+  await expect(page.getByRole('button',{name:'Retry',exact:true})).toBeDisabled();
+  expect(interpretations).toBe(1);
+  await page.getByRole('checkbox',{name:/^Send this question/}).check();
+  await page.getByRole('button',{name:'Retry',exact:true}).click();
+  await expect(page.getByLabel('Country',{exact:true})).toHaveValue('JP');
+  expect(interpretations).toBe(2);
+});
+
+test('SWR target disclosure updates revoke prior consent and retry binds the new target', async ({ page, request }) => {
+  await control(request,'ask_mode',{mode:'timeout_once'});
+  const payloads: Array<Record<string, unknown>>=[];
+  page.on('request', req=>{ if(req.url().endsWith('/ask/interpret')) payloads.push(req.postDataJSON()); });
+  await page.goto('/en/explore'); await describe(page,'Find Japanese films.');
+  await expect(page.getByRole('region',{name:'AI Film finder'}).getByRole('alert')).toContainText('The model timed out');
+  const target=await control(request,'ask_disclosure',{model:'offline/fixture-v2',host:'other.fixture.local'});
+  await page.evaluate(()=>window.dispatchEvent(new Event('focus')));
+  const consent=page.getByRole('checkbox',{name:/^Send this question.*other\.fixture\.local/});
+  await expect(consent).not.toBeChecked();
+  await expect(page.getByRole('button',{name:'Retry',exact:true})).toBeDisabled();
+  expect(payloads).toHaveLength(1);
+  await consent.check(); await page.getByRole('button',{name:'Retry',exact:true}).click();
+  await expect(page.getByLabel('Country',{exact:true})).toHaveValue('JP');
+  expect(payloads[1].provider_disclosure).toBe(target.disclosure_id);
+  expect(payloads[0].provider_disclosure).not.toBe(target.disclosure_id);
+});
+
+test('a target changed after disclosure is rejected by the real backend before interpretation', async ({ page, request }) => {
+  await control(request,'ask_mode',{mode:'timeout_once'});
+  await page.goto('/en/explore'); await describe(page,'Find Japanese films.');
+  await expect(page.getByRole('region',{name:'AI Film finder'}).getByRole('alert')).toContainText('The model timed out');
+  await control(request,'ask_disclosure',{model:'offline/fixture-v2',host:'other.fixture.local'});
+  const rejected=page.waitForResponse(response=>response.url().endsWith('/ask/interpret')&&response.status()===409);
+  await page.getByRole('button',{name:'Retry',exact:true}).click(); await rejected;
+  await expect(page.getByRole('region',{name:'AI Film finder'}).getByRole('alert')).toContainText('The provider or model changed');
+  await expect(page.getByRole('checkbox',{name:/^Send this question/})).not.toBeChecked();
+  await expect(page.getByRole('button',{name:'Retry',exact:true})).toBeDisabled();
+  await page.getByRole('checkbox',{name:/^Send this question.*other\.fixture\.local/}).check();
+  await page.getByRole('button',{name:'Retry',exact:true}).click();
+  await expect(page.getByLabel('Country',{exact:true})).toHaveValue('JP');
+});
+
+test('Film person Explore deep link cannot restore an AI plan from a different source query', async ({ page }) => {
+  await page.goto('/en/explore'); await describe(page,'Films no longer than 90 minutes.'); await confirm(page);
+  await expect.poll(()=>titles(page)).toEqual(['Alpha']); await cards(page).first().click();
+  await expect(page).toHaveURL(/\/en\/library\/film_/);
+  const personLink=page.locator('a[href*="/explore?person="]').first();
+  await personLink.click(); await expect(page).toHaveURL(/\/explore\?person=/);
+  await expect.poll(()=>titles(page)).toEqual(['Alpha','Beta']);
+  await expect(page.getByRole('region',{name:'Review conditions'})).toHaveCount(0);
+  await expect(page.getByLabel('Your question',{exact:true})).toHaveValue('');
+});
+
+test('Back and Forward restore only the confirmed plan for the normalized query and history entry', async ({ page }) => {
+  await page.goto('/en/explore'); await describe(page,'Films no longer than 90 minutes.'); await confirm(page);
+  await expect.poll(()=>titles(page)).toEqual(['Alpha']);
+  await page.goto('/en/explore?country=JP'); await expect.poll(()=>titles(page)).toEqual(['Alpha','Beta']);
+  await expect(page.getByRole('region',{name:'Review conditions'})).toHaveCount(0);
+  await page.goBack(); await expect(page).toHaveURL(/\/en\/explore$/); await expect.poll(()=>titles(page)).toEqual(['Alpha']);
+  await page.goForward(); await expect(page).toHaveURL(/country=JP/); await expect.poll(()=>titles(page)).toEqual(['Alpha','Beta']);
+  await expect(page.getByRole('region',{name:'Review conditions'})).toHaveCount(0);
+});
+
+test('a fresh Explore entry from Film does not inherit an older same-URL AI confirmation', async ({ page }) => {
+  await page.goto('/en/explore'); await describe(page,'Films no longer than 90 minutes.'); await confirm(page);
+  await expect.poll(()=>titles(page)).toEqual(['Alpha']); await cards(page).first().click();
+  await expect(page).toHaveURL(/\/en\/library\/film_/);
+  await page.goto('/en/explore'); await expect(cards(page)).toHaveCount(0);
+  await expect(page.getByRole('region',{name:'Review conditions'})).toHaveCount(0);
+  await page.goBack(); await expect(page).toHaveURL(/\/en\/library\/film_/);
+  await page.goBack(); await expect.poll(()=>titles(page)).toEqual(['Alpha']);
 });

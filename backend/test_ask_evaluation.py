@@ -26,9 +26,9 @@ class AskEvaluationTests(unittest.TestCase):
         self.addCleanup(self.tmp.cleanup)
         self.path = Path(self.tmp.name)/'budget.sqlite3'
 
-    def test_50_bilingual_fixtures_are_contract_evidence_not_model_quality(self):
+    def test_bilingual_fixtures_are_contract_evidence_not_model_quality(self):
         report = offline()
-        self.assertEqual((report['fixture_cases'], report['fixture_passed']), (50, 50))
+        self.assertEqual((report['fixture_cases'], report['fixture_passed']), (52, 52))
         self.assertIsNone(report['live_supported_accuracy'])
         self.assertIsNone(report['cost_usd'])
         self.assertEqual({case['locale'] for case in corpus()}, {'en', 'zh'})

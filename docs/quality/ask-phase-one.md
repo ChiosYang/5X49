@@ -2,8 +2,8 @@
 
 ## Evidence classes
 
-`backend/app/evaluation/fixtures/ask_acceptance.json` contains 50 bilingual
-cases: 28 supported plans (including ambiguous Person names and empty matches),
+`backend/app/evaluation/fixtures/ask_acceptance.json` contains 52 bilingual
+cases: 30 supported plans (including ambiguous Person names and empty matches),
 10 unsupported/negated requests, 4 clarifications, 2 synthetic privacy cases,
 2 interface failures and 4 malicious response fixtures. Supported parsing target
 is >=95%; unsupported requirements must never silently disappear. The live gate
@@ -72,17 +72,37 @@ including canaries, failures and any separately authorized retries.
 
 ## Current results
 
-- Offline fixture contract: 50/50 passed; 12 evaluation/budget tests passed (including the zero-unsupported-failure gate).
+- Offline fixture contract: 52/52 passed; 12 evaluation/budget tests passed (including the zero-unsupported-failure gate).
 - Live canary preflight: blocked before any inference because an existing
   exported OPENROUTER_API_KEY is missing in this execution environment.
 - Actual paid model requests in this task: 0. Actual model spend: US$0.
 - Live supported parsing accuracy, actual provider latency/cost, and usefulness
   are unverified. Offline success must not be reported as the >=95% model gate.
-- Complete backend: `uv run --no-sync python -X utf8 -m unittest discover -s . -p test_*.py -v` — 435 tests, 3 conditional skips, passed. The final evaluation-gate addition was then verified by `uv run --no-sync python -X utf8 -m unittest test_ask_evaluation -q` — 12 passed.
-- Frontend `npm run test:unit` — 93 passed; `npm run lint` and `npm run typecheck -- --incremental false` passed.
-- `npm run test:e2e` — production build and all 87 real-backend browser tests passed (including 13 Ask tests). English/Chinese, 1440px desktop and 390px narrow layouts were inspected. Existing four-entry Explore first-screen and transparent navigation checks remain passing.
+- Complete backend replay on 2026-10-15: `uv run --no-sync python -X utf8 -m unittest discover -s . -p test_*.py -v` — 438 tests, 3 conditional skips, passed; includes all 12 evaluation/budget tests.
+- Frontend `npm run test:unit` — 95 passed; `npm run lint` and `npm run typecheck -- --incremental false` passed.
+- `npm run test:e2e` — production build and all 93 real-backend browser tests passed (including 19 Ask tests). English/Chinese, 1440px desktop and 390px narrow layouts were inspected. Existing four-entry Explore first-screen and transparent navigation checks remain passing.
 - Python `compileall -q app`, backend Skill validation and `git diff --check` passed.
 - Release-tooling tests: 15 run, 12 passed, 1 conditional skip; two Compose checks cannot run locally because Docker CLI is absent. No Docker/release configuration was changed. GitHub CI runs these on its Docker-equipped Linux runner.
 - Windows test environment: long temp paths failed backup rehearsal; an 8.3 alias failed media-boundary comparison. The successful run used a short canonical C:/Users/Administrator/AppData/Local/Temp/5x49-unit-task3 directory. A long D-drive replay was stopped after 20 minutes and replaced with visible per-test progress.
 - Existing saved-read E2E now gates streamed document refresh before its deliberately failed GET; otherwise the Library event stream could legitimately reconcile props before the stale-props assertion. This changes only test timing, not product behavior.
 - Synthetic screenshots: frontend/e2e-artifacts/ask-desktop-zh.png and ask-narrow-zh.png (ignored local evidence).
+
+
+## Independent review follow-up (2026-10-15)
+
+- Explicit numeric comparisons are exempted only from generic OR/vague-length
+  blockers. The original question remains unchanged, and actual OR alternatives
+  remain unsupported. Two English comparison cases extend the corpus to 52.
+- Interpretation retries require current consent, including after withdrawal or
+  SWR target updates. Requests carry a public target identity; the backend rejects
+  stale model/base-URL identities before creating a provider client.
+- Explore recovery uses normalized query plus a random history-entry identity.
+  Film Person deep links and Back/Forward cannot inherit another entry's plan;
+  same-source Film Back remains covered by real-backend E2E.
+- Saved verification before the environment outage: 35 targeted backend tests,
+  95 frontend unit tests, lint/typecheck and 19 Ask UI E2E passed. Resumed
+  verification passed the full 438-test backend suite (3 conditional skips),
+  95 frontend unit tests, lint/typecheck, production build and all 93 real-backend
+  UI tests, including the 19 Ask flows. The 52-case offline replay passed.
+- Real model requests remain 0, cumulative model spend US$0. The existing exported
+  credential remains unavailable; no credential configuration or transfer occurs.

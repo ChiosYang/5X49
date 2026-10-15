@@ -47,7 +47,7 @@ export function askQueryPayload(resolution: AskResolution, offset = 0) {
 
 export function askErrorCode(status: number, body: { detail?: { code?: string } } | null): string {
   const allowed = new Set(["ask_not_configured", "ask_private_input", "ask_busy", "ask_timeout",
-    "ask_invalid_response", "ask_provider_unavailable", "ask_provider_configuration", "ask_invalid_selection", "projection_unavailable"]);
+    "ask_invalid_response", "ask_provider_unavailable", "ask_provider_configuration", "ask_consent_required", "ask_consent_changed", "ask_invalid_selection", "projection_unavailable"]);
   const code = body?.detail?.code;
   return code && allowed.has(code) ? code : status === 422 ? "invalid_request" : "unavailable";
 }
@@ -121,4 +121,14 @@ export function removeAskConstraint(plan: AskPlan, dimension: "genre" | "person"
   if (dimension === "rating") return { ...plan, rating_min: null, rating_max: null };
   return { ...plan, [dimension]: dimension === "view" ? "all" : null,
     ...(dimension === "person" ? { person_role: "any" as const } : {}) };
+}
+
+export function askInterpretPayload(payload: object, target: string | null, approvedTarget: string | null, configured: boolean) {
+  if (!configured) throw new Error("ask_not_configured");
+  if (!target || !/^ask_target_[0-9a-f]{64}$/.test(target) || approvedTarget !== target) throw new Error("ask_consent_required");
+  return { ...payload, provider_consent: true, provider_disclosure: target };
+}
+
+export function askExploreSessionKey(context: string, entry: string) {
+  return `${ASK_SESSION_KEY}.explore.${encodeURIComponent(context)}.${entry}`;
 }

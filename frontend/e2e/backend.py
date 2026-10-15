@@ -73,15 +73,17 @@ def controlled_scan(self, *args, **kwargs):
 NFOScanner.scan_observed = controlled_scan
 
 # Ask substitutes only provider transport; resolve/query still use the real DB.
-from app.services.ask import AskInterpreter, AskError, ask_service
+from app.services.ask import AskInterpreter, AskError, ask_service, provider_disclosure_id
 from app.evaluation.ask import corpus, fixture_interpreter
 ask_mode = 'no_key'
+ask_model = 'offline/fixture-v1'
+ask_host = 'fixture.local'
 class ControlledAskInterpreter(AskInterpreter):
     def configured(self):
         return ask_mode != 'no_key'
 
     def disclosure(self):
-        return {'provider_host':'fixture.local', 'model':'offline/fixture-v1'}
+        return {'provider_host':ask_host, 'model':ask_model, 'disclosure_id':provider_disclosure_id(ask_model, 'https://' + ask_host + '/api/v1')}
 
     def interpret(self, question):
         global ask_mode
@@ -94,6 +96,7 @@ class ControlledAskInterpreter(AskInterpreter):
         if not case:
             raise AskError('ask_invalid_response', 502)
         interpreter = fixture_interpreter(case)
+        interpreter.provider_config = {'model':ask_model,'base_url':'https://' + ask_host + '/api/v1'}
         interpreter.configured = lambda: True
         return interpreter.interpret(question)
 ask_service.interpreter = ControlledAskInterpreter()
@@ -103,12 +106,17 @@ def control(payload: dict, x_e2e_token: str = Header(default='')):
     global backup_failure
     if x_e2e_token != os.environ['E2E_TOKEN']:
         raise HTTPException(403)
-    global health_allowed, ask_mode
+    global health_allowed, ask_mode, ask_model, ask_host
     action = payload['action']
     if action == 'ask_mode':
         assert payload['mode'] in ('no_key','fixture','timeout_once')
         ask_mode = payload['mode']
         return {'ok': True}
+    elif action == 'ask_disclosure':
+        assert payload['model'] in ('offline/fixture-v1','offline/fixture-v2')
+        assert payload['host'] in ('fixture.local','other.fixture.local')
+        ask_model, ask_host = payload['model'], payload['host']
+        return ask_service.interpreter.disclosure()
     elif action == 'ask_cleanup':
         from app.services.library import library_manager
         from app.database import engine

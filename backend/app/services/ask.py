@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import hashlib
 import math
 import os
 import re
@@ -41,6 +42,15 @@ class AskError(ValueError):
 
 def intent_guard(text: str) -> AskInterpretation | None:
     """Conservative blockers for explicit unsupported requests; never a parser."""
+    # Mask only explicit scalar-comparison idioms for guard classification.
+    # The original question still reaches the model unchanged. A second OR or
+    # an unsupported condition elsewhere remains visible to the blockers.
+    number = r"(?:\d+(?:\.\d+)?|one|two|three|four|five|six|seven|eight|nine|ten|sixty|ninety)"
+    unit = r"(?:minutes?|mins?|hours?|hrs?|stars?)"
+    guard_text = re.sub(r"\b(?:shorter|longer)\s+than\s+" + number + r"\s+" + unit + r"\b",
+                        "explicit numeric comparison", text, flags=re.IGNORECASE)
+    guard_text = re.sub(number + r"\s+" + unit + r"\s+or\s+(?:less|more|fewer|shorter|longer|below|above|higher|lower)\b(?!\s+(?:than|\d))",
+                        "explicit numeric comparison", guard_text, flags=re.IGNORECASE)
     patterns = (
         ("unsupported", "non_search", r"\b(?:sql|delete|scrape|write|download|rename|move files)\b|刮削|删除|下载|修改|重命名|私人笔记|私密笔记"),
         ("unsupported", "similarity", r"\b(?:similar|similarity|style|theme|mood)\b|相似|风格|主题|治愈|温暖|烧脑"),
@@ -52,9 +62,15 @@ def intent_guard(text: str) -> AskInterpretation | None:
         ("clarify", "ambiguous_duration", r"\b(?:shorter|short films?|long films?)\b|短一点|短片|长片"),
     )
     for status, reason, pattern in patterns:
-        if re.search(pattern, text, re.IGNORECASE):
+        if re.search(pattern, guard_text, re.IGNORECASE):
             return AskInterpretation(status=status, plan=None, reason=reason)
     return None
+
+
+def provider_disclosure_id(model: str, base_url: str) -> str:
+    # Public target identity only. Never include an API key or general settings.
+    value = json.dumps({"model": model, "base_url": base_url}, sort_keys=True)
+    return "ask_target_" + hashlib.sha256(value.encode("utf-8")).hexdigest()
 
 
 def _public_model(value) -> str | None:
@@ -102,10 +118,10 @@ class AskInterpreter:
 
     def disclosure(self):
         try:
-            model, _, host = self.provider()
-            return {"model": model, "provider_host": host}
+            model, base_url, host = self.provider()
+            return {"model": model, "provider_host": host, "disclosure_id": provider_disclosure_id(model, base_url)}
         except AskError:
-            return {"model": None, "provider_host": None}
+            return {"model": None, "provider_host": None, "disclosure_id": None}
 
     @staticmethod
     def prompt():
@@ -157,6 +173,8 @@ class AskInterpreter:
                        "cost_usd": None, "cost_source": "unavailable", "generation_id": None}
         try:
             model, base_url, host = self.provider()
+            if question.provider_disclosure != provider_disclosure_id(model, base_url):
+                raise AskError("ask_consent_changed", 409)
             observation["requested_model"] = model
             with self.client_factory(api_key=os.getenv("OPENROUTER_API_KEY"), base_url=base_url,
                                      timeout=20.0, max_retries=0) as client:

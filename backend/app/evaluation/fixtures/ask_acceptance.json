@@ -926,6 +926,56 @@
         "plan": null
       },
       "fixture_response": "{\"status\": \"ready\", \"plan\": {\"genre\": null, \"person\": null, \"person_role\": \"any\", \"country\": null, \"decade\": null, \"view\": \"all\", \"sort\": \"title\", \"direction\": \"asc\", \"duration_min\": true, \"duration_max\": null, \"duration_min_inclusive\": true, \"duration_max_inclusive\": true, \"rating_min\": null, \"rating_max\": null}}"
+    },
+    {
+      "id": "ask-51",
+      "locale": "en",
+      "category": "duration_comparison",
+      "question": "Find films 90 minutes or less.",
+      "expected": {
+        "status": "ready",
+        "plan": {
+          "genre": null,
+          "person": null,
+          "person_role": "any",
+          "country": null,
+          "decade": null,
+          "view": "all",
+          "sort": "title",
+          "direction": "asc",
+          "duration_min": null,
+          "duration_max": 90,
+          "duration_min_inclusive": true,
+          "duration_max_inclusive": true,
+          "rating_min": null,
+          "rating_max": null
+        }
+      }
+    },
+    {
+      "id": "ask-52",
+      "locale": "en",
+      "category": "duration_comparison",
+      "question": "Find films shorter than 90 minutes.",
+      "expected": {
+        "status": "ready",
+        "plan": {
+          "genre": null,
+          "person": null,
+          "person_role": "any",
+          "country": null,
+          "decade": null,
+          "view": "all",
+          "sort": "title",
+          "direction": "asc",
+          "duration_min": null,
+          "duration_max": 90,
+          "duration_min_inclusive": true,
+          "duration_max_inclusive": false,
+          "rating_min": null,
+          "rating_max": null
+        }
+      }
     }
   ]
 }

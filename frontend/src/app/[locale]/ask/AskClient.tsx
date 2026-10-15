@@ -9,31 +9,38 @@ import { InlineFeedback } from "@/components/ui/Feedback";
 import { Link } from "@/i18n/routing";
 import { API } from "@/lib/api";
 import { ASK_SESSION_KEY, parseAskSession, removeAskConstraint, askErrorCode, askQueryPayload, emptyAskPlan,
-  validAskNumbers, askNumericConditions, createAskRequestGate, type AskPlan, type AskResolution, type AskObservation } from "@/lib/ask";
-import { formatExploreFacetLabel } from "@/lib/explore";
+  validAskNumbers, askNumericConditions, createAskRequestGate, askInterpretPayload, askExploreSessionKey, type AskPlan, type AskResolution, type AskObservation } from "@/lib/ask";
+import { exploreLocationContext, formatExploreFacetLabel } from "@/lib/explore";
 import type { ExploreDimension } from "@/types/movie";
 import ExploreFactFinder from "../explore/ExploreFactFinder";
 import LibraryMovieCard from "../library/LibraryMovieCard";
 
-interface AskStatus { configured: boolean; model: string | null; provider_host: string | null }
+interface AskStatus { configured: boolean; model: string | null; provider_host: string | null; disclosure_id: string | null }
 
-export default function AskClient({ embedded = false, onActiveChange }: { embedded?: boolean; onActiveChange?: (active: boolean) => void }) {
+export default function AskClient({ embedded = false, contextKey = "/explore", onActiveChange }: { embedded?: boolean; contextKey?: string; onActiveChange?: (active: boolean) => void }) {
   const t = useTranslations("Ask");
   const locale = useLocale();
-  const status = useSWR<AskStatus>(API.askStatus());
-  const sessionKey = ASK_SESSION_KEY + (embedded ? ".explore" : "");
+  const status = useSWR<AskStatus>(API.askStatus(), { revalidateOnFocus: true, focusThrottleInterval: 0, dedupingInterval: 0 });
+  const refreshStatus = status.mutate;
+  const [sessionKey, setSessionKey] = useState<string | null>(embedded ? null : ASK_SESSION_KEY);
+  const sessionScope = useRef<string | null>(null);
   const [chosenMode, setMode] = useState<"question" | "form" | null>(null);
   const mode = chosenMode ?? (embedded || status.data?.configured ? "question" : "form");
   const [finder, setFinder] = useState<ExploreDimension | null>(null);
   const [personId, setPersonId] = useState<string | null>(null);
   const gate = useRef(createAskRequestGate());
-  const restored = useRef(false);
+  const restored = useRef<string | null>(null);
   const lastAttempt = useRef<{ url: string; payload: object } | null>(null);
+  const [retryKind, setRetryKind] = useState<"interpret" | "local" | null>(null);
   const [question, setQuestion] = useState("");
   const [composerOpen, setComposerOpen] = useState(false);
   const [consentFor, setConsentFor] = useState<string | null>(null);
+  const consentRef = useRef<string | null>(null);
+  const updateConsent = useCallback((value: string | null) => { consentRef.current = value; setConsentFor(value); }, []);
+  const disclosureId = status.data?.disclosure_id ?? null;
+  const configured = status.data?.configured ?? false;
   const disclosure = status.data?.provider_host && status.data.model ? `${status.data.provider_host} / ${status.data.model}` : null;
-  const consent = disclosure !== null && consentFor === disclosure;
+  const consent = disclosure !== null && disclosureId !== null && consentFor === disclosureId;
   const [draft, setDraft] = useState<AskPlan>({ ...emptyAskPlan });
   const [resolution, setResolution] = useState<AskResolution | null>(null);
   const [observation, setObservation] = useState<AskObservation | null>(null);
@@ -42,31 +49,40 @@ export default function AskClient({ embedded = false, onActiveChange }: { embedd
   const active = Boolean(resolution || busy || error || mode === "form" || composerOpen);
   const compact = embedded && mode === "question" && !active;
 
-  const clearSaved = () => { try { sessionStorage.removeItem(sessionKey); } catch { /* Optional storage. */ } };
-  const reset = () => { gate.current.cancel(); setBusy(false); setResolution(null); setError(""); lastAttempt.current = null; clearSaved(); };
-  const cancel = () => { reset(); setMode("question"); setDraft({ ...emptyAskPlan }); setPersonId(null); setObservation(null); setQuestion(""); setConsentFor(null); setComposerOpen(false); };
+  const clearSaved = () => { try { if (sessionKey) sessionStorage.removeItem(sessionKey); } catch { /* Optional storage. */ } };
+  const reset = () => { gate.current.cancel(); setBusy(false); setResolution(null); setError(""); lastAttempt.current = null; setRetryKind(null); clearSaved(); };
+  const cancel = () => { reset(); setMode("question"); setDraft({ ...emptyAskPlan }); setPersonId(null); setObservation(null); setQuestion(""); updateConsent(null); setComposerOpen(false); };
   const change = (values: Partial<AskPlan>) => { setMode("form"); if ("person" in values) setPersonId(null); setDraft(current => ({ ...current, ...values })); reset(); };
   const switchMode = (next: "question" | "form") => { setMode(next); setComposerOpen(next === "question"); reset(); };
   const request = useCallback(async (url: string, payload: object) => {
+    let currentPayload = payload;
+    if (url === API.askInterpret()) {
+      try { currentPayload = askInterpretPayload(payload, disclosureId, consentRef.current, configured); }
+      catch (issue) { setError(issue instanceof Error ? issue.message : "ask_consent_required"); return; }
+    }
     const attempt = gate.current.begin();
-    lastAttempt.current = { url, payload }; setBusy(true); setError("");
+    lastAttempt.current = { url, payload: currentPayload }; setRetryKind(url === API.askInterpret() ? "interpret" : "local"); setBusy(true); setError("");
     // Bound browser/proxy hangs as well as the provider timeout. Never retry automatically.
     const timer = setTimeout(() => { if (gate.current.current(attempt.id)) { gate.current.cancel(); setBusy(false); setError("ask_timeout"); } }, 25000);
     try {
-      const response = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload), signal: attempt.signal });
+      const response = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(currentPayload), signal: attempt.signal });
       const body = await response.json().catch(() => null);
       if (!gate.current.current(attempt.id)) return;
       if (body?.observation || body?.detail?.observation) setObservation(body.observation ?? body.detail.observation);
-      if (!response.ok) throw new Error(askErrorCode(response.status, body));
+      if (!response.ok) {
+        const code = askErrorCode(response.status, body);
+        if (code === "ask_consent_changed") { updateConsent(null); void refreshStatus(); }
+        throw new Error(code);
+      }
       setResolution(body as AskResolution);
       if (body.plan) { setDraft(body.plan); setPersonId(body.person_id); setMode("form"); }
       if (url === API.askQuery() && body.status === "ready" && body.results) {
-        try { sessionStorage.setItem(sessionKey, JSON.stringify(askQueryPayload(body, body.results.offset))); } catch { /* Optional storage. */ }
+        try { if (sessionKey) sessionStorage.setItem(sessionKey, JSON.stringify(askQueryPayload(body, body.results.offset))); } catch { /* Optional storage. */ }
       }
     } catch (issue) {
       if (gate.current.current(attempt.id)) setError(issue instanceof Error ? issue.message : "unavailable");
     } finally { clearTimeout(timer); if (gate.current.current(attempt.id)) setBusy(false); }
-  }, [sessionKey]);
+  }, [sessionKey, disclosureId, configured, refreshStatus, updateConsent]);
   const prepare = () => {
     setResolution(null); clearSaved();
     if (mode === "question") { setObservation(null); void request(API.askInterpret(), { question: question.trim(), locale, provider_consent: true }); }
@@ -74,19 +90,42 @@ export default function AskClient({ embedded = false, onActiveChange }: { embedd
     else setError("invalid_request");
   };
   const search = (offset = 0) => { if (resolution?.status === "ready") void request(API.askQuery(), askQueryPayload(resolution, offset)); };
+  useEffect(() => {
+    if (!embedded) return;
+    let mounted = true;
+    const establish = () => {
+      if (!mounted || exploreLocationContext(window.location.href) !== contextKey) return;
+      const state = window.history.state ?? {};
+      const prior = state["5x49.ask.context"];
+      const entry = prior?.query === contextKey && /^[0-9a-f]{32}$/.test(prior.entry)
+        ? prior.entry : Array.from(crypto.getRandomValues(new Uint8Array(16)), byte => byte.toString(16).padStart(2, "0")).join("");
+      if (entry !== prior?.entry || prior?.query !== contextKey) {
+        window.history.replaceState({ ...state, "5x49.ask.context": { query: contextKey, entry } }, "", window.location.href);
+      }
+      const next = askExploreSessionKey(contextKey, entry);
+      if (sessionScope.current === next) return;
+      sessionScope.current = next;
+      gate.current.cancel(); lastAttempt.current = null; setRetryKind(null); setBusy(false); setResolution(null);
+      setDraft({ ...emptyAskPlan }); setPersonId(null); setQuestion(""); setMode(null); setComposerOpen(false);
+      updateConsent(null); setError(""); setObservation(null); setSessionKey(next);
+    };
+    void Promise.resolve().then(establish);
+    window.addEventListener("popstate", establish);
+    return () => { mounted = false; window.removeEventListener("popstate", establish); };
+  }, [embedded, contextKey, updateConsent]);
   useEffect(() => { onActiveChange?.(active); }, [active, onActiveChange]);
   useEffect(() => {
     const requestGate = gate.current;
     return () => requestGate.cancel();
   }, []);
   useEffect(() => {
-    if (restored.current) return;
+    if (!sessionKey || restored.current === sessionKey) return;
     let payload: ReturnType<typeof parseAskSession> = null;
     try { payload = parseAskSession(sessionStorage.getItem(sessionKey)); } catch { /* Optional storage. */ }
-    if (!payload) { restored.current = true; return; }
+    if (!payload) { restored.current = sessionKey; return; }
     let mounted = true;
     // The persisted plan was already confirmed. Revalidate it locally, never reuse Film data.
-    void Promise.resolve().then(() => { if (!mounted) return; restored.current = true; setMode("form"); setDraft(payload!.plan); setPersonId(payload!.person_id); void request(API.askQuery(), payload!); });
+    void Promise.resolve().then(() => { if (!mounted) return; restored.current = sessionKey; setMode("form"); setDraft(payload!.plan); setPersonId(payload!.person_id); void request(API.askQuery(), payload!); });
     return () => { mounted = false; };
   }, [request, sessionKey]);
   const edit = (plan: AskPlan, selectedPerson: string | null) => {
@@ -112,10 +151,10 @@ export default function AskClient({ embedded = false, onActiveChange }: { embedd
         <form id="ask-form" onSubmit={event => { event.preventDefault(); prepare(); }} className={compact ? "flex min-w-0 items-center gap-3" : "mt-5 space-y-5"}>
           {mode === "question" ? <>
             <FormField label={compact ? <span className="sr-only">{t("questionLabel")}</span> : t("questionLabel")} description={compact ? undefined : t("privacy")}>
-              <TextArea aria-label={t("questionLabel")} value={question} maxLength={600} rows={compact ? 1 : embedded ? 2 : 3} onFocus={() => { if (embedded) setComposerOpen(true); }} onChange={event => { setMode("question"); setQuestion(event.target.value); setConsentFor(null); reset(); }} placeholder={compact ? t("compactPlaceholder") : t("example")} />
+              <TextArea aria-label={t("questionLabel")} value={question} maxLength={600} rows={compact ? 1 : embedded ? 2 : 3} onFocus={() => { if (embedded) setComposerOpen(true); }} onChange={event => { setMode("question"); setQuestion(event.target.value); updateConsent(null); reset(); }} placeholder={compact ? t("compactPlaceholder") : t("example")} />
             </FormField>
-            {!compact && <button type="button" className="focus-ring text-left text-sm text-ink-subtle underline" onClick={() => { setQuestion(t("example")); setConsentFor(null); reset(); }}>{t("useExample")}</button>}
-            {!compact && disclosure && <label className="flex items-start gap-3 text-sm leading-6 text-ink-muted"><input type="checkbox" className="focus-ring mt-1 shrink-0" checked={consent} onChange={event => setConsentFor(event.target.checked ? disclosure : null)} /><span className="min-w-0 break-words">{t("providerConsent", { provider: disclosure })}</span></label>}
+            {!compact && <button type="button" className="focus-ring text-left text-sm text-ink-subtle underline" onClick={() => { setQuestion(t("example")); updateConsent(null); reset(); }}>{t("useExample")}</button>}
+            {!compact && disclosure && <label className="flex items-start gap-3 text-sm leading-6 text-ink-muted"><input type="checkbox" className="focus-ring mt-1 shrink-0" checked={consent} onChange={event => updateConsent(event.target.checked ? disclosureId : null)} /><span className="min-w-0 break-words">{t("providerConsent", { provider: disclosure })}</span></label>}
           </> : <div className="grid gap-5 sm:grid-cols-2">
             <FormField label={t("fields.genre")}><TextInput id="ask-genre" value={draft.genre ?? ""} maxLength={100} onChange={event => change({ genre: event.target.value || null })} placeholder={t("genreExample")} /></FormField>
             <FormField label={t("fields.country")}><TextInput value={draft.country ?? ""} maxLength={100} onChange={event => change({ country: event.target.value || null })} placeholder={t("countryExample")} /></FormField>
@@ -134,7 +173,7 @@ export default function AskClient({ embedded = false, onActiveChange }: { embedd
           {!compact && <p className="text-sm leading-6 text-ink-subtle">{t("supported")}</p>}
           {compact ? <Button title={status.data?.configured === false ? t("noKey") : undefined} onClick={() => switchMode("form")}>{t("formMode")}</Button> : <Button type="submit" busy={busy} disabled={busy || (mode === "question" && (!question.trim() || !status.data?.configured || !consent))} variant="primary">{mode === "question" ? t("interpret") : t("preview")}</Button>}
         </form>
-        {error && <div role="alert" className="mt-6 space-y-3"><InlineFeedback tone="error">{t(`errors.${["ask_not_configured", "ask_private_input", "ask_busy", "ask_timeout", "ask_invalid_response", "ask_provider_unavailable", "ask_provider_configuration", "ask_invalid_selection", "projection_unavailable", "invalid_request"].includes(error) ? error : "unavailable"}`)}</InlineFeedback><div className="flex flex-wrap gap-3"><Button disabled={busy} onClick={() => { if (lastAttempt.current) void request(lastAttempt.current.url, lastAttempt.current.payload); }}>{t("retry")}</Button><Button onClick={() => switchMode("form")}>{t("formMode")}</Button></div></div>}
+        {error && <div role="alert" className="mt-6 space-y-3"><InlineFeedback tone="error">{t(`errors.${["ask_not_configured", "ask_private_input", "ask_busy", "ask_timeout", "ask_invalid_response", "ask_provider_unavailable", "ask_provider_configuration", "ask_consent_required", "ask_consent_changed", "ask_invalid_selection", "projection_unavailable", "invalid_request"].includes(error) ? error : "unavailable"}`)}</InlineFeedback><div className="flex flex-wrap gap-3"><Button disabled={busy || (retryKind === "interpret" && !consent)} onClick={() => { if (lastAttempt.current) void request(lastAttempt.current.url, lastAttempt.current.payload); }}>{t("retry")}</Button><Button onClick={() => switchMode("form")}>{t("formMode")}</Button></div></div>}
         {observation && <p className="mt-5 break-words text-xs leading-5 text-ink-subtle" aria-label={t("usage")}>{t("observation", { model: observation.response_model ?? observation.requested_model ?? t("unknown"), latency: observation.latency_ms === null ? t("unknown") : Math.round(observation.latency_ms), tokens: observation.total_tokens ?? t("unknown"), cost: observation.cost_usd === null ? t("unknownCost") : `$${observation.cost_usd.toFixed(6)}` })}</p>}
         {resolution && <section className="mt-8 space-y-5 border-y border-line py-6" aria-label={t("preview")} aria-live="polite">
           <h2 className="type-section-title">{t("preview")}</h2>

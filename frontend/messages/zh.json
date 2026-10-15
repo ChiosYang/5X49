@@ -320,6 +320,8 @@
       "yearAsc": "最早上映优先"
     },
     "errors": {
+      "ask_consent_required": "重试前请确认同意将此问题发送给当前显示的服务商和模型。",
+      "ask_consent_changed": "服务商或模型已变更，请核对新披露并重新同意后再发送。",
       "ask_not_configured": "理解自然语言需要模型 Key，条件表单无需配置即可使用。",
       "ask_private_input": "问题中疑似包含路径或密钥，请移除后再发送。",
       "ask_busy": "当前有其他问题正在解析，请稍后重试。",

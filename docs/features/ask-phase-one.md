@@ -1,7 +1,7 @@
 # AI Film Finder phase one
 
 Status: Blocked
-Last updated: 2026-10-14
+Last updated: 2026-10-15
 Related: Ask MVP; Factual Explore
 Engineering implementation and offline acceptance are complete. Live model acceptance is blocked only by the missing exported evaluation credential.
 
@@ -18,7 +18,7 @@ the entire plan, then show owned Films with verifiable local match reasons.
   unknowns excluded only when the corresponding condition is active.
 - Provider disclosure/consent, bounded validation, timeout, manual fallback,
   cancellation and stale-response protection; no inferred Analysis V2 edges.
-- 50 bilingual acceptance cases and offline fixture evaluation. A separate
+- 52 bilingual acceptance cases and offline fixture evaluation. A separate
   live evaluation entrypoint must require explicit authorization and budget.
 
 ## Decisions
@@ -40,22 +40,31 @@ the entire plan, then show owned Films with verifiable local match reasons.
 - [x] Unsupported/negated/similar/taste requests never silently broaden results.
 - [x] Privacy, malicious output and interface failure cases fail closed.
 - [x] Complete backend/frontend checks and real-backend responsive UI E2E pass.
-- [ ] Draft PR is delivered for independent parent review.
-- [ ] Live supported parsing accuracy >=95% (pending explicit authorization).
+- [x] Draft PR [#28](https://github.com/ChiosYang/5X49/pull/28) is delivered for independent parent review; follow-up fixes remain draft.
+- [ ] Live supported parsing accuracy >=95% (blocked by missing exported credential; cumulative US$1 authorization already received).
 
 ## Slices
 
 1. Acceptance corpus and backend contract/query — complete.
 2. Explore integration and interaction safety — complete.
-3. Evaluation guards and offline verification — complete; draft delivery in progress.
+3. Evaluation guards and offline verification — complete; draft PR delivered; independent-review follow-up and complete offline replay verified.
 4. Live synthetic evaluation — blocked: exported OPENROUTER_API_KEY missing; 0 requests, US$0 spent.
 
 ## Verification evidence
 
-- 50/50 offline corpus; 12 budget/evaluation tests; full 435-test backend run (3 skipped); 93 frontend unit tests; lint/typecheck/build; all 87 real-backend UI E2E pass.
+- Resumed 2026-10-15: 52/52 offline corpus; 12 budget/evaluation tests; full 438-test backend run (3 skipped); 95 frontend unit tests; lint/typecheck/build; all 93 real-backend UI E2E pass, including 19 Ask flows.
 - Details and exact commands: [quality evidence](../quality/ask-phase-one.md).
 - Self-review fixed atomic query snapshots, person-choice/editor race, stale responses and the zero-unsupported-failure evaluation gate. No live model quality is claimed.
 
 ## Remaining risks
 
-- Real provider/model quality, usefulness and cost await separate authorization.
+- Real provider/model quality, usefulness and cost await an existing safely configured credential. No real inference has run or been billed.
+
+
+## Independent review corrections
+
+- Allow explicit numeric-comparison idioms while retaining real OR/ambiguity guards.
+- Bind each interpretation and retry to current consent and the actual provider target.
+- Scope Explore recovery to the source normalized fact query and history entry.
+- Preserve all existing local changes and saved test evidence through the Windows
+  execution-environment outage; resumed work never reads or transfers credentials.

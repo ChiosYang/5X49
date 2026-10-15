@@ -292,9 +292,12 @@ TMDB 功能需要 `TMDB_API_KEY` 环境变量或托管设置；读取设置只�
 ## Ask 只读找片（ask.v2）
 
 - GET `/ask/status` 报告 Key 是否存在、经过约束的 provider_host/model、
-  consent_required 与20秒超时。不能据此认定服务商实际可用。
+  disclosure_id、consent_required 与20秒超时。不能据此认定服务商实际可用。
 - POST `/ask/interpret` 要求 question（1–600字符）、locale:zh|en 与
-  provider_consent:true。只外发问题和静态schema，不附带片库/路径/私人笔记。
+  provider_consent:true、provider_disclosure（复制GET status的disclosure_id）。
+  目标标识不含凭证；调用前与实际冻结的model/base_url核对，变更返回409
+  ask_consent_changed且不调用提供商。撤回同意或披露更新时，所有解析重试必须
+  重新获得针对当前目标的同意，不得复用旧payload中的true。只外发问题和静态schema，不附带片库/路径/私人笔记。
   返回待核对plan，尚未查询。外发前应向用户显示服务商和模型并取得同意。
 - POST `/ask/resolve` 接受plan和可选person_id，完全本地预览；同名/模糊人物
   必须显式选择候选，未知、不支持或过期条件不得删除后悄悄重试。
@@ -302,6 +305,8 @@ TMDB 功能需要 `TMDB_API_KEY` 环境变量或托管设置；读取设置只�
   增加duration_min/max（严格整数分钟1–10000）及duration_min/max_inclusive
   （默认true，缺少边界时必须true）。使用正视频秒数，否则正影片runtime_minutes；
   按精确秒数比较，不舍入。空值或非正时长不满足已启用的范围。
+  明确的90 minutes or less / shorter than 90 minutes为支持的比较；真正的OR
+  多值及无数值的shorter films仍拦截，不得把比较词or误当多值。
 - rating_min/max是影片个人总体整数评分1–5星，包含端点；不得替换为外部评分或
   Viewing评分。空值不满足已启用范围。反向/空范围、布尔代整数等返回422。
 - POST `/ask/query` 增加confirmed:true、offset（0–100000）；重新本地解析，
@@ -315,7 +320,9 @@ TMDB 功能需要 `TMDB_API_KEY` 环境变量或托管设置；读取设置只�
 - observation包含延迟、模型版本、generation_id、可用token计数和实际usage.cost。
   缺少成本则cost_usd=null/cost_source=unavailable，不得编造。取消UI不等于免计费。
 - 无Key或故障时使用本地表单。仅已确认的结构条件保留在会话，问题和结果不持久化。
-- 50条离线fixture只是工程证据。真实评估需显式启动、固定模型/provider、累计US$1
+- Explore确认恢复仅限相同规范化query和浏览器history条目；人物/类型深链、
+  不同筛选URL和新建同URL条目不得恢复旧AI计划遮蔽事实条件。
+- 52条离线fixture只是工程证据。真实评估需显式启动、固定模型/provider、累计US$1
   持久账本与逐次最大token费用预留；未知计费或异常路由立即停机，不充值、不改凭证。
   完整请求和评估入口见docs/api.md与docs/quality/ask-phase-one.md。
 

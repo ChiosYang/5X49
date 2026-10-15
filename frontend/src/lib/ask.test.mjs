@@ -67,3 +67,23 @@ test("cancelled and earlier responses cannot commit after a later request or unm
   assert.equal(later.signal.aborted, true);
   assert.equal(gate.current(later.id), false);
 });
+
+test("interpret retries cannot reuse withdrawn or stale target consent", async () => {
+  const { askInterpretPayload } = await import("./ask.ts");
+  const oldTarget=`ask_target_${"a".repeat(64)}`, target=`ask_target_${"b".repeat(64)}`;
+  const oldPayload={question:"public synthetic",provider_consent:true,provider_disclosure:oldTarget};
+  assert.throws(()=>askInterpretPayload(oldPayload,target,null,true),/ask_consent_required/);
+  assert.throws(()=>askInterpretPayload(oldPayload,target,oldTarget,true),/ask_consent_required/);
+  assert.throws(()=>askInterpretPayload(oldPayload,target,target,false),/ask_not_configured/);
+  assert.equal(askInterpretPayload(oldPayload,target,target,true).provider_disclosure,target);
+});
+
+test("Explore confirmed storage is isolated by normalized query and history entry", async () => {
+  const { askExploreSessionKey } = await import("./ask.ts");
+  const { exploreLocationContext } = await import("./explore.ts");
+  const first=exploreLocationContext('http://localhost/en/explore?country=JP&view=all');
+  assert.equal(first,exploreLocationContext('http://localhost/en/explore?view=all&country=JP'));
+  assert.notEqual(askExploreSessionKey(first,"entry-a"),askExploreSessionKey(first,"entry-b"));
+  assert.notEqual(askExploreSessionKey(first,"entry-a"),askExploreSessionKey('/explore',"entry-a"));
+  assert.equal(exploreLocationContext('http://localhost/en/library/film_id'),null);
+});

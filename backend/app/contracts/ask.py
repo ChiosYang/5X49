@@ -65,6 +65,7 @@ class AskQuestion(AskContract):
     question: str = Field(min_length=1, max_length=600)
     locale: Literal["zh", "en"] = "zh"
     provider_consent: Literal[True]
+    provider_disclosure: str = Field(pattern=r"^ask_target_[0-9a-f]{64}$")
 
     @field_validator("provider_consent", mode="before")
     @classmethod

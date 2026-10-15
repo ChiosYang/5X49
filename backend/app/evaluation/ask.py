@@ -57,7 +57,7 @@ def evaluate_case(case, interpreter):
     started = time.perf_counter()
     observation = None
     try:
-        interpreted = interpreter.interpret(AskQuestion(question=case["question"], locale=case["locale"], provider_consent=True))
+        interpreted = interpreter.interpret(AskQuestion(question=case["question"], locale=case["locale"], provider_consent=True, provider_disclosure=interpreter.disclosure()["disclosure_id"]))
         status, plan = interpreted.status, interpreted.plan.model_dump() if interpreted.plan else None
         observation = interpreted._observation
     except AskError as error:
@@ -245,7 +245,7 @@ def main():
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
     print(json.dumps({key: report.get(key) for key in ("evidence_class", "fixture_cases", "fixture_passed", "complete", "stop_reason", "live_supported_accuracy", "accuracy_gate_passed")}))
-    return 0 if (report.get("fixture_passed") == 50 or report.get("accuracy_gate_passed") or args.canary_only and report.get("complete")) else 1
+    return 0 if (report.get("fixture_cases", 0) >= 50 and report.get("fixture_passed") == report.get("fixture_cases") or report.get("accuracy_gate_passed") or args.canary_only and report.get("complete")) else 1
 
 
 if __name__ == "__main__":
