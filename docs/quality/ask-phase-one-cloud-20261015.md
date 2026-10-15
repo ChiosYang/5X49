@@ -18,6 +18,15 @@ The bilingual live acceptance gate has not passed.
   token bounds and zero reasoning must corroborate the completion receipt.
 - Normal evaluation requires completion `usage.cost` to match the generation
   receipt before the response reaches strict JSON validation.
+- At the existing completion-error boundary, a selected error summary is
+  captured before settlement. It contains bounded exception-type chains, an
+  optional HTTP status, a format-checked correlation ID and the settlement
+  exception type. Exception text, authentication, headers, URLs and complete
+  request/response objects are excluded. Settlement failure retains the original
+  exception as the cause and cannot relabel transport failure as invalid JSON.
+- The private evaluator report preserves this summary through the application
+  error boundary. Diagnostic IDs/statuses do not establish billing, clear an
+  unresolved reservation or authorize another request.
 
 ## General reconciliation and budget controls
 
@@ -68,12 +77,14 @@ This path still requires independent review before operational use.
 
 ## Validation and unmet acceptance
 
-- 31 evaluation/budget/reconciliation/review-release tests passed, including real SDK parsing,
+- 61 focused Ask regression tests passed, including real SDK parsing,
   exact alias/canonical mapping, wrong-model/provider/receipt rejection,
   inconsistent usage/reasoning, failed reconciliation, replay and concurrency.
   Release tests additionally cover exact CI/head binding, unreviewed code,
   documentation-only followups, targeted state changes and surviving unknowns.
-- The focused Ask regression family passed all 54 tests.
+- Offline transport regressions cover connection failures, HTTP rejection,
+  timeout, budget blocking, settlement/storage failure and secret-shaped
+  correlation IDs without contacting a model provider.
 - The 58/58 offline fixtures validate the contract and error boundary; they do
   not measure real model understanding.
 - The original canary did not complete strict JSON and completion-receipt

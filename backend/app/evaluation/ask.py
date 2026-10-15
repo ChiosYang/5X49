@@ -12,6 +12,7 @@ from decimal import Decimal
 import json
 import os
 from pathlib import Path
+import re
 import time
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
@@ -60,19 +61,24 @@ def fixture_interpreter(case):
 def evaluate_case(case, interpreter):
     started = time.perf_counter()
     observation = None
+    transport_error = None
     try:
         interpreted = interpreter.interpret(AskQuestion(question=case["question"], locale=case["locale"], provider_consent=True, provider_disclosure=interpreter.disclosure()["disclosure_id"]))
         status, plan = interpreted.status, interpreted.plan.model_dump() if interpreted.plan else None
         observation = interpreted._observation
     except AskError as error:
         status, plan, observation = error.code, None, error.observation
+        transport_error = getattr(error, "_evaluation_transport_error", None)
     passed = status == case["expected"]["status"] and plan == case["expected"]["plan"]
     failure = None if passed else "status_mismatch" if status != case["expected"]["status"] else "constraint_mismatch"
     if not passed and case["expected"]["status"] in {"unsupported", "clarify"} and status == "ready":
         failure = "unsupported_requirement_dropped"
-    return {"case_id": case["id"], "category": case["category"], "locale": case["locale"], "passed": passed,
-            "failure_category": failure, "actual_status": status, "actual_plan": plan,
-            "latency_ms": round((time.perf_counter()-started)*1000, 3), "observation": observation}
+    row = {"case_id": case["id"], "category": case["category"], "locale": case["locale"], "passed": passed,
+           "failure_category": failure, "actual_status": status, "actual_plan": plan,
+           "latency_ms": round((time.perf_counter()-started)*1000, 3), "observation": observation}
+    if transport_error is not None:
+        row["transport_error"] = transport_error
+    return row
 
 
 def offline():
@@ -221,6 +227,29 @@ def reconcile_canary(report_path, expected_cost):
             "review_required": True, "evidence": evidence, "ledger": ledger.summary()}
 
 
+def transport_error_summary(error):
+    # Select only structured exception attributes. Never inspect exception text,
+    # request/response objects, headers, bodies, URLs or authentication material.
+    status = getattr(error, "status_code", None)
+    request_id = getattr(error, "request_id", None)
+    allowed_id = (r"(?:req[_-][A-Za-z0-9_-]{8,80}|gen-[0-9]{8,20}-[A-Za-z0-9]{8,80}|"
+                  r"[0-9a-fA-F]{8}(?:-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12})")
+    if (not isinstance(request_id, str) or re.fullmatch(allowed_id, request_id) is None
+            or re.search(r"sk-|gh[pousr]_|github_pat|authorization|bearer|password|secret|token|api[_-]?key", request_id, re.I)):
+        request_id = None
+    chain = []
+    seen = set()
+    current = error
+    while current is not None and id(current) not in seen and len(chain) < 8:
+        seen.add(id(current))
+        chain.append(type(current).__name__)
+        current = current.__cause__ or current.__context__
+    return {"exception_type": type(error).__name__,
+            "exception_chain_types": chain,
+            "http_status": status if type(status) is int and 100 <= status <= 599 else None,
+            "request_id": request_id, "settlement_exception_type": None}
+
+
 class PaidClient:
     def __init__(self, *, ledger, run_id, case_id, preflight, **options):
         self.ledger, self.run_id, self.case_id, self.preflight = ledger, run_id, case_id, preflight
@@ -250,9 +279,19 @@ class PaidClient:
         attempt = self.ledger.reserve(self.run_id, self.case_id, bound, OUTPUT_LIMIT)
         try:
             response = self.client.chat.completions.create(**request)
-        except Exception:
-            self.ledger.settle(attempt, cost=None, generation_id=None, outcome="transport_failure")
-            raise
+        except Exception as original_error:
+            diagnostic = transport_error_summary(original_error)
+            try:
+                self.ledger.settle(attempt, cost=None, generation_id=None, outcome="transport_failure")
+            except Exception as settlement_error:
+                # Unknown billing normally raises BudgetStop after persisting the
+                # reserve. A settlement/storage failure must also keep the
+                # original failure as the cause, without logging its raw text.
+                diagnostic["settlement_exception_type"] = type(settlement_error).__name__
+            failure = AskError("ask_timeout" if isinstance(original_error, APITimeoutError) else "ask_provider_unavailable",
+                               504 if isinstance(original_error, APITimeoutError) else 502)
+            failure._evaluation_transport_error = diagnostic
+            raise failure from original_error
         generation_id = response.id
         usage = response.usage
         cost = getattr(usage, "cost", None)
