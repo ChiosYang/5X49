@@ -1,5 +1,21 @@
 # AI Film finder phase one quality
 
+## 2026-10-15 cloud canary update
+
+The saved cloud environment started and the requested PR #28 head was checked
+out. An evaluation-only SDK dictionary-parsing repair allowed the credit
+preflight to complete. One real synthetic canary then stopped at strict model
+identity corroboration: OpenRouter returned the dated canonical model slug.
+Read-only generation evidence confirms **US$0.00012861** actual cost and zero
+reasoning tokens. Exact official alias/canonical mapping is now pinned and
+audited reconciliation accounts this cost once in the same ledger, preserves
+the original failure/reserve, and retains a blocking parent-review hold. The
+repeat was idempotent. All 21 evaluation/budget/reconciliation tests pass.
+No additional inference or bilingual live corpus was run and no live accuracy
+gate passed. Earlier zero-spend/missing-key results below are historical.
+See [cloud acceptance evidence](ask-phase-one-cloud-20261015.md) for the local
+patch, measurements, retained receipts and exact remaining blocker.
+
 ## Evidence classes
 
 `backend/app/evaluation/fixtures/ask_acceptance.json` contains 58 bilingual

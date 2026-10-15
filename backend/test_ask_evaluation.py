@@ -8,7 +8,9 @@ from types import SimpleNamespace
 import unittest
 from unittest.mock import patch
 
-from app.evaluation.ask import AUTHORIZATION, corpus, live, live_gate, offline, official_preflight, MODEL, PROVIDER, PaidClient, POLICY
+import httpx
+
+from app.evaluation.ask import AUTHORIZATION, BASE_URL, CANONICAL_MODEL, corpus, live, live_gate, offline, official_preflight, MODEL, PROVIDER, PaidClient, POLICY
 from app.evaluation.ask_budget import BudgetLedger, BudgetStop, input_upper_bound
 from app.services.ask import AskInterpreter
 
@@ -104,12 +106,24 @@ class AskEvaluationTests(unittest.TestCase):
                         {'supported_parameters':[]},{'status':1},{'tag':'other'}):
             payload={'data':{'id':MODEL,'endpoints':[{**endpoint,**changes}]}}
             with patch('app.evaluation.ask.urllib.request.urlopen') as response:
-                response.return_value.__enter__.return_value.read.return_value=json.dumps(payload)
+                response.return_value.__enter__.return_value.read.side_effect=[
+                    json.dumps({'data':[{'id':MODEL,'canonical_slug':CANONICAL_MODEL}]}), json.dumps(payload)]
                 with self.assertRaises(BudgetStop): official_preflight()
+
+    @staticmethod
+    def _preflight():
+        return {'model':MODEL,'canonical_model':CANONICAL_MODEL,'directory_source':BASE_URL+'/models',
+                'source':BASE_URL+'/models/'+MODEL+'/endpoints',
+                'provider_tag':PROVIDER,'provider_name':'Decart'}
+
+    @staticmethod
+    def _metadata(generation_id='gen-synthetic'):
+        return {'id':generation_id,'provider_name':'Decart','model':MODEL,'total_cost':0.0001,
+                'native_tokens_prompt':20,'native_tokens_completion':10,'native_tokens_reasoning':0}
 
     def _paid_client(self, sdk, ledger):
         with patch('app.evaluation.ask.OpenAI', return_value=sdk):
-            return PaidClient(ledger=ledger,run_id='test',case_id='canary',preflight={'provider_name':'Decart'},api_key='synthetic')
+            return PaidClient(ledger=ledger,run_id='test',case_id='canary',preflight=self._preflight(),api_key='synthetic')
 
     def test_paid_transport_reserves_absolute_context_cost_and_records_verified_generation(self):
         from unittest.mock import MagicMock
@@ -117,7 +131,7 @@ class AskEvaluationTests(unittest.TestCase):
         sdk.chat.completions.create.return_value=SimpleNamespace(id='gen-synthetic',model=MODEL,
             usage=SimpleNamespace(cost=0.0001,prompt_tokens=20,completion_tokens=10,
                 completion_tokens_details=SimpleNamespace(reasoning_tokens=0)))
-        sdk.get.side_effect=lambda path, **kwargs: {'data':{'total_credits':1,'total_usage':0}} if path=='/credits' else {'data':{'provider_name':'Decart','model':MODEL,'total_cost':0.0001}}
+        sdk.get.side_effect=lambda path, **kwargs: {'data':{'total_credits':1,'total_usage':0}} if path=='/credits' else {'data':self._metadata()}
         ledger=BudgetLedger(self.path)
         client=self._paid_client(sdk,ledger)
         client.create(model=MODEL,extra_body=POLICY,max_tokens=1600,messages=[{'content':'synthetic'}])
@@ -140,13 +154,45 @@ class AskEvaluationTests(unittest.TestCase):
         sdk.chat.completions.create.assert_not_called()
         self.assertEqual(ledger.summary()['attempts'],[])
 
+    def test_real_sdk_parses_credits_and_generation_receipts(self):
+        requests = []
+
+        def respond(request):
+            requests.append((request.method, request.url.path))
+            if request.url.path == '/api/v1/credits':
+                return httpx.Response(200, json={'data': {'total_credits': 1, 'total_usage': 0}})
+            if request.url.path == '/api/v1/generation':
+                return httpx.Response(200, json={'data': {
+                    **self._metadata('gen-synthetic-sdk'), 'model': CANONICAL_MODEL}})
+            if request.url.path == '/api/v1/chat/completions':
+                return httpx.Response(200, json={
+                    'id': 'gen-synthetic-sdk', 'model': CANONICAL_MODEL,
+                    'choices': [{'message': {'role': 'assistant', 'content': '{}'}, 'finish_reason': 'stop'}],
+                    'usage': {'cost': 0.0001, 'prompt_tokens': 20, 'completion_tokens': 10,
+                              'total_tokens': 30, 'completion_tokens_details': {'reasoning_tokens': 0}}})
+            raise AssertionError('Unexpected synthetic transport request')
+
+        ledger = BudgetLedger(self.path)
+        with PaidClient(ledger=ledger, run_id='sdk-regression', case_id='synthetic',
+                        preflight=self._preflight(), api_key='synthetic',
+                        base_url='https://openrouter.ai/api/v1', max_retries=0,
+                        http_client=httpx.Client(transport=httpx.MockTransport(respond))) as client:
+            response = client.create(model=MODEL, extra_body=POLICY, max_tokens=1600,
+                                     messages=[{'role': 'user', 'content': 'synthetic'}])
+        self.assertEqual(response.id, 'gen-synthetic-sdk')
+        self.assertEqual(ledger.summary()['known_cost_usd'], '0.0001')
+        self.assertFalse(ledger.summary()['uncertain_billing'])
+        self.assertEqual(requests, [('GET', '/api/v1/credits'),
+                                    ('POST', '/api/v1/chat/completions'),
+                                    ('GET', '/api/v1/generation')])
+
     def test_nonzero_reasoning_keeps_actual_cost_and_blocks_later_runs(self):
         from unittest.mock import MagicMock
         sdk=MagicMock()
         sdk.chat.completions.create.return_value=SimpleNamespace(id='gen-synthetic',model=MODEL,
             usage=SimpleNamespace(cost=0.0001,prompt_tokens=20,completion_tokens=10,
                 completion_tokens_details=SimpleNamespace(reasoning_tokens=1)))
-        sdk.get.side_effect=lambda path, **kwargs: {'data':{'total_credits':1,'total_usage':0}} if path=='/credits' else {'data':{'provider_name':'Decart','model':MODEL,'total_cost':0.0001}}
+        sdk.get.side_effect=lambda path, **kwargs: {'data':{'total_credits':1,'total_usage':0}} if path=='/credits' else {'data':self._metadata()}
         ledger=BudgetLedger(self.path)
         with self.assertRaisesRegex(BudgetStop,'token_or_reasoning_contract_failed'):
             self._paid_client(sdk,ledger).create(model=MODEL,extra_body=POLICY,max_tokens=1600,messages=[{'content':'synthetic'}])

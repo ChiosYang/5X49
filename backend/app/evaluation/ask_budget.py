@@ -1,6 +1,8 @@
 """Durable, serialized paid-evaluation guard. No client/network code lives here."""
 from contextlib import contextmanager
 from decimal import Decimal, InvalidOperation
+import hashlib
+import json
 from pathlib import Path
 import sqlite3
 import uuid
@@ -49,6 +51,12 @@ class BudgetLedger:
                 id TEXT PRIMARY KEY, run_id TEXT NOT NULL, case_id TEXT NOT NULL,
                 reserved TEXT NOT NULL, cost TEXT, generation_id TEXT,
                 state TEXT NOT NULL, outcome TEXT,
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)""")
+            db.execute("""CREATE TABLE IF NOT EXISTS reconciliation (
+                attempt_id TEXT PRIMARY KEY, generation_id TEXT NOT NULL UNIQUE,
+                cost TEXT NOT NULL, original_state TEXT NOT NULL, original_outcome TEXT,
+                original_reserved TEXT NOT NULL, evidence_json TEXT NOT NULL,
+                evidence_sha256 TEXT NOT NULL,
                 created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)""")
 
     @contextmanager
@@ -110,11 +118,51 @@ class BudgetLedger:
         with self._db() as db:
             db.execute("UPDATE attempt SET state='blocked',outcome=? WHERE id=?", (outcome, attempt))
 
+    def attempt(self, attempt):
+        with self._db() as db:
+            row = db.execute("SELECT * FROM attempt WHERE id=?", (attempt,)).fetchone()
+        if row is None:
+            raise BudgetStop("historical_attempt_missing")
+        return dict(row)
+
+    def reconcile(self, attempt, *, evidence):
+        """Record verified, allowlisted billing evidence; keep a review stop.
+
+        The caller verifies fresh official metadata before this transaction.
+        Original failure/outcome/reserve are retained; this never grants retries.
+        """
+        cost = amount(evidence["cost_usd"])
+        generation_id = evidence["generation_id"]
+        payload = json.dumps(evidence, sort_keys=True, separators=(",", ":"))
+        digest = hashlib.sha256(payload.encode()).hexdigest()
+        with self._db() as db:
+            row = db.execute("SELECT * FROM attempt WHERE id=?", (attempt,)).fetchone()
+            audit = db.execute("SELECT * FROM reconciliation WHERE attempt_id=?", (attempt,)).fetchone()
+            if audit is not None:
+                if (row is None or audit["evidence_sha256"] != digest or audit["generation_id"] != generation_id
+                        or row["generation_id"] != generation_id or row["state"] != "blocked"
+                        or row["reserved"] != audit["original_reserved"] or row["outcome"] != audit["original_outcome"]
+                        or amount(audit["cost"]) != cost
+                        or amount(row["cost"]) != cost):
+                    raise BudgetStop("reconciliation_replay_mismatch")
+                return False
+            if (row is None or row["state"] != "unknown" or row["cost"] is not None
+                    or row["generation_id"] != generation_id or not generation_id
+                    or row["outcome"] != "unknown_billing_or_provider"
+                    or cost > amount(row["reserved"])
+                    or db.execute("SELECT 1 FROM attempt WHERE generation_id=? AND id!=?", (generation_id, attempt)).fetchone()):
+                raise BudgetStop("reconciliation_attempt_mismatch")
+            db.execute("INSERT INTO reconciliation(attempt_id,generation_id,cost,original_state,original_outcome,original_reserved,evidence_json,evidence_sha256) VALUES (?,?,?,?,?,?,?,?)",
+                       (attempt, generation_id, str(cost), row["state"], row["outcome"], row["reserved"], payload, digest))
+            db.execute("UPDATE attempt SET cost=?,state='blocked' WHERE id=?", (str(cost), attempt))
+        return True
+
     def summary(self):
         with self._db() as db:
             known, exposure, uncertain = self._totals(db)
             attempts = db.execute("SELECT id,run_id,case_id,reserved,cost,generation_id,state,outcome FROM attempt ORDER BY rowid").fetchall()
+            audits = db.execute("SELECT attempt_id,cost,original_state,evidence_sha256 FROM reconciliation ORDER BY rowid").fetchall()
         return {"hard_limit_usd": str(HARD_LIMIT), "stop_limit_usd": str(STOP_LIMIT),
                 "known_cost_usd": str(known), "reserved_exposure_usd": str(exposure),
                 "uncertain_billing": uncertain, "blocked": any(row['state']=='blocked' for row in attempts),
-                "attempts": [dict(row) for row in attempts]}
+                "attempts": [dict(row) for row in attempts], "reconciliations": [dict(row) for row in audits]}
