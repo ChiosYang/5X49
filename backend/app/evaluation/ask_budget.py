@@ -17,6 +17,7 @@ BILLING_INPUT_RESERVE = 1_048_576
 OUTPUT_LIMIT = 1600
 PROMPT_PRICE_CAP = Decimal("0.00000010")
 COMPLETION_PRICE_CAP = Decimal("0.00000020")
+CONSERVATIVE_SCOPE = "single_transport_failure_full_reserve_permanent"
 
 
 class BudgetStop(ValueError):
@@ -43,6 +44,10 @@ def input_upper_bound(messages):
     return count
 
 
+def attempt_fingerprint(row):
+    return hashlib.sha256(json.dumps(dict(row), sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+
+
 class BudgetLedger:
     def __init__(self, path: Path):
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -64,6 +69,12 @@ class BudgetLedger:
                 previous_state TEXT NOT NULL, evidence_json TEXT NOT NULL,
                 evidence_sha256 TEXT NOT NULL,
                 created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)""")
+            db.execute("""CREATE TABLE IF NOT EXISTS conservative_continuation (
+                singleton INTEGER PRIMARY KEY CHECK(singleton=1), attempt_id TEXT NOT NULL UNIQUE,
+                attempt_sha256 TEXT NOT NULL, reserved TEXT NOT NULL,
+                original_attempt_json TEXT NOT NULL, evidence_json TEXT NOT NULL,
+                evidence_sha256 TEXT NOT NULL,
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)""")
 
     @contextmanager
     def _db(self):
@@ -77,11 +88,31 @@ class BudgetLedger:
             db.close()
 
     @staticmethod
+    def _conservative_hold(db):
+        audit = db.execute("SELECT * FROM conservative_continuation WHERE singleton=1").fetchone()
+        if audit is None:
+            return None
+        row = db.execute("SELECT * FROM attempt WHERE id=?", (audit["attempt_id"],)).fetchone()
+        if (row is None or attempt_fingerprint(row) != audit["attempt_sha256"]
+                or hashlib.sha256(audit["original_attempt_json"].encode()).hexdigest() != audit["attempt_sha256"]
+                or hashlib.sha256(audit["evidence_json"].encode()).hexdigest() != audit["evidence_sha256"]
+                or row["state"] != "unknown" or row["cost"] is not None or row["generation_id"] is not None
+                or row["outcome"] != "transport_failure" or row["reserved"] != audit["reserved"]):
+            raise BudgetStop("conservative_continuation_integrity_failed")
+        return audit
+
+    @staticmethod
     def _totals(db):
         rows = db.execute("SELECT * FROM attempt").fetchall()
+        hold = BudgetLedger._conservative_hold(db)
+        held_id = hold["attempt_id"] if hold else None
         known = sum((amount(row["cost"]) for row in rows if row["cost"] is not None), Decimal(0))
+        # The approved attempt remains unknown, with its full reserve forever
+        # included in exposure. It is never reported as verified consumption.
         exposure = known + sum((amount(row["reserved"]) for row in rows if row["cost"] is None), Decimal(0))
-        return known, exposure, any(row["cost"] is None for row in rows)
+        uncertain = any(row["cost"] is None for row in rows)
+        blocking = any(row["cost"] is None and row["id"] != held_id for row in rows)
+        return known, exposure, uncertain, blocking
 
     def reserve(self, run_id, case_id, input_tokens, output_tokens):
         if not (isinstance(input_tokens, int) and not isinstance(input_tokens, bool) and 0 < input_tokens <= INPUT_LIMIT
@@ -91,8 +122,8 @@ class BudgetLedger:
         reserved = BILLING_INPUT_RESERVE * PROMPT_PRICE_CAP + output_tokens * COMPLETION_PRICE_CAP
         attempt = uuid.uuid4().hex
         with self._db() as db:
-            _, exposure, uncertain = self._totals(db)
-            if uncertain:
+            _, exposure, _, blocking = self._totals(db)
+            if blocking:
                 raise BudgetStop("unsettled_attempt_stop")
             if db.execute("SELECT 1 FROM attempt WHERE state='blocked' LIMIT 1").fetchone():
                 raise BudgetStop("billing_or_contract_blocked")
@@ -213,14 +244,62 @@ class BudgetLedger:
             db.execute("UPDATE attempt SET state='settled' WHERE id=?", (attempt,))
         return True
 
+    def authorize_conservative_continue(self, attempt, *, attempt_sha256, evidence):
+        """One task-wide exception: retain the original unknown and full reserve."""
+        reviewed = evidence.get("reviewed_head", "")
+        run = evidence.get("ci_run_id")
+        if (evidence.get("version") != "ask-conservative-continuation.v1"
+                or evidence.get("decision") != "approved" or evidence.get("approval_scope") != CONSERVATIVE_SCOPE
+                or evidence.get("user_confirmed") is not True
+                or not isinstance(evidence.get("user_approval_ref"), str)
+                or re.fullmatch(r"[A-Za-z0-9._:/-]{1,200}", evidence["user_approval_ref"]) is None
+                or not isinstance(evidence.get("user_approved_at"), str)
+                or re.fullmatch(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z", evidence["user_approved_at"]) is None
+                or not isinstance(reviewed, str) or re.fullmatch(r"[0-9a-f]{40}", reviewed) is None
+                or evidence.get("ci_head") != reviewed or evidence.get("ci_conclusion") != "success"
+                or type(run) is not int or run <= 0 or type(evidence.get("ci_run_attempt")) is not int
+                or evidence["ci_run_attempt"] <= 0
+                or evidence.get("ci_source") != f"https://api.github.com/repos/ChiosYang/5X49/actions/runs/{run}"
+                or not isinstance(evidence.get("current_head"), str)
+                or re.fullmatch(r"[0-9a-f]{40}", evidence["current_head"]) is None
+                or not isinstance(evidence.get("review_ref"), str)
+                or re.fullmatch(r"[A-Za-z0-9._:/-]{1,200}", evidence["review_ref"]) is None
+                or evidence.get("attempt_id") != attempt or evidence.get("attempt_sha256") != attempt_sha256):
+            raise BudgetStop("conservative_approval_evidence_invalid")
+        payload = json.dumps(evidence, sort_keys=True, separators=(",", ":"))
+        digest = hashlib.sha256(payload.encode()).hexdigest()
+        with self._db() as db:
+            row = db.execute("SELECT * FROM attempt WHERE id=?", (attempt,)).fetchone()
+            previous = db.execute("SELECT * FROM conservative_continuation WHERE singleton=1").fetchone()
+            if previous is not None:
+                self._conservative_hold(db)
+                if (previous["attempt_id"] != attempt or previous["attempt_sha256"] != attempt_sha256
+                        or previous["evidence_sha256"] != digest):
+                    raise BudgetStop("single_conservative_continuation_already_used")
+                return False
+            full_reserve = BILLING_INPUT_RESERVE * PROMPT_PRICE_CAP + OUTPUT_LIMIT * COMPLETION_PRICE_CAP
+            if (row is None or row["state"] != "unknown" or row["cost"] is not None
+                    or row["generation_id"] is not None or row["outcome"] != "transport_failure"
+                    or attempt_fingerprint(row) != attempt_sha256 or amount(row["reserved"]) != full_reserve):
+                raise BudgetStop("conservative_attempt_mismatch")
+            original = json.dumps(dict(row), sort_keys=True, separators=(",", ":"))
+            db.execute("INSERT INTO conservative_continuation(singleton,attempt_id,attempt_sha256,reserved,original_attempt_json,evidence_json,evidence_sha256) VALUES (1,?,?,?,?,?,?)",
+                       (attempt, attempt_sha256, row["reserved"], original, payload, digest))
+        return True
+
     def summary(self):
         with self._db() as db:
-            known, exposure, uncertain = self._totals(db)
+            known, exposure, uncertain, blocking = self._totals(db)
             attempts = db.execute("SELECT id,run_id,case_id,reserved,cost,generation_id,state,outcome FROM attempt ORDER BY rowid").fetchall()
             audits = db.execute("SELECT attempt_id,cost,original_state,evidence_sha256 FROM reconciliation ORDER BY rowid").fetchall()
             releases = db.execute("SELECT attempt_id,reconciliation_sha256,evidence_sha256 FROM review_release ORDER BY rowid").fetchall()
+            hold = self._conservative_hold(db)
         return {"hard_limit_usd": str(HARD_LIMIT), "stop_limit_usd": str(STOP_LIMIT),
                 "known_cost_usd": str(known), "reserved_exposure_usd": str(exposure),
-                "uncertain_billing": uncertain, "blocked": any(row['state']=='blocked' for row in attempts),
+                "uncertain_billing": uncertain, "blocking_uncertainty": blocking,
+                "permanent_conservative_hold_usd": hold["reserved"] if hold else "0",
+                "blocked": any(row['state']=='blocked' for row in attempts),
                 "attempts": [dict(row) for row in attempts], "reconciliations": [dict(row) for row in audits],
-                "review_releases": [dict(row) for row in releases]}
+                "review_releases": [dict(row) for row in releases],
+                "conservative_continuations": [{"attempt_id": hold["attempt_id"], "attempt_sha256": hold["attempt_sha256"],
+                                                "evidence_sha256": hold["evidence_sha256"]}] if hold else []}

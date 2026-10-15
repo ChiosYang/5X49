@@ -7,8 +7,10 @@ pins the official exact alias/canonical mapping. Audited reconciliation is
 transactional and idempotent, retains prior failure evidence, and preserves a
 blocking independent-review hold. A targeted, audited release entrypoint verifies
 independent review and exact CI/head evidence before any state transition;
-transport-error diagnostics preserve the original failure across settlement
-and await independent review. All 61 focused Ask regression tests pass.
+transport-error diagnostics preserve the original failure across settlement.
+A singleton, user-approved conservative-continuation path retains one complete
+reservation permanently while leaving its actual cost unknown; this addition
+awaits independent review. All 71 focused Ask regression tests pass.
 The original canary's strict JSON and completion-receipt validation
 remain incomplete; no bilingual live accuracy gate has passed.
 See [technical review status](ask-phase-one-cloud-20261015.md).
@@ -79,13 +81,16 @@ checked before every paid attempt. Settled actual costs release unused reserves.
 SQLite transactions reserve maximum input+output cost before transport and
 prevent concurrent paid attempts. Costs are actual usage.cost, with generation
 IDs; unresolved/crashed/failed requests retain reservations and block later runs.
+The separate singleton conservative-approval mode may exempt only one precisely
+bound transport failure from blocking, while permanently retaining its full
+reserve and unknown actual cost. It cannot exempt any future unknown.
 Reservation overruns or token/reasoning contract failures block future runs.
 The configured conservative stop is US$0.75 and the lifetime hard limit is US$1,
 including canaries, failures and any separately authorized retries.
 
 ## Current results
 
-- Offline fixture contract: 58/58 passed; 61 focused Ask regression tests passed (including the zero-unsupported-failure gate and transport diagnostics).
+- Offline fixture contract: 58/58 passed; 71 focused Ask regression tests passed (including the zero-unsupported-failure gate and transport diagnostics).
 - The original canary did not complete strict JSON and completion-receipt validation.
 - Live supported parsing accuracy and usefulness remain unaccepted. Offline
   success and accounting recovery must not be reported as the >=95% model gate.

@@ -32,7 +32,7 @@ The bilingual live acceptance gate has not passed.
 
 The fixed ignored evaluation ledger persists across runs and retries. It must
 never be deleted, replaced or reset to repeat testing. Maximum request exposure
-is reserved transactionally before transport. Unresolved requests retain their
+is reserved transactionally before transport. Unapproved unresolved requests retain their
 reserve and stop subsequent attempts; configured stop and lifetime limits apply
 cumulatively.
 
@@ -75,9 +75,31 @@ digest, prior state and timestamp. Repeated/concurrent release is idempotent;
 unreconciled attempts, other unknowns and new contract failures remain blocked.
 This path still requires independent review before operational use.
 
+## Single conservative continuation
+
+The separate `--continue-conservatively PRIVATE_APPROVAL_JSON` mode requires
+`I_AUTHORIZE_ONE_TRANSPORT_FAILURE_AT_FULL_RESERVE`. It cannot run together
+with inference, reconciliation or review-release modes. Approval binds an
+explicit user confirmation/reference/time, one exact failed-attempt snapshot,
+and independently reviewed code plus matching successful CI evidence.
+
+The ledger admits at most one such exception for the entire task. A transaction
+adds a singleton audit with the original snapshot, full reserve and approval
+evidence. It does not change the original `unknown` state, null actual cost,
+failure outcome or reservation, and never imputes actual consumption or zero cost.
+The full reservation remains permanently in conservative exposure across
+restarts, future successful settlements and repeated approval calls.
+
+`uncertain_billing` continues to report the unknown cost. Only the precisely
+approved attempt is excluded from `blocking_uncertainty`; all other unresolved
+attempts still block. Every new request retains its maximum-cost reservation
+and cumulative stop/hard-limit checks. A new failure stops immediately and
+cannot receive another exception. This entrypoint awaits independent review
+before use; it provides no general retry or unknown-billing bypass.
+
 ## Validation and unmet acceptance
 
-- 61 focused Ask regression tests passed, including real SDK parsing,
+- 71 focused Ask regression tests passed, including real SDK parsing,
   exact alias/canonical mapping, wrong-model/provider/receipt rejection,
   inconsistent usage/reasoning, failed reconciliation, replay and concurrency.
   Release tests additionally cover exact CI/head binding, unreviewed code,
@@ -85,6 +107,9 @@ This path still requires independent review before operational use.
 - Offline transport regressions cover connection failures, HTTP rejection,
   timeout, budget blocking, settlement/storage failure and secret-shaped
   correlation IDs without contacting a model provider.
+- Conservative-continuation tests cover immutable unknown accounting,
+  permanent full exposure, one-use authorization, concurrent idempotency,
+  unchanged limits and immediate blocking on any subsequent unknown.
 - The 58/58 offline fixtures validate the contract and error boundary; they do
   not measure real model understanding.
 - The original canary did not complete strict JSON and completion-receipt
