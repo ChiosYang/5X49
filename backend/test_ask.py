@@ -326,18 +326,41 @@ class AskTests(unittest.TestCase):
         self.assertEqual(self.query(rating_min=3, rating_max=3)["results"]["total"], 0)
 
     def test_explicit_comparison_idioms_reach_provider_without_dropping_real_or(self):
-        for question, inclusive in (("Find films 90 minutes or less.", True), ("Find films shorter than 90 minutes.", False)):
-            plan = AskPlan(duration_max=90, duration_max_inclusive=inclusive)
-            interpreter, factory, client = self._interpreter(json.dumps({"status":"ready", "plan":plan.model_dump(), "reason":None}))
-            with patch.dict(os.environ, {"OPENROUTER_API_KEY":"synthetic"}):
-                result = interpreter.interpret(self.question(question=question))
-            self.assertEqual(result.plan, plan)
-            client.chat.completions.create.assert_called_once()
-            self.assertEqual(client.chat.completions.create.call_args.kwargs["messages"][1]["content"], question)
+        measures = (("90 minutes", 90), ("an hour", 60), ("a minute", 1),
+                    ("twenty minutes", 20), ("eleven minutes", 11),
+                    ("nineteen minutes", 19), ("thirty minutes", 30),
+                    ("forty-five minutes", 45), ("seventy five minutes", 75),
+                    ("one hundred and twenty minutes", 120),
+                    ("one thousand minutes", 1000), ("half an hour", 30),
+                    ("a quarter of an hour", 15), ("three quarters of an hour", 45),
+                    ("one and a half hours", 90), ("an hour and a half", 90),
+                    ("1.5 hrs", 90), ("90min", 90), ("1h", 60))
+        for measure, minutes in measures:
+            for comparison, bounds in (
+                (f"{measure} or less", {"duration_max": minutes}),
+                (f"{measure} or more", {"duration_min": minutes}),
+                (f"shorter than {measure}", {"duration_max": minutes, "duration_max_inclusive": False}),
+                (f"longer than {measure}", {"duration_min": minutes, "duration_min_inclusive": False}),
+            ):
+                question = f"Find films {comparison}."
+                with self.subTest(question=question):
+                    plan = AskPlan(**bounds)
+                    interpreter, _, client = self._interpreter(json.dumps({"status":"ready", "plan":plan.model_dump(), "reason":None}))
+                    with patch.dict(os.environ, {"OPENROUTER_API_KEY":"synthetic"}):
+                        result = interpreter.interpret(self.question(question=question))
+                    self.assertEqual(result.plan, plan)
+                    client.chat.completions.create.assert_called_once()
+                    self.assertEqual(client.chat.completions.create.call_args.kwargs["messages"][1]["content"], question)
         from app.services.ask import intent_guard
-        for question in ("90 minutes or less, or French films", "shorter than 90 minutes or longer than 120 minutes"):
+        for question in ("90 minutes or less, or French films", "shorter than 90 minutes or longer than 120 minutes",
+                         "an hour or less, or French films", "shorter than twenty minutes or longer than an hour",
+                         "a quarter of an hour or more, or French films", "ninety minutes or more than an hour"):
             self.assertEqual(intent_guard(question).reason, "multiple_values")
-        self.assertEqual(intent_guard("Find shorter films").reason, "ambiguous_duration")
+        for question in ("Find shorter films", "Find shorter than usual films"):
+            self.assertEqual(intent_guard(question).reason, "ambiguous_duration")
+        for question, reason in (("an hour or less without horror", "negation"),
+                                 ("shorter than twenty minutes with a warm mood", "similarity")):
+            self.assertEqual(intent_guard(question).reason, reason)
 
     def test_target_disclosure_changes_are_rejected_before_provider_transport(self):
         from app.models import Setting

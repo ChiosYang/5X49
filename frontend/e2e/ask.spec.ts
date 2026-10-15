@@ -10,6 +10,7 @@ async function control(request: APIRequestContext, action: string, extra = {}) {
 }
 async function describe(page: Page, question: string) {
   await page.getByLabel('Your question', { exact: true }).fill(question);
+  await expect(page.getByLabel('Your question', { exact: true })).toHaveValue(question);
   await page.getByRole('checkbox', { name: /^Send this question/ }).check();
   await page.getByRole('button', { name: 'Send and review conditions', exact: true }).click();
 }
@@ -273,4 +274,38 @@ test('a fresh Explore entry from Film does not inherit an older same-URL AI conf
   await expect(page.getByRole('region',{name:'Review conditions'})).toHaveCount(0);
   await page.goBack(); await expect(page).toHaveURL(/\/en\/library\/film_/);
   await page.goBack(); await expect.poll(()=>titles(page)).toEqual(['Alpha']);
+});
+
+
+test('explicit English quantities remain editable and unqueried until confirmed', async ({ page }) => {
+  let queries=0;
+  page.on('request', req=>{ if(req.url().endsWith('/ask/query')) queries+=1; });
+  const cases = [
+    ['Films an hour or less.','Maximum duration (minutes)','60'],
+    ['Films shorter than twenty minutes.','Maximum duration (minutes)','20'],
+    ['Films forty-five minutes or less.','Maximum duration (minutes)','45'],
+    ['Films shorter than one hundred and twenty minutes.','Maximum duration (minutes)','120'],
+    ['Films an hour and a half or less.','Maximum duration (minutes)','90'],
+    ['Films 1.5 hrs or more.','Minimum duration (minutes)','90'],
+  ];
+  for (const [question,label,value] of cases) {
+    await page.goto('/en/explore'); await describe(page,question);
+    await expect(page.getByLabel(label,{exact:true})).toHaveValue(value);
+    await expect(page.getByRole('button',{name:'Find films with these conditions',exact:true})).toBeVisible();
+    expect(queries).toBe(0);
+  }
+});
+
+
+test('initial Explore hydration keeps the composer unavailable until recovery is ready', async ({ page }) => {
+  let release!: () => void;
+  const hydration = new Promise<void>(resolve => { release=resolve; });
+  await page.route(/\/_next\/static\/.*\.js(?:\?|$)/, async route => { await hydration; await route.continue(); });
+  try {
+    await page.goto('/en/explore',{waitUntil:'commit'});
+    await expect(page.getByLabel('Your question',{exact:true})).toBeDisabled();
+  } finally { release(); }
+  await expect(page.getByLabel('Your question',{exact:true})).toBeEnabled();
+  await describe(page,'Films an hour or less.');
+  await expect(page.getByLabel('Maximum duration (minutes)',{exact:true})).toHaveValue('60');
 });

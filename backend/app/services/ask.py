@@ -45,11 +45,23 @@ def intent_guard(text: str) -> AskInterpretation | None:
     # Mask only explicit scalar-comparison idioms for guard classification.
     # The original question still reaches the model unchanged. A second OR or
     # an unsupported condition elsewhere remains visible to the blockers.
-    number = r"(?:\d+(?:\.\d+)?|one|two|three|four|five|six|seven|eight|nine|ten|sixty|ninety)"
-    unit = r"(?:minutes?|mins?|hours?|hrs?|stars?)"
-    guard_text = re.sub(r"\b(?:shorter|longer)\s+than\s+" + number + r"\s+" + unit + r"\b",
+    # Recognize quantity syntax, rather than a few sample values. This only
+    # distinguishes an explicit comparison from vague length / genuine OR;
+    # the planner still interprets and validates the original, unchanged text.
+    cardinal_word = (r"(?:zero|one|two|three|four|five|six|seven|eight|nine|ten|"
+                     r"eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|"
+                     r"eighteen|nineteen|twenty|thirty|forty|fifty|sixty|seventy|"
+                     r"eighty|ninety|hundred|thousand)")
+    cardinal = cardinal_word + r"(?:[\s-]+(?:and[\s-]+)?" + cardinal_word + r")*"
+    fraction = r"(?:(?:(?:a|one)\s+)?half|(?:(?:a|one|three)\s+)?quarters?)"
+    quantity = (r"(?:(?:" + cardinal + r"|a|an)(?:\s+and\s+" + fraction + r")?|"
+                + fraction + r"(?:\s+(?:of\s+)?(?:a|an))?)")
+    unit = r"(?:minutes?|mins?|m|hours?|hrs?|h|stars?)"
+    measure = (r"(?:\d+(?:\.\d+)?\s*" + unit + r"|" + quantity + r"\s+" + unit + r")"
+               r"(?:\s+and\s+" + fraction + r")?\b")
+    guard_text = re.sub(r"\b(?:shorter|longer)\s+than\s+" + measure,
                         "explicit numeric comparison", text, flags=re.IGNORECASE)
-    guard_text = re.sub(number + r"\s+" + unit + r"\s+or\s+(?:less|more|fewer|shorter|longer|below|above|higher|lower)\b(?!\s+(?:than|\d))",
+    guard_text = re.sub(r"\b" + measure + r"\s+or\s+(?:less|more|fewer|shorter|longer|below|above|higher|lower)\b(?!\s+(?:than|\d))",
                         "explicit numeric comparison", guard_text, flags=re.IGNORECASE)
     patterns = (
         ("unsupported", "non_search", r"\b(?:sql|delete|scrape|write|download|rename|move files)\b|刮削|删除|下载|修改|重命名|私人笔记|私密笔记"),

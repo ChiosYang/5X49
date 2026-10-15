@@ -628,9 +628,12 @@ to use these defaults. Provider output must include **all** plan fields:
   primary-video `duration_seconds` first, otherwise positive `runtime_minutes*60`.
   Missing/nonpositive durations are unknown. Inclusive flags preserve >=/<= or
   >/<; omitted bounds must have inclusive=true. Reversed or empty ranges are 422.
-  Explicit English comparisons such as "90 minutes or less" (<=90) and
-  "shorter than 90 minutes" (<90) pass the local guard unchanged to the planner;
-  a genuine OR between alternatives and vague "shorter films" remain blocked.
+  Explicit English comparisons pass the local guard unchanged to the planner:
+  digits/decimals, English cardinal words and compounds, articles ("an hour"),
+  common fractions ("an hour and a half") and abbreviated/compact units ("1.5 hrs",
+  "90min"). This recognizes quantity syntax without interpreting values; the
+  planner still validates the original request. A genuine OR between alternatives,
+  unsupported requirements and vague "shorter films" remain blocked.
 - `rating_min/max`: strict integer **Film personal overall stars** 1–5, inclusive.
   This is `profile_state.rating` / FilmProfileState.rating, never a per-Viewing
   score or external score. Missing values do not match active bounds; inactive
@@ -679,8 +682,10 @@ Embedded Explore state is scoped to both the normalized fact-query URL and a
 unique browser history entry. Returning to its Film source can revalidate the
 confirmed plan; a Person/Genre deep link, another fact query, or a fresh same-URL
 entry cannot inherit a different entry's AI plan or hide its URL conditions.
+The embedded composer accepts input only after initial source recovery; a nonempty
+question keeps disclosure/consent visible across hydration and first scope discovery.
 
-See [AI Film finder quality](quality/ask-phase-one.md) for the 52-case fixture
+See [AI Film finder quality](quality/ask-phase-one.md) for the 58-case fixture
 corpus and the separately authorized live evaluation guard. Offline acceptance
 does not certify model parsing accuracy, cost or usefulness, and never unlocks
 Analysis V2 inference relationships.

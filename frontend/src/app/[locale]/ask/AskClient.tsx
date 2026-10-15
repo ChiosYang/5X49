@@ -23,6 +23,7 @@ export default function AskClient({ embedded = false, contextKey = "/explore", o
   const status = useSWR<AskStatus>(API.askStatus(), { revalidateOnFocus: true, focusThrottleInterval: 0, dedupingInterval: 0 });
   const refreshStatus = status.mutate;
   const [sessionKey, setSessionKey] = useState<string | null>(embedded ? null : ASK_SESSION_KEY);
+  const [sessionReady, setSessionReady] = useState(!embedded);
   const sessionScope = useRef<string | null>(null);
   const [chosenMode, setMode] = useState<"question" | "form" | null>(null);
   const mode = chosenMode ?? (embedded || status.data?.configured ? "question" : "form");
@@ -46,7 +47,7 @@ export default function AskClient({ embedded = false, contextKey = "/explore", o
   const [observation, setObservation] = useState<AskObservation | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const active = Boolean(resolution || busy || error || mode === "form" || composerOpen);
+  const active = Boolean(resolution || busy || error || mode === "form" || composerOpen || question.trim());
   const compact = embedded && mode === "question" && !active;
 
   const clearSaved = () => { try { if (sessionKey) sessionStorage.removeItem(sessionKey); } catch { /* Optional storage. */ } };
@@ -104,10 +105,17 @@ export default function AskClient({ embedded = false, contextKey = "/explore", o
       }
       const next = askExploreSessionKey(contextKey, entry);
       if (sessionScope.current === next) return;
+      const changed = sessionScope.current !== null;
       sessionScope.current = next;
-      gate.current.cancel(); lastAttempt.current = null; setRetryKind(null); setBusy(false); setResolution(null);
-      setDraft({ ...emptyAskPlan }); setPersonId(null); setQuestion(""); setMode(null); setComposerOpen(false);
-      updateConsent(null); setError(""); setObservation(null); setSessionKey(next);
+      setSessionReady(false);
+      // Initial scope discovery must not clobber a focus/input event arriving
+      // during hydration. Later history-entry changes deliberately reset it.
+      if (changed) {
+        gate.current.cancel(); lastAttempt.current = null; setRetryKind(null); setBusy(false); setResolution(null);
+        setDraft({ ...emptyAskPlan }); setPersonId(null); setQuestion(""); setMode(null); setComposerOpen(false);
+        updateConsent(null); setError(""); setObservation(null);
+      }
+      setSessionKey(next);
     };
     void Promise.resolve().then(establish);
     window.addEventListener("popstate", establish);
@@ -122,10 +130,14 @@ export default function AskClient({ embedded = false, contextKey = "/explore", o
     if (!sessionKey || restored.current === sessionKey) return;
     let payload: ReturnType<typeof parseAskSession> = null;
     try { payload = parseAskSession(sessionStorage.getItem(sessionKey)); } catch { /* Optional storage. */ }
-    if (!payload) { restored.current = sessionKey; return; }
     let mounted = true;
     // The persisted plan was already confirmed. Revalidate it locally, never reuse Film data.
-    void Promise.resolve().then(() => { if (!mounted) return; restored.current = sessionKey; setMode("form"); setDraft(payload!.plan); setPersonId(payload!.person_id); void request(API.askQuery(), payload!); });
+    void Promise.resolve().then(() => {
+      if (!mounted) return;
+      restored.current = sessionKey;
+      if (payload) { setMode("form"); setDraft(payload.plan); setPersonId(payload.person_id); void request(API.askQuery(), payload); }
+      setSessionReady(true);
+    });
     return () => { mounted = false; };
   }, [request, sessionKey]);
   const edit = (plan: AskPlan, selectedPerson: string | null) => {
@@ -151,7 +163,7 @@ export default function AskClient({ embedded = false, contextKey = "/explore", o
         <form id="ask-form" onSubmit={event => { event.preventDefault(); prepare(); }} className={compact ? "flex min-w-0 items-center gap-3" : "mt-5 space-y-5"}>
           {mode === "question" ? <>
             <FormField label={compact ? <span className="sr-only">{t("questionLabel")}</span> : t("questionLabel")} description={compact ? undefined : t("privacy")}>
-              <TextArea aria-label={t("questionLabel")} value={question} maxLength={600} rows={compact ? 1 : embedded ? 2 : 3} onFocus={() => { if (embedded) setComposerOpen(true); }} onChange={event => { setMode("question"); setQuestion(event.target.value); updateConsent(null); reset(); }} placeholder={compact ? t("compactPlaceholder") : t("example")} />
+              <TextArea aria-label={t("questionLabel")} disabled={!sessionReady} value={question} maxLength={600} rows={compact ? 1 : embedded ? 2 : 3} onFocus={() => { if (embedded) setComposerOpen(true); }} onChange={event => { setMode("question"); setQuestion(event.target.value); updateConsent(null); reset(); }} placeholder={compact ? t("compactPlaceholder") : t("example")} />
             </FormField>
             {!compact && <button type="button" className="focus-ring text-left text-sm text-ink-subtle underline" onClick={() => { setQuestion(t("example")); updateConsent(null); reset(); }}>{t("useExample")}</button>}
             {!compact && disclosure && <label className="flex items-start gap-3 text-sm leading-6 text-ink-muted"><input type="checkbox" className="focus-ring mt-1 shrink-0" checked={consent} onChange={event => updateConsent(event.target.checked ? disclosureId : null)} /><span className="min-w-0 break-words">{t("providerConsent", { provider: disclosure })}</span></label>}
@@ -171,7 +183,7 @@ export default function AskClient({ embedded = false, contextKey = "/explore", o
           </div>}
           {mode === "form" && <div className="flex flex-wrap gap-2" role="group" aria-label={t("chooseLocal")}>{(["genre", "country", "person", "decade"] as const).map(dimension => <Button key={dimension} onClick={() => setFinder(dimension)}>{t("chooseFact", { field: t(`fields.${dimension}`) })}</Button>)}</div>}
           {!compact && <p className="text-sm leading-6 text-ink-subtle">{t("supported")}</p>}
-          {compact ? <Button title={status.data?.configured === false ? t("noKey") : undefined} onClick={() => switchMode("form")}>{t("formMode")}</Button> : <Button type="submit" busy={busy} disabled={busy || (mode === "question" && (!question.trim() || !status.data?.configured || !consent))} variant="primary">{mode === "question" ? t("interpret") : t("preview")}</Button>}
+          {compact ? <Button disabled={!sessionReady} title={status.data?.configured === false ? t("noKey") : undefined} onClick={() => switchMode("form")}>{t("formMode")}</Button> : <Button type="submit" busy={busy} disabled={!sessionReady || busy || (mode === "question" && (!question.trim() || !status.data?.configured || !consent))} variant="primary">{mode === "question" ? t("interpret") : t("preview")}</Button>}
         </form>
         {error && <div role="alert" className="mt-6 space-y-3"><InlineFeedback tone="error">{t(`errors.${["ask_not_configured", "ask_private_input", "ask_busy", "ask_timeout", "ask_invalid_response", "ask_provider_unavailable", "ask_provider_configuration", "ask_consent_required", "ask_consent_changed", "ask_invalid_selection", "projection_unavailable", "invalid_request"].includes(error) ? error : "unavailable"}`)}</InlineFeedback><div className="flex flex-wrap gap-3"><Button disabled={busy || (retryKind === "interpret" && !consent)} onClick={() => { if (lastAttempt.current) void request(lastAttempt.current.url, lastAttempt.current.payload); }}>{t("retry")}</Button><Button onClick={() => switchMode("form")}>{t("formMode")}</Button></div></div>}
         {observation && <p className="mt-5 break-words text-xs leading-5 text-ink-subtle" aria-label={t("usage")}>{t("observation", { model: observation.response_model ?? observation.requested_model ?? t("unknown"), latency: observation.latency_ms === null ? t("unknown") : Math.round(observation.latency_ms), tokens: observation.total_tokens ?? t("unknown"), cost: observation.cost_usd === null ? t("unknownCost") : `$${observation.cost_usd.toFixed(6)}` })}</p>}

@@ -305,8 +305,10 @@ TMDB 功能需要 `TMDB_API_KEY` 环境变量或托管设置；读取设置只�
   增加duration_min/max（严格整数分钟1–10000）及duration_min/max_inclusive
   （默认true，缺少边界时必须true）。使用正视频秒数，否则正影片runtime_minutes；
   按精确秒数比较，不舍入。空值或非正时长不满足已启用的范围。
-  明确的90 minutes or less / shorter than 90 minutes为支持的比较；真正的OR
-  多值及无数值的shorter films仍拦截，不得把比较词or误当多值。
+  明确数量比较可用数字/小数、完整英文基数词及组合、a/an冠词、常见分数和
+  缩写/紧连单位，如an hour、twenty minutes、an hour and a half、90min。
+  guard只识别数量语法，不解释数值；原问题不变交给planner约束校验。真正的OR
+  多值、其他不支持条件及无数值的shorter films仍拦截。
 - rating_min/max是影片个人总体整数评分1–5星，包含端点；不得替换为外部评分或
   Viewing评分。空值不满足已启用范围。反向/空范围、布尔代整数等返回422。
 - POST `/ask/query` 增加confirmed:true、offset（0–100000）；重新本地解析，
@@ -322,7 +324,8 @@ TMDB 功能需要 `TMDB_API_KEY` 环境变量或托管设置；读取设置只�
 - 无Key或故障时使用本地表单。仅已确认的结构条件保留在会话，问题和结果不持久化。
 - Explore确认恢复仅限相同规范化query和浏览器history条目；人物/类型深链、
   不同筛选URL和新建同URL条目不得恢复旧AI计划遮蔽事实条件。
-- 52条离线fixture只是工程证据。真实评估需显式启动、固定模型/provider、累计US$1
+  首屏恢复完成前输入禁用；非空问题保持展开，首次history作用域发现不得清空交互状态。
+- 58条离线fixture只是工程证据。真实评估需显式启动、固定模型/provider、累计US$1
   持久账本与逐次最大token费用预留；未知计费或异常路由立即停机，不充值、不改凭证。
   完整请求和评估入口见docs/api.md与docs/quality/ask-phase-one.md。
 

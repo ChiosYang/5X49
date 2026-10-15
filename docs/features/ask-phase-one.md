@@ -18,7 +18,7 @@ the entire plan, then show owned Films with verifiable local match reasons.
   unknowns excluded only when the corresponding condition is active.
 - Provider disclosure/consent, bounded validation, timeout, manual fallback,
   cancellation and stale-response protection; no inferred Analysis V2 edges.
-- 52 bilingual acceptance cases and offline fixture evaluation. A separate
+- 58 bilingual acceptance cases and offline fixture evaluation. A separate
   live evaluation entrypoint must require explicit authorization and budget.
 
 ## Decisions
@@ -52,7 +52,7 @@ the entire plan, then show owned Films with verifiable local match reasons.
 
 ## Verification evidence
 
-- Resumed 2026-10-15: 52/52 offline corpus; 12 budget/evaluation tests; full 438-test backend run (3 skipped); 95 frontend unit tests; lint/typecheck/build; all 93 real-backend UI E2E pass, including 19 Ask flows.
+- Resumed 2026-10-15: 58/58 offline corpus; 12 budget/evaluation tests; full 438-test backend run (3 skipped); 95 frontend unit tests; lint/typecheck/build; all 95 real-backend UI E2E pass, including 21 Ask flows.
 - Details and exact commands: [quality evidence](../quality/ask-phase-one.md).
 - Self-review fixed atomic query snapshots, person-choice/editor race, stale responses and the zero-unsupported-failure evaluation gate. No live model quality is claimed.
 
@@ -63,8 +63,10 @@ the entire plan, then show owned Films with verifiable local match reasons.
 
 ## Independent review corrections
 
-- Allow explicit numeric-comparison idioms while retaining real OR/ambiguity guards.
+- Recognize explicit English quantity syntax (articles, full cardinal vocabulary and compounds, common fractions, decimal and abbreviated units) while retaining real OR/ambiguity guards. A 19-quantity/four-comparison backend matrix covers 76 unchanged provider payloads; six added fixture expressions have real-backend UI coverage.
 - Bind each interpretation and retry to current consent and the actual provider target.
 - Scope Explore recovery to the source normalized fact query and history entry.
 - Preserve all existing local changes and saved test evidence through the Windows
   execution-environment outage; resumed work never reads or transfers credentials.
+
+- Initial source recovery gates composer readiness; first history-scope discovery never clears initial interaction state. Nonempty questions retain consent controls. Deterministic blocked-hydration E2E covers the Linux-discovered first-input race.

@@ -2,8 +2,8 @@
 
 ## Evidence classes
 
-`backend/app/evaluation/fixtures/ask_acceptance.json` contains 52 bilingual
-cases: 30 supported plans (including ambiguous Person names and empty matches),
+`backend/app/evaluation/fixtures/ask_acceptance.json` contains 58 bilingual
+cases: 36 supported plans (including ambiguous Person names and empty matches),
 10 unsupported/negated requests, 4 clarifications, 2 synthetic privacy cases,
 2 interface failures and 4 malicious response fixtures. Supported parsing target
 is >=95%; unsupported requirements must never silently disappear. The live gate
@@ -72,7 +72,7 @@ including canaries, failures and any separately authorized retries.
 
 ## Current results
 
-- Offline fixture contract: 52/52 passed; 12 evaluation/budget tests passed (including the zero-unsupported-failure gate).
+- Offline fixture contract: 58/58 passed; 12 evaluation/budget tests passed (including the zero-unsupported-failure gate).
 - Live canary preflight: blocked before any inference because an existing
   exported OPENROUTER_API_KEY is missing in this execution environment.
 - Actual paid model requests in this task: 0. Actual model spend: US$0.
@@ -80,7 +80,7 @@ including canaries, failures and any separately authorized retries.
   are unverified. Offline success must not be reported as the >=95% model gate.
 - Complete backend replay on 2026-10-15: `uv run --no-sync python -X utf8 -m unittest discover -s . -p test_*.py -v` — 438 tests, 3 conditional skips, passed; includes all 12 evaluation/budget tests.
 - Frontend `npm run test:unit` — 95 passed; `npm run lint` and `npm run typecheck -- --incremental false` passed.
-- `npm run test:e2e` — production build and all 93 real-backend browser tests passed (including 19 Ask tests). English/Chinese, 1440px desktop and 390px narrow layouts were inspected. Existing four-entry Explore first-screen and transparent navigation checks remain passing.
+- `npm run test:e2e` — production build and all 95 real-backend browser tests passed (including 21 Ask tests). English/Chinese, 1440px desktop and 390px narrow layouts were inspected. Existing four-entry Explore first-screen and transparent navigation checks remain passing.
 - Python `compileall -q app`, backend Skill validation and `git diff --check` passed.
 - Release-tooling tests: 15 run, 12 passed, 1 conditional skip; two Compose checks cannot run locally because Docker CLI is absent. No Docker/release configuration was changed. GitHub CI runs these on its Docker-equipped Linux runner.
 - Windows test environment: long temp paths failed backup rehearsal; an 8.3 alias failed media-boundary comparison. The successful run used a short canonical C:/Users/Administrator/AppData/Local/Temp/5x49-unit-task3 directory. A long D-drive replay was stopped after 20 minutes and replaced with visible per-test progress.
@@ -90,19 +90,27 @@ including canaries, failures and any separately authorized retries.
 
 ## Independent review follow-up (2026-10-15)
 
-- Explicit numeric comparisons are exempted only from generic OR/vague-length
-  blockers. The original question remains unchanged, and actual OR alternatives
-  remain unsupported. Two English comparison cases extend the corpus to 52.
-- Interpretation retries require current consent, including after withdrawal or
-  SWR target updates. Requests carry a public target identity; the backend rejects
-  stale model/base-URL identities before creating a provider client.
-- Explore recovery uses normalized query plus a random history-entry identity.
-  Film Person deep links and Back/Forward cannot inherit another entry's plan;
-  same-source Film Back remains covered by real-backend E2E.
-- Saved verification before the environment outage: 35 targeted backend tests,
-  95 frontend unit tests, lint/typecheck and 19 Ask UI E2E passed. Resumed
-  verification passed the full 438-test backend suite (3 conditional skips),
-  95 frontend unit tests, lint/typecheck, production build and all 93 real-backend
-  UI tests, including the 19 Ask flows. The 52-case offline replay passed.
-- Real model requests remain 0, cumulative model spend US$0. The existing exported
-  credential remains unavailable; no credential configuration or transfer occurs.
+- Interpretation/retry requires current consent and a public identity of the actual
+  frozen model/base URL. Changed targets fail before constructing a provider client.
+- Explore recovery uses normalized query plus browser history-entry identity;
+  different deep links/fresh entries retain their fact filters, while source
+  Film Back revalidates only that entry's confirmed conditions.
+- Quantity syntax covers all English cardinal words and compounds, a/an articles,
+  common fractions, decimals and abbreviated/compact units. A 19-quantity by
+  four-comparison matrix verifies 76 unchanged provider payloads. Actual OR,
+  negation, unsupported style and vague length remain blocked. Eight comparison
+  fixture additions extend the corpus from 50 to 58 (36 supported).
+- The first post-review Linux run (head 5ad87e61, run 38667509491) exposed an
+  initialization race: scope discovery could collapse the composer between focus
+  and input, hiding consent despite a nonempty question. The local replay also
+  reproduced it. Initial source recovery now gates input readiness; first scope
+  discovery does not clear interaction state, and nonempty questions keep the
+  composer expanded. A deterministic E2E blocks JavaScript hydration to verify
+  the SSR input remains unavailable until recovery completes. No blind CI rerun
+  or timeout increase masks the fault.
+- Final replay: all 438 backend tests passed (3 conditional skips), 58/58 fixture
+  cases, 95 frontend unit tests, lint/typecheck, production build and all 95 real
+  backend UI tests passed, including 21 Ask flows and both new regressions.
+- Real model requests remain 0, cumulative model spend US$0; live accuracy,
+  provider compatibility/latency/cost and usefulness remain unverified. No
+  credential configuration or transfer occurred; the Key location is pending.

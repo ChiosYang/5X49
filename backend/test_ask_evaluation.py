@@ -28,7 +28,7 @@ class AskEvaluationTests(unittest.TestCase):
 
     def test_bilingual_fixtures_are_contract_evidence_not_model_quality(self):
         report = offline()
-        self.assertEqual((report['fixture_cases'], report['fixture_passed']), (52, 52))
+        self.assertEqual((report['fixture_cases'], report['fixture_passed']), (58, 58))
         self.assertIsNone(report['live_supported_accuracy'])
         self.assertIsNone(report['cost_usd'])
         self.assertEqual({case['locale'] for case in corpus()}, {'en', 'zh'})

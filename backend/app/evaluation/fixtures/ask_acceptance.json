@@ -976,6 +976,156 @@
           "rating_max": null
         }
       }
+    },
+    {
+      "id": "ask-53",
+      "locale": "en",
+      "category": "duration_comparison",
+      "question": "Films an hour or less.",
+      "expected": {
+        "status": "ready",
+        "plan": {
+          "genre": null,
+          "person": null,
+          "person_role": "any",
+          "country": null,
+          "decade": null,
+          "view": "all",
+          "sort": "title",
+          "direction": "asc",
+          "duration_min": null,
+          "duration_max": 60,
+          "duration_min_inclusive": true,
+          "duration_max_inclusive": true,
+          "rating_min": null,
+          "rating_max": null
+        }
+      }
+    },
+    {
+      "id": "ask-54",
+      "locale": "en",
+      "category": "duration_comparison",
+      "question": "Films shorter than twenty minutes.",
+      "expected": {
+        "status": "ready",
+        "plan": {
+          "genre": null,
+          "person": null,
+          "person_role": "any",
+          "country": null,
+          "decade": null,
+          "view": "all",
+          "sort": "title",
+          "direction": "asc",
+          "duration_min": null,
+          "duration_max": 20,
+          "duration_min_inclusive": true,
+          "duration_max_inclusive": false,
+          "rating_min": null,
+          "rating_max": null
+        }
+      }
+    },
+    {
+      "id": "ask-55",
+      "locale": "en",
+      "category": "duration_comparison",
+      "question": "Films forty-five minutes or less.",
+      "expected": {
+        "status": "ready",
+        "plan": {
+          "genre": null,
+          "person": null,
+          "person_role": "any",
+          "country": null,
+          "decade": null,
+          "view": "all",
+          "sort": "title",
+          "direction": "asc",
+          "duration_min": null,
+          "duration_max": 45,
+          "duration_min_inclusive": true,
+          "duration_max_inclusive": true,
+          "rating_min": null,
+          "rating_max": null
+        }
+      }
+    },
+    {
+      "id": "ask-56",
+      "locale": "en",
+      "category": "duration_comparison",
+      "question": "Films shorter than one hundred and twenty minutes.",
+      "expected": {
+        "status": "ready",
+        "plan": {
+          "genre": null,
+          "person": null,
+          "person_role": "any",
+          "country": null,
+          "decade": null,
+          "view": "all",
+          "sort": "title",
+          "direction": "asc",
+          "duration_min": null,
+          "duration_max": 120,
+          "duration_min_inclusive": true,
+          "duration_max_inclusive": false,
+          "rating_min": null,
+          "rating_max": null
+        }
+      }
+    },
+    {
+      "id": "ask-57",
+      "locale": "en",
+      "category": "duration_comparison",
+      "question": "Films an hour and a half or less.",
+      "expected": {
+        "status": "ready",
+        "plan": {
+          "genre": null,
+          "person": null,
+          "person_role": "any",
+          "country": null,
+          "decade": null,
+          "view": "all",
+          "sort": "title",
+          "direction": "asc",
+          "duration_min": null,
+          "duration_max": 90,
+          "duration_min_inclusive": true,
+          "duration_max_inclusive": true,
+          "rating_min": null,
+          "rating_max": null
+        }
+      }
+    },
+    {
+      "id": "ask-58",
+      "locale": "en",
+      "category": "duration_comparison",
+      "question": "Films 1.5 hrs or more.",
+      "expected": {
+        "status": "ready",
+        "plan": {
+          "genre": null,
+          "person": null,
+          "person_role": "any",
+          "country": null,
+          "decade": null,
+          "view": "all",
+          "sort": "title",
+          "direction": "asc",
+          "duration_min": 90,
+          "duration_max": null,
+          "duration_min_inclusive": true,
+          "duration_max_inclusive": true,
+          "rating_min": null,
+          "rating_max": null
+        }
+      }
     }
   ]
 }
