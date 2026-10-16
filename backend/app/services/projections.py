@@ -736,9 +736,8 @@ class ProjectionReader:
                 conditions.append(profile["favorite"].as_boolean().is_(True))
             # Use the same effective duration for both filtering and sorting.
             # Zero/negative imported lengths are unknown, not short films.
-            seconds = model.payload["primary_item"]["video"]["duration_seconds"].as_float()
-            minutes = model.payload["runtime_minutes"].as_integer()
-            duration = func.coalesce(case((seconds > 0, seconds)), case((minutes > 0, minutes * 60)))
+            from app.services.library_facts import effective_duration_sql
+            duration = effective_duration_sql(model.payload)
             # The payload already includes manually protected metadata overlays.
             year = model.payload["year"].as_integer()
             # Film personal overall rating only: never aggregate Viewings or

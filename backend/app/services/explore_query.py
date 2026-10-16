@@ -244,12 +244,22 @@ class ExploreQueryService:
         limit: int,
         offset: int,
         person_roles: dict[str, str] | None = None,
+        duration_min: int | None = None,
+        duration_max: int | None = None,
+        duration_min_inclusive: bool = True,
+        duration_max_inclusive: bool = True,
+        rating_min: int | None = None,
+        rating_max: int | None = None,
     ) -> dict[str, Any]:
         normalized = {
             dimension: sorted(set(filters.get(dimension, [])))
             for dimension in EXPLORE_DIMENSIONS
         }
         with Session(engine) as session:
+            # sqlite3's legacy SELECT mode does not start a physical transaction.
+            # Pin one read snapshot so counts, scalar predicates and explanations
+            # cannot describe different facts during a concurrent profile edit.
+            session.connection().exec_driver_sql("BEGIN")
             self._require(session)
             active_filters, unresolved_filters = self._resolve_filters(session, normalized)
             candidate_ids: set[str] | None = None
@@ -277,6 +287,22 @@ class ExploreQueryService:
                 candidate_ids = matching if candidate_ids is None else candidate_ids & matching
 
             statement = select(ExploreFilmReadModel)
+            if any(value is not None for value in (duration_min, duration_max, rating_min, rating_max)):
+                from app.services.library_facts import effective_duration_sql
+                payload = LibraryFilmReadModel.payload
+                duration = effective_duration_sql(payload)
+                rating = payload["profile_state"]["rating"].as_integer()
+                conditions = [LibraryFilmReadModel.visible.is_(True)]
+                for value, lower, upper, factor, lower_inclusive, upper_inclusive in (
+                    (duration, duration_min, duration_max, 60, duration_min_inclusive, duration_max_inclusive),
+                    (rating, rating_min, rating_max, 1, True, True),
+                ):
+                    if lower is not None:
+                        conditions.append(value >= lower * factor if lower_inclusive else value > lower * factor)
+                    if upper is not None:
+                        conditions.append(value <= upper * factor if upper_inclusive else value < upper * factor)
+                statement = statement.where(ExploreFilmReadModel.film_id.in_(
+                    select(LibraryFilmReadModel.film_id).where(*conditions)))
             if candidate_ids is not None:
                 if not candidate_ids:
                     rows: list[ExploreFilmReadModel] = []

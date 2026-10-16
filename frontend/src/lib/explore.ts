@@ -158,3 +158,11 @@ export function graphNodeHref(node: Pick<GraphNode, "id" | "entity_type" | "conc
   }
   return null;
 }
+
+/** Same normalization as the server page; never include question/finder text. */
+export function exploreLocationContext(url: string) {
+  const parsed = new URL(url);
+  if (!parsed.pathname.replace(/\/+$/, "").endsWith("/explore")) return null;
+  const input = Object.fromEntries([...EXPLORE_DIMENSIONS, "view", "sort", "dir", "offset"].map(key => [key, parsed.searchParams.getAll(key)]));
+  return exploreHref(parseExploreQuery(input));
+}
