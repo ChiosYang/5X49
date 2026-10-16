@@ -62,6 +62,7 @@ def evaluate_case(case, interpreter):
     started = time.perf_counter()
     observation = None
     transport_error = None
+    receipt_error = None
     try:
         interpreted = interpreter.interpret(AskQuestion(question=case["question"], locale=case["locale"], provider_consent=True, provider_disclosure=interpreter.disclosure()["disclosure_id"]))
         status, plan = interpreted.status, interpreted.plan.model_dump() if interpreted.plan else None
@@ -69,6 +70,7 @@ def evaluate_case(case, interpreter):
     except AskError as error:
         status, plan, observation = error.code, None, error.observation
         transport_error = getattr(error, "_evaluation_transport_error", None)
+        receipt_error = getattr(error, "_evaluation_receipt_error", None)
     passed = status == case["expected"]["status"] and plan == case["expected"]["plan"]
     failure = None if passed else "status_mismatch" if status != case["expected"]["status"] else "constraint_mismatch"
     if not passed and case["expected"]["status"] in {"unsupported", "clarify"} and status == "ready":
@@ -78,6 +80,8 @@ def evaluate_case(case, interpreter):
            "latency_ms": round((time.perf_counter()-started)*1000, 3), "observation": observation}
     if transport_error is not None:
         row["transport_error"] = transport_error
+    if receipt_error is not None:
+        row["receipt_error"] = receipt_error
     return row
 
 
@@ -218,13 +222,12 @@ def reconcile_canary(report_path, expected_cost):
     attempt = ledger.attempt(original[0]["id"])
     preflight = official_preflight()
     with OpenAI(api_key=os.getenv("OPENROUTER_API_KEY"), base_url=BASE_URL, timeout=20, max_retries=0) as client:
-        metadata = client.get("/generation", cast_to=dict[str, object],
-                              options={"params": {"id": attempt["generation_id"]}})["data"]
+        metadata, lookup = read_generation_receipt(client, attempt["generation_id"])
     evidence = verify_reconciliation(report, attempt, preflight, metadata, expected_cost)
     applied = ledger.reconcile(attempt["id"], evidence=evidence)
     return {"version": "ask-reconciliation.v1", "evidence_class": "read_only_historical_billing_reconciliation",
             "applied": applied, "paid_requests_in_run": 0, "strict_json_validated": False,
-            "review_required": True, "evidence": evidence, "ledger": ledger.summary()}
+            "review_required": True, "evidence": evidence, "receipt_lookup": lookup, "ledger": ledger.summary()}
 
 
 def transport_error_summary(error):
@@ -250,9 +253,72 @@ def transport_error_summary(error):
             "request_id": request_id, "settlement_exception_type": None}
 
 
+class ReceiptLookupError(ValueError):
+    def __init__(self, diagnostic):
+        super().__init__("generation_receipt_lookup_unverified")
+        self.diagnostic = diagnostic
+
+
+def read_generation_receipt(client, generation_id, *, retry_existing_reads=False):
+    """Read one exact receipt; retain only an allowlisted query trace."""
+    started = time.perf_counter()
+    trace = {"stage": "generation_receipt_lookup", "attempt_count": 0, "elapsed_ms": None, "attempts": []}
+    last_error = None
+    if not isinstance(generation_id, str) or not generation_id:
+        trace["schema_status"] = "requested_id_missing"
+    else:
+        # Preserve the previous live schedule; reconciliation remains one GET.
+        for number, delay in enumerate((0, 0.5, 1.0) if retry_existing_reads else (0,), 1):
+            if delay:
+                time.sleep(delay)
+            attempt_started = time.perf_counter()
+            event = {"attempt": number, "http_status": None, "exception_type": None,
+                     "schema_status": "not_checked", "id_match": None, "elapsed_ms": None}
+            last_error = None
+            data = None
+            retry = True
+            try:
+                # Returning the raw response in memory preserves status for a
+                # malformed 200 body. No response/body/header is serialized.
+                response = client.get("/generation", cast_to=httpx.Response, options={"params": {"id": generation_id}})
+                event["http_status"] = response.status_code
+                event["schema_status"] = "malformed_json"
+                payload = response.json()
+                if not isinstance(payload, dict):
+                    event["schema_status"] = "envelope_not_object"
+                elif "data" not in payload:
+                    event["schema_status"] = "missing_data"
+                elif not isinstance(payload["data"], dict):
+                    event["schema_status"] = "data_not_object"
+                    retry = False
+                else:
+                    data = payload["data"]
+                    event["schema_status"] = "valid_receipt_object" if isinstance(data.get("id"), str) and data["id"] else "id_missing_or_invalid"
+                    event["id_match"] = data.get("id") == generation_id
+                    retry = False
+            except Exception as error:
+                last_error = error
+                summary = transport_error_summary(error)
+                for key in ("exception_type", "exception_chain_types"):
+                    event[key] = summary[key]
+                if summary["http_status"] is not None:
+                    event["http_status"] = summary["http_status"]
+            event["elapsed_ms"] = round((time.perf_counter() - attempt_started) * 1000, 3)
+            trace["attempts"].append(event)
+            trace["attempt_count"] = number
+            trace["elapsed_ms"] = round((time.perf_counter() - started) * 1000, 3)
+            if data is not None and event["id_match"]:
+                return data, trace
+            if not retry:
+                break
+    trace["elapsed_ms"] = round((time.perf_counter() - started) * 1000, 3)
+    raise ReceiptLookupError(trace) from last_error
+
+
 class PaidClient:
-    def __init__(self, *, ledger, run_id, case_id, preflight, **options):
+    def __init__(self, *, ledger, run_id, case_id, preflight, receipt_check=None, **options):
         self.ledger, self.run_id, self.case_id, self.preflight = ledger, run_id, case_id, preflight
+        self.receipt_check = receipt_check if receipt_check is not None else {}
         self.client = OpenAI(**options)
         self.chat = SimpleNamespace(completions=SimpleNamespace(create=self.create))
 
@@ -261,6 +327,15 @@ class PaidClient:
 
     def __exit__(self, *_):
         self.client.close()
+
+    def _stop_unverified_receipt(self, attempt, generation_id, cause):
+        try:
+            self.ledger.settle(attempt, cost=None, generation_id=generation_id, outcome="unknown_billing_or_provider")
+        except Exception as error:
+            self.receipt_check["settlement_exception_type"] = type(error).__name__
+        failure = AskError("ask_receipt_unverified", 502)
+        failure._evaluation_receipt_error = dict(self.receipt_check)
+        raise failure from cause
 
     def create(self, **request):
         if request.get("model") != MODEL or request.get("extra_body") != POLICY or request.get("max_tokens") != OUTPUT_LIMIT:
@@ -297,23 +372,22 @@ class PaidClient:
         cost = getattr(usage, "cost", None)
         # Actual provider/model and billing must be corroborated by generation
         # metadata. Read-only lookup is not a second inference call.
-        metadata = None
-        for delay in (0, 0.5, 1.0):
-            if delay:
-                time.sleep(delay)
-            try:
-                metadata = self.client.get("/generation", cast_to=dict[str, object], options={"params": {"id": generation_id}})["data"]
-                break
-            except Exception:
-                continue
+        self.receipt_check.update(stage="generation_receipt_lookup", completion_response_received=True, receipt_verified=False)
+        try:
+            metadata, lookup = read_generation_receipt(self.client, generation_id, retry_existing_reads=True)
+        except ReceiptLookupError as error:
+            self.receipt_check["lookup"] = error.diagnostic
+            self._stop_unverified_receipt(attempt, generation_id, error)
+        self.receipt_check.update(stage="generation_receipt_verification", lookup=lookup)
         try:
             if response.model not in {MODEL, CANONICAL_MODEL}:
                 raise BudgetStop("generation_identity_unverified")
             verify_generation_identity(self.preflight, metadata, generation_id, response.model)
             if cost is None or amount(cost) != amount(metadata.get("total_cost")):
                 raise BudgetStop("usage_cost_evidence_mismatch")
-        except (BudgetStop, TypeError, AttributeError):
-            self.ledger.settle(attempt, cost=None, generation_id=generation_id, outcome="unknown_billing_or_provider")
+        except (BudgetStop, TypeError, AttributeError) as error:
+            self.receipt_check["exception_type"] = type(error).__name__
+            self._stop_unverified_receipt(attempt, generation_id, error)
         self.ledger.settle(attempt, cost=cost, generation_id=generation_id, outcome="response")
         reasoning_tokens = getattr(getattr(usage, "completion_tokens_details", None), "reasoning_tokens", None)
         try:
@@ -327,9 +401,13 @@ class PaidClient:
                     or type(metadata.get("native_tokens_reasoning")) is not int
                     or metadata["native_tokens_reasoning"] != 0):
                 raise BudgetStop("token_or_reasoning_contract_failed")
-        except (BudgetStop, AttributeError):
+        except (BudgetStop, AttributeError) as error:
             self.ledger.block(attempt, "token_or_reasoning_contract_failed")
-            raise BudgetStop("token_or_reasoning_contract_failed")
+            self.receipt_check["exception_type"] = type(error).__name__
+            failure = AskError("ask_receipt_unverified", 502)
+            failure._evaluation_receipt_error = dict(self.receipt_check)
+            raise failure from error
+        self.receipt_check.update(stage="generation_receipt_verified", receipt_verified=True)
         return response
 
 
@@ -359,9 +437,12 @@ def live(args):
     if available < worst_request:
         raise BudgetStop("insufficient_existing_credits")
     for index, case in enumerate(cases):
+        receipt_check = {}
         interpreter = AskInterpreter(provider_config={"model": MODEL, "base_url": BASE_URL, "request_options": POLICY},
-            client_factory=lambda **options: PaidClient(ledger=ledger, run_id=args.run_id, case_id=case["id"], preflight=preflight, **options))
+            client_factory=lambda **options: PaidClient(ledger=ledger, run_id=args.run_id, case_id=case["id"], preflight=preflight, receipt_check=receipt_check, **options))
         row = evaluate_case(case, interpreter)
+        if receipt_check:
+            row["receipt_check"] = receipt_check
         rows.append(row)
         # Ask sanitizes exceptions for the application. The ledger remains the
         # source of truth for any uncertain transport/billing failure.
@@ -430,6 +511,10 @@ def main():
             report.update(evidence_class="live_evaluation_preflight", paid_requests_in_run=0, cost_usd_in_run=0)
         if args.reconcile_report or args.release_review or args.continue_conservatively:
             report["paid_requests_in_run"] = 0
+        if isinstance(error, ReceiptLookupError):
+            report["stop_reason"] = "generation_receipt_lookup_unverified"
+            report["receipt_error"] = {"stage": "generation_receipt_lookup", "receipt_verified": False,
+                                       "lookup": error.diagnostic}
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
     print(json.dumps({key: report.get(key) for key in ("evidence_class", "fixture_cases", "fixture_passed", "complete", "stop_reason", "live_supported_accuracy", "accuracy_gate_passed", "applied", "review_required", "review_released", "continuation_authorized")}))

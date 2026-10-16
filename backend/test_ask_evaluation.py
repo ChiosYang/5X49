@@ -12,7 +12,7 @@ import httpx
 
 from app.evaluation.ask import AUTHORIZATION, BASE_URL, CANONICAL_MODEL, corpus, live, live_gate, offline, official_preflight, MODEL, PROVIDER, PaidClient, POLICY
 from app.evaluation.ask_budget import BudgetLedger, BudgetStop, input_upper_bound
-from app.services.ask import AskInterpreter
+from app.services.ask import AskError, AskInterpreter
 
 
 class AskEvaluationTests(unittest.TestCase):
@@ -131,7 +131,7 @@ class AskEvaluationTests(unittest.TestCase):
         sdk.chat.completions.create.return_value=SimpleNamespace(id='gen-synthetic',model=MODEL,
             usage=SimpleNamespace(cost=0.0001,prompt_tokens=20,completion_tokens=10,
                 completion_tokens_details=SimpleNamespace(reasoning_tokens=0)))
-        sdk.get.side_effect=lambda path, **kwargs: {'data':{'total_credits':1,'total_usage':0}} if path=='/credits' else {'data':self._metadata()}
+        sdk.get.side_effect=lambda path, **kwargs: {'data':{'total_credits':1,'total_usage':0}} if path=='/credits' else httpx.Response(200,json={'data':self._metadata()})
         ledger=BudgetLedger(self.path)
         client=self._paid_client(sdk,ledger)
         client.create(model=MODEL,extra_body=POLICY,max_tokens=1600,messages=[{'content':'synthetic'}])
@@ -192,9 +192,9 @@ class AskEvaluationTests(unittest.TestCase):
         sdk.chat.completions.create.return_value=SimpleNamespace(id='gen-synthetic',model=MODEL,
             usage=SimpleNamespace(cost=0.0001,prompt_tokens=20,completion_tokens=10,
                 completion_tokens_details=SimpleNamespace(reasoning_tokens=1)))
-        sdk.get.side_effect=lambda path, **kwargs: {'data':{'total_credits':1,'total_usage':0}} if path=='/credits' else {'data':self._metadata()}
+        sdk.get.side_effect=lambda path, **kwargs: {'data':{'total_credits':1,'total_usage':0}} if path=='/credits' else httpx.Response(200,json={'data':self._metadata()})
         ledger=BudgetLedger(self.path)
-        with self.assertRaisesRegex(BudgetStop,'token_or_reasoning_contract_failed'):
+        with self.assertRaisesRegex(AskError,'ask_receipt_unverified'):
             self._paid_client(sdk,ledger).create(model=MODEL,extra_body=POLICY,max_tokens=1600,messages=[{'content':'synthetic'}])
         self.assertEqual(ledger.summary()['known_cost_usd'],'0.0001')
         with self.assertRaisesRegex(BudgetStop,'billing_or_contract_blocked'):

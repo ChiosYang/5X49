@@ -27,6 +27,16 @@ The bilingual live acceptance gate has not passed.
 - The private evaluator report preserves this summary through the application
   error boundary. Diagnostic IDs/statuses do not establish billing, clear an
   unresolved reservation or authorize another request.
+- Online evaluation and historical reconciliation share one receipt reader.
+  Its allowlisted trace records stage, exception type, HTTP status, query count,
+  elapsed time, response-container/schema checks and exact-ID match booleans.
+  Live receipt reads retain their existing three-attempt schedule; reconciliation
+  remains one GET. Inference is never retried by the reader.
+- A returned completion object with an unverified receipt is reported as
+  `ask_receipt_unverified`, with `completion_response_received=true` and
+  `receipt_verified=false`. It is distinct from inference transport failure and
+  invalid model JSON. Raw headers, bodies and receipt identifiers are excluded
+  from the query trace. Unknown reservations still stop later inference.
 
 ## General reconciliation and budget controls
 
@@ -94,12 +104,12 @@ restarts, future successful settlements and repeated approval calls.
 approved attempt is excluded from `blocking_uncertainty`; all other unresolved
 attempts still block. Every new request retains its maximum-cost reservation
 and cumulative stop/hard-limit checks. A new failure stops immediately and
-cannot receive another exception. This entrypoint awaits independent review
-before use; it provides no general retry or unknown-billing bypass.
+cannot receive another exception. Operational use requires independently
+reviewed code; the entrypoint provides no general retry or unknown-billing bypass.
 
 ## Validation and unmet acceptance
 
-- 71 focused Ask regression tests passed, including real SDK parsing,
+- 82 focused Ask regression tests passed, including real SDK parsing,
   exact alias/canonical mapping, wrong-model/provider/receipt rejection,
   inconsistent usage/reasoning, failed reconciliation, replay and concurrency.
   Release tests additionally cover exact CI/head binding, unreviewed code,
@@ -110,6 +120,10 @@ before use; it provides no general retry or unknown-billing bypass.
 - Conservative-continuation tests cover immutable unknown accounting,
   permanent full exposure, one-use authorization, concurrent idempotency,
   unchanged limits and immediate blocking on any subsequent unknown.
+- Real SDK MockTransport receipt tests verify host/path/query, 404 then success,
+  persistent 404, authorization/rate/server errors, timeout, malformed 200,
+  missing data and wrong IDs. They assert one simulated inference POST,
+  retained unknown exposure and blocking of the next inference attempt.
 - The 58/58 offline fixtures validate the contract and error boundary; they do
   not measure real model understanding.
 - The original canary did not complete strict JSON and completion-receipt

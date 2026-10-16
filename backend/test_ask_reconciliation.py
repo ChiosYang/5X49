@@ -11,6 +11,7 @@ from unittest.mock import MagicMock, patch
 
 import httpx
 from openai import OpenAI
+from app.services.ask import AskError
 
 from app.evaluation.ask import (
     AUTHORIZATION, BASE_URL, CANONICAL_MODEL, MODEL, POLICY, PROVIDER, PaidClient,
@@ -96,7 +97,7 @@ class AskReconciliationTests(unittest.TestCase):
                 sdk = MagicMock()
                 sdk.get.side_effect = lambda path, **kw: (
                     {'data': {'total_credits': 1, 'total_usage': 0}} if path == '/credits'
-                    else {'data': {**self.metadata, **change}})
+                    else httpx.Response(200,json={'data': {**self.metadata, **change}}))
                 sdk.chat.completions.create.return_value = SimpleNamespace(
                     id='gen-synthetic', model=response_model,
                     usage=SimpleNamespace(cost=0.00012861, prompt_tokens=1267, completion_tokens=81,
@@ -106,7 +107,7 @@ class AskReconciliationTests(unittest.TestCase):
                                         preflight=self.preflight, api_key='synthetic')
                 request = dict(model=MODEL, extra_body=POLICY, max_tokens=1600,
                                messages=[{'role': 'user', 'content': 'synthetic' * 100}])
-                with self.assertRaises(BudgetStop):
+                with self.assertRaisesRegex(AskError,'ask_receipt_unverified'):
                     client.create(**request)
                 with self.assertRaises(BudgetStop):
                     client.create(**request)

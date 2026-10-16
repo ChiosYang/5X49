@@ -9,8 +9,11 @@ blocking independent-review hold. A targeted, audited release entrypoint verifie
 independent review and exact CI/head evidence before any state transition;
 transport-error diagnostics preserve the original failure across settlement.
 A singleton, user-approved conservative-continuation path retains one complete
-reservation permanently while leaving its actual cost unknown; this addition
-awaits independent review. All 71 focused Ask regression tests pass.
+reservation permanently while leaving its actual cost unknown. The shared
+receipt-reader update awaits independent review and adds allowlisted
+query traces and distinguishes a returned completion object from an unverified
+receipt, without increasing retries or changing budget stops. All 82 focused
+Ask regression tests pass.
 The original canary's strict JSON and completion-receipt validation
 remain incomplete; no bilingual live accuracy gate has passed.
 See [technical review status](ask-phase-one-cloud-20261015.md).
@@ -90,7 +93,7 @@ including canaries, failures and any separately authorized retries.
 
 ## Current results
 
-- Offline fixture contract: 58/58 passed; 71 focused Ask regression tests passed (including the zero-unsupported-failure gate and transport diagnostics).
+- Offline fixture contract: 58/58 passed; 82 focused Ask regression tests passed (including the zero-unsupported-failure gate, transport and receipt diagnostics).
 - The original canary did not complete strict JSON and completion-receipt validation.
 - Live supported parsing accuracy and usefulness remain unaccepted. Offline
   success and accounting recovery must not be reported as the >=95% model gate.
