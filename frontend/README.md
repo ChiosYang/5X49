@@ -32,6 +32,10 @@ media setup.
 The Next.js ESLint plugin's `fast-glob` dependency is overridden with
 `tinyglobby@0.2.17` to remove the vulnerable `braces` dependency chain. The
 override is scoped to plugin version 16.3.8 and preserves its `globSync`
-directory lookup. Unit tests exercise root-directory matching and the internal
-link rule; recheck this override when upgrading Next.js. Keep `source-map-js`
+directory lookup. The ESLint config loads a local adapter that asks this scoped
+alias for absolute directory paths. This avoids malformed paths when the working
+directory and matched roots are on different Windows drives; it does not patch
+installed files or change application runtime behavior. Unit tests exercise
+absolute/relative root matching, directory-only filtering and the internal-link
+rule. Recheck the override and adapter when upgrading Next.js. Keep `source-map-js`
 at the patched version 1.2.2 or newer in the lockfile.

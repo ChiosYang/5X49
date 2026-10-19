@@ -1,8 +1,9 @@
+import "../tooling/next-eslint-glob-compat.mjs";
 import assert from "node:assert/strict";
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
-import { join, resolve } from "node:path";
+import { isAbsolute, join, resolve } from "node:path";
 import test from "node:test";
 
 const require = createRequire(import.meta.url);
@@ -72,4 +73,27 @@ test("Next internal-link rule still reports pages found through a root glob", (t
   assert.equal(messages.length, 1);
   assert.equal(messages[0].ruleId, "@next/next/no-html-link-for-pages");
   assert.equal(messages[0].severity, 2);
+});
+
+test("Next root glob directories remain absolute outside the working directory", (t) => {
+  // On Windows CI/local acceptance the temp root may be on a different drive.
+  // Inspect the returned paths before resolve() can hide a malformed location.
+  const root = fixture(t);
+  const directories = getRootDirs({
+    cwd: root,
+    settings: { next: { rootDir: join(root, "apps", "{web,admin}") } },
+  });
+  assert.equal(directories.length, 2);
+  assert.ok(directories.every((directory) => isAbsolute(directory)));
+  assert.deepEqual(directories.map((directory) => resolve(directory)).sort(),
+    ["admin", "web"].map((name) => join(root, "apps", name)));
+});
+
+test("Next glob adaptation keeps relative patterns and directory-only filtering", (t) => {
+  const root = fixture(t);
+  const requireNext = createRequire(require.resolve("@next/eslint-plugin-next"));
+  const { globSync } = requireNext("fast-glob");
+  const directories = globSync("apps/*", { cwd: root, onlyDirectories: true });
+  assert.deepEqual(directories.map((directory) => resolve(directory)).sort(),
+    ["admin", "other", "web"].map((name) => join(root, "apps", name)));
 });
