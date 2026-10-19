@@ -262,8 +262,10 @@ receipts, ledger files and actual runtime identifiers stay outside Git.
 ## Saved-response verification without another inference
 
 A synthetic live run now captures its response before the first generation
-receipt GET. The complete bounded JSON file is fsynced before atomic,
-no-overwrite publication. Link/junction paths are rejected and each checkpoint
+receipt GET. The temporary file is exclusively created with POSIX owner-only
+mode `0600` before any response bytes are written, even with a permissive umask.
+Windows keeps the existing inherited ACL without widening it. The complete
+bounded JSON file is fsynced before atomic, no-overwrite publication. Link/junction paths are rejected and each checkpoint
 is made read-only. A capture error keeps the unknown/full-reserve stop. Existing
 receipt lookup limits and the zero-inference-retry policy remain unchanged.
 

@@ -65,7 +65,9 @@ def atomic_private_json(path, value):
     path.parent.mkdir(parents=True, exist_ok=True)
     temporary = path.parent / (".checkpoint-" + uuid.uuid4().hex + ".tmp")
     try:
-        with temporary.open("xb") as handle:
+        # Set owner-only permissions in the creation syscall, before any bytes.
+        # Windows retains the directory's existing inherited ACL; no ACL is widened.
+        with open(temporary, "xb", opener=lambda name, flags: os.open(name, flags, 0o600)) as handle:
             handle.write(raw)
             handle.flush()
             os.fsync(handle.fileno())

@@ -333,6 +333,21 @@ class AskCheckpointTests(unittest.TestCase):
         finally:
             os.chdir(previous)
 
+    def test_owner_only_permissions_are_set_at_creation_under_permissive_umask(self):
+        env = {**os.environ, 'PYTHON_DOTENV_DISABLED': '1',
+               'SQLITE_DB_PATH': str(self.root / 'unused.sqlite3'),
+               'MEDIA_DIR': str(self.root / 'empty'), 'WATCH_LIBRARY': 'false'}
+        child = subprocess.run([sys.executable, '-X', 'utf8', __file__, '--private-mode-child', str(self.root)],
+                               capture_output=True, text=True, env=env, check=True)
+        result = json.loads(child.stdout)
+        self.assertEqual(result['requested_mode'], 0o600)
+        self.assertEqual(result['size_at_creation'], 0)
+        self.assertTrue(result['exclusive_create'])
+        self.assertEqual(result['created_count'], 1)
+        if os.name == 'posix':
+            self.assertEqual(result['actual_mode_at_creation'], 0o600)
+        self.assertEqual(json.loads((self.root / 'private.json').read_text()), {'synthetic': True})
+
     def test_cross_process_404_capture_then_200_receipt_reuses_only_one_post(self):
         env = {**os.environ, 'PYTHON_DOTENV_DISABLED': '1', 'SQLITE_DB_PATH': str(self.root / 'unused.sqlite3'),
                'MEDIA_DIR': str(self.root / 'empty'), 'WATCH_LIBRARY': 'false'}
@@ -355,6 +370,27 @@ if __name__ == '__main__':
     if len(sys.argv) == 3 and sys.argv[1] == '--capture-child':
         report, requests = capture(Path(sys.argv[2]), write_receipt=False)
         print(json.dumps({'post_count': sum(method == 'POST' for method, _ in requests)}))
+    elif len(sys.argv) == 3 and sys.argv[1] == '--private-mode-child':
+        root = Path(sys.argv[2])
+        real_open = os.open
+        created = []
+        def audited_open(name, flags, mode=0o777):
+            descriptor = real_open(name, flags, mode)
+            if Path(name).name.startswith('.checkpoint-'):
+                state = os.fstat(descriptor)
+                created.append({'requested_mode': mode,
+                    'actual_mode_at_creation': stat.S_IMODE(state.st_mode),
+                    'size_at_creation': state.st_size,
+                    'exclusive_create': bool(flags & os.O_EXCL and flags & os.O_CREAT)})
+            return descriptor
+        previous_umask = os.umask(0)
+        try:
+            with patch('app.evaluation.ask_checkpoint.os.open', side_effect=audited_open):
+                atomic_private_json(root / 'private.json', {'synthetic': True})
+        finally:
+            os.umask(previous_umask)
+        assert len(created) == 1
+        print(json.dumps({**created[0], 'created_count': len(created)}))
     elif len(sys.argv) == 3 and sys.argv[1] == '--resume-child':
         root = Path(sys.argv[2])
         reads = []
