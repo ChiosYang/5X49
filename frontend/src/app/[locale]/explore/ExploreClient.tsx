@@ -254,7 +254,7 @@ export default function ExploreClient({
 
   return (
     <div className="page-x min-h-screen bg-canvas pb-24 pt-32 text-ink selection:bg-inverse selection:text-inverse-ink">
-      <ExploreHeader total={overview.total_films} onFind={() => openFinder()} />
+      <ExploreHeader onFind={() => openFinder()} />
 
       {/* Input only: submitting a search awaits a separate product decision. */}
       <div className="mt-4 max-w-4xl">

@@ -318,3 +318,22 @@ focus, stable content position and zero Ask API requests, with screenshots.
 Cross-route Film/deep-link and Back/Forward checks keep standalone confirmation
 separate from factual Explore. Historical embedded recovery evidence above is
 retained as history, not a claim about the current Explore interaction.
+
+## Integrated Windows regression (2026-10-19)
+
+The permission-creation follow-up and ordinary Library/Explore UI integrations
+passed 538 backend tests (3 platform skips), 98 frontend unit tests, lint,
+typecheck, production build and all 111 real-backend browser checks. Checkpoint
+coverage is 20 tests. The 58-case fixture contract remains offline evidence.
+The browser set includes dedicated Ask consent/confirmation/retry safety, four
+input-only Explore viewport/locale checks and hydration, six clean-header/factual
+filtering checks down to 320px, desktop four columns, touch/keyboard/drawer and
+backup/restart/media-root flows. Provider transport and state are synthetic.
+
+Full backend verification ran serially after two FFmpeg pause/resume checks had
+failed under concurrent test/build load; both focused replay and the full suite
+passed without code or timeout changes. Windows browser fixtures use canonical
+system TEMP: a long workspace path exceeded the generated manifest path limit,
+while the same backup API reproduction and complete browser suite passed with a
+short root. Screenshots preserve large titles, transparent navigation and the
+input-only Explore layout. Final independent review remains required.

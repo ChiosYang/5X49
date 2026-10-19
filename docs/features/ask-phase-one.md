@@ -3,10 +3,10 @@
 Status: Blocked
 Last updated: 2026-10-19
 Related: Ask MVP; Factual Explore
-Engineering implementation, independent code review and local engineering
-acceptance are complete. Windows tooling, editor focus and historical
-reconciliation follow-ups are separately committed and verified. No remaining
-provider-independent functional blocker was identified by the completed checks.
+The core engineering baseline was independently reviewed and locally accepted.
+The current permission-hardening and UI-integration follow-up has completed
+offline verification and awaits final independent review. Earlier Windows
+tooling, editor-focus and historical-reconciliation follow-ups remain recorded.
 The 52-case live model quality suite has not run; a fresh passing canary and
 unchanged quality/billing gates remain required. The six simulated fault/format
 controls passed offline. PR #28 remains draft.
@@ -162,3 +162,25 @@ No lost completion can be reconstructed retrospectively. Earlier failures
 without a checkpoint remain unavailable for offline quality checks. Independent
 review of supplied evidence is still required before any separately authorized
 accounting/release or subsequent live work; this change adds no budget exception.
+
+## Integrated local follow-up verification (2026-10-19)
+
+- Create checkpoint temporary files with owner-only mode in the creation syscall;
+  20 checkpoint tests include empty/exclusive creation and a permissive-umask
+  subprocess. Windows inherits existing ACL restrictions; POSIX verifies `0600`
+  before any response bytes are written.
+- Ordinary merge of main `a01049e6` retains the Library four-column desktop grid,
+  filter drawer and pointer/keyboard/touch inspector. Ordinary integration of
+  Explore copy cleanup `9a1b4637` keeps helper text removed and preserves the
+  accessible hidden journey label. The standalone Ask implementation is unchanged.
+- Windows offline backend: 538 tests, 3 platform skips; frontend: 98 unit tests,
+  lint, typecheck and production build; real-backend browser acceptance: 111/111.
+  This includes 25 Ask/input checks, six bilingual Explore layout/filter checks,
+  four-column Library and drawer interactions, backup recovery and restart flows.
+- Browser and backend tests use isolated synthetic state and substituted provider
+  transport. No real ledger operation or model request is part of this follow-up.
+  The retained Explore input is not bound to submission.
+- Use canonical system TEMP for Windows browser fixtures. A long workspace TEMP
+  path exceeded the platform limit for generated backup manifests; the same
+  synthetic flow and full suite passed with the shorter temporary root. Product
+  backup behavior and timeouts were not changed.
