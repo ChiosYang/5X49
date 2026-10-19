@@ -104,7 +104,7 @@ class AskCheckpointTests(unittest.TestCase):
     def tearDown(self):
         for path in self.root.rglob('*'):
             if path.is_file():
-                path.chmod(stat.S_IWRITE)
+                path.chmod(stat.S_IREAD | stat.S_IWRITE)
         self.tmp.cleanup()
 
     def captured(self, **options):
@@ -116,7 +116,7 @@ class AskCheckpointTests(unittest.TestCase):
         return report, requests
 
     def reseal(self, saved):
-        self.checkpoint.chmod(stat.S_IWRITE)
+        self.checkpoint.chmod(stat.S_IREAD | stat.S_IWRITE)
         self.checkpoint.write_bytes(encoded(saved))
         report = json.loads(self.report_path.read_text())
         report['cases'][0]['receipt_check']['checkpoint']['sha256'] = sha(self.checkpoint)
@@ -192,7 +192,7 @@ class AskCheckpointTests(unittest.TestCase):
         self.captured()
         report_sha, checkpoint_sha = sha(self.report_path), sha(self.checkpoint)
         original = self.checkpoint.read_bytes()
-        self.checkpoint.chmod(stat.S_IWRITE)
+        self.checkpoint.chmod(stat.S_IREAD | stat.S_IWRITE)
         self.checkpoint.write_bytes(original + b' ')
         with self.assertRaisesRegex(BudgetStop, 'input_unverified'):
             offline_resume(self.root)
