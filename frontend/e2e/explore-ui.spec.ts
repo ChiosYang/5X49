@@ -17,6 +17,12 @@ async function read(request: APIRequestContext, url: string) {
   return response.json();
 }
 
+async function cleanup(request: APIRequestContext) {
+  expect((await request.post(`${backend}/__e2e/control`, {
+    headers: { 'x-e2e-token': process.env.E2E_TOKEN! }, data: { action: 'identity_cleanup' },
+  })).ok()).toBeTruthy();
+}
+
 async function capture(page: Page, name: string) {
   await page.evaluate(async () => {
     await document.fonts.ready;
@@ -38,6 +44,7 @@ async function capture(page: Page, name: string) {
 }
 
 test.beforeAll(async ({ request }) => {
+  await cleanup(request);
   const media = path.join(process.env.E2E_ROOT!, 'normal/media');
   const saved = await request.put(`${backend}/settings/media-dir?media_dir=${encodeURIComponent(media)}`);
   expect(saved.ok()).toBeTruthy();
@@ -48,6 +55,8 @@ test.beforeAll(async ({ request }) => {
   const { workflow_id } = await scan.json();
   await expect.poll(async () => (await read(request, `/workflows/${workflow_id}`)).status, { timeout: 45000 }).toBe('succeeded');
 });
+
+test.afterAll(async ({ request }) => { await cleanup(request); });
 
 test.beforeEach(async ({ context }) => {
   await context.route('**/*', route => ['127.0.0.1', 'localhost'].includes(new URL(route.request().url()).hostname)
