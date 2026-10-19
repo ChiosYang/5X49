@@ -176,7 +176,7 @@ test('no-key real facts, zero results require reconfirmation; detail reload rest
 
 test('filtered Library detail return preserves URL, focus and scroll', async ({ page }) => {
   await page.goto('/en/library?filter=unwatched&sort=title');
-  const card = page.locator('[id^="film-link-"]').nth(4);
+  const card = page.locator('button[id^="film-link-"]').nth(4);
   await card.scrollIntoViewIfNeeded();
   const id = await card.getAttribute('id');
   await expect(card).toHaveAttribute("type", "button");

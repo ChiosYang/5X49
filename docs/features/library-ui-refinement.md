@@ -55,6 +55,10 @@ No backend, public API, media files or personal data changes are required.
 - `npm run test:e2e -- library-ui.spec.ts library-filters.spec.ts library-filter-care.spec.ts interactions.spec.ts`:
   41 passed against the real isolated test backend and installed Windows Chrome
   155.0.8059.40. Outbound browser/backend traffic is blocked by the harness.
+- `npm run test:e2e -- interactions.spec.ts matching-race.spec.ts`: 26 passed,
+  including leaving during pending match responses and read refreshes. Touch
+  navigation tests select the stable title link; image tests wait for the native
+  touch button before scrolling rather than the transitional SSR image link.
 - Browser images inspected: `frontend/e2e-artifacts/library-ui-1920x1080.png`,
   `library-ui-1980x1080.png`, `library-ui-mobile.png`, `library-ui-hover.png`,
   `library-ui-focus.png`, `library-ui-touch-actions.png`, `library-ui-filter-drawer.png`
