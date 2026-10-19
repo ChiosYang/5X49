@@ -48,44 +48,86 @@ def attempt_fingerprint(row):
     return hashlib.sha256(json.dumps(dict(row), sort_keys=True, separators=(",", ":")).encode()).hexdigest()
 
 
-class BudgetLedger:
-    def __init__(self, path: Path):
-        path.parent.mkdir(parents=True, exist_ok=True)
-        self.path = path
-        with self._db() as db:
-            db.execute("""CREATE TABLE IF NOT EXISTS attempt (
+_LEDGER_SCHEMA = (
+    """CREATE TABLE IF NOT EXISTS attempt (
                 id TEXT PRIMARY KEY, run_id TEXT NOT NULL, case_id TEXT NOT NULL,
                 reserved TEXT NOT NULL, cost TEXT, generation_id TEXT,
                 state TEXT NOT NULL, outcome TEXT,
-                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)""")
-            db.execute("""CREATE TABLE IF NOT EXISTS reconciliation (
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)""",
+    """CREATE TABLE IF NOT EXISTS reconciliation (
                 attempt_id TEXT PRIMARY KEY, generation_id TEXT NOT NULL UNIQUE,
                 cost TEXT NOT NULL, original_state TEXT NOT NULL, original_outcome TEXT,
                 original_reserved TEXT NOT NULL, evidence_json TEXT NOT NULL,
                 evidence_sha256 TEXT NOT NULL,
-                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)""")
-            db.execute("""CREATE TABLE IF NOT EXISTS review_release (
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)""",
+    """CREATE TABLE IF NOT EXISTS review_release (
                 attempt_id TEXT PRIMARY KEY, reconciliation_sha256 TEXT NOT NULL,
                 previous_state TEXT NOT NULL, evidence_json TEXT NOT NULL,
                 evidence_sha256 TEXT NOT NULL,
-                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)""")
-            db.execute("""CREATE TABLE IF NOT EXISTS conservative_continuation (
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)""",
+    """CREATE TABLE IF NOT EXISTS conservative_continuation (
                 singleton INTEGER PRIMARY KEY CHECK(singleton=1), attempt_id TEXT NOT NULL UNIQUE,
                 attempt_sha256 TEXT NOT NULL, reserved TEXT NOT NULL,
                 original_attempt_json TEXT NOT NULL, evidence_json TEXT NOT NULL,
                 evidence_sha256 TEXT NOT NULL,
-                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)""")
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)""",
+)
+
+
+class BudgetLedger:
+    def __init__(self, path: Path, *, existing_only: bool = False):
+        self.path = Path(path)
+        self.existing_only = existing_only
+        if existing_only:
+            # No mkdir or schema initialization for historical reconciliation.
+            with self._db():
+                pass
+            return
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        with self._db() as db:
+            for statement in _LEDGER_SCHEMA:
+                db.execute(statement)
+
+    @staticmethod
+    def _validate_existing_schema(db):
+        def normalized(sql):
+            return " ".join(sql.lower().split()).replace("create table if not exists ", "create table ", 1)
+        # Include triggers/views/explicit indexes so an unexpected write hook
+        # cannot alter other attempts during an otherwise valid reconciliation.
+        actual = [normalized(row[0]) for row in db.execute(
+            "SELECT sql FROM sqlite_master WHERE sql IS NOT NULL")]
+        if (sorted(actual) != sorted(normalized(sql) for sql in _LEDGER_SCHEMA)
+                or db.execute("PRAGMA user_version").fetchone()[0] != 0
+                or [row[0] for row in db.execute("PRAGMA integrity_check")] != ["ok"]):
+            raise BudgetStop("existing_ledger_schema_mismatch")
 
     @contextmanager
     def _db(self):
-        db = sqlite3.connect(self.path, timeout=10)
+        db = None
         try:
+            if self.existing_only:
+                if not self.path.is_file():
+                    raise BudgetStop("existing_ledger_required")
+                # rw refuses to create a missing file on EVERY later connection,
+                # including deletion between validation and the audit write.
+                db = sqlite3.connect(self.path.resolve().as_uri() + "?mode=rw", uri=True, timeout=10)
+            else:
+                db = sqlite3.connect(self.path, timeout=10)
             db.row_factory = sqlite3.Row
+            if self.existing_only:
+                self._validate_existing_schema(db)
             with db:
                 db.execute("BEGIN IMMEDIATE")
+                if self.existing_only:
+                    self._validate_existing_schema(db)
                 yield db
+        except sqlite3.DatabaseError:
+            if self.existing_only:
+                raise BudgetStop("existing_ledger_invalid") from None
+            raise
         finally:
-            db.close()
+            if db is not None:
+                db.close()
 
     @staticmethod
     def _conservative_hold(db):

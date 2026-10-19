@@ -211,15 +211,32 @@ def verify_reconciliation(report, attempt, preflight, metadata, expected_cost):
             "original_report_sha256": hashlib.sha256(json.dumps(report, sort_keys=True).encode()).hexdigest()}
 
 
-def reconcile_canary(report_path, expected_cost):
+def reconcile_canary(report_path, expected_cost, *, attempt_id=None, ledger_path=None):
     if expected_cost is None or not os.getenv("OPENROUTER_API_KEY"):
         raise BudgetStop("reconciliation_cost_and_existing_credential_required")
     report = json.loads(report_path.read_text(encoding="utf-8"))
     original = report.get("ledger", {}).get("attempts", [])
-    if len(original) != 1:
+    if not isinstance(original, list) or not original or any(not isinstance(row, dict) for row in original):
         raise BudgetStop("historical_attempt_evidence_mismatch")
-    ledger = BudgetLedger(LEDGER)
-    attempt = ledger.attempt(original[0]["id"])
+    if attempt_id is None:
+        if len(original) != 1:
+            raise BudgetStop("reconciliation_attempt_selector_required")
+        attempt_id = original[0].get("id")
+    selected = [row for row in original if row.get("id") == attempt_id]
+    if not isinstance(attempt_id, str) or not attempt_id or len(selected) != 1:
+        raise BudgetStop("historical_attempt_selector_mismatch")
+    cases = report.get("cases", [])
+    if (not isinstance(cases, list) or len(cases) != 1 or not isinstance(cases[0], dict)
+            or selected[0].get("run_id") != report.get("run_id")
+            or selected[0].get("case_id") != cases[0].get("case_id")):
+        raise BudgetStop("historical_attempt_evidence_mismatch")
+    ledger = BudgetLedger(LEDGER if ledger_path is None else ledger_path, existing_only=True)
+    attempt = ledger.attempt(attempt_id)
+    if any(attempt[key] != selected[0].get(key) for key in
+           ("run_id", "case_id", "generation_id", "reserved", "outcome")):
+        raise BudgetStop("historical_attempt_evidence_mismatch")
+    # Pass the ORIGINAL complete report, including other historical attempts,
+    # to validation and hashing. Selection never rewrites historical evidence.
     preflight = official_preflight()
     with OpenAI(api_key=os.getenv("OPENROUTER_API_KEY"), base_url=BASE_URL, timeout=20, max_retries=0) as client:
         metadata, lookup = read_generation_receipt(client, attempt["generation_id"])
@@ -485,6 +502,14 @@ def main():
     mode.add_argument("--reconcile-report", type=Path)
     mode.add_argument("--release-review", type=Path, metavar="PRIVATE_APPROVAL_JSON")
     mode.add_argument("--continue-conservatively", type=Path, metavar="PRIVATE_APPROVAL_JSON")
+    class Once(argparse.Action):
+        def __call__(self, parser, namespace, values, option_string=None):
+            if getattr(namespace, self.dest, None) is not None:
+                parser.error(f"{option_string} may only be specified once")
+            setattr(namespace, self.dest, values)
+    parser.add_argument("--attempt-id", action=Once, help="Exact historical attempt; reconciliation only")
+    parser.add_argument("--ledger-path", type=Path, action=Once,
+                        help="Existing schema-validated ledger; reconciliation only")
     parser.add_argument("--expected-cost-usd", type=Decimal)
     parser.add_argument("--canary-only", action="store_true")
     parser.add_argument("--authorization")
@@ -492,6 +517,8 @@ def main():
     parser.add_argument("--run-id", default=datetime.now(timezone.utc).strftime("ask-%Y%m%dT%H%M%SZ"))
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
+    if (args.attempt_id is not None or args.ledger_path is not None) and args.reconcile_report is None:
+        parser.error("--attempt-id and --ledger-path require --reconcile-report")
     try:
         if args.continue_conservatively:
             report = authorize_conservative_continuation(args.continue_conservatively, authorization=args.authorization,
@@ -500,7 +527,8 @@ def main():
             report = release_review_hold(args.release_review, authorization=args.authorization,
                                          ledger_path=LEDGER, repo_root=Path(__file__).resolve().parents[3])
         elif args.reconcile_report:
-            report = reconcile_canary(args.reconcile_report, args.expected_cost_usd)
+            report = reconcile_canary(args.reconcile_report, args.expected_cost_usd,
+                                      attempt_id=args.attempt_id, ledger_path=args.ledger_path)
         else:
             report = live(args) if args.live else offline()
     except Exception as error:

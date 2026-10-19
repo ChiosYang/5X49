@@ -132,3 +132,34 @@ including canaries, failures and any separately authorized retries.
   backend UI tests passed, including 21 Ask flows and both new regressions.
 - Live accuracy and usefulness remain unaccepted. Independent review and a
   fresh passing canary are required before the bilingual live corpus.
+
+
+## Selecting a historical reconciliation target
+
+Only `--reconcile-report` accepts `--attempt-id` and `--ledger-path`. A report
+containing several historical attempts requires one explicit ID matching exactly
+one original row and the saved canary run/case. A one-attempt report can retain
+its implicit target. Repeated options, unknown or duplicate IDs, and attempts
+from another run fail before provider access.
+
+The full original report is passed unchanged to verification and hashing; never
+crop a cumulative report to make it look like a single attempt. An explicit
+ledger must already exist with the expected four-table schema. Reconciliation
+uses SQLite `mode=rw` on every connection, verifies schema/integrity, and refuses
+missing, incompatible or unexpected write-hook schemas without initializing or
+migrating them. The default reconciliation ledger must already exist as well.
+These options are rejected in live, offline, review-release and continuation
+modes, and cannot redirect the live budget ledger.
+
+After separate authorization to record an accounting recovery, the CLI shape is:
+
+```powershell
+uv run --no-sync python -X utf8 -m app.evaluation.ask --reconcile-report <original-canary.json> --attempt-id <exact-attempt-id> --ledger-path <existing-ledger.sqlite3> --expected-cost-usd <verified-cost> --output <private-reconciliation.json>
+```
+
+This command reads official receipt metadata and then **writes** only the target's
+verified cost and reconciliation audit, retaining its original reserve/outcome
+and a blocking review hold. It does not release review, consume another
+continuation, rewrite other unknowns, or authorize inference. Read-only dry-runs
+should use the pure verifier rather than this mutating command. Private reports,
+receipts, ledger files and actual runtime identifiers stay outside Git.
