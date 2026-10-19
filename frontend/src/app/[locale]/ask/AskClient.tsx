@@ -141,8 +141,15 @@ export default function AskClient({ embedded = false, contextKey = "/explore", o
     return () => { mounted = false; };
   }, [request, sessionKey]);
   const edit = (plan: AskPlan, selectedPerson: string | null) => {
+    const trigger = document.activeElement;
     setDraft(plan); setPersonId(selectedPerson); setMode("form"); reset();
-    requestAnimationFrame(() => { document.getElementById("ask-form")?.scrollIntoView({ block: "start" }); document.getElementById("ask-genre")?.focus({ preventScroll: true }); });
+    requestAnimationFrame(() => {
+      // The form may render before this frame. Respect a field the user has
+      // already focused instead of redirecting their next keystrokes to Genre.
+      if (document.activeElement !== trigger && document.activeElement !== document.body) return;
+      document.getElementById("ask-form")?.scrollIntoView({ block: "start" });
+      document.getElementById("ask-genre")?.focus({ preventScroll: true });
+    });
   };
   const results = resolution?.results;
   const Container = embedded ? "section" : "main";

@@ -55,9 +55,30 @@ test('numeric boundary, personal stars, roles and watched state match real local
   await confirm(page); await expect.poll(() => titles(page)).toEqual(['Alpha']);
   const results = page.getByRole('region', { name: 'Search results' });
   await expect(results).toContainText('3/5 stars'); await expect(results).toContainText('5400 seconds');
-  await page.getByRole('button', { name: 'Edit conditions', exact: true }).click();
-  await page.getByLabel('Minimum duration (minutes)', { exact: true }).fill('90');
-  await page.getByLabel('Include the minimum duration', { exact: true }).uncheck();
+  // Hold application frames so the editor's deferred focus runs only after
+  // the next field interaction, reproducing the CI-discovered focus race.
+  await page.evaluate(() => {
+    const original = window.requestAnimationFrame;
+    const pending: FrameRequestCallback[] = [];
+    window.requestAnimationFrame = callback => { pending.push(callback); return -pending.length; };
+    (window as typeof window & { releaseAskFrames?: () => void }).releaseAskFrames = () => {
+      window.requestAnimationFrame = original;
+      pending.forEach(callback => original.call(window, callback));
+    };
+  });
+  try {
+    await page.getByRole('button', { name: 'Edit conditions', exact: true }).click();
+    await page.getByLabel('Minimum duration (minutes)', { exact: true }).fill('90');
+    await page.getByLabel('Include the minimum duration', { exact: true }).uncheck();
+  } finally {
+    await page.evaluate(() => {
+      const state = window as typeof window & { releaseAskFrames?: () => void };
+      state.releaseAskFrames?.(); delete state.releaseAskFrames;
+    });
+  }
+  await page.evaluate(() => new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
+  await expect(page.getByLabel('Include the minimum duration', { exact: true })).toBeFocused();
+  await expect(page.getByLabel('Genre', { exact: true })).toHaveValue('Action');
   await preview(page); await confirm(page); await expect(page.getByText('No films satisfy all these conditions.', { exact: false })).toBeVisible();
 });
 
