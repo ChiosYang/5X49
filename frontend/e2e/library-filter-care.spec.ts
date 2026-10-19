@@ -5,7 +5,7 @@ const backend = process.env.E2E_BACKEND!;
 const applied = new URLSearchParams({sort:'title',dir:'desc',filter:'watched',q:'Shelf',favorite:'true',
   duration_min:'80',duration_max:'80',rating_min:'3',rating_max:'3',year_min:'1980',year_max:'1980',page:'2'});
 const filmsUrl = `/en/library?${applied}`;
-const cards = (page: Page) => page.locator('a[id^="film-link-"]');
+const cards = (page: Page) => page.locator('[id^="film-link-"]');
 
 async function control(request: APIRequestContext, action: string, mode?: string) {
   const response = await request.post(`${backend}/__e2e/control`, {

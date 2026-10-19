@@ -33,11 +33,16 @@ test.beforeEach(async ({ context }) => {
 
 async function capture(page: import('@playwright/test').Page, name: string) {
   await page.evaluate(() => document.fonts.ready);
-  // A full repaint avoids partial backdrop-filter captures on Windows Chrome.
-  const viewport = page.viewportSize()!;
-  await page.setViewportSize({ ...viewport, width: viewport.width + 1 });
-  await page.setViewportSize(viewport);
-  await page.evaluate(() => new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
+  // Refresh the full composited frame without moving or blurring the focused control.
+  await page.evaluate(async () => {
+    const root = document.documentElement;
+    const opacity = root.style.opacity;
+    const frame = () => new Promise<void>(resolve => requestAnimationFrame(() => resolve()));
+    root.style.opacity = '0';
+    await frame(); await frame();
+    root.style.opacity = opacity;
+    await frame(); await frame();
+  });
   let clip;
   if (name === 'library-ui-hover.png' || name === 'library-ui-focus.png') {
     const image = (await page.locator('.library-card-media').first().boundingBox())!;
@@ -65,7 +70,7 @@ test.describe('desktop with a mouse', () => {
       const style = await button.evaluate(el => ({ border: getComputedStyle(el).borderWidth, width: el.clientWidth, height: el.clientHeight }));
       expect(style.border).toBe('0px'); expect(style.width).toBeGreaterThanOrEqual(44); expect(style.height).toBeGreaterThanOrEqual(44);
     }
-    await expect(page.locator('.library-card-touch-actions').first()).toBeHidden();
+    await expect(page.locator('.library-card-touch-actions')).toHaveCount(0);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     await capture(page, `library-ui-${width}x1080.png`);
   });
@@ -144,8 +149,10 @@ test.describe('desktop with a mouse', () => {
 test('touch entry, narrow drawer, menu keyboard and Chinese layout remain usable', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/en/library');
-  const trigger = page.locator('.library-card-touch-actions').first();
+  const trigger = page.locator('button[id^="film-link-"]').first();
   await expect(trigger).toBeVisible();
+  await expect(page.locator('.library-card-touch-actions')).toHaveCount(0);
+  expect((await trigger.boundingBox())!.width).toBeGreaterThan(300);
   await capture(page, 'library-ui-mobile.png');
   await trigger.tap();
   await expect(trigger).toHaveAttribute('aria-expanded', 'true');
@@ -158,7 +165,7 @@ test('touch entry, narrow drawer, menu keyboard and Chinese layout remain usable
   await page.getByRole('menuitem', { name: 'Activity', exact: true }).focus();
   await page.keyboard.press('Escape');
   await expect(page.getByRole('button', { name: 'More', exact: true })).toBeFocused();
-  for (const [width, columns] of [[360, 1], [768, 2], [1024, 3]]) {
+  for (const [width, columns] of [[360, 1], [768, 2], [1024, 3], [1920, 4]]) {
     await page.setViewportSize({ width, height: 900 });
     const grid = page.locator('.library-card-media').first().locator('..').locator('..').locator('..');
     expect(await grid.evaluate(el => getComputedStyle(el).gridTemplateColumns.split(' ').length)).toBe(columns);
@@ -172,4 +179,67 @@ test('touch entry, narrow drawer, menu keyboard and Chinese layout remain usable
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   expect(await dialog.evaluate(el => el.scrollWidth <= el.clientWidth)).toBe(true);
   await capture(page, 'library-ui-mobile-drawer-zh.png');
+});
+
+test('touch image disclosure keeps direct links, keyboard controls and adjacent taps usable', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/en/library');
+  const originalURL = page.url();
+  const images = page.locator('button[id^="film-link-"]');
+  const first = images.first();
+  const second = images.nth(1);
+  const firstId = (await first.getAttribute('id'))!.replace('film-link-', '');
+  const secondId = (await second.getAttribute('id'))!.replace('film-link-', '');
+  const panel = page.locator('.library-card-inspector').first();
+  const title = page.locator('.library-card-title').first();
+  await expect(first).toHaveAttribute('aria-expanded', 'false');
+  await first.focus();
+  await expect(panel).toBeHidden();
+  await page.keyboard.press('Tab');
+  await expect(title).toBeFocused(); // Closed inspector links/actions are skipped.
+  await first.focus();
+  await page.keyboard.press('Enter');
+  await expect(first).toHaveAttribute('aria-expanded', 'true');
+  await page.keyboard.press('Tab');
+  await expect(panel.getByRole('link', { name: 'View film details', exact: true })).toBeFocused();
+  await page.keyboard.press('Escape');
+  await expect(first).toBeFocused();
+  await expect(panel).toBeHidden();
+  await page.keyboard.press('Space');
+  await expect(panel).toBeVisible();
+  await page.keyboard.press('Escape');
+
+  await first.tap();
+  await expect(page).toHaveURL(originalURL);
+  await expect(panel.getByRole('link', { name: 'View film details', exact: true })).toHaveAttribute('href', `/en/library/${firstId}`);
+  await expect(title).toBeVisible();
+  await expect(title).toHaveCSS('opacity', '1');
+  await expect(title).toHaveCSS('pointer-events', 'auto');
+  const panelBounds = (await panel.boundingBox())!;
+  expect((await second.boundingBox())!.y).toBeGreaterThanOrEqual(panelBounds.y + panelBounds.height);
+  await second.tap(); // Closing the first panel must not move the target before activation.
+  await expect(first).toHaveAttribute('aria-expanded', 'false');
+  await expect(second).toHaveAttribute('aria-expanded', 'true');
+  await expect(page.locator('.library-card-inspector').nth(1).getByRole('link', { name: 'View film details', exact: true }))
+    .toHaveAttribute('href', `/en/library/${secondId}`);
+  await expect(page).toHaveURL(originalURL);
+  await page.locator('h1').tap();
+  await expect(second).toHaveAttribute('aria-expanded', 'false');
+  await expect(page.locator('.library-card-inspector').nth(1)).toBeHidden();
+
+  await first.tap();
+  await panel.getByRole('link', { name: 'View film details', exact: true }).tap();
+  await expect(page).toHaveURL(new RegExp(`/en/library/${firstId}$`));
+  await page.getByRole('button', { name: /^(Return to library|Back)$/i }).click();
+  await expect(page).toHaveURL(originalURL);
+  await expect(first).toBeFocused();
+  await expect(first).toHaveAttribute('aria-expanded', 'false');
+  await first.tap();
+  await title.tap(); // The title is still a direct, single-activation link while expanded.
+  await expect(page).toHaveURL(new RegExp(`/en/library/${firstId}$`));
+  await page.getByRole('button', { name: /^(Return to library|Back)$/i }).click();
+  await expect(first).toBeFocused();
+  await page.reload();
+  await expect(first).toBeFocused();
+  await expect(first).toHaveAttribute('aria-expanded', 'false');
 });

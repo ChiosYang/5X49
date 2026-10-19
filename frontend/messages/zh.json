@@ -599,6 +599,7 @@
     "empty": "资料库为空。点击扫描添加电影。",
     "emptyFiltered": "当前筛选条件下没有影片。",
     "resetFilter": "显示全部影片",
+    "viewFilmDetails": "查看影片详情",
     "cardActions": "操作：{title}",
     "cardSaveFailed": "未保存，请重试。",
     "cardRefreshFailed": "已保存，但相关视图刷新失败。重试只刷新显示。",

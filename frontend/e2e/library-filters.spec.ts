@@ -2,7 +2,7 @@ import { test, expect, type APIRequestContext, type Page } from '@playwright/tes
 import path from 'node:path';
 
 const backend = process.env.E2E_BACKEND!;
-const cards = (page: Page) => page.locator('a[id^="film-link-"]');
+const cards = (page: Page) => page.locator('[id^="film-link-"]');
 const titles = (page: Page) => cards(page).locator('h2,h3').allTextContents();
 let films: Record<string, string>;
 async function control(request: APIRequestContext, action: string) {
@@ -36,6 +36,7 @@ async function combine(page: Page) {
   await page.getByRole('button', { name: 'Apply filters', exact: true }).click();
   await expect(cards(page)).toHaveCount(2);
   expect(await titles(page)).toEqual(['Orbit Dawn', 'Orbit Echo']);
+  await expect(cards(page).first()).toHaveAttribute('type', 'button'); // Touch controls have hydrated after the native GET.
 }
 
 test('all conditions, sorting, reload, detail return and history retain one committed URL', async ({ page }) => {
@@ -51,7 +52,9 @@ test('all conditions, sorting, reload, detail return and history retain one comm
   await page.keyboard.press('Escape');
   const first = cards(page).first();
   const id = await first.getAttribute('id');
+  await expect(first).toHaveAttribute("type", "button");
   await first.click();
+  await page.getByRole("link", {name:"View film details",exact:true}).click();
   await page.getByRole('button', { name: /^(Return to library|Back)$/i }).click();
   await expect(page).toHaveURL(url);
   await expect(page.locator(`#${id}`)).toBeFocused();

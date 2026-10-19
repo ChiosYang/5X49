@@ -38,62 +38,70 @@ body {
   z-index: var(--z-content);
 }
 
-.library-card-touch-actions {
-  display: none;
-}
-
 .library-card-inspector,
 .library-card-overlay {
   transform: translateY(0.25rem);
 }
 
-.library-card-media:not([data-actions-dismissed="true"]):is(:focus-within, [data-actions-open="true"]) {
+.library-card-media:not([data-actions-dismissed="true"]):is([data-touch-control="false"]:focus-within, [data-actions-open="true"]) {
   z-index: var(--z-inspector);
 }
 
-.library-card-media:not([data-actions-dismissed="true"]):is(:focus-within, [data-actions-open="true"]) :is(.library-card-inspector, .library-card-overlay) {
+.library-card-media:not([data-actions-dismissed="true"]):is([data-touch-control="false"]:focus-within, [data-actions-open="true"]) :is(.library-card-inspector, .library-card-overlay) {
   visibility: visible;
   opacity: 1;
   transform: translateY(0);
 }
 
-.library-card-media:not([data-actions-dismissed="true"]):is(:focus-within, [data-actions-open="true"]) .library-card-shade {
+.library-card-media:not([data-actions-dismissed="true"]):is([data-touch-control="false"]:focus-within, [data-actions-open="true"]) .library-card-shade {
   background: rgb(0 0 0 / 35%);
 }
 
-.library-card-media:not([data-actions-dismissed="true"]):is(:focus-within, [data-actions-open="true"]) + .library-card-title {
+.library-card-media[data-touch-control="false"]:not([data-actions-dismissed="true"]):focus-within + .library-card-title {
   opacity: 0;
   pointer-events: none;
 }
 
 @media (hover: hover) and (pointer: fine) {
-  .library-card-media:not([data-actions-dismissed="true"]):hover {
+  .library-card-media[data-touch-control="false"]:not([data-actions-dismissed="true"]):hover {
     z-index: var(--z-inspector);
   }
 
-  .library-card-media:not([data-actions-dismissed="true"]):hover :is(.library-card-inspector, .library-card-overlay) {
+  .library-card-media[data-touch-control="false"]:not([data-actions-dismissed="true"]):hover :is(.library-card-inspector, .library-card-overlay) {
     visibility: visible;
     opacity: 1;
     transform: translateY(0);
     transition-delay: var(--delay-inspection);
   }
 
-  .library-card-media:not([data-actions-dismissed="true"]):hover .library-card-shade {
+  .library-card-media[data-touch-control="false"]:not([data-actions-dismissed="true"]):hover .library-card-shade {
     background: rgb(0 0 0 / 35%);
     transition-delay: var(--delay-inspection);
   }
 
-  .library-card-media:not([data-actions-dismissed="true"]):hover + .library-card-title {
+  .library-card-media[data-touch-control="false"]:not([data-actions-dismissed="true"]):hover + .library-card-title {
     opacity: 0;
     pointer-events: none;
     transition-delay: var(--delay-inspection);
   }
 }
 
-@media (hover: none), (pointer: coarse), (any-pointer: coarse) {
-  .library-card-touch-actions {
-    display: flex;
-  }
+.library-card-media[data-touch-control="true"] {
+  aspect-ratio: auto;
+}
+
+/* Touch inspection stays in the document flow so titles and next cards stay usable. */
+.library-card-media[data-touch-control="true"] .library-card-inspector {
+  position: relative;
+  top: auto;
+  display: none;
+  visibility: visible;
+  opacity: 1;
+  transform: none;
+}
+
+.library-card-media[data-touch-control="true"][data-actions-open="true"]:not([data-actions-dismissed="true"]) .library-card-inspector {
+  display: block;
 }
 
 /* The first-run cover is server-rendered so onboarding never flashes before hydration. */

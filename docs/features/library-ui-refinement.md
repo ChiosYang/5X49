@@ -24,7 +24,12 @@ transparent navigation, all filtering capabilities, and existing film operations
   retain one, two and three columns.
 - Mouse hover restores the delayed glass inspector. Keyboard focus exposes the
   same actions, Escape dismisses it and returns focus, hidden actions cannot be
-  tabbed to, and touch devices retain a visible toggle.
+  tabbed to. No fixed ellipsis remains at any breakpoint.
+- On touch/coarse-pointer devices the image is a native disclosure button: one
+  activation opens an in-flow panel, with an explicit film-detail link. The title
+  remains a direct link and is never covered by the panel. Enter/Space toggle,
+  Escape closes and returns focus, and an outside click closes after activation
+  so another card cannot move mid-tap. Fine-pointer desktop behavior is retained.
 - Identity review remains available in the header. It compares identity conflicts
   and edition reconnection evidence; its workflow is unchanged.
 
@@ -48,16 +53,18 @@ No backend, public API, media files or personal data changes are required.
   short paths in the default temp directory trip the existing ESLint glob tests.
 - Production Next build: passed through the E2E harness.
 - `npm run test:e2e -- library-ui.spec.ts library-filters.spec.ts library-filter-care.spec.ts interactions.spec.ts`:
-  40 passed against the real isolated test backend and installed Windows Chrome
+  41 passed against the real isolated test backend and installed Windows Chrome
   155.0.8059.40. Outbound browser/backend traffic is blocked by the harness.
 - Browser images inspected: `frontend/e2e-artifacts/library-ui-1920x1080.png`,
   `library-ui-1980x1080.png`, `library-ui-mobile.png`, `library-ui-hover.png`,
   `library-ui-focus.png`, `library-ui-touch-actions.png`, `library-ui-filter-drawer.png`
   and `library-ui-mobile-drawer-zh.png`. Responsive assertions cover 360, 768 and
-  1024px too. The capture helper requests a full repaint to avoid incomplete
+  1024px, including touch input at 1920px too. The capture helper requests a full repaint to avoid incomplete
   backdrop-filter frames in Windows Chrome screenshots.
 - Self-review: checked native GET state, duplicate submission, invalid ranges,
   focus isolation/return, pointer crossing, adjacent film actions and touch access.
+  Touch coverage includes in-flow layout, outside dismissal, Enter/Space/Escape,
+  independent detail/title links, adjacent taps and reload/return focus.
 
 ## Remaining work
 

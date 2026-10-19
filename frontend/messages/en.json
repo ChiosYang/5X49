@@ -599,6 +599,7 @@
     "empty": "Your library is empty. Click Scan Now to add movies.",
     "emptyFiltered": "No Films match the current filter.",
     "resetFilter": "Show All Films",
+    "viewFilmDetails": "View film details",
     "cardActions": "Actions for {title}",
     "cardSaveFailed": "Not saved. Please try again.",
     "cardRefreshFailed": "Saved, but related views could not refresh. Retry refresh only.",
