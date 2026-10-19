@@ -12,7 +12,6 @@ import {
   Film,
   Globe2,
   Search,
-  Sparkles,
   UserRound,
   X,
 } from "lucide-react";
@@ -33,7 +32,7 @@ import type {
   ExploreOverview,
   ExploreView,
 } from "@/types/movie";
-import { Button, ButtonLink, IconButton } from "@/components/ui/Button";
+import { Button, IconButton } from "@/components/ui/Button";
 import LibraryMovieCard from "@/app/[locale]/library/LibraryMovieCard";
 import { Spinner } from "@/components/ui/Feedback";
 
@@ -140,14 +139,6 @@ export function LensDeck({
   onOpenLens,
 }: LensDeckProps) {
   const t = useTranslations("Explore");
-  const conflicted = overview.dimensions.reduce(
-    (sum, dimension) => sum + dimension.coverage.conflicted_films,
-    0,
-  );
-  const missing = overview.dimensions.reduce(
-    (sum, dimension) => sum + dimension.coverage.missing_films,
-    0,
-  );
 
   return (
     <section aria-labelledby="lens-deck-title">
@@ -161,7 +152,6 @@ export function LensDeck({
           const label = clue
             ? formatExploreFacetLabel(dimension, clue.key, clue.label, locale, localizeCountries)
             : t(`dimensions.${dimension}`);
-          const Icon = DIMENSION_ICON[dimension];
           const coverage = overviewDimension?.coverage.covered_films ?? 0;
           const total = overviewDimension?.coverage.total_films ?? overview.total_films;
 
@@ -175,13 +165,9 @@ export function LensDeck({
             >
               <ExploreArtwork item={clue} label={label} />
               <div className="relative flex min-h-48 flex-col justify-between gap-6 p-3 sm:p-6 md:min-h-64">
-                <div className="flex items-center justify-between gap-2">
-                  <span className="inline-flex h-10 w-10 items-center justify-center rounded-control border border-line-strong bg-canvas/70 text-ink">
-                    <Icon className="h-4 w-4" />
-                  </span>
+                <div className="flex justify-end">
                   <span aria-label={t("coverage", { covered: coverage, total })} className="rounded-full border border-line-strong bg-black/35 px-2 py-1 text-[11px] uppercase tracking-[0.15em] text-ink-muted backdrop-blur">
-                    <span className="sm:hidden">{coverage}/{total}</span>
-                    <span className="hidden sm:inline">{t("coverage", { covered: coverage, total })}</span>
+                    {coverage}/{total}
                   </span>
                 </div>
                 <div>
@@ -198,25 +184,6 @@ export function LensDeck({
           );
         })}
       </div>
-
-      <details className="mt-5 border-y border-line py-4 text-sm text-ink-muted">
-        <summary className="focus-ring flex min-h-11 cursor-pointer list-none items-center font-medium text-ink-muted">
-          <span className="inline-flex items-center gap-2">
-            <Sparkles className="h-4 w-4 text-ink-muted" />
-            {t("dataHealth")}
-            <span className="text-ink-subtle">·</span>
-            <span className="font-normal text-ink-muted">
-              {t("dataHealthSummary", { conflicted, missing })}
-            </span>
-          </span>
-        </summary>
-        <div className="mt-3 flex flex-wrap items-center justify-between gap-3 border-t border-line pt-3">
-          <p>{t("dataHealthDetail")}</p>
-          <ButtonLink href="/library?view=metadata" variant="ghost">
-            {t("review")}
-          </ButtonLink>
-        </div>
-      </details>
     </section>
   );
 }
@@ -588,9 +555,9 @@ export function ExploreHeader({
 }) {
   const t = useTranslations("Explore");
   return (
-    <header className="flex flex-col gap-5 border-b border-line pb-7 md:flex-row md:items-end md:justify-between">
+    <header className="flex flex-col gap-7 border-b border-line pb-8 lg:flex-row lg:items-end lg:justify-between">
       <div>
-        <h1 className="font-serif text-5xl text-ink md:text-6xl">{t("title")}</h1>
+        <h1 className="type-display-editorial">{t("title")}</h1>
       </div>
       <Button variant="secondary" onClick={onFind} aria-keyshortcuts="/">
         <Search className="h-4 w-4" />

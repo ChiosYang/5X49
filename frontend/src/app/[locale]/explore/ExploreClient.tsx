@@ -251,7 +251,7 @@ export default function ExploreClient({
   }, [pending, query.offset, reducedMotion, results]);
 
   return (
-    <div className="page-x min-h-screen bg-canvas pb-24 pt-32 text-ink selection:bg-inverse selection:text-inverse-ink">
+    <div className="page-x min-h-screen bg-canvas pb-24 pt-38 text-ink selection:bg-inverse selection:text-inverse-ink md:pt-44">
       <ExploreHeader onFind={() => openFinder()} />
 
       {hasFilters ? (
