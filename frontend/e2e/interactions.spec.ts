@@ -176,10 +176,12 @@ test('no-key real facts, zero results require reconfirmation; detail reload rest
 
 test('filtered Library detail return preserves URL, focus and scroll', async ({ page }) => {
   await page.goto('/en/library?filter=unwatched&sort=title');
-  const card = page.locator('a[id^="film-link-"]').nth(4);
+  const card = page.locator('button[id^="film-link-"]').nth(4);
   await card.scrollIntoViewIfNeeded();
   const id = await card.getAttribute('id');
+  await expect(card).toHaveAttribute("type", "button");
   await card.click();
+  await page.getByRole("link", {name:"View film details",exact:true}).click();
   await page.getByRole('button', { name: 'Watched today', exact: true }).waitFor();
   await page.getByRole('button', { name: /^(Return to library|Back)$/i }).click();
   await expect(page).toHaveURL(/filter=unwatched&sort=title/);
@@ -391,7 +393,7 @@ test('candidate Escape precedes More and detail overlay; analysis returns in one
   await page.route(`**/api/films/${film.id}/scrape`,route=>route.fulfill({json:{status:'needs_review',message:'Synthetic comparison fixture',candidates:[{tmdb_id:5514,title:'Escape fixture candidate',year:2001,score:96,overview:'Synthetic synopsis for keyboard comparison.',poster_path:null}]}}));
   for (const overlay of [false,true]) {
     if (overlay) {
-      await page.goto('/en/library');await page.locator(`#film-link-${film.id}`).click();
+      await page.goto('/en/library');await page.locator(`button#film-link-${film.id}`).click();await page.getByRole("link",{name:"View film details",exact:true}).click();
       await expect(page.getByRole('dialog').first()).toBeVisible();
     } else await page.goto(`/en/library/${film.id}`);
     const panel=await openFilmMore(page);
@@ -409,7 +411,7 @@ test('candidate Escape precedes More and detail overlay; analysis returns in one
     if (overlay) {await page.keyboard.press('Escape');await expect(page).toHaveURL(/\/en\/library$/);}
   }
   for (const closeWith of ['return','escape']) {
-    await page.goto('/en/library');await page.locator(`#film-link-${film.id}`).click();
+    await page.goto('/en/library');await page.locator(`button#film-link-${film.id}`).click();await page.getByRole("link",{name:"View film details",exact:true}).click();
     await expect(page).toHaveURL(new RegExp(`/en/library/${film.id}$`));
     const detailURL=page.url();const panel=await openFilmMore(page);
     await panel.getByRole('button',{name:'Film analysis',exact:true}).click();

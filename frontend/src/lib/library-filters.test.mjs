@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { readLibraryRanges, invalidLibraryRanges, clearLibraryFilters } from './library-filters.ts';
+import { readLibraryRanges, invalidLibraryRanges, clearLibraryFilters, libraryFilterCount } from './library-filters.ts';
 import { buildLibraryHref, appendLibraryFilters } from './library-care.ts';
 import { filmPageHref } from './film-pagination.ts';
 import { matchesLibraryFilter } from './library-interactions.ts';
@@ -64,4 +64,11 @@ test('local profile updates honor favorite AND watched status', () => {
   assert.equal(matchesLibraryFilter({watched:true,favorite:true,rating:3}, 'watched', true, 3, 3), true);
   assert.equal(matchesLibraryFilter({watched:true,favorite:true,rating:2}, 'watched', true, 3), false);
   assert.equal(matchesLibraryFilter({watched:true,favorite:true,rating:4}, 'watched', true, undefined, 3), false);
+});
+
+test('active indicator counts committed condition groups, legacy favorites and invalid ranges', () => {
+  assert.equal(libraryFilterCount(clearLibraryFilters(state)), 0);
+  assert.equal(libraryFilterCount(state), 6);
+  assert.equal(libraryFilterCount({...clearLibraryFilters(state),filter:'favorite'}), 1);
+  assert.equal(libraryFilterCount({...clearLibraryFilters(state),duration_min:'oops'}), 1);
 });
