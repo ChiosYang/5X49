@@ -257,3 +257,50 @@ and a blocking review hold. It does not release review, consume another
 continuation, rewrite other unknowns, or authorize inference. Read-only dry-runs
 should use the pure verifier rather than this mutating command. Private reports,
 receipts, ledger files and actual runtime identifiers stay outside Git.
+
+
+## Saved-response verification without another inference
+
+A synthetic live run now captures its response before the first generation
+receipt GET. The complete bounded JSON file is fsynced before atomic,
+no-overwrite publication. Link/junction paths are rejected and each checkpoint
+is made read-only. A capture error keeps the unknown/full-reserve stop. Existing
+receipt lookup limits and the zero-inference-retry policy remain unchanged.
+
+If the run subsequently stops on a missing receipt, preserve the entire original
+failed report and its file SHA256 independently. Preserve the later receipt API
+envelope (`{"data": {...}}`) and its SHA256 as private evidence as well. Use:
+
+```powershell
+uv run --no-sync python -X utf8 -m app.evaluation.ask --resume-report <original-failed-canary.json> --resume-report-sha256 <retained-report-sha256> --response-checkpoint <private-checkpoint.json> --generation-receipt <saved-receipt-envelope.json> --generation-receipt-sha256 <retained-receipt-sha256> --output <new-private-offline-result.json>
+```
+
+The checkpoint digest must match the original report; all attempt/run/case,
+request/prompt/corpus/preflight and Git/source identities must match. Recover
+using the same code identity, not a modified corpus or parser. Expected hashes
+are trust anchors from separately retained evidence: recomputing all hashes of
+an untrusted replacement is not proof of origin. Hashes detect replacement
+relative to those anchors; they do not authenticate an operator-supplied API
+receipt. No online receipt lookup occurs in this mode.
+
+The command requires saved completion usage and checks it against the receipt,
+including zero reasoning, token bounds and native-token cost arithmetic. It
+replays the recorded content through the existing interpreter; expected fixture
+answers never replace missing response text. Its evidence class is
+`offline_saved_canary_validation`, with no live accuracy claim. Invalid JSON or
+an incorrect plan fails even when billing evidence is valid. Missing checkpoint
+or usage, changed identities, extra fields or digest mismatches fail closed.
+
+All inputs and budget/history bytes remain unchanged. The output must be a new
+file; it cannot overwrite an input or an earlier result. Success means the saved
+response passed this offline check. It does not rewrite the original canary as
+successful, record a reconciliation, release a review hold, grant authorization
+or start the 52-case suite. Originals that never saved completion content cannot
+be recovered by this implementation. Keep all checkpoints, reports and receipts
+private and outside commits or PR descriptions.
+
+Synthetic regression covers a new process receiving a delayed mocked receipt
+after three mocked 404s, exactly one inference POST, capture before GET, identity
+and hash rejection, invalid JSON, absent/mismatched usage, capture/publication
+failure, no overwrite, original-report preservation and unchanged cumulative
+budget/history. These tests use temporary databases and mocked transports only.

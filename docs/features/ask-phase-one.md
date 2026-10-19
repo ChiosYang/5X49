@@ -111,3 +111,36 @@ a fresh passing canary and the full 52-case live quality gate remain outstanding
 - Preserve existing local changes and saved test evidence through execution-environment outages.
 
 - Initial source recovery gates composer readiness; first history-scope discovery never clears initial interaction state. Nonempty questions retain consent controls. Deterministic blocked-hydration E2E covers the Linux-discovered first-input race.
+
+
+## Private response checkpoint and offline recovery
+
+The synthetic live evaluator saves an allowlisted response before its first
+receipt lookup. A same-directory, fsynced temporary file is atomically published
+without replacing an existing checkpoint. Save failure records an unknown paid
+attempt at its full reservation and stops before receipt lookup or another POST.
+The receipt-failure behavior, budget limits, model/provider policy and inference
+retry policy are unchanged. Application API responses and frontend styling are
+unchanged; production Ask does not log model content.
+
+The private checkpoint binds the exact attempt/run/case, locale, complete case,
+request and prompt digests, corpus bytes, preflight and Git/source-file identity.
+Only response ID/model, content, finish reason and selected usage fields are
+retained. Requests, prompt/question text, credentials, headers and arbitrary SDK
+fields are excluded. Response content remains private under the ignored
+`.evaluation-artifacts/ask-response-checkpoints/` directory.
+
+`--resume-report` is an offline evidence check for one saved failed canary.
+It requires independently retained original-report and receipt file hashes;
+the original report anchors the checkpoint's hash. It verifies identities,
+receipt/token arithmetic and the recorded usage, then passes the same saved
+content through the existing interpreter and compares its plan with the bound
+case. It opens no ledger or provider client and writes only a new private result.
+It never changes the failed report, settles costs, releases review, grants a
+continuation or retries inference. A valid receipt cannot turn invalid JSON or
+missing original usage into a passing response.
+
+No lost completion can be reconstructed retrospectively. Earlier failures
+without a checkpoint remain unavailable for offline quality checks. Independent
+review of supplied evidence is still required before any separately authorized
+accounting/release or subsequent live work; this change adds no budget exception.

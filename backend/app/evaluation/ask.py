@@ -23,6 +23,7 @@ from openai import APITimeoutError, OpenAI
 
 from app.contracts.ask import AskQuestion
 from app.evaluation.ask_budget import BudgetLedger, BudgetStop, amount, input_upper_bound, INPUT_LIMIT, OUTPUT_LIMIT, BILLING_INPUT_RESERVE, PROMPT_PRICE_CAP, COMPLETION_PRICE_CAP
+from app.evaluation.ask_checkpoint import (VERSION as CHECKPOINT_VERSION, atomic_private_json, binding as checkpoint_binding, digest, read_verified_json, save_checkpoint)
 from app.evaluation.ask_review import authorize_additional_continuation, authorize_conservative_continuation, release_review_hold
 from app.services.ask import AskError, AskInterpreter
 
@@ -333,9 +334,10 @@ def read_generation_receipt(client, generation_id, *, retry_existing_reads=False
 
 
 class PaidClient:
-    def __init__(self, *, ledger, run_id, case_id, preflight, receipt_check=None, **options):
+    def __init__(self, *, ledger, run_id, case_id, preflight, receipt_check=None, checkpoint=None, **options):
         self.ledger, self.run_id, self.case_id, self.preflight = ledger, run_id, case_id, preflight
         self.receipt_check = receipt_check if receipt_check is not None else {}
+        self.checkpoint = checkpoint
         self.client = OpenAI(**options)
         self.chat = SimpleNamespace(completions=SimpleNamespace(create=self.create))
 
@@ -358,6 +360,11 @@ class PaidClient:
         if request.get("model") != MODEL or request.get("extra_body") != POLICY or request.get("max_tokens") != OUTPUT_LIMIT:
             raise BudgetStop("request_policy_changed")
         verify_preflight_identity(self.preflight)
+        if self.checkpoint is not None:
+            _, context = self.checkpoint
+            if (context["request_sha256"] != digest(request) or context["run_id"] != self.run_id
+                    or context["case_id"] != self.case_id):
+                raise BudgetStop("checkpoint_request_identity_changed")
         bound = input_upper_bound(request["messages"])
         try:
             credit = self.client.get("/credits", cast_to=dict[str, object])["data"]
@@ -387,6 +394,16 @@ class PaidClient:
         generation_id = response.id
         usage = response.usage
         cost = getattr(usage, "cost", None)
+        # Persist the allowlisted synthetic completion BEFORE the first receipt
+        # GET. A failed checkpoint keeps the paid attempt unknown and stops.
+        if self.checkpoint is not None:
+            self.receipt_check.update(stage="response_checkpoint", completion_response_received=True, receipt_verified=False)
+            try:
+                directory, context = self.checkpoint
+                self.receipt_check["checkpoint"] = save_checkpoint(directory, attempt, context, response)
+            except Exception as error:
+                self.receipt_check["checkpoint_error_type"] = type(error).__name__
+                self._stop_unverified_receipt(attempt, generation_id, error)
         # Actual provider/model and billing must be corroborated by generation
         # metadata. Read-only lookup is not a second inference call.
         self.receipt_check.update(stage="generation_receipt_lookup", completion_response_received=True, receipt_verified=False)
@@ -455,8 +472,10 @@ def live(args):
         raise BudgetStop("insufficient_existing_credits")
     for index, case in enumerate(cases):
         receipt_check = {}
+        context = checkpoint_binding(case, args.run_id, saved_request(case), preflight, FIXTURES, AskInterpreter.prompt())
+        checkpoint = (ledger.path.parent / "ask-response-checkpoints", context)
         interpreter = AskInterpreter(provider_config={"model": MODEL, "base_url": BASE_URL, "request_options": POLICY},
-            client_factory=lambda **options: PaidClient(ledger=ledger, run_id=args.run_id, case_id=case["id"], preflight=preflight, receipt_check=receipt_check, **options))
+            client_factory=lambda **options: PaidClient(ledger=ledger, run_id=args.run_id, case_id=case["id"], preflight=preflight, receipt_check=receipt_check, checkpoint=checkpoint, **options))
         row = evaluate_case(case, interpreter)
         if receipt_check:
             row["receipt_check"] = receipt_check
@@ -489,6 +508,104 @@ def live(args):
             "ledger": ledger.summary(), "cases": rows}
 
 
+
+def saved_request(case):
+    return {"model": MODEL, "max_tokens": OUTPUT_LIMIT, "response_format": {"type": "json_object"},
+            "extra_body": POLICY, "messages": [{"role": "system", "content": AskInterpreter.prompt()},
+                                              {"role": "user", "content": case["question"]}]}
+
+
+def resume_saved_canary(report_path, report_sha256, checkpoint_path, receipt_path, receipt_sha256):
+    """Validate supplied private evidence offline. Never open a ledger or client.
+
+    Expected input hashes must come from separately retained operator evidence;
+    hashes provide integrity/binding, not proof that a supplied receipt is authentic.
+    """
+    report = read_verified_json(report_path, report_sha256)
+    if (not isinstance(report, dict) or report.get("mode") != "canary" or report.get("complete") is not False
+            or report.get("stop_reason") != "uncertain_billing_stop" or len(report.get("cases", [])) != 1):
+        raise BudgetStop("checkpoint_failed_canary_required")
+    row = report["cases"][0]
+    reference = row.get("receipt_check", {}).get("checkpoint")
+    if not isinstance(reference, dict) or set(reference) != {"file", "sha256", "binding_sha256"}:
+        # No retrospective reconstruction from expected fixtures or a later receipt.
+        raise BudgetStop("checkpoint_missing_original_response")
+    if Path(checkpoint_path).name != reference["file"]:
+        raise BudgetStop("checkpoint_file_identity_mismatch")
+    saved = read_verified_json(checkpoint_path, reference["sha256"])
+    if (not isinstance(saved, dict) or set(saved) != {"version", "attempt_id", "binding", "response"}
+            or saved["version"] != CHECKPOINT_VERSION):
+        raise BudgetStop("checkpoint_schema_invalid")
+    matches = [case for case in corpus() if case["id"] == row.get("case_id")]
+    if len(matches) != 1:
+        raise BudgetStop("checkpoint_case_identity_mismatch")
+    case = matches[0]
+    context = checkpoint_binding(case, report.get("run_id"), saved_request(case), report.get("preflight"), FIXTURES, AskInterpreter.prompt())
+    if saved["binding"] != context or digest(context) != reference["binding_sha256"]:
+        raise BudgetStop("checkpoint_binding_mismatch")
+    attempts = [attempt for attempt in report.get("ledger", {}).get("attempts", [])
+                if attempt.get("id") == saved["attempt_id"]]
+    if len(attempts) != 1:
+        raise BudgetStop("checkpoint_attempt_identity_mismatch")
+    attempt = attempts[0]
+    if (attempt.get("state") != "unknown" or attempt.get("cost") is not None
+            or attempt.get("run_id") != context["run_id"] or attempt.get("case_id") != context["case_id"]
+            or reference["file"] != attempt["id"] + ".json"):
+        raise BudgetStop("checkpoint_attempt_identity_mismatch")
+    response = saved["response"]
+    if not isinstance(response, dict) or set(response) != {"id", "model", "content", "finish_reason", "usage"}:
+        raise BudgetStop("checkpoint_response_schema_invalid")
+    receipt = read_verified_json(receipt_path, receipt_sha256)
+    if not isinstance(receipt, dict) or set(receipt) != {"data"} or not isinstance(receipt["data"], dict):
+        raise BudgetStop("checkpoint_receipt_schema_invalid")
+    metadata = receipt["data"]
+    if response["id"] != attempt.get("generation_id") or response["model"] not in {MODEL, CANONICAL_MODEL}:
+        raise BudgetStop("checkpoint_generation_identity_mismatch")
+    verify_generation_identity(report["preflight"], metadata, response["id"], response["model"])
+    usage = response["usage"]
+    if not isinstance(usage, dict) or set(usage) != {"prompt_tokens", "completion_tokens", "total_tokens", "cost", "reasoning_tokens"}:
+        raise BudgetStop("checkpoint_completion_usage_missing")
+    evidence = verify_reconciliation(report, attempt, report["preflight"], metadata, amount(usage["cost"]))
+    for key, other, limit in (("prompt_tokens", "native_tokens_prompt", evidence["input_upper_bound"]),
+                              ("completion_tokens", "native_tokens_completion", OUTPUT_LIMIT)):
+        token_count(usage[key], limit)
+        if usage[key] != metadata.get(other):
+            raise BudgetStop("checkpoint_usage_receipt_mismatch")
+    if (type(usage["reasoning_tokens"]) is not int or usage["reasoning_tokens"] != 0
+            or type(usage["total_tokens"]) is not int
+            or usage["total_tokens"] != usage["prompt_tokens"] + usage["completion_tokens"]):
+        raise BudgetStop("checkpoint_usage_receipt_mismatch")
+    content = response["content"]
+    if content is not None and (not isinstance(content, str) or len(content) > 12000):
+        raise BudgetStop("checkpoint_content_invalid")
+    recorded = SimpleNamespace(id=response["id"], model=response["model"],
+        choices=[SimpleNamespace(message=SimpleNamespace(content=content), finish_reason=response["finish_reason"])],
+        usage=SimpleNamespace(cost=float(amount(usage["cost"])), prompt_tokens=usage["prompt_tokens"],
+            completion_tokens=usage["completion_tokens"], total_tokens=usage["total_tokens"]))
+    client = MagicMock()
+    client.__enter__.return_value = client
+    client.chat.completions.create.return_value = recorded
+    interpreter = AskInterpreter(client_factory=MagicMock(return_value=client),
+                                 provider_config={"model": MODEL, "base_url": BASE_URL})
+    with patch.dict(os.environ, {"OPENROUTER_API_KEY": "synthetic-offline-replay"}):
+        replay = evaluate_case(case, interpreter)
+    if client.chat.completions.create.call_count != 1:
+        raise BudgetStop("checkpoint_replay_not_consumed")
+    # Recheck every supplied artifact before returning; original bytes stay intact.
+    read_verified_json(report_path, report_sha256)
+    read_verified_json(checkpoint_path, reference["sha256"])
+    read_verified_json(receipt_path, receipt_sha256)
+    return {"version": "ask-checkpoint-resume.v1", "evidence_class": "offline_saved_canary_validation",
+            "paid_requests_in_run": 0, "network_requests": 0, "ledger_written": False,
+            "original_report_unchanged": True, "original_report_sha256": report_sha256,
+            "checkpoint_sha256": reference["sha256"], "receipt_sha256": receipt_sha256,
+            "receipt_evidence_validated": True, "receipt_authenticity": "operator-supplied snapshot; no network attestation",
+            "strict_json_validated": replay["actual_status"] in {"ready", "clarify", "unsupported"},
+            "saved_response_quality_passed": replay["passed"], "case": replay,
+            "review_required": True, "continuation_authorized": False, "review_released": False,
+            "original_canary_passed": False, "live_supported_accuracy": None}
+
+
 def live_gate(complete, canary_only, supported_accuracy, rejected_case_failures):
     # Supported accuracy alone cannot excuse silently dropped unsupported input.
     return bool(complete and not canary_only and supported_accuracy is not None
@@ -499,6 +616,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     mode = parser.add_mutually_exclusive_group()
     mode.add_argument("--live", action="store_true")
+    mode.add_argument("--resume-report", type=Path)
     mode.add_argument("--reconcile-report", type=Path)
     mode.add_argument("--release-review", type=Path, metavar="PRIVATE_APPROVAL_JSON")
     mode.add_argument("--continue-conservatively", type=Path, metavar="PRIVATE_APPROVAL_JSON")
@@ -511,6 +629,10 @@ def main():
     parser.add_argument("--attempt-id", action=Once, help="Exact historical attempt; reconciliation only")
     parser.add_argument("--ledger-path", type=Path, action=Once,
                         help="Existing schema-validated ledger; reconciliation only")
+    parser.add_argument("--resume-report-sha256", action=Once)
+    parser.add_argument("--response-checkpoint", type=Path, action=Once)
+    parser.add_argument("--generation-receipt", type=Path, action=Once)
+    parser.add_argument("--generation-receipt-sha256", action=Once)
     parser.add_argument("--expected-cost-usd", type=Decimal)
     parser.add_argument("--canary-only", action="store_true")
     parser.add_argument("--authorization")
@@ -520,8 +642,19 @@ def main():
     args = parser.parse_args()
     if (args.attempt_id is not None or args.ledger_path is not None) and args.reconcile_report is None:
         parser.error("--attempt-id and --ledger-path require --reconcile-report")
+    resume_inputs = (args.resume_report_sha256, args.response_checkpoint, args.generation_receipt, args.generation_receipt_sha256)
+    if args.resume_report:
+        if not all(resume_inputs) or args.output.exists() or args.output.is_symlink():
+            parser.error("resume requires all input hashes/paths and a new private output")
+        if args.authorization or args.canary_only or args.budget_usd is not None or args.expected_cost_usd is not None:
+            parser.error("resume cannot authorize inference or accounting")
+    elif any(value is not None for value in resume_inputs):
+        parser.error("resume input options require --resume-report")
     try:
-        if args.continue_additionally:
+        if args.resume_report:
+            report = resume_saved_canary(args.resume_report, args.resume_report_sha256, args.response_checkpoint,
+                                         args.generation_receipt, args.generation_receipt_sha256)
+        elif args.continue_additionally:
             report = authorize_additional_continuation(args.continue_additionally, authorization=args.authorization,
                                                        ledger_path=LEDGER, repo_root=Path(__file__).resolve().parents[3])
         elif args.continue_conservatively:
@@ -537,19 +670,24 @@ def main():
             report = live(args) if args.live else offline()
     except Exception as error:
         # Never emit provider/credential body strings.
-        report = {"version": "ask-evaluation.v1", "evidence_class": "one_additional_full_reserve_continuation" if args.continue_additionally else "single_full_reserve_continuation" if args.continue_conservatively else "audited_review_hold_release" if args.release_review else "read_only_historical_billing_reconciliation" if args.reconcile_report else "live_synthetic_questions" if args.live else "offline_fixture_contract_only",
+        report = {"version": "ask-evaluation.v1", "evidence_class": "offline_saved_canary_validation" if args.resume_report else "one_additional_full_reserve_continuation" if args.continue_additionally else "single_full_reserve_continuation" if args.continue_conservatively else "audited_review_hold_release" if args.release_review else "read_only_historical_billing_reconciliation" if args.reconcile_report else "live_synthetic_questions" if args.live else "offline_fixture_contract_only",
                   "complete": False, "stop_reason": str(error) if isinstance(error, BudgetStop) else "evaluation_preflight_failed"}
         if args.live and report["stop_reason"] in {"explicit_1usd_authorization_required", "existing_exported_credential_missing"}:
             report.update(evidence_class="live_evaluation_preflight", paid_requests_in_run=0, cost_usd_in_run=0)
-        if args.reconcile_report or args.release_review or args.continue_conservatively or args.continue_additionally:
+        if args.resume_report or args.reconcile_report or args.release_review or args.continue_conservatively or args.continue_additionally:
             report["paid_requests_in_run"] = 0
         if isinstance(error, ReceiptLookupError):
             report["stop_reason"] = "generation_receipt_lookup_unverified"
             report["receipt_error"] = {"stage": "generation_receipt_lookup", "receipt_verified": False,
                                        "lookup": error.diagnostic}
-    args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
+    if args.resume_report:
+        atomic_private_json(args.output, report)
+    else:
+        args.output.parent.mkdir(parents=True, exist_ok=True)
+        args.output.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
     print(json.dumps({key: report.get(key) for key in ("evidence_class", "fixture_cases", "fixture_passed", "complete", "stop_reason", "live_supported_accuracy", "accuracy_gate_passed", "applied", "review_required", "review_released", "continuation_authorized")}))
+    if args.resume_report:
+        return 0 if report.get("saved_response_quality_passed") else 1
     if args.continue_conservatively or args.continue_additionally:
         return 0 if report.get("continuation_authorized") else 1
     if args.release_review:
