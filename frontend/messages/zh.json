@@ -576,6 +576,10 @@
     "next": "下一页"
   },
   "LibraryFilters": {
+    "close": "关闭筛选",
+    "applied": "已应用筛选",
+    "activeCount": "已应用 {count} 项条件",
+    "any": "不限",
     "label": "影视库组合筛选",
     "query": "搜索影视库",
     "searchPlaceholder": "片名、影人、年份或关键词",
@@ -647,6 +651,7 @@
     "empty": "资料库为空。点击扫描添加电影。",
     "emptyFiltered": "当前筛选条件下没有影片。",
     "resetFilter": "显示全部影片",
+    "viewFilmDetails": "查看影片详情",
     "cardActions": "操作：{title}",
     "cardSaveFailed": "未保存，请重试。",
     "cardRefreshFailed": "已保存，但相关视图刷新失败。重试只刷新显示。",

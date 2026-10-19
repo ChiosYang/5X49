@@ -4,12 +4,8 @@ import {
   ArrowUp,
   ArrowUpDown,
   CalendarPlus,
-  CheckCircle2,
-  Circle,
   Clock3,
   FolderClock,
-  ListFilter,
-  Star,
   TriangleAlert,
   Type,
 } from "lucide-react";
@@ -44,7 +40,7 @@ import LibraryInboxCare from "./LibraryInboxCare";
 import LibraryMetadataCare from "./LibraryMetadataCare";
 import LibraryOfflineCare from "./LibraryOfflineCare";
 import LibraryOnboarding from "./LibraryOnboarding";
-import LibraryFilters from "./LibraryFilters";
+import LibraryFilters, { LibraryFilterSummary } from "./LibraryFilters";
 
 interface LibraryPageProps {
   params: Promise<{ locale: string }>;
@@ -61,16 +57,7 @@ const SORT_OPTIONS: Array<{
   { key: "duration", defaultDirection: "desc", icon: Clock3, labelKey: "sortDuration" },
 ];
 
-const FILTER_OPTIONS: Array<{
-  key: LibraryFilterKey;
-  icon: typeof Circle;
-  labelKey: "filterAll" | "filterWatched" | "filterUnwatched" | "filterFavorite";
-}> = [
-  { key: "all", icon: Circle, labelKey: "filterAll" },
-  { key: "watched", icon: CheckCircle2, labelKey: "filterWatched" },
-  { key: "unwatched", icon: Circle, labelKey: "filterUnwatched" },
-  { key: "favorite", icon: Star, labelKey: "filterFavorite" },
-];
+const FILTER_OPTIONS: LibraryFilterKey[] = ["all", "watched", "unwatched", "favorite"];
 
 const VIEW_LABELS: Record<LibraryView, "allFilms" | "metadataTab" | "inboxTab" | "offlineTab"> = {
   all: "allFilms",
@@ -93,7 +80,7 @@ function normalizeDirection(value: string | undefined, sort: LibrarySortKey): Li
 }
 
 function normalizeFilter(value?: string): LibraryFilterKey {
-  return FILTER_OPTIONS.some((option) => option.key === value) ? value as LibraryFilterKey : "all";
+  return FILTER_OPTIONS.some((option) => option === value) ? value as LibraryFilterKey : "all";
 }
 
 function viewCount(view: LibraryView, care: ReturnType<typeof buildLibraryCareState>) {
@@ -151,33 +138,19 @@ export default async function LibraryPage({ searchParams }: LibraryPageProps) {
   const recommendedHref = care.recommendedView ? buildLibraryHref(queryState, care.recommendedView) : null;
 
   return (
-    <main className="page-x min-h-screen overflow-x-hidden bg-canvas py-6 text-ink selection:bg-inverse selection:text-inverse-ink md:py-12">
+    <main className="page-x min-h-screen bg-canvas py-6 text-ink selection:bg-inverse selection:text-inverse-ink md:py-12">
       <div className="w-full pt-32">
         <header className="flex flex-col gap-7 border-b border-line pb-8 lg:flex-row lg:items-end lg:justify-between">
           <div>
             <h1 className="type-display-editorial">{t("title")}</h1>
             {view !== "all" ? <p className="mt-3 type-label text-ink-subtle">{careT(VIEW_LABELS[view])}</p> : null}
           </div>
-          <div className="flex flex-wrap items-center gap-3 lg:justify-end">
-            <a href={`/${locale}/library/identity-review`} className="focus-ring inline-flex min-h-10 items-center px-3 type-label text-ink-subtle hover:text-ink">{careT("identityReview")}</a>
-            {view === "all" && filmPage.library_total > 0 ? (
+          <div className="flex flex-wrap items-center gap-x-1 gap-y-3 sm:gap-3 lg:justify-end">
+            <a href={`/${locale}/library/identity-review`} className="focus-ring inline-flex min-h-11 items-center type-label text-ink-subtle hover:text-ink sm:px-3">{careT("identityReview")}</a>
+            {view === "all" && (filmPage.library_total > 0 || invalidRanges.length > 0) ? (
               <>
                 {!invalidRanges.length && <span className="mr-1 hidden text-xs font-bold tracking-widest text-ink-subtle uppercase md:inline-block">{t("filmsCount", {count:filmPage.total})}</span>}
-                <Disclosure label={t("filter")} icon={<ListFilter className="h-4 w-4" />} active={filter !== "all" || favorite}>
-                      {FILTER_OPTIONS.map((option) => {
-                        const Icon = option.icon;
-                        const active = option.key === "favorite" ? favorite : filter === option.key && (option.key !== "all" || !favorite);
-                        const nextState = option.key === "favorite"
-                          ? { ...queryState, favorite: !favorite, page: 1 }
-                          : { ...queryState, filter: option.key, favorite: option.key === "all" ? false : favorite, page: 1 };
-                        return (
-                          <Link key={option.key} href={buildLibraryHref(nextState, "all")} className={`focus-ring duration-standard flex h-10 items-center justify-between rounded-control px-3 text-sm transition-colors ${active ? "bg-inverse text-inverse-ink" : "text-ink-muted hover:bg-surface-raised hover:text-ink"}`}>
-                            <span className="flex min-w-0 items-center gap-2"><Icon className={`h-4 w-4 shrink-0 ${option.key === "favorite" && active ? "fill-current" : ""}`} /><span className="truncate">{t(option.labelKey)}</span></span>
-                            {active ? <CheckCircle2 className="h-3.5 w-3.5" /> : null}
-                          </Link>
-                        );
-                      })}
-                </Disclosure>
+                <LibraryFilters key={buildLibraryHref(queryState)} state={queryState} locale={locale} />
                 <Disclosure label={t("sort")} icon={<ArrowUpDown className="h-4 w-4" />}>
                       {SORT_OPTIONS.map((option) => {
                         const Icon = option.icon;
@@ -198,7 +171,7 @@ export default async function LibraryPage({ searchParams }: LibraryPageProps) {
           </div>
         </header>
 
-        {view === "all" && (filmPage.library_total > 0 || invalidRanges.length > 0) ? <LibraryFilters key={buildLibraryHref(queryState)} state={queryState} locale={locale} /> : null}
+        {view === "all" ? <LibraryFilterSummary state={queryState} /> : null}
         {view === "all" && !invalidRanges.length && filmPage.library_total > 0 ? <p role="status" className="mt-4 text-xs text-ink-subtle md:hidden">{t("filmsCount", {count:filmPage.total})}</p> : null}
 
         {care.visibleViews.length > 0 ? (

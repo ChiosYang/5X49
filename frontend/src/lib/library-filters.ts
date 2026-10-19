@@ -9,6 +9,13 @@ export type LibraryRange = typeof LIBRARY_RANGES[number]["key"];
 export type LibraryRangeField = `${LibraryRange}_${"min" | "max"}`;
 export type LibraryRanges = Partial<Record<LibraryRangeField, string>>;
 
+/** Count committed condition groups, including invalid ranges needing correction. */
+export function libraryFilterCount(state: LibraryQueryState): number {
+  return Number(Boolean(state.query)) + Number(state.filter === "watched" || state.filter === "unwatched")
+    + Number(Boolean(state.favorite || state.filter === "favorite"))
+    + LIBRARY_RANGES.filter(({ key }) => state[`${key}_min`] || state[`${key}_max`]).length;
+}
+
 export function readLibraryRanges(params: Record<string, string | string[] | undefined>): LibraryRanges {
   const ranges: LibraryRanges = {};
   for (const { key } of LIBRARY_RANGES) {

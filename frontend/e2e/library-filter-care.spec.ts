@@ -5,7 +5,7 @@ const backend = process.env.E2E_BACKEND!;
 const applied = new URLSearchParams({sort:'title',dir:'desc',filter:'watched',q:'Shelf',favorite:'true',
   duration_min:'80',duration_max:'80',rating_min:'3',rating_max:'3',year_min:'1980',year_max:'1980',page:'2'});
 const filmsUrl = `/en/library?${applied}`;
-const cards = (page: Page) => page.locator('a[id^="film-link-"]');
+const cards = (page: Page) => page.locator('[id^="film-link-"]');
 
 async function control(request: APIRequestContext, action: string, mode?: string) {
   const response = await request.post(`${backend}/__e2e/control`, {
@@ -17,12 +17,14 @@ async function control(request: APIRequestContext, action: string, mode?: string
 async function expectFilmsRestored(page: Page) {
   await expect(page).toHaveURL(filmsUrl);
   await expect(cards(page).locator('h2,h3')).toHaveText(['Shelf 01','Shelf 00']);
+  await page.getByRole('button',{name:'Filter',exact:true}).click();
   await expect(page.getByRole('searchbox', {name:'Search library',exact:true})).toHaveValue('Shelf');
   await expect(page.getByLabel('Watched status',{exact:true})).toHaveValue('watched');
   await expect(page.getByLabel('Favorites only',{exact:true})).toBeChecked();
   for (const [label,value] of [['Minimum duration','80'],['Maximum duration','80'],
     ['Minimum Film personal rating','3'],['Maximum Film personal rating','3'],['Earliest year','1980'],['Latest year','1980']])
     await expect(page.getByLabel(label,{exact:true})).toHaveValue(value);
+  await page.keyboard.press('Escape');
 }
 
 test.beforeAll(async ({request}) => {

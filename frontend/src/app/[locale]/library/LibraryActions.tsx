@@ -4,7 +4,7 @@ import { Activity, Ellipsis, RefreshCw, ScanSearch, Settings, Sparkles, Star } f
 import { useTranslations } from "next-intl";
 import { useEffect, useRef, useState } from "react";
 
-import { Button } from "@/components/ui/Button";
+import { IconButton } from "@/components/ui/Button";
 import { InlineFeedback } from "@/components/ui/Feedback";
 import {
   useLibrarySyncStatus,
@@ -27,6 +27,7 @@ export default function LibraryActions() {
   const t = useTranslations("LibraryCare");
   const router = useRouter();
   const menuRef = useRef<HTMLDivElement>(null);
+  const moreTrigger = useRef<HTMLButtonElement>(null);
   const [open, setOpen] = useState(false);
   const [feedback, setFeedback] = useState<Feedback | null>(null);
   const sync = useLibrarySyncStatus();
@@ -42,7 +43,7 @@ export default function LibraryActions() {
       if (!menuRef.current?.contains(event.target as Node)) setOpen(false);
     };
     const escape = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setOpen(false);
+      if (event.key === "Escape" && open) { setOpen(false); moreTrigger.current?.focus(); }
     };
     document.addEventListener("mousedown", close);
     document.addEventListener("keydown", escape);
@@ -50,7 +51,7 @@ export default function LibraryActions() {
       document.removeEventListener("mousedown", close);
       document.removeEventListener("keydown", escape);
     };
-  }, []);
+  }, [open]);
 
   const run = async (
     operation: () => Promise<unknown>,
@@ -70,23 +71,25 @@ export default function LibraryActions() {
   };
 
   return (
-    <div className="relative flex flex-wrap items-center justify-end gap-3" ref={menuRef}>
-      <Button
-        variant="primary"
+    <div className="relative flex flex-wrap items-center justify-end gap-1 sm:gap-3" ref={menuRef} onBlur={(event) => {
+      if (!event.currentTarget.contains(event.relatedTarget)) setOpen(false);
+    }}>
+      <IconButton
+        variant="ghost"
+        aria-label={scanBusy ? t("scanning") : t("scanNow")}
         busy={scanBusy}
         icon={<ScanSearch className="h-4 w-4" />}
         onClick={() => void run(() => scan.trigger(), t("scanStarted"))}
-      >
-        {scanBusy ? t("scanning") : t("scanNow")}
-      </Button>
-      <Button
+      />
+      <IconButton
+        ref={moreTrigger}
+        variant="ghost"
+        aria-label={t("more")}
         aria-expanded={open}
         aria-haspopup="menu"
         icon={<Ellipsis className="h-4 w-4" />}
         onClick={() => setOpen((value) => !value)}
-      >
-        {t("more")}
-      </Button>
+      />
 
       {open ? (
         <div

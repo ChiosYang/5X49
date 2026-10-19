@@ -159,7 +159,7 @@ for (const phase of ['response', 'refresh'] as const) {
       await page.getByRole('button', { name: 'Return to Library', exact: true }).click();
       await expect(page).toHaveURL('/en/library');
       left = true;
-      await page.locator(`a[href="/en/library/${destination.source_id}"]`).first().click();
+      await page.locator(`a.library-card-title[href="/en/library/${destination.source_id}"]`).click();
       await expect(page).toHaveURL(`/en/library/${destination.source_id}`);
       await expect(page.getByRole('button', { name: 'Review match', exact: true })).toBeEnabled();
       if (phase === 'response') {
