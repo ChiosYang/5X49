@@ -87,6 +87,22 @@ the entire plan, then show owned Films with verifiable local match reasons.
   the live model gate. Unknown/reservation blocking and per-run authorization
   requirements remain unchanged; postponing provider diagnosis grants no bypass.
 
+## Additional conservative authorization follow-up
+
+One extra evaluation-only approval path is implemented for independent review.
+It requires an exact target fingerprint, a complete existing-ledger snapshot,
+a distinct explicit user approval and matching review/CI evidence. It appends
+one optional singleton audit without changing the original singleton, original
+history, unknown costs or full reservations. Concurrent identical approvals
+are idempotent; different/future unknowns cannot acquire further exemptions.
+The next complete reservation still obeys both cumulative limits.
+
+This delta adds 21 synthetic regressions; the complete backend replay passed
+518 tests with 3 platform skips. It uses only synthetic ledgers and mocked
+provider transport in verification. It does not apply the new permission to real accounting or start
+model inference. Review and exact-head CI remain prerequisites for application;
+a fresh passing canary and the full 52-case live quality gate remain outstanding.
+
 ## Independent review corrections
 
 - Recognize explicit English quantity syntax (articles, full cardinal vocabulary and compounds, common fractions, decimal and abbreviated units) while retaining real OR/ambiguity guards. A 19-quantity/four-comparison backend matrix covers 76 unchanged provider payloads; six added fixture expressions have real-backend UI coverage.

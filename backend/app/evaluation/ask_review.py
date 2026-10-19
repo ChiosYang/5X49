@@ -6,10 +6,11 @@ import re
 import subprocess
 import urllib.request
 
-from app.evaluation.ask_budget import BudgetLedger, BudgetStop, CONSERVATIVE_SCOPE
+from app.evaluation.ask_budget import ADDITIONAL_SCOPE, BudgetLedger, BudgetStop, CONSERVATIVE_SCOPE
 
 RELEASE_AUTHORIZATION = "I_AUTHORIZE_RECONCILED_REVIEW_HOLD_RELEASE"
 CONSERVATIVE_AUTHORIZATION = "I_AUTHORIZE_ONE_TRANSPORT_FAILURE_AT_FULL_RESERVE"
+ADDITIONAL_AUTHORIZATION = "I_AUTHORIZE_ONE_ADDITIONAL_TRANSPORT_FAILURE_AT_FULL_RESERVE"
 REPOSITORY = "ChiosYang/5X49"
 
 
@@ -108,3 +109,33 @@ def authorize_conservative_continuation(approval_path: Path, *, authorization, l
     return {"version": "ask-conservative-continuation.v1", "evidence_class": "single_full_reserve_continuation",
             "applied": applied, "continuation_authorized": True, "paid_requests_in_run": 0,
             "actual_cost_still_unknown": True, "approval_evidence": evidence, "ledger": ledger.summary()}
+
+
+def authorize_additional_continuation(approval_path: Path, *, authorization, ledger_path: Path, repo_root: Path):
+    if authorization != ADDITIONAL_AUTHORIZATION:
+        raise BudgetStop("explicit_additional_conservative_authorization_required")
+    approval = json.loads(approval_path.read_text(encoding="utf-8"))
+    fields = ("approval_scope", "user_confirmed", "user_approval_ref", "user_approved_at",
+              "attempt_id", "attempt_sha256", "ledger_sha256")
+    if (approval.get("version") != "ask-additional-conservative-approval.v1"
+            or approval.get("decision") != "approved" or approval.get("approval_scope") != ADDITIONAL_SCOPE
+            or approval.get("user_confirmed") is not True
+            or not isinstance(approval.get("user_approval_ref"), str)
+            or re.fullmatch(r"[A-Za-z0-9._:/-]{1,200}", approval["user_approval_ref"]) is None
+            or not isinstance(approval.get("user_approved_at"), str)
+            or re.fullmatch(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z", approval["user_approved_at"]) is None
+            or not isinstance(approval.get("attempt_id"), str) or not approval["attempt_id"]
+            or any(not isinstance(approval.get(key), str) or re.fullmatch(r"[0-9a-f]{64}", approval[key]) is None
+                   for key in ("attempt_sha256", "ledger_sha256"))):
+        raise BudgetStop("additional_conservative_approval_evidence_invalid")
+    evidence = {"version": "ask-additional-conservative-continuation.v1", "decision": "approved",
+                **_verified_review_context(approval, repo_root=repo_root),
+                **{key: approval[key] for key in fields},
+                "approval_sha256": hashlib.sha256(json.dumps(approval, sort_keys=True).encode()).hexdigest()}
+    ledger = BudgetLedger(ledger_path, existing_only=True)
+    applied = ledger.authorize_additional_continue(evidence["attempt_id"],
+        attempt_sha256=evidence["attempt_sha256"], ledger_sha256=evidence["ledger_sha256"], evidence=evidence)
+    return {"version": "ask-additional-conservative-continuation.v1",
+            "evidence_class": "one_additional_full_reserve_continuation", "applied": applied,
+            "continuation_authorized": True, "paid_requests_in_run": 0, "actual_cost_still_unknown": True,
+            "approval_evidence": evidence, "ledger": ledger.summary()}

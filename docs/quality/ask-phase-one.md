@@ -178,6 +178,55 @@ and review-hold release do not establish this gate or exempt later unknowns.
   fresh passing canary are required before the bilingual live corpus.
 
 
+## One additional exact conservative continuation
+
+The original task-wide singleton remains unchanged. A separately approved
+`--continue-additionally` mode can append at most one additional authorization
+for an exact transport-failure attempt after the original slot is consumed.
+This implementation is submitted for independent review; this change does not
+apply an authorization to a real ledger or perform inference.
+
+The private approval uses version `ask-additional-conservative-approval.v1`
+and scope `one_additional_transport_failure_full_reserve_permanent`. It binds
+`attempt_id`, its complete-row `attempt_sha256`, the existing file's
+`ledger_sha256`, a distinct `user_approval_ref` and UTC `user_approved_at`,
+`user_confirmed=true`, and the reviewed head, successful CI run and review ref.
+Use the explicitly approved snapshot; do not substitute a new target or revise
+the snapshot hash to make a failed approval pass.
+
+```powershell
+uv run --no-sync python -X utf8 -m app.evaluation.ask --continue-additionally <private-approval.json> --authorization I_AUTHORIZE_ONE_ADDITIONAL_TRANSPORT_FAILURE_AT_FULL_RESERVE --output <private-result.json>
+```
+
+The command uses only the existing default ledger and cannot combine with
+`--live` or redirect its path. It verifies review/CI before any optional schema
+write, opens with existing-only `mode=rw`, then checks the whole-file hash under
+`BEGIN IMMEDIATE` with delete-journal mode. The latest attempt must match the
+approved fingerprint, be a distinct transport-failure unknown with its complete
+reservation, and be the only unexempted unknown. The next complete reservation
+must still fit both cumulative limits.
+
+Only this explicit transaction creates the optional
+`additional_conservative_continuation` singleton audit. Ordinary startup and
+reconciliation never create it. All four original tables, original approval and
+unknown cost/state/reservations remain unchanged. The audit stores the complete
+original four-table logical snapshot and its bound digest. Later reads verify
+that history as an unchanged prefix while allowing newly appended attempts.
+The exact approval is idempotent; a different approval cannot consume another
+additional slot. Both complete reservations remain permanently in exposure;
+any other or later unknown still blocks. The original stop/hard limits, fixed
+route, no-fallback policy and no automatic inference retry remain unchanged.
+
+Synthetic verification for this delta: 21 new additional-path tests; 31 combined
+new/original-singleton tests; full backend replay 518 tests with 3 platform skips;
+58/58 offline fixture contracts, Python compilation and diff checks passed.
+Provider clients are mocked in these tests. No real authorization is applied by
+this change, and independent review of the delta is still pending.
+
+Independent review and matching CI must precede any real application. Applying
+this command records approval only and performs no inference. A fresh canary
+must pass before the separate 52-case live suite; a new failure stops again.
+
 ## Selecting a historical reconciliation target
 
 Only `--reconcile-report` accepts `--attempt-id` and `--ledger-path`. A report
@@ -188,7 +237,8 @@ from another run fail before provider access.
 
 The full original report is passed unchanged to verification and hashing; never
 crop a cumulative report to make it look like a single attempt. An explicit
-ledger must already exist with the expected four-table schema. Reconciliation
+ledger must already exist with the expected core schema (and, if present, only
+the recognized additional singleton audit table). Reconciliation
 uses SQLite `mode=rw` on every connection, verifies schema/integrity, and refuses
 missing, incompatible or unexpected write-hook schemas without initializing or
 migrating them. The default reconciliation ledger must already exist as well.
