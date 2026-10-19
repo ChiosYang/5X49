@@ -306,3 +306,15 @@ after three mocked 404s, exactly one inference POST, capture before GET, identit
 and hash rejection, invalid JSON, absent/mismatched usage, capture/publication
 failure, no overwrite, original-report preservation and unchanged cumulative
 budget/history. These tests use temporary databases and mocked transports only.
+
+## Explore input-only regression (2026-10-19)
+
+Explore no longer mounts Ask. Its compact ordinary input has no submit binding,
+mode buttons, provider disclosure panel, manual Ask form or focus expansion.
+Existing factual browsing stays visible. Dedicated `/ask` and its backend are
+retained; the former embedded interaction regressions run on that route instead.
+Desktop/narrow English and Chinese browser checks cover typing, Enter, retained
+focus, stable content position and zero Ask API requests, with screenshots.
+Cross-route Film/deep-link and Back/Forward checks keep standalone confirmation
+separate from factual Explore. Historical embedded recovery evidence above is
+retained as history, not a claim about the current Explore interaction.

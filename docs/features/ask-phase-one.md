@@ -13,8 +13,9 @@ controls passed offline. PR #28 remains draft.
 
 ## Goal
 
-Interpret a Chinese/English question on Explore, let the user edit and confirm
-the entire plan, then show owned Films with verifiable local match reasons.
+Interpret a Chinese/English question on the dedicated `/ask` page, let the user
+edit and confirm the entire plan, then show owned Films with verifiable local
+match reasons. Explore retains its ordinary compact input and factual browsing.
 
 ## Scope
 
@@ -41,6 +42,23 @@ the entire plan, then show owned Films with verifiable local match reasons.
   Cumulative limits, request reservations and reconciliation apply across
   retries; accounting recovery never grants permission for further inference.
 
+## Explore entry simplification (2026-10-19)
+
+Explore no longer mounts the embedded Ask component. The compact "Find a film"
+input remains editable; focus, typing and Enter do not expand a mode selector,
+open a manual condition form, hide factual exploration, restore an Ask session,
+or issue any Ask API request. It has no bound submit action and shows no search
+success or result claim. Connecting that input to search requires a separate
+product decision. The superseded input/button alignment change is not retained.
+
+The dedicated `/ask` page, navigation-menu Ask entry and search-page Ask link
+remain available. Their provider consent, editable conditions, explicit local
+confirmation, cancellation, retry protection and backend capabilities remain.
+Explore's existing "Find a fact" picker, lenses, filters, Film deep links and
+history remain factual browsing controls. Large titles and transparent navigation
+are preserved. English/Chinese desktop and narrow checks verify no ghost mode
+buttons, focus-induced layout shift, hidden content or Ask requests.
+
 ## Acceptance criteria
 
 - [x] Review/edit/confirm/cancel/return and zero-result relaxation are explicit.
@@ -54,7 +72,7 @@ the entire plan, then show owned Films with verifiable local match reasons.
 ## Slices
 
 1. Acceptance corpus and backend contract/query — complete.
-2. Explore integration and interaction safety — complete.
+2. Standalone Ask interaction safety and simplified Explore input — complete.
 3. Evaluation guards and offline verification — complete; draft PR delivered; independent-review follow-up and complete offline replay verified.
 4. Live synthetic evaluation — blocked pending a fresh passing canary and
    the full 52-case suite. Strict JSON and bilingual live quality remain unaccepted;
@@ -107,10 +125,10 @@ a fresh passing canary and the full 52-case live quality gate remain outstanding
 
 - Recognize explicit English quantity syntax (articles, full cardinal vocabulary and compounds, common fractions, decimal and abbreviated units) while retaining real OR/ambiguity guards. A 19-quantity/four-comparison backend matrix covers 76 unchanged provider payloads; six added fixture expressions have real-backend UI coverage.
 - Bind each interpretation and retry to current consent and the actual provider target.
-- Scope Explore recovery to the source normalized fact query and history entry.
+- Historical embedded Explore recovery was scoped to normalized fact queries and history entries; the embedding is now removed. Navigation tests instead verify that factual Explore never restores or sends Ask plans.
 - Preserve existing local changes and saved test evidence through execution-environment outages.
 
-- Initial source recovery gates composer readiness; first history-scope discovery never clears initial interaction state. Nonempty questions retain consent controls. Deterministic blocked-hydration E2E covers the Linux-discovered first-input race.
+- Historical embedded composer behavior (removed by the 2026-10-19 simplification): initial source recovery gates composer readiness; first history-scope discovery never clears initial interaction state. Nonempty questions retain consent controls. Deterministic blocked-hydration E2E covers the Linux-discovered first-input race.
 
 
 ## Private response checkpoint and offline recovery
