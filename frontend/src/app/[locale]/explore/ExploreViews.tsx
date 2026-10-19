@@ -241,10 +241,10 @@ export function QueryRibbon({
     >
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
-          <p id="query-ribbon-title" className="text-[10px] uppercase tracking-[0.22em] text-ink-muted">
+          <p id="query-ribbon-title" className="sr-only">
             {t("journeyTitle")}
           </p>
-          <p className="mt-1 font-serif text-lg text-ink">{t("showFilmsWhere")}</p>
+          <p className="font-serif text-lg text-ink">{t("showFilmsWhere")}</p>
         </div>
         <Button
           variant="ghost"
@@ -582,24 +582,15 @@ export function ResultStage({
 }
 
 export function ExploreHeader({
-  total,
   onFind,
 }: {
-  total: number;
   onFind: () => void;
 }) {
   const t = useTranslations("Explore");
   return (
     <header className="flex flex-col gap-5 border-b border-line pb-7 md:flex-row md:items-end md:justify-between">
       <div>
-        <p className="type-label text-ink-muted">{t("eyebrow")}</p>
-        <h1 className="mt-2 font-serif text-5xl text-ink md:text-6xl">{t("title")}</h1>
-        <p className="mt-3 max-w-2xl text-sm leading-6 text-ink-muted">{t("description")}</p>
-        <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-ink-muted">
-          <span>{t("filmCount", { count: total })}</span>
-          <span aria-hidden="true">·</span>
-          <span>{t("policy")}</span>
-        </div>
+        <h1 className="font-serif text-5xl text-ink md:text-6xl">{t("title")}</h1>
       </div>
       <Button variant="secondary" onClick={onFind} aria-keyshortcuts="/">
         <Search className="h-4 w-4" />
