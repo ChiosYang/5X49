@@ -252,7 +252,7 @@ export default function ExploreClient({
 
   return (
     <div className="page-x min-h-screen bg-canvas pb-24 pt-32 text-ink selection:bg-inverse selection:text-inverse-ink">
-      <ExploreHeader total={overview.total_films} onFind={() => openFinder()} />
+      <ExploreHeader onFind={() => openFinder()} />
 
       {hasFilters ? (
         <div className="sticky top-0 z-sticky -mx-2 mt-5 bg-canvas/92 px-2 py-3 backdrop-blur-xl">
