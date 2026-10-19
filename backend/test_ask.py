@@ -44,6 +44,9 @@ class AskTests(unittest.TestCase):
 
     tearDown = fixture.ExploreQueryTests.tearDown
 
+    def question(self, **values):
+        return AskQuestion(provider_consent=True, provider_disclosure=self.service.interpreter.disclosure()["disclosure_id"], **values)
+
     def query(self, **values):
         return self.service.query(AskQueryRequest(plan=AskPlan(**values), confirmed=True))
 
@@ -114,7 +117,7 @@ class AskTests(unittest.TestCase):
     def test_no_key_status_and_interpretation_leave_local_form_usable(self):
         with patch.dict(os.environ, {"OPENROUTER_API_KEY": ""}):
             self.assertFalse(self.client.get("/ask/status").json()["configured"])
-            response = self.client.post("/ask/interpret", json={"question": "find unwatched films"})
+            response = self.client.post("/ask/interpret", json={"provider_consent": True, "provider_disclosure": self.service.interpreter.disclosure()["disclosure_id"], "question": "find unwatched films"})
             self.assertEqual(response.status_code, 503)
             self.assertEqual(response.json()["detail"]["code"], "ask_not_configured")
             self.assertEqual(self.client.post("/ask/resolve", json={"plan": {"country": "JP"}}).status_code, 200)
@@ -122,14 +125,14 @@ class AskTests(unittest.TestCase):
             self.assertEqual(result.json()["results"]["total"], 2)
 
     def test_contract_rejects_unsupported_fields_and_unconfirmed_queries(self):
-        for payload in ({"plan": {}, "confirmed": False}, {"plan": {"sql": "DELETE FROM film"}, "confirmed": True},
+        for payload in ({"plan": {}, "confirmed": False}, {"plan": {}, "confirmed": 1}, {"plan": {"sql": "DELETE FROM film"}, "confirmed": True},
                         {"plan": {"decade": 1999}, "confirmed": True}, {"plan": {"decade": True}, "confirmed": True},
                         {"plan": {"person_role": "director"}, "confirmed": True},
                         {"plan": {"country": ["JP", "US"]}, "confirmed": True}):
             with self.subTest(payload=payload):
                 self.assertEqual(self.client.post("/ask/query", json=payload).status_code, 422)
-        self.assertEqual(self.client.post("/ask/interpret", json={"question": " "}).status_code, 422)
-        self.assertEqual(self.client.post("/ask/interpret", json={"question": "x" * 601}).status_code, 422)
+        self.assertEqual(self.client.post("/ask/interpret", json={"provider_consent": True, "provider_disclosure": self.service.interpreter.disclosure()["disclosure_id"], "question": " "}).status_code, 422)
+        self.assertEqual(self.client.post("/ask/interpret", json={"provider_consent": True, "provider_disclosure": self.service.interpreter.disclosure()["disclosure_id"], "question": "x" * 601}).status_code, 422)
 
     def test_unready_projection_fails_closed(self):
         with Session(self.engine) as session:
@@ -152,13 +155,13 @@ class AskTests(unittest.TestCase):
 
     def test_provider_receives_question_and_static_schema_only_once(self):
         plan = AskPlan(country="JP", decade=1990, view="unwatched")
-        interpreter, factory, client = self._interpreter(json.dumps({"status": "ready", "plan": plan.model_dump()}))
+        interpreter, factory, client = self._interpreter(json.dumps({"status": "ready", "plan": plan.model_dump(), "reason": None}))
         with patch.dict(os.environ, {"OPENROUTER_API_KEY": "fixture-credential"}):
-            result = interpreter.interpret(AskQuestion(question="Find unwatched Japanese films from the 1990s."))
+            result = interpreter.interpret(self.question(question="Find unwatched Japanese films from the 1990s."))
         self.assertEqual(result.plan, plan)
         client.chat.completions.create.assert_called_once()
         args = client.chat.completions.create.call_args.kwargs
-        self.assertEqual(args["max_tokens"], 1200)
+        self.assertEqual(args["max_tokens"], 1600)
         self.assertNotIn("tools", args)
         serialized = json.dumps(args)
         self.assertNotIn(str(self.root), serialized)
@@ -173,29 +176,29 @@ class AskTests(unittest.TestCase):
                         '{"status":"unsupported","plan":{}}'):
             interpreter, _, _ = self._interpreter(content)
             with patch.dict(os.environ, {"OPENROUTER_API_KEY": "fixture"}), self.assertRaisesRegex(AskError, "ask_invalid_response"):
-                interpreter.interpret(AskQuestion(question="Find films"))
+                interpreter.interpret(self.question(question="Find films"))
         interpreter, _, _ = self._interpreter('{"status":"clarify","plan":null}', finish_reason="length")
         with patch.dict(os.environ, {"OPENROUTER_API_KEY": "fixture"}), self.assertRaisesRegex(AskError, "ask_invalid_response"):
-            interpreter.interpret(AskQuestion(question="Find films"))
+            interpreter.interpret(self.question(question="Find films"))
 
     def test_provider_errors_timeout_and_busy_state_are_sanitized(self):
         for error, code in [(RuntimeError("SECRET_PRIVATE_PROVIDER_BODY"), "ask_provider_unavailable"),
                             (APITimeoutError(request=httpx.Request("POST", "https://example.com")), "ask_timeout")]:
             interpreter, _, _ = self._interpreter(error=error)
             with patch.dict(os.environ, {"OPENROUTER_API_KEY": "fixture"}), self.assertRaises(AskError) as caught:
-                interpreter.interpret(AskQuestion(question="Find films"))
+                interpreter.interpret(self.question(question="Find films"))
             self.assertEqual(str(caught.exception), code)
         slots = BoundedSemaphore(1)
         slots.acquire()
         with patch.dict(os.environ, {"OPENROUTER_API_KEY": "fixture"}), patch.object(ask_module, "_interpretation_slots", slots):
             with self.assertRaisesRegex(AskError, "ask_busy"):
-                AskInterpreter().interpret(AskQuestion(question="Find films"))
+                AskInterpreter().interpret(self.question(question="Find films"))
 
     def test_private_question_is_blocked_before_provider_call(self):
         interpreter, factory, _ = self._interpreter()
         for question in (r"Find films under C:\Movies\private", "find /mnt/private/films", "my api_key=private", "use sk-abcdefgh12345678"):
             with self.subTest(question=question), self.assertRaisesRegex(AskError, "ask_private_input"):
-                interpreter.interpret(AskQuestion(question=question))
+                interpreter.interpret(self.question(question=question))
         factory.assert_not_called()
 
     def test_unsupported_or_vague_intents_never_run_local_queries(self):
@@ -204,9 +207,173 @@ class AskTests(unittest.TestCase):
             fake.interpret.return_value = AskInterpretation(status=state, plan=None)
             service = AskService(interpreter=fake)
             with patch.object(service, "resolve", side_effect=AssertionError("must not resolve partial plan")):
-                response = service.interpret(AskQuestion(question="Recommend something based on my notes"))
+                response = service.interpret(self.question(question="Recommend something based on my notes"))
             self.assertEqual(response["status"], state)
             self.assertIsNone(response["plan"])
+
+    def _numeric_fixture(self):
+        from app.services.library import library_manager
+        from app.services.user_state import film_profile_state_manager
+        for title, runtime, seconds in (("Alpha", 90, None), ("Beta", 120, 5401), ("Gamma", None, 0)):
+            library_manager.update_film_observation(self.films[title], {"runtime": runtime, "video_duration": seconds})
+        for title, rating in (("Alpha", 3), ("Beta", 5)):
+            film_profile_state_manager.upsert(self.films[title], rating=rating, fields_set={"rating"})
+
+    def test_duration_boundaries_match_exact_video_seconds_before_counts(self):
+        self._numeric_fixture()
+        for plan, names in (({"duration_max": 90}, ["Alpha"]),
+                            ({"duration_min": 90, "duration_max": 91}, ["Alpha", "Beta"]),
+                            ({"duration_min": 90, "duration_min_inclusive": False}, ["Beta"]),
+                            ({"duration_max": 90, "duration_max_inclusive": False}, []),
+                            ({"duration_min": 120}, [])):
+            with self.subTest(plan=plan):
+                result = self.query(**plan)["results"]
+                self.assertEqual(result["total"], len(names))
+                self.assertEqual([item["film"]["id"] for item in result["items"]], [self.films[name] for name in names])
+        item = self.query(duration_min=90, duration_min_inclusive=False)["results"]["items"][0]
+        self.assertEqual(item["matched_values"], [{"field": "duration", "value": 5401.0, "unit": "seconds", "source": "video"}])
+        item = self.query(duration_max=90)["results"]["items"][0]
+        self.assertEqual(item["matched_values"][0]["source"], "film_runtime")
+
+    def test_rating_nulls_do_not_use_viewing_or_external_scores_and_intersect_facts(self):
+        from app.models import FilmExternalScore
+        self._numeric_fixture()
+        with Session(self.engine) as session:
+            session.add(FilmExternalScore(film_id=self.films["Gamma"], source="tmdb", label="TMDB",
+                kind="rating", value=9.9, scale=10.0, fetched_at="2026-10-14T00:00:00Z"))
+            session.commit()
+        self.assertEqual(self.query(rating_min=1)["results"]["total"], 2)
+        self.assertEqual(self.query(rating_min=3, rating_max=3)["results"]["items"][0]["film"]["id"], self.films["Alpha"])
+        self.assertEqual(self.query(rating_min=5, duration_max=90)["results"]["total"], 0)
+        result = self.query(rating_min=3, duration_max=90, country="JP", person="Shared Person", person_role="director", view="unwatched")
+        self.assertEqual(result["results"]["total"], 1)
+        self.assertEqual(result["confirmed_plan"]["rating_min"], 3)
+        self.assertEqual(result["results"]["items"][0]["matched_values"][1],
+            {"field": "rating", "value": 3, "unit": "stars", "source": "film_profile"})
+        before = hashlib.sha256(self.database_path.read_bytes()).hexdigest()
+        self.query(rating_max=5, duration_min=1)
+        self.assertEqual(hashlib.sha256(self.database_path.read_bytes()).hexdigest(), before)
+
+    def test_scalar_contracts_reject_invalid_empty_and_noninteger_ranges(self):
+        for plan in ({"duration_min": 0}, {"duration_max": 10001}, {"duration_min": True},
+                     {"duration_max": 90.5}, {"duration_min": 100, "duration_max": 90},
+                     {"duration_min": 90, "duration_max": 90, "duration_max_inclusive": False},
+                     {"duration_max_inclusive": False}, {"rating_min": 0}, {"rating_max": 6},
+                     {"rating_min": 4, "rating_max": 3}, {"rating_min": 3.5}, {"rating_min": True}):
+            with self.subTest(plan=plan):
+                self.assertEqual(self.client.post("/ask/query", json={"plan": plan, "confirmed": True}).status_code, 422)
+        self.assertEqual(self.client.post("/ask/interpret", json={"question": "Find films"}).status_code, 422)
+
+    def test_unsupported_explicit_requirements_are_blocked_even_if_provider_would_drop_them(self):
+        interpreter, factory, _ = self._interpreter()
+        for question, reason in (("Find Japanese films excluding horror", "negation"),
+                                 ("找温暖治愈的日本电影", "similarity"), ("Recommend films for my taste", "recommendation"),
+                                 ("Find films with IMDb ratings over 8", "unsupported_filter")):
+            result = interpreter.interpret(self.question(question=question))
+            self.assertEqual((result.status, result.plan, result.reason), ("unsupported", None, reason))
+        factory.assert_not_called()
+
+    def test_observation_reports_only_real_usage_and_cost_evidence(self):
+        plan = AskPlan(duration_max=90, rating_min=4)
+        interpreter, _, client = self._interpreter(json.dumps({"status": "ready", "plan": plan.model_dump(), "reason": None}))
+        response = client.chat.completions.create.return_value
+        response.model = "fixture/model-v1"
+        response.usage = SimpleNamespace(prompt_tokens=40, completion_tokens=20, total_tokens=60, cost=0.0001)
+        with patch.dict(os.environ, {"OPENROUTER_API_KEY": "fixture"}):
+            result = interpreter.interpret(self.question(question="Films under 90 minutes with my overall stars >=4"))
+        self.assertEqual(result._observation["total_tokens"], 60)
+        self.assertEqual(result._observation["cost_usd"], 0.0001)
+        self.assertEqual(result._observation["cost_source"], "provider_usage.cost")
+        self.assertGreaterEqual(result._observation["latency_ms"], 0)
+        response.usage = None
+        with patch.dict(os.environ, {"OPENROUTER_API_KEY": "fixture"}):
+            result = interpreter.interpret(self.question(question="Find films"))
+        self.assertIsNone(result._observation["total_tokens"])
+        self.assertIsNone(result._observation["cost_usd"])
+
+    def test_duplicate_extra_nonfinite_and_partial_json_fail_closed(self):
+        full = {"status": "ready", "plan": AskPlan().model_dump(), "reason": None}
+        for content in ('{"status":"ready","status":"unsupported","plan":null,"reason":"negation"}',
+                        json.dumps({**full, "results": ["invented film"]}),
+                        json.dumps({**full, "plan": {**full["plan"], "duration_max": True}}),
+                        json.dumps({**full, "plan": {**full["plan"], "rating_min": float("nan")}}),
+                        json.dumps({"status":"clarify", "plan":None, "reason":None})):
+            interpreter, _, _ = self._interpreter(content)
+            with patch.dict(os.environ, {"OPENROUTER_API_KEY": "fixture"}), self.assertRaisesRegex(AskError, "ask_invalid_response"):
+                interpreter.interpret(self.question(question="Find all films"))
+
+    def test_query_count_scalar_facts_and_reasons_share_a_read_snapshot(self):
+        from sqlalchemy import event
+        from app.services.user_state import film_profile_state_manager
+        self._numeric_fixture()
+        with self.engine.connect() as connection:
+            connection.exec_driver_sql("PRAGMA journal_mode=WAL")
+        changed = False
+        def before_read(_connection, _cursor, statement, _parameters, _context, _executemany):
+            nonlocal changed
+            if not changed and statement.startswith("SELECT library_film_read_model."):
+                changed = True
+                film_profile_state_manager.upsert(self.films["Alpha"], rating=2, fields_set={"rating"})
+        event.listen(self.engine, "before_cursor_execute", before_read)
+        try:
+            result = self.query(rating_min=3, rating_max=3)["results"]
+        finally:
+            event.remove(self.engine, "before_cursor_execute", before_read)
+        self.assertTrue(changed)
+        self.assertEqual(result["total"], 1)
+        self.assertEqual(result["items"][0]["matched_values"][0]["value"], 3)
+        self.assertEqual(result["items"][0]["film"]["profile_state"]["rating"], 3)
+        self.assertEqual(self.query(rating_min=3, rating_max=3)["results"]["total"], 0)
+
+    def test_explicit_comparison_idioms_reach_provider_without_dropping_real_or(self):
+        measures = (("90 minutes", 90), ("an hour", 60), ("a minute", 1),
+                    ("twenty minutes", 20), ("eleven minutes", 11),
+                    ("nineteen minutes", 19), ("thirty minutes", 30),
+                    ("forty-five minutes", 45), ("seventy five minutes", 75),
+                    ("one hundred and twenty minutes", 120),
+                    ("one thousand minutes", 1000), ("half an hour", 30),
+                    ("a quarter of an hour", 15), ("three quarters of an hour", 45),
+                    ("one and a half hours", 90), ("an hour and a half", 90),
+                    ("1.5 hrs", 90), ("90min", 90), ("1h", 60))
+        for measure, minutes in measures:
+            for comparison, bounds in (
+                (f"{measure} or less", {"duration_max": minutes}),
+                (f"{measure} or more", {"duration_min": minutes}),
+                (f"shorter than {measure}", {"duration_max": minutes, "duration_max_inclusive": False}),
+                (f"longer than {measure}", {"duration_min": minutes, "duration_min_inclusive": False}),
+            ):
+                question = f"Find films {comparison}."
+                with self.subTest(question=question):
+                    plan = AskPlan(**bounds)
+                    interpreter, _, client = self._interpreter(json.dumps({"status":"ready", "plan":plan.model_dump(), "reason":None}))
+                    with patch.dict(os.environ, {"OPENROUTER_API_KEY":"synthetic"}):
+                        result = interpreter.interpret(self.question(question=question))
+                    self.assertEqual(result.plan, plan)
+                    client.chat.completions.create.assert_called_once()
+                    self.assertEqual(client.chat.completions.create.call_args.kwargs["messages"][1]["content"], question)
+        from app.services.ask import intent_guard
+        for question in ("90 minutes or less, or French films", "shorter than 90 minutes or longer than 120 minutes",
+                         "an hour or less, or French films", "shorter than twenty minutes or longer than an hour",
+                         "a quarter of an hour or more, or French films", "ninety minutes or more than an hour"):
+            self.assertEqual(intent_guard(question).reason, "multiple_values")
+        for question in ("Find shorter films", "Find shorter than usual films"):
+            self.assertEqual(intent_guard(question).reason, "ambiguous_duration")
+        for question, reason in (("an hour or less without horror", "negation"),
+                                 ("shorter than twenty minutes with a warm mood", "similarity")):
+            self.assertEqual(intent_guard(question).reason, reason)
+
+    def test_target_disclosure_changes_are_rejected_before_provider_transport(self):
+        from app.models import Setting
+        for key, value in (("model_name", "fixture/changed"), ("base_url", "https://changed.example/api/v1")):
+            request = self.question(question="Find films")
+            interpreter, factory, _ = self._interpreter()
+            with Session(self.engine) as session:
+                session.add(Setting(key=key, value=value))
+                session.commit()
+            with patch.dict(os.environ, {"OPENROUTER_API_KEY":"synthetic"}), self.assertRaises(AskError) as caught:
+                interpreter.interpret(request)
+            self.assertEqual((caught.exception.code,caught.exception.status),("ask_consent_changed",409))
+            factory.assert_not_called()
 
 
 if __name__ == "__main__":

@@ -48,3 +48,6 @@ plan.md
 frontend/e2e-artifacts/
 frontend/test-results/
 frontend/playwright-report/
+
+# Private paid-evaluation receipts (retain budget ledger between runs)
+backend/.evaluation-artifacts/

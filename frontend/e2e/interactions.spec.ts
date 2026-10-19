@@ -163,7 +163,7 @@ test('no-key real facts, zero results require reconfirmation; detail reload rest
   await expect(page.getByRole('button', { name: 'Find films with these conditions', exact: true })).toHaveCount(0);
   await confirmAsk(page);
   await expect(page.locator('a[href*="/library/film_"]').first()).toBeVisible();
-  const saved = await page.evaluate(() => sessionStorage.getItem('5x49.ask.confirmed.v1'));
+  const saved = await page.evaluate(() => sessionStorage.getItem('5x49.ask.confirmed.v2'));
   expect(saved).not.toContain('question');
   await page.locator('a[href*="/library/film_"]').first().click();
   await page.getByRole('button', { name: 'Watched today', exact: true }).waitFor();
@@ -298,6 +298,13 @@ test('detail operations consume failures and saved-read retry never replays a wr
   const state = await read(request, `/films/${film.id}/profile-state`);
   const favorite = () => page.getByRole('button',{name:state.favorite ? 'Remove favorite' : 'Favorite',exact:true});
   let rejectWrite = true, rejectRead = false, writes = 0;
+  // Pin streamed document refreshes before the write: the Library event stream
+  // may otherwise reconcile the props before the deliberately failed GET is inspected.
+  let releaseRefresh!: () => void;
+  const refreshGate=new Promise<void>(resolve=>{releaseRefresh=resolve;});
+  await page.route(url=>url.pathname===`/en/library/${film.id}`&&url.searchParams.has('_rsc'),async route=>{
+    const response=await route.fetch();await refreshGate;await route.fulfill({response});
+  });
   await page.route(`**/api/films/${film.id}/profile-state`, route => {
     if (route.request().method() !== 'PUT') return route.continue();
     writes++;
@@ -315,11 +322,6 @@ test('detail operations consume failures and saved-read retry never replays a wr
   const controls=page.locator('[data-profile-version]');
   await expect(controls).not.toHaveAttribute('data-profile-version',persistedProfile.updated_at);
   rejectRead=false;
-  let releaseRefresh!: () => void;
-  const refreshGate=new Promise<void>(resolve=>{releaseRefresh=resolve;});
-  await page.route(url=>url.pathname===`/en/library/${film.id}`&&url.searchParams.has('_rsc'),async route=>{
-    const response=await route.fetch();await refreshGate;await route.fulfill({response});
-  });
   const refreshed=page.waitForResponse(response=>new URL(response.url()).pathname===`/en/library/${film.id}`&&response.request().headers()['rsc']==='1');
   await page.getByRole('button',{name:'Refresh page',exact:true}).click();
   await expect(page.getByRole('button',{name:'Refresh page',exact:true})).toHaveCount(0);

@@ -1,6 +1,7 @@
 # Ask MVP
 
 Status: Done
+Extended by: [AI Film finder phase one](ask-phase-one.md) (current ask.v2 contract)
 Last updated: 2026-09-28
 Related: Product roadmap W10; Product Spec JTBD-6
 

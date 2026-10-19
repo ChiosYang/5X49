@@ -174,7 +174,7 @@ export function LensDeck({
               aria-label={t("openLens", { dimension: t(`dimensions.${dimension}`) })}
             >
               <ExploreArtwork item={clue} label={label} />
-              <div className="relative flex min-h-48 flex-col justify-between gap-6 p-3 sm:p-6 md:min-h-64">
+              <div className="relative flex min-h-40 flex-col justify-between gap-3 p-3 sm:min-h-48 sm:gap-6 sm:p-6 md:min-h-64">
                 <div className="flex items-center justify-between gap-2">
                   <span className="inline-flex h-10 w-10 items-center justify-center rounded-control border border-line-strong bg-canvas/70 text-ink">
                     <Icon className="h-4 w-4" />

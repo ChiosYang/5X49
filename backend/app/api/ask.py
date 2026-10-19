@@ -10,13 +10,14 @@ def _call(callback):
     try:
         return callback()
     except AskError as exc:
-        raise HTTPException(exc.status, detail={"code": exc.code}) from None
+        raise HTTPException(exc.status, detail={"code": exc.code, "observation": exc.observation}) from None
 
 
 @router.get("/ask/status")
 def ask_status():
     return {"version": ASK_CONTRACT_VERSION, "configured": ask_service.interpreter.configured(),
-            "read_only": True, "form_available": True}
+            "read_only": True, "form_available": True, "consent_required": True,
+            "timeout_seconds": 20, **ask_service.interpreter.disclosure()}
 
 
 @router.post("/ask/interpret")

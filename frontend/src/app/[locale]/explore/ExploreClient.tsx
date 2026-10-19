@@ -16,6 +16,7 @@ import { useTranslations } from "next-intl";
 
 import { Button, IconButton } from "@/components/ui/Button";
 import { Dialog } from "@/components/ui/Dialog";
+import { TextArea } from "@/components/ui/FormControls";
 import { useRouter } from "@/i18n/routing";
 import {
   clearExploreFilters,
@@ -82,6 +83,7 @@ export default function ExploreClient({
   results: ExploreFilmPage | null;
 }) {
   const t = useTranslations("Explore");
+  const tAsk = useTranslations("Ask");
   const router = useRouter();
   const reducedMotion = useReducedMotion() ?? false;
   const localizeCountries = useSyncExternalStore(
@@ -254,6 +256,10 @@ export default function ExploreClient({
     <div className="page-x min-h-screen bg-canvas pb-24 pt-32 text-ink selection:bg-inverse selection:text-inverse-ink">
       <ExploreHeader onFind={() => openFinder()} />
 
+      {/* Input only: submitting a search awaits a separate product decision. */}
+      <div className="mt-4 max-w-4xl">
+        <TextArea aria-label={tAsk("questionLabel")} placeholder={tAsk("compactPlaceholder")} rows={1} maxLength={600} className="block h-[50px]" />
+      </div>
       {hasFilters ? (
         <div className="sticky top-0 z-sticky -mx-2 mt-5 bg-canvas/92 px-2 py-3 backdrop-blur-xl">
           <QueryRibbon
