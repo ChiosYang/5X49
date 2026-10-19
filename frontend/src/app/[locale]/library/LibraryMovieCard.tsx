@@ -14,7 +14,8 @@ import { todayLocalDate, watchedActionFor } from "@/lib/diary";
 import type { AudioTrack, FilmProfileState, LibraryFilmSummary } from "@/types/movie";
 import ExternalScoreStrip from "../components/ExternalScoreStrip";
 
-const touchQuery = "(hover: none), (pointer: coarse), (any-pointer: coarse)";
+// An additional touchscreen must not disable hover for a primary mouse/trackpad.
+const touchQuery = "(hover: none), (pointer: coarse)";
 function subscribeTouchInput(callback: () => void) {
   const media = window.matchMedia(touchQuery);
   media.addEventListener("change", callback);
