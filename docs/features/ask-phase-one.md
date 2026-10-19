@@ -1,13 +1,15 @@
 # AI Film Finder phase one
 
 Status: Blocked
-Last updated: 2026-10-15
+Last updated: 2026-10-19
 Related: Ask MVP; Factual Explore
-Engineering implementation and offline acceptance are complete. Evaluation
-compatibility, audited reconciliation and a targeted review-hold release
-entrypoint are implemented. The shared receipt-reader/diagnostic update awaits independent review. Parent
-review, authorization and a fresh passing canary remain required for live
-acceptance.
+Engineering implementation, independent code review and local engineering
+acceptance are complete. Windows tooling, editor focus and historical
+reconciliation follow-ups are separately committed and verified. No remaining
+provider-independent functional blocker was identified by the completed checks.
+The 52-case live model quality suite has not run; a fresh passing canary and
+unchanged quality/billing gates remain required. The six simulated fault/format
+controls passed offline. PR #28 remains draft.
 
 ## Goal
 
@@ -46,23 +48,26 @@ the entire plan, then show owned Films with verifiable local match reasons.
 - [x] Unsupported/negated/similar/taste requests never silently broaden results.
 - [x] Privacy, malicious output and interface failure cases fail closed.
 - [x] Complete backend/frontend checks and real-backend responsive UI E2E pass.
-- [x] Draft PR [#28](https://github.com/ChiosYang/5X49/pull/28) is delivered for independent parent review; follow-up fixes remain draft.
-- [ ] Live supported parsing accuracy >=95% (independent review/authorization and a fresh passing canary are still required).
+- [x] Draft PR [#28](https://github.com/ChiosYang/5X49/pull/28) is delivered; independent review of the engineering follow-ups completed, with exact-code CI passing.
+- [ ] Fresh passing canary and full 52-case live quality suite, including supported parsing accuracy >=95%, zero rejected-case failures and strict JSON/identity/usage validation.
 
 ## Slices
 
 1. Acceptance corpus and backend contract/query — complete.
 2. Explore integration and interaction safety — complete.
 3. Evaluation guards and offline verification — complete; draft PR delivered; independent-review follow-up and complete offline replay verified.
-4. Live synthetic evaluation — blocked pending independent review and a fresh
-   passing canary. Strict JSON and the full bilingual live gates remain unaccepted.
+4. Live synthetic evaluation — blocked pending a fresh passing canary and
+   the full 52-case suite. Strict JSON and bilingual live quality remain unaccepted;
+   unknown/reservation stops continue to apply.
 
 ## Verification evidence
 
-- Resumed 2026-10-15: 58/58 offline corpus; 12 budget/evaluation tests; full 438-test backend run (3 skipped); 95 frontend unit tests; lint/typecheck/build; all 95 real-backend UI E2E pass, including 21 Ask flows.
+- Windows acceptance on the reviewed code baseline `adcbc606`: 497 backend tests (3 platform skips), 94 focused Ask/evaluation regressions, 58/58 offline fixtures, 97/97 frontend units, lint/typecheck/production build and 95/95 real-backend E2E, including 21 Ask flows. Provider transport is mocked in browser E2E.
+- The six simulated interface/malicious-response controls passed offline 6/6. The 52-case live suite was not run and no live parsing/strict-JSON quality gate is claimed.
+- [CI 39190324783](https://github.com/ChiosYang/5X49/actions/runs/39190324783) passed all three jobs on the exact reviewed runtime baseline. Desktop/narrow English/Chinese inspection preserved the large title and transparent navigation.
 - Details and exact commands: [quality evidence](../quality/ask-phase-one.md).
-- Compatibility review: [technical status](../quality/ask-phase-one-cloud-20261015.md).
-- Evaluation/reconciliation/review-release/diagnostics: 82 focused Ask tests passed, covering
+- Historical compatibility review: [technical status](../quality/ask-phase-one-cloud-20261015.md).
+- Evaluation/reconciliation/review-release/diagnostics: 94 focused Ask tests passed, covering
   SDK parsing, exact identity verification, audited/idempotent accounting
   recovery, precise review/CI binding, preservation of other unknowns and
   sanitized transport errors that survive settlement failures, and a singleton
@@ -75,12 +80,12 @@ the entire plan, then show owned Films with verifiable local match reasons.
 
 ## Remaining risks
 
-- Full live quality/usefulness, strict JSON and usage-cost corroboration remain
-  unverified. The fixed alias resolves to a dated canonical slug; identity
-  verification and audited reconciliation are implemented, but independent
-  parent review/authorization must precede another model request. The original
-  canary's completion receipt and strict JSON result remain unvalidated.
-
+- Full live quality/usefulness, strict JSON and usage corroboration remain
+  unverified. The fixed model/provider identity and reconciliation protections
+  are implemented and reviewed, but a fresh passing canary and full 52-case
+  completion are outstanding. Offline and real-backend UI results do not satisfy
+  the live model gate. Unknown/reservation blocking and per-run authorization
+  requirements remain unchanged; postponing provider diagnosis grants no bypass.
 
 ## Independent review corrections
 

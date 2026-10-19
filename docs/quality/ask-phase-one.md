@@ -1,6 +1,21 @@
 # AI Film finder phase one quality
 
-## 2026-10-15 evaluation compatibility update
+## Acceptance status (2026-10-19)
+
+Engineering checks pass on the reviewed Windows code baseline
+`adcbc606878e69a68e8f10af1bcc85aa4bfb00d0`. The completed local checks identify
+no remaining provider-independent functional blocker. The large title,
+transparent navigation and explicit review/confirm workflow are preserved.
+
+Live model quality remains unaccepted. The fresh canary did not complete the
+required provider/response validation, so the 52-case live suite was not run.
+The six interface-failure/malicious-response controls passed offline and are
+not live model evidence. Keep PR #28 draft: supported parsing accuracy >=95%,
+zero rejected-case failures, strict JSON and model/provider/usage corroboration
+remain required. Existing unknown/reservation stops remain binding; postponing
+provider diagnosis does not authorize another request or change these gates.
+
+## Historical evaluation compatibility update (2026-10-15)
 
 The evaluator now supports the locked SDK's typed dictionary responses and
 pins the official exact alias/canonical mapping. Audited reconciliation is
@@ -9,14 +24,14 @@ blocking independent-review hold. A targeted, audited release entrypoint verifie
 independent review and exact CI/head evidence before any state transition;
 transport-error diagnostics preserve the original failure across settlement.
 A singleton, user-approved conservative-continuation path retains one complete
-reservation permanently while leaving its actual cost unknown. The shared
-receipt-reader update awaits independent review and adds allowlisted
-query traces and distinguishes a returned completion object from an unverified
+reservation permanently while leaving its actual cost unknown. At that snapshot the shared
+receipt-reader update awaited independent review and added allowlisted
+query traces and distinguished a returned completion object from an unverified
 receipt, without increasing retries or changing budget stops. All 82 focused
 Ask regression tests pass.
 The original canary's strict JSON and completion-receipt validation
 remain incomplete; no bilingual live accuracy gate has passed.
-See [technical review status](ask-phase-one-cloud-20261015.md).
+See [historical technical review status](ask-phase-one-cloud-20261015.md).
 
 ## Evidence classes
 
@@ -91,21 +106,50 @@ Reservation overruns or token/reasoning contract failures block future runs.
 The configured conservative stop is US$0.75 and the lifetime hard limit is US$1,
 including canaries, failures and any separately authorized retries.
 
-## Current results
+## Current engineering results (2026-10-19)
 
-- Offline fixture contract: 58/58 passed; 82 focused Ask regression tests passed (including the zero-unsupported-failure gate, transport and receipt diagnostics).
-- The original canary did not complete strict JSON and completion-receipt validation.
-- Live supported parsing accuracy and usefulness remain unaccepted. Offline
-  success and accounting recovery must not be reported as the >=95% model gate.
-- Complete backend replay on 2026-10-15: `uv run --no-sync python -X utf8 -m unittest discover -s . -p test_*.py -v` — 438 tests, 3 conditional skips, passed; includes all 12 evaluation/budget tests.
-- Frontend `npm run test:unit` — 95 passed; `npm run lint` and `npm run typecheck -- --incremental false` passed.
-- `npm run test:e2e` — production build and all 95 real-backend browser tests passed (including 21 Ask tests). English/Chinese, 1440px desktop and 390px narrow layouts were inspected. Existing four-entry Explore first-screen and transparent navigation checks remain passing.
-- Python `compileall -q app`, backend Skill validation and `git diff --check` passed.
-- Release-tooling tests: 15 run, 12 passed, 1 conditional skip; two Compose checks cannot run locally because Docker CLI is absent. No Docker/release configuration was changed. GitHub CI runs these on its Docker-equipped Linux runner.
-- Windows test environment: long temp paths failed backup rehearsal; an 8.3 alias failed media-boundary comparison. The successful run used a short canonical C:/Users/Administrator/AppData/Local/Temp/5x49-unit-task3 directory. A long D-drive replay was stopped after 20 minutes and replaced with visible per-test progress.
-- Existing saved-read E2E now gates streamed document refresh before its deliberately failed GET; otherwise the Library event stream could legitimately reconcile props before the stale-props assertion. This changes only test timing, not product behavior.
-- Synthetic screenshots: frontend/e2e-artifacts/ask-desktop-zh.png and ask-narrow-zh.png (ignored local evidence).
+These checks cover the runtime code at `adcbc606878e69a68e8f10af1bcc85aa4bfb00d0`;
+subsequent acceptance-document edits do not change that runtime baseline.
 
+- Backend full replay: 497 tests, OK with 3 platform-conditional skips, using
+  `uv run --no-sync python -X utf8 -m unittest discover -s . -p test_*.py -v`.
+  The focused Ask/evaluation/accounting regression group passed 94 tests.
+- Offline bilingual fixture contract: 58/58 passed. The separately replayed
+  six interface/malicious-response controls also passed 6/6 with mocked transport.
+- Frontend: `npm run test:unit` passed 97/97; `npm run lint`,
+  `npm run typecheck -- --incremental false` and production build passed.
+- Real-backend browser E2E: 95/95 passed, including 21 Ask flows. Only provider
+  transport is replaced; routes, SQLite facts, resolution/query, Film cards,
+  pagination and browser history remain real.
+- Manual English/Chinese inspection at 1440px desktop and 390px narrow widths
+  preserved the large title, transparent navigation and local fallback flow.
+- Backend `compileall -q app` and `git diff --check` passed. No dependency or
+  lockfile update was needed for the Windows follow-ups.
+- [CI 39190324783](https://github.com/ChiosYang/5X49/actions/runs/39190324783)
+  passed Backend, Frontend and Real API E2E for that exact code baseline.
+  Docker CLI is unavailable on this Windows host; Compose/release-tooling
+  checks passed on the Linux CI runner. Platform-specific filesystem skips
+  are retained rather than counted as executed coverage.
+
+The reviewed follow-ups are separately committed: Windows cross-drive Next
+ESLint root resolution (`4df4d901`), deferred Ask editor focus respecting the
+user's next field (`4c224836`), and exact reconciliation target selection from
+an unchanged cumulative report with existing-ledger safeguards (`adcbc606`).
+The focus regression controls frame completion; it does not relax timeouts or
+add inference retries.
+
+## Live quality evidence still required
+
+The corpus has 58 cases. The formal live runner selects 52, with synthetic
+privacy/intent guards still applied before provider access. The other six
+interface/malicious-response cases are offline-only fault injections. Neither
+58/58 fixture success nor 95/95 real-backend browser E2E establishes model
+understanding or a successful live canary.
+
+A fresh passing canary, full 52-case completion, supported parsing accuracy
+>=95%, zero rejected-case failures, strict JSON and corroborated identity/usage
+remain required. No full live quality result is claimed. Accounting recovery
+and review-hold release do not establish this gate or exempt later unknowns.
 
 ## Independent review follow-up (2026-10-15)
 
