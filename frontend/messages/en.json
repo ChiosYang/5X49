@@ -524,6 +524,10 @@
     "next": "Next"
   },
   "LibraryFilters": {
+    "close": "Close filters",
+    "applied": "Applied filters",
+    "activeCount": "{count} active conditions",
+    "any": "Any",
     "label": "Library filters",
     "query": "Search library",
     "searchPlaceholder": "Title, person, year or keyword",

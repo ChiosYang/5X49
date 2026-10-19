@@ -249,10 +249,12 @@ export default function LibraryMovieCard({ movie, priority = false, readOnly = f
   const profileState = localState && localState.baseline === movie.profile_state.updated_at ? localState.state : movie.profile_state;
   const setProfileState = (state: FilmProfileState) => setLocalState({ baseline: movie.profile_state.updated_at, state });
   const [actionsOpen, setActionsOpen] = useState(false);
+  const [actionsDismissed, setActionsDismissed] = useState(false);
   const [feedback, setFeedback] = useState<"failed" | "refreshFailed" | null>(null);
   const [retryAction, setRetryAction] = useState<"favorite" | "watched" | null>(null);
   const submitting = useRef(false);
   const actionTrigger = useRef<HTMLButtonElement>(null);
+  const filmLink = useRef<HTMLAnchorElement>(null);
   const panelId = useId();
   const watched = Boolean(profileState.watched);
   const favorite = Boolean(profileState.favorite);
@@ -314,12 +316,25 @@ export default function LibraryMovieCard({ movie, priority = false, readOnly = f
 
   return (
     <div className="block" onKeyDown={(event) => {
-      if (event.key === "Escape" && actionsOpen) { event.stopPropagation(); setActionsOpen(false); actionTrigger.current?.focus(); }
+      if (event.key === "Escape" && !readOnly) {
+        event.stopPropagation(); setActionsOpen(false); setActionsDismissed(true);
+        const trigger = actionTrigger.current;
+        if (trigger && trigger.getClientRects().length) trigger.focus();
+        else filmLink.current?.focus({ preventScroll: true });
+      }
     }}>
       <div className="space-y-4">
         {/* Landscape Still */}
-        <div className={`${readOnly ? "" : `peer/card group ${actionsOpen ? "z-inspector" : "z-content"}`} relative aspect-video w-full bg-surface-raised`}>
-          <Link href={`/library/${movie.id}`} onClick={() => rememberFilmReturn(movie.id)} scroll={false} id={`film-link-${movie.id}`} className="focus-ring block h-full cursor-pointer rounded-media">
+        <div className={`${readOnly ? "" : "library-card-media group"} relative aspect-video w-full bg-surface-raised`}
+          data-actions-open={actionsOpen} data-actions-dismissed={actionsDismissed}
+          onPointerEnter={() => setActionsDismissed(false)}
+          onFocusCapture={(event) => {
+            if (!event.currentTarget.contains(event.relatedTarget)) setActionsDismissed(false);
+          }}
+          onBlur={(event) => {
+            if (!event.currentTarget.contains(event.relatedTarget)) setActionsOpen(false);
+          }}>
+          <Link ref={filmLink} href={`/library/${movie.id}`} onClick={() => rememberFilmReturn(movie.id)} scroll={false} id={`film-link-${movie.id}`} className="focus-ring block h-full cursor-pointer rounded-media">
             <div className="relative h-full w-full overflow-hidden rounded-media">
               {backdropSrc ? (
                 <Image
@@ -327,7 +342,7 @@ export default function LibraryMovieCard({ movie, priority = false, readOnly = f
                   alt={movie.title}
                   fill
                   priority={priority}
-                  sizes="(min-width: 1536px) 20vw, (min-width: 1280px) 25vw, (min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
+                  sizes="(min-width: 1280px) 25vw, (min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
                   className="object-cover transition-transform delay-0 duration-standard ease-exit group-hover:scale-[1.05] group-hover:delay-inspection"
                 />
               ) : (
@@ -346,8 +361,8 @@ export default function LibraryMovieCard({ movie, priority = false, readOnly = f
                 </span>
               )}
               {/* Hover Overlay */}
-              <div className="absolute inset-0 bg-canvas/0 transition-colors delay-0 duration-standard group-hover:bg-canvas/35 group-hover:delay-inspection" />
-              <div className="invisible absolute inset-x-0 bottom-0 flex translate-y-1 flex-col gap-1 bg-gradient-to-t from-canvas/80 via-canvas/35 to-transparent px-5 pt-12 pb-4 opacity-0 transition-[opacity,transform] delay-0 duration-standard group-hover:visible group-hover:translate-y-0 group-hover:opacity-100 group-hover:delay-inspection">
+              <div className="library-card-shade absolute inset-0 bg-canvas/0 transition-colors duration-standard" />
+              <div className="library-card-overlay invisible absolute inset-x-0 bottom-0 flex flex-col gap-1 bg-gradient-to-t from-canvas/80 via-canvas/35 to-transparent px-5 pt-12 pb-4 opacity-0 transition-[opacity,transform] duration-standard">
                 <h3 className="line-clamp-1 text-2xl leading-none font-black text-ink uppercase">
                   {title}
                 </h3>
@@ -359,8 +374,8 @@ export default function LibraryMovieCard({ movie, priority = false, readOnly = f
           </Link>
 
           {!readOnly && <button ref={actionTrigger} type="button" aria-label={t("cardActions", { title })} aria-expanded={actionsOpen} aria-controls={panelId}
-            onClick={() => setActionsOpen((open) => !open)} className="focus-ring absolute bottom-2 right-2 z-raised flex h-11 w-11 items-center justify-center rounded-control border border-white/30 bg-black/80 text-white"><MoreHorizontal className="h-5 w-5" /></button>}
-          {!readOnly && actionsOpen && <div id={panelId} className="liquid-glass-popover z-inspector absolute top-full right-0 left-0 overflow-hidden rounded-b-media border border-line/80 p-5 text-ink">
+            title={t("cardActions", { title })} onClick={() => { setActionsOpen(!actionsOpen); setActionsDismissed(actionsOpen); }} className="library-card-touch-actions focus-ring absolute bottom-2 right-2 z-raised h-11 w-11 items-center justify-center rounded-control bg-black/80 text-white"><MoreHorizontal className="h-5 w-5" /></button>}
+          {!readOnly && <div id={panelId} className="library-card-inspector liquid-glass-popover z-inspector invisible absolute top-full right-0 left-0 overflow-hidden rounded-b-media border border-line/80 p-5 text-ink opacity-0 transition-[opacity,transform] duration-standard">
             <div className="z-raised relative space-y-4">
               <div className="flex flex-wrap items-center gap-3">
                 <button
@@ -481,7 +496,7 @@ export default function LibraryMovieCard({ movie, priority = false, readOnly = f
         </div>
 
         {/* Title & Info */}
-        <Link href={`/library/${movie.id}`} onClick={() => rememberFilmReturn(movie.id)} scroll={false} className="focus-ring duration-standard flex min-w-0 cursor-pointer items-start justify-between gap-3 transition-opacity">
+        <Link href={`/library/${movie.id}`} onClick={() => rememberFilmReturn(movie.id)} onFocus={() => { setActionsOpen(false); setActionsDismissed(true); }} scroll={false} className="library-card-title focus-ring duration-standard flex min-w-0 cursor-pointer items-start justify-between gap-3 transition-opacity">
           <div className="min-w-0 space-y-1">
             <h3 className="break-words text-xl md:text-2xl font-bold uppercase leading-none tracking-tight">
               {title}

@@ -32,6 +32,70 @@ body {
   line-height: 1rem;
 }
 
+/* Keep the historic hover inspector, with equivalent keyboard/touch access.
+   The panel touches the image so crossing into its actions never drops hover. */
+.library-card-media {
+  z-index: var(--z-content);
+}
+
+.library-card-touch-actions {
+  display: none;
+}
+
+.library-card-inspector,
+.library-card-overlay {
+  transform: translateY(0.25rem);
+}
+
+.library-card-media:not([data-actions-dismissed="true"]):is(:focus-within, [data-actions-open="true"]) {
+  z-index: var(--z-inspector);
+}
+
+.library-card-media:not([data-actions-dismissed="true"]):is(:focus-within, [data-actions-open="true"]) :is(.library-card-inspector, .library-card-overlay) {
+  visibility: visible;
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.library-card-media:not([data-actions-dismissed="true"]):is(:focus-within, [data-actions-open="true"]) .library-card-shade {
+  background: rgb(0 0 0 / 35%);
+}
+
+.library-card-media:not([data-actions-dismissed="true"]):is(:focus-within, [data-actions-open="true"]) + .library-card-title {
+  opacity: 0;
+  pointer-events: none;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .library-card-media:not([data-actions-dismissed="true"]):hover {
+    z-index: var(--z-inspector);
+  }
+
+  .library-card-media:not([data-actions-dismissed="true"]):hover :is(.library-card-inspector, .library-card-overlay) {
+    visibility: visible;
+    opacity: 1;
+    transform: translateY(0);
+    transition-delay: var(--delay-inspection);
+  }
+
+  .library-card-media:not([data-actions-dismissed="true"]):hover .library-card-shade {
+    background: rgb(0 0 0 / 35%);
+    transition-delay: var(--delay-inspection);
+  }
+
+  .library-card-media:not([data-actions-dismissed="true"]):hover + .library-card-title {
+    opacity: 0;
+    pointer-events: none;
+    transition-delay: var(--delay-inspection);
+  }
+}
+
+@media (hover: none), (pointer: coarse), (any-pointer: coarse) {
+  .library-card-touch-actions {
+    display: flex;
+  }
+}
+
 /* The first-run cover is server-rendered so onboarding never flashes before hydration. */
 [data-first-run-intro] {
   animation: first-run-intro-fallback 1.3s linear forwards;
