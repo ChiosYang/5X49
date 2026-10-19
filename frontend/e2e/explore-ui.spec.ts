@@ -1,14 +1,15 @@
 import { test, expect, type APIRequestContext, type Page } from '@playwright/test';
 import path from 'node:path';
+import type { ExploreContext } from '../src/types/movie';
 
 const backend = process.env.E2E_BACKEND!;
 const copy = {
   en: { title: 'EXPLORE', find: 'Find a fact', finder: 'Fact Finder', search: 'Search Genre',
     journey: 'Current journey', where: 'Show films where', clear: 'Clear all',
-    removed: ['Local factual exploration', 'Rediscover your collection through Genre, People, Countries, and Decades.', 'Accepted facts only'] },
+    removed: ['Local factual exploration', 'Rediscover your collection through Genre, People, Countries, and Decades.', 'Accepted facts only', 'Data confidence'] },
   zh: { title: '探索', find: '查找事实', finder: '事实查找器', search: '搜索类型',
     journey: '当前探索路径', where: '显示符合以下事实的影片', clear: '清除全部',
-    removed: ['本地事实探索', '沿着类型、人物、国家与年代，重新发现你的收藏。', '仅使用已接受事实'] },
+    removed: ['本地事实探索', '沿着类型、人物、国家与年代，重新发现你的收藏。', '仅使用已接受事实', '数据可信度'] },
 };
 
 async function read(request: APIRequestContext, url: string) {
@@ -43,6 +44,21 @@ async function capture(page: Page, name: string) {
   await page.screenshot({ path: path.join('e2e-artifacts', name), animations: 'disabled' });
 }
 
+async function titleMetrics(page: Page) {
+  await page.evaluate(() => document.fonts.ready);
+  return page.locator('h1').evaluate(heading => {
+    const style = getComputedStyle(heading);
+    const bounds = heading.getBoundingClientRect();
+    const header = getComputedStyle(heading.closest('header')!);
+    return {
+      font: style.fontFamily, size: style.fontSize, weight: style.fontWeight,
+      lineHeight: style.lineHeight, spacing: style.letterSpacing,
+      x: bounds.x, y: bounds.y,
+      direction: header.flexDirection, gap: header.gap, paddingBottom: header.paddingBottom,
+    };
+  });
+}
+
 test.beforeAll(async ({ request }) => {
   await cleanup(request);
   const media = path.join(process.env.E2E_ROOT!, 'normal/media');
@@ -64,7 +80,7 @@ test.beforeEach(async ({ context }) => {
 });
 
 for (const locale of ['en', 'zh'] as const) {
-  for (const width of [1920, 390, 320]) {
+  for (const width of [1920, 1024, 768, 390, 320]) {
     test(`${locale} Explore keeps a clean header and accessible local filtering at ${width}px`, async ({ page, request }) => {
       const text = copy[locale];
       const askRequests: string[] = [];
@@ -72,16 +88,41 @@ for (const locale of ['en', 'zh'] as const) {
         if (request.method() === 'POST' && new URL(request.url()).pathname.startsWith('/api/ask')) askRequests.push(request.url());
       });
       await page.setViewportSize({ width, height: width === 1920 ? 1080 : 844 });
+      await page.goto(`/${locale}/library`);
+      const libraryTitle = await titleMetrics(page);
       await page.goto(`/${locale}/explore`);
       const header = page.locator('header').filter({ has: page.getByRole('heading', { name: text.title, exact: true }) });
       await expect(header.getByRole('heading', { level: 1 })).toBeVisible();
+      await expect(header.locator('h1')).toHaveClass('type-display-editorial');
+      expect(await titleMetrics(page)).toEqual(libraryTitle);
+      await expect(page.locator('nav.fixed').first()).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
       // No dynamic collection count or header helper copy remains, regardless of its value.
       await expect(header.locator('p, span')).toHaveCount(0);
       expect(await header.innerText()).not.toMatch(/\d/);
       for (const removed of text.removed) await expect(page.getByText(removed, { exact: true })).toHaveCount(0);
-      await expect(page.locator('section[aria-labelledby="lens-deck-title"] button')).toHaveCount(4);
+      const deck = page.locator('section[aria-labelledby="lens-deck-title"]');
+      const cards = deck.getByRole('button');
+      await expect(cards).toHaveCount(4);
+      await expect(cards.locator('svg')).toHaveCount(0);
+      await expect(deck.locator('details')).toHaveCount(0);
+      await expect(deck).toHaveCSS('border-bottom-width', '0px');
+      await expect(deck).toHaveCSS('border-top-width', '0px');
+      const overview = await read(request, '/explore');
+      for (const [index, dimension] of overview.dimensions.entries()) {
+        const card = cards.nth(index);
+        await expect(card).toHaveCSS('border-width', '1px');
+        const ratio = card.locator('span[aria-label]');
+        await expect(ratio).toHaveText(`${dimension.coverage.covered_films}/${dimension.coverage.total_films}`);
+        await expect(ratio).toHaveAttribute('aria-label', /\S/);
+      }
+      // Country display names switch from stable server keys after hydration.
+      // Wait for that visible state before capturing or clicking client controls.
+      const context: ExploreContext = await read(request, '/explore/context?limit=6');
+      const country = context.dimensions.find(dimension => dimension.dimension === 'country')!.items[0];
+      const countryName = new Intl.DisplayNames([locale], { type: 'region' }).of(country.key)!;
+      await expect(cards.nth(2).locator('p[title]')).toHaveText(countryName);
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-      if (width !== 320) await capture(page, `explore-ui-${locale}-${width}.png`);
+      if (width === 1920 || width === 390) await capture(page, `explore-cards-${locale}-${width}.png`);
 
       const initialUrl = page.url();
       const find = header.getByRole('button', { name: text.find, exact: true });
@@ -125,3 +166,13 @@ for (const locale of ['en', 'zh'] as const) {
     });
   }
 }
+
+test('empty Explore keeps live 0/0 coverage and usable lens entries', async ({ page }) => {
+  await cleanup(page.request);
+  await page.goto('/en/explore');
+  const cards = page.locator('section[aria-labelledby="lens-deck-title"] button');
+  await expect(cards).toHaveCount(4);
+  for (const card of await cards.all()) await expect(card.locator('span[aria-label]')).toHaveText('0/0');
+  await cards.first().click();
+  await expect(page.getByRole('dialog')).toBeVisible();
+});
