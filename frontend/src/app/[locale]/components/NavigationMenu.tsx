@@ -7,7 +7,7 @@ import { Dialog } from "@/components/ui/Dialog";
 import { Link } from "@/i18n/routing";
 import { Button } from "@/components/ui/Button";
 
-export default function NavigationMenu() {
+export default function NavigationMenu({ onSearch }: { onSearch: () => void }) {
   const panelId = useId();
   const t = useTranslations("Navigation");
   const [isOpen, setIsOpen] = useState(false);
@@ -45,13 +45,13 @@ export default function NavigationMenu() {
           >
             {t("explore")}
           </Link>
-          <Link
-            href="/search"
-            onClick={closeMenu}
-            className="focus-ring duration-standard block text-5xl font-bold tracking-tighter text-ink transition-colors hover:text-ink-muted md:text-7xl"
+          <button
+            type="button"
+            onClick={() => { closeMenu(); onSearch(); }}
+            className="focus-ring duration-standard block text-left text-5xl font-bold tracking-tighter text-ink transition-colors hover:text-ink-muted md:text-7xl"
           >
             {t("search")}
-          </Link>
+          </button>
           <Link href="/ask" onClick={closeMenu} className="focus-ring duration-standard block text-5xl font-bold tracking-tighter text-ink transition-colors hover:text-ink-muted md:text-7xl">
             {t("ask")}
           </Link>

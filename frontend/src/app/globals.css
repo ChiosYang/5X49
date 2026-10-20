@@ -165,3 +165,31 @@ html[data-first-run-intro-state="skip"]
 .scrollbar-minimal::-webkit-scrollbar-corner {
   background: transparent;
 }
+/* Grow left from the icon without crossing the centered desktop logo. */
+.navigation-search {
+  position: relative;
+  width: 2.75rem;
+  overflow: hidden;
+  transition: width 200ms ease;
+}
+.navigation-search[data-open="true"] { width: min(20rem, calc(50vw - 15rem)); }
+.navigation-search-form { opacity: 0; transition: opacity 200ms ease; }
+.navigation-search-trigger { transition: opacity 200ms ease; }
+.navigation-search[data-open="true"] .navigation-search-form { opacity: 1; }
+.navigation-search[data-open="true"] .navigation-search-trigger { opacity: 0; }
+@media (max-width: 1023px) {
+  .navigation-bar[data-search-open="true"] .navigation-menu,
+  .navigation-bar[data-search-open="true"] .navigation-logo,
+  .navigation-bar[data-search-open="true"] .navigation-status { visibility: hidden; pointer-events: none; }
+  .navigation-bar[data-search-open="true"] .navigation-status { display: none; }
+  .navigation-tools { position: absolute; left: 2rem; right: 0; justify-content: flex-end; pointer-events: none; }
+  .navigation-bar[data-search-open="true"] .navigation-tools { right: 2rem; }
+  .navigation-search, .navigation-status { pointer-events: auto; }
+  .navigation-search[data-open="true"] { width: 100%; }
+}
+@media (min-width: 640px) and (max-width: 1023px) {
+  .navigation-tools { right: 2rem; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .navigation-search, .navigation-search-form, .navigation-search-trigger { transition: none; }
+}

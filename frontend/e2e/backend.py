@@ -21,6 +21,7 @@ def local_connect(sock, address):
 
 socket.socket.connect = local_connect
 from fastapi import Header, HTTPException
+from fastapi.responses import JSONResponse
 from app.main import app
 from app.jobs import job_runtime
 from app.services.scanner import NFOScanner
@@ -39,6 +40,13 @@ video_health.observer = ControlledHealthLoad()
 backup_gate = threading.Event()
 backup_gate.set()
 backup_failure = False
+search_unavailable = False
+
+@app.middleware('http')
+async def search_failure(request, call_next):
+    if search_unavailable and request.url.path == '/library/films/page':
+        return JSONResponse({'detail': 'Synthetic search read failure'}, status_code=503)
+    return await call_next(request)
 original_sanitize_backup = backup_module.sanitize_snapshot
 
 def controlled_sanitize_backup(path):
@@ -79,6 +87,10 @@ def control(payload: dict, x_e2e_token: str = Header(default='')):
         raise HTTPException(403)
     global health_allowed
     action = payload['action']
+    if action == 'search_failure':
+        global search_unavailable
+        search_unavailable = bool(payload['enabled'])
+        return {'enabled': search_unavailable}
     if action == 'health_fixture':
         import subprocess, json, shutil
         from app.services.library import library_manager

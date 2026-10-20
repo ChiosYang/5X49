@@ -21,7 +21,7 @@ export function LibraryFilterSummary({ state }: { state: LibraryQueryState }) {
   ].filter(Boolean);
   if (!conditions.length) return null;
   return <div className="mt-4 flex min-w-0 flex-wrap items-center gap-x-4 gap-y-2 text-xs text-ink-subtle" aria-label={t("applied")}>
-    {conditions.map((condition, index) => <span key={index} className="max-w-full break-words">{condition}</span>)}
+    {conditions.map((condition, index) => <span key={index} className="max-w-full [overflow-wrap:anywhere]">{condition}</span>)}
     <ButtonLink href={buildLibraryHref(clearLibraryFilters(state), "all")} size="sm" variant="ghost">{t("clear")}</ButtonLink>
   </div>;
 }
