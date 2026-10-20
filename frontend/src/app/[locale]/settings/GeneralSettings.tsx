@@ -52,16 +52,11 @@ export default function GeneralSettings() {
 
   return (
     <div className="space-y-8">
-      <SectionIntro
-        eyebrow={t("generalEyebrow")}
-        title={t("general")}
-        description={t("generalDesc")}
-      />
+      <SectionIntro title={t("general")} />
 
       <SettingsPanel title={t("preferences")}>
         <SettingRow
           title={t("languagePref")}
-          description={t("languageDesc")}
           control={
             <div className="flex items-center gap-3">
               <div className="flex border border-line-strong bg-surface-raised p-1">

@@ -398,7 +398,6 @@
     "submit": "Search",
     "clear": "Clear",
     "initial": "Enter a search term to find films in your library.",
-    "results": "{count, plural, one {# film} other {# films}} matching “{query}”",
     "empty": "No films match “{query}”. Try a different title or keyword."
   },
   "PersonalState": {

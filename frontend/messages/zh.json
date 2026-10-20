@@ -398,7 +398,6 @@
     "submit": "搜索",
     "clear": "清除",
     "initial": "输入关键词，查找资料库中的电影。",
-    "results": "找到 {count} 部与“{query}”相关的电影",
     "empty": "没有找到与“{query}”相关的电影，请尝试其他片名或关键词。"
   },
   "PersonalState": {

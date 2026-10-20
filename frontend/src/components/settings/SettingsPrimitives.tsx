@@ -4,26 +4,12 @@ import type { ReactNode } from "react";
 import { ChevronDown } from "lucide-react";
 import { InlineFeedback, type FeedbackTone } from "@/components/ui/Feedback";
 
-export function SectionIntro({
-  eyebrow,
-  title,
-  description,
-}: {
-  eyebrow?: string;
-  title: string;
-  description: string;
-}) {
+export function SectionIntro({ title }: { title: string }) {
   return (
     <header>
-      {eyebrow && (
-        <p className="type-label mb-2 text-ink-disabled">
-          {eyebrow}
-        </p>
-      )}
-      <h2 className="type-section-title mb-2 text-ink">
+      <h2 className="type-section-title text-ink">
         {title}
       </h2>
-      <p className="text-sm text-ink-subtle">{description}</p>
     </header>
   );
 }
@@ -60,7 +46,7 @@ export function SettingRow({
   children,
 }: {
   title: string;
-  description: string;
+  description?: string;
   control?: ReactNode;
   feedback?: ReactNode;
   children?: ReactNode;
@@ -72,12 +58,12 @@ export function SettingRow({
           <p className="mb-1 text-sm font-medium tracking-widest text-ink uppercase">
             {title}
           </p>
-          <p className="max-w-2xl text-xs leading-5 text-ink-disabled">{description}</p>
+          {description && <p className="max-w-2xl text-xs leading-5 text-ink-disabled">{description}</p>}
         </div>
         {control && <div className="shrink-0 sm:max-w-[60%]">{control}</div>}
       </div>
       {children && <div className="mt-4">{children}</div>}
-      <div className="mt-3 min-h-5" aria-live="polite">
+      <div className={feedback ? "mt-3" : undefined} aria-live="polite">
         {feedback}
       </div>
     </div>

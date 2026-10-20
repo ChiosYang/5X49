@@ -312,9 +312,7 @@ export default function LibraryManagementClient() {
     <main className="min-h-screen overflow-x-hidden bg-[#020405] pb-8 text-white selection:bg-cyan-200 selection:text-black">
       <header className="page-x flex flex-col gap-5 border-b border-white/10 pt-24 pb-6 sm:pt-28 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <p className="text-[9px] font-black tracking-[0.22em] text-cyan-300 uppercase">{t("eyebrow")}</p>
-          <h1 className="mt-3 text-3xl font-semibold tracking-[-0.04em] sm:text-5xl">{t("title")}</h1>
-          <p className="mt-3 max-w-2xl text-xs leading-5 tracking-wide text-neutral-500 sm:text-sm">{t("subtitle")}</p>
+          <h1 className="text-3xl font-semibold tracking-[-0.04em] sm:text-5xl">{t("title")}</h1>
         </div>
         <div className="flex flex-wrap items-center gap-3 text-[9px] font-bold tracking-[0.14em] uppercase">
           <span className="inline-flex min-h-9 items-center gap-2 border border-white/10 px-3 text-neutral-500">

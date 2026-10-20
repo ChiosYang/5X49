@@ -20,8 +20,6 @@ import {
   RotateCcw,
   ScanSearch,
   Sparkles,
-  Star,
-  WandSparkles,
   Zap,
 } from "lucide-react";
 import { useMemo, useState } from "react";
@@ -575,12 +573,8 @@ export default function VisualInteractionLab() {
           <Link href="/library/manage/concepts" className="focus-ring inline-flex items-center gap-2 text-[9px] font-black tracking-[0.18em] text-neutral-600 uppercase transition hover:text-white"><ArrowLeft className="h-3 w-3" /> 返回流程交互实验</Link>
           <div className="mt-6 flex flex-col gap-7 lg:flex-row lg:items-end lg:justify-between">
             <div>
-              <p className="flex items-center gap-2 text-[10px] font-black tracking-[0.24em] text-cyan-300 uppercase"><WandSparkles className="h-3.5 w-3.5" /> Visual interaction lab</p>
-              <h1 className="mt-5 max-w-5xl text-4xl font-bold tracking-[-0.045em] text-white sm:text-6xl lg:text-7xl">不是换皮，<span className="font-serif font-normal text-neutral-500 italic">是换一种空间。</span></h1>
+              <h1 className="max-w-5xl text-4xl font-bold tracking-[-0.045em] text-white sm:text-6xl lg:text-7xl">不是换皮，<span className="font-serif font-normal text-neutral-500 italic">是换一种空间。</span></h1>
               <p className="mt-5 max-w-2xl text-sm leading-6 text-neutral-500">三种方案拥有相同的数据、权限与任务，只改变任务如何占据屏幕，以及用户如何在它们之间移动。</p>
-            </div>
-            <div className="border border-white/10 bg-white/[0.02] px-4 py-3 text-[10px] text-neutral-500">
-              <span className="text-white">固定变量</span> · 相同任务 / 相同权限 / 相同风险
             </div>
           </div>
         </div>
@@ -634,11 +628,6 @@ export default function VisualInteractionLab() {
           </div>
 
           <ConceptReadout model={active} />
-
-          <footer className="flex flex-col gap-3 py-10 text-[10px] text-neutral-700 sm:flex-row sm:items-center sm:justify-between">
-            <span>5X49 · Visual interaction study</span>
-            <span className="flex items-center gap-2"><Star className="h-3 w-3" /> 判断标准：是否更快理解、是否更想继续操作、是否记得刚才发生了什么。</span>
-          </footer>
         </div>
       </main>
     </div>

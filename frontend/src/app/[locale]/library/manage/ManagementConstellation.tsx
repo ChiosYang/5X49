@@ -12,7 +12,6 @@ import {
   Minus,
   Plus,
   Radar,
-  RefreshCw,
   RotateCcw,
   ScanSearch,
   Sparkles,
@@ -240,8 +239,7 @@ export default function ManagementConstellation({
         })}
       </motion.div>
 
-      <div className="absolute right-4 bottom-4 left-4 z-30 flex items-center justify-between gap-4 text-[9px] text-neutral-700">
-        <span className="flex items-center gap-2"><RefreshCw className="h-3 w-3" />{t("liveTopology")}</span>
+      <div className="absolute right-4 bottom-4 left-4 z-30 flex justify-end text-[9px] text-neutral-700">
         <button type="button" onClick={onReset} className="focus-ring inline-flex items-center gap-2 text-neutral-600 hover:text-white"><RotateCcw className="h-3 w-3" />{t("backToSystem")}</button>
       </div>
     </section>
