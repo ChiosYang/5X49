@@ -67,7 +67,6 @@ export default function LibraryDangerZone() {
       <div className="mb-6">
         <p className="type-label text-danger">{t("eyebrow")}</p>
         <h3 className="mt-2 type-section-title text-ink">{t("title")}</h3>
-        <p className="mt-2 max-w-2xl text-xs leading-5 text-ink-disabled">{t("description")}</p>
       </div>
       <div className="flex flex-col gap-5 border-b border-danger/20 pb-7 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">

@@ -121,31 +121,17 @@ export default function LibrarySettings() {
     }
   };
 
-  const enabledLabel = (enabled: boolean | undefined) =>
-    enabled ? t("enabled") : t("disabled");
-  const advancedSummary = `${t("autoOrganizeRoot")}: ${enabledLabel(
-    autoOrganizeData?.auto_organize_root_videos,
-  )} · ${t("scrapeRequireConfirmation")}: ${enabledLabel(
-    scrapeConfirmationData?.scrape_require_confirmation,
-  )}`;
-
   return (
     <div className="space-y-8">
       <SectionIntro title={t("librarySettings")} />
 
-      <SettingsPanel title={t("librarySource")} description={t("librarySourceDesc")}>
-        <SettingRow
-          title={roots("title")}
-          description={roots("configuration")}
-        >
-          <MediaRootsControl />
-        </SettingRow>
-      </SettingsPanel>
+      <SettingRow title={roots("title")}>
+        <MediaRootsControl />
+      </SettingRow>
 
       <SettingsPanel title={t("metadataPreferences")}>
         <SettingRow
           title={t("artworkLanguage")}
-          description={t("artworkLanguageDesc")}
           feedback={
             artworkLanguageError ? (
               <InlineFeedback tone="error">{t("artworkLanguageSaveFailed")}</InlineFeedback>
@@ -202,8 +188,6 @@ export default function LibrarySettings() {
 
       <DisclosurePanel
         title={t("advanced")}
-        description={t("advancedLibraryDesc")}
-        summary={advancedSummary}
       >
         <SettingRow
           title={t("autoOrganizeRoot")}
