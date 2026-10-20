@@ -210,7 +210,7 @@ export default function ManagementInspector({
 
   return (
     <div className="flex min-h-full flex-col p-5 sm:p-6">
-      <div className="flex items-center justify-between gap-4"><p className="type-label text-ink-muted uppercase">{t("inspector")}</p><span className={`type-meta uppercase ${node.state === "failed" ? "text-red-300" : node.state === "attention" ? "text-amber-200" : node.state === "running" ? "text-cyan-300" : "text-ink-muted"}`}>{t(`states.${node.state}`)}</span></div>
+      <div className="flex justify-end"><span className={`type-meta uppercase ${node.state === "failed" ? "text-red-300" : node.state === "attention" ? "text-amber-200" : node.state === "running" ? "text-cyan-300" : "text-ink-muted"}`}>{t(`states.${node.state}`)}</span></div>
       <span className="mt-8 flex h-11 w-11 items-center justify-center rounded-full border border-white/10 text-cyan-300">{node.id === "library" ? <Layers3 className="h-4 w-4" /> : node.state === "failed" ? <AlertTriangle className="h-4 w-4" /> : node.state === "running" ? <RefreshCw className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}</span>
       <h3 className="mt-5 text-2xl font-semibold tracking-tight text-white">{t(`nodes.${node.id}`)}</h3>
       <p className="mt-3 text-xs leading-5 text-ink-muted">{details?.description || t("defaultNodeDescription")}</p>

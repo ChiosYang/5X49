@@ -42,8 +42,7 @@ export default function MovieAnalysisSection({
     <section id="film-analysis" tabIndex={-1} className="space-y-8 px-8 py-14 md:px-16 md:py-20">
       <div className="flex flex-wrap items-end justify-between gap-6 border-b border-line-strong pb-6">
         <div>
-          <p className="type-label text-ink-subtle">{t("subtitle")}</p>
-          <h2 className="mt-2 type-display-editorial text-ink">{t("title")}</h2>
+          <h2 className="type-display-editorial text-ink">{t("title")}</h2>
         </div>
         <Button onClick={triggerAnalysis} disabled={running} busy={running} variant="primary">
           {running ? t("analyzing") : t("trigger")}

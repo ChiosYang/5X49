@@ -792,11 +792,6 @@ export default function ManagementInteractionLab() {
           </div>
 
           <ModelNotes model={active} />
-
-          <footer className="flex flex-col gap-3 py-10 text-[10px] leading-5 text-neutral-700 sm:flex-row sm:items-center sm:justify-between">
-            <span>5X49 · Management interaction study</span>
-            <span>建议每个模型至少完成一次主要任务后再做选择。</span>
-          </footer>
         </div>
       </main>
     </div>

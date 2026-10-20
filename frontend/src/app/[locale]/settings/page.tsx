@@ -40,13 +40,10 @@ function SettingsContent() {
 
   return (
     <div className="min-h-screen bg-canvas text-ink selection:bg-inverse selection:text-inverse-ink">
-      <header className="page-x border-b border-line py-16 pt-28 md:py-24 md:pt-32">
-        <h1 className="type-display-ui mb-4">
+      <header className="page-x border-b border-line pb-10 pt-28 md:pb-12 md:pt-32">
+        <h1 className="type-display-ui">
           {t("title")}
         </h1>
-        <p className="max-w-2xl text-sm tracking-widest text-ink-subtle uppercase">
-          {t("subtitle")}
-        </p>
       </header>
 
       <div className="flex min-h-[60vh] flex-col md:flex-row">

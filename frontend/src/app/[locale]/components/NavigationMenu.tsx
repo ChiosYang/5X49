@@ -76,9 +76,6 @@ export default function NavigationMenu({ onSearch }: { onSearch: () => void }) {
           >
             {t("settings")}
           </Link>
-          <p className="pt-6 text-xs font-bold tracking-widest text-ink-subtle uppercase">
-            {t("project")}
-          </p>
         </div>
       </Dialog>
     </>

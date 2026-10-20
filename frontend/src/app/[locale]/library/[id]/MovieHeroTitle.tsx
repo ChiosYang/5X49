@@ -18,7 +18,7 @@ export default function MovieHeroTitle({ title, titleCn }: MovieHeroTitleProps) 
       >
         {titleCn || title}
       </motion.h1>
-      {titleCn && (
+      {titleCn && titleCn !== title && (
         <motion.p
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}

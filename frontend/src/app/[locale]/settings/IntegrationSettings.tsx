@@ -174,16 +174,11 @@ export default function IntegrationSettings() {
 
   return (
     <div className="space-y-8">
-      <SectionIntro
-        eyebrow={t("integrationsEyebrow")}
-        title={t("integrations")}
-        description={t("integrationsDesc")}
-      />
+      <SectionIntro title={t("integrations")} />
 
-      <SettingsPanel title={t("aiProvider")} description={t("aiProviderDesc")}>
+      <SettingsPanel title={t("aiProvider")}>
         <SettingRow
           title={t("model")}
-          description={t("modelDesc")}
           feedback={
             modelSaving ? (
               <InlineFeedback>{t("saving")}</InlineFeedback>
@@ -251,7 +246,6 @@ export default function IntegrationSettings() {
 
         <SettingRow
           title={t("apiKey")}
-          description={t("apiDesc")}
           control={
             <Button
               onClick={handleApiTest}
@@ -344,7 +338,6 @@ export default function IntegrationSettings() {
       >
         <SettingRow
           title={t("baseUrl")}
-          description={t("baseUrlDesc")}
           feedback={
             baseUrlSaveError ? (
               <InlineFeedback tone="error">{t("baseUrlSaveFailed")}</InlineFeedback>

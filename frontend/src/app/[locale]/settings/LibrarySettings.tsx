@@ -131,11 +131,7 @@ export default function LibrarySettings() {
 
   return (
     <div className="space-y-8">
-      <SectionIntro
-        eyebrow={t("libraryEyebrow")}
-        title={t("librarySettings")}
-        description={t("librarySettingsDesc")}
-      />
+      <SectionIntro title={t("librarySettings")} />
 
       <SettingsPanel title={t("librarySource")} description={t("librarySourceDesc")}>
         <SettingRow
@@ -146,7 +142,7 @@ export default function LibrarySettings() {
         </SettingRow>
       </SettingsPanel>
 
-      <SettingsPanel title={t("metadataPreferences")} description={t("metadataPreferencesDesc")}>
+      <SettingsPanel title={t("metadataPreferences")}>
         <SettingRow
           title={t("artworkLanguage")}
           description={t("artworkLanguageDesc")}
@@ -178,7 +174,7 @@ export default function LibrarySettings() {
         </SettingRow>
       </SettingsPanel>
 
-      <SettingsPanel title={t("automation")} description={t("automationDesc")}>
+      <SettingsPanel title={t("automation")}>
         <SettingRow
           title={t("autoScan")}
           description={t("autoScanDesc")}

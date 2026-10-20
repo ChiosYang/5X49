@@ -232,10 +232,8 @@ export default function DiaryClient() {
   const film = params.get("film") || undefined;
   const view = diaryViewFromQuery(params.get("view"), film);
   return <div className="space-y-10">
-    <header className="border-b border-line pb-8">
-      <p className="type-label text-ink-subtle">{view === "dna" ? dna("eyebrow") : t("eyebrow")}</p>
-      <h1 className={`mt-3 text-ink ${view === "dna" ? "text-5xl font-bold tracking-tight sm:text-7xl" : "type-display-editorial"}`}>{view === "dna" ? dna("title") : t("title")}</h1>
-      <p className="mt-4 max-w-2xl text-sm leading-7 text-ink-subtle">{view === "dna" ? dna("intro") : t("subtitle")}</p>
+    <header>
+      <h1 className={`text-ink ${view === "dna" ? "text-5xl font-bold tracking-tight sm:text-7xl" : "type-display-editorial"}`}>{view === "dna" ? dna("title") : t("title")}</h1>
     </header>
     {!film ? <nav aria-label={t("viewMode")} className="grid w-full grid-cols-3 gap-2 border-y border-line py-3 sm:flex sm:flex-wrap">
       {(["timeline", "recent", "dna"] as const).map((mode) => <Link

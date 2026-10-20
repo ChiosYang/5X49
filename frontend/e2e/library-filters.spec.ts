@@ -122,6 +122,8 @@ test('search handoff, unsubmitted drafts and consecutive applies do not show sta
     if (request.isNavigationRequest() && url.pathname === '/en/library') submissions.push(url.searchParams.get('q') || '');
   });
   for (const query of ['Orbit Dawn', 'Orbit Echo', 'Orbit Dawn']) {
+    // A native GET can display the next card before its touch controls hydrate.
+    await expect(cards(page).first()).toHaveAttribute('type', 'button');
     await openFilters(page);
     await page.getByRole('searchbox', { name: 'Search library', exact: true }).fill(query);
     await page.getByRole('button', { name: 'Apply filters', exact: true }).dblclick();

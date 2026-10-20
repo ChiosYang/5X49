@@ -78,7 +78,8 @@ for (const locale of ['en', 'zh'] as const) {
       await expect.poll(() => new URL(page.url()).search).toBe('?q=Orbit');
       await expect(page.locator('html')).toHaveAttribute('lang', locale);
       await expect(cards(page)).toHaveCount(5);
-      await expect(page.getByRole('status').filter({ hasText: 'Orbit' }).first()).toContainText('5');
+      await expect(page.getByRole('status').filter({ hasText: '5' }).first()).toBeVisible();
+      await expect(page.getByRole('status').filter({ hasText: 'Orbit' })).toHaveCount(0);
       if (width === 1920 || width === 390) await capture(page, `results-${locale}-${width}`);
       const again = await open(page, locale);
       await expect(again).toHaveValue('Orbit');
@@ -154,7 +155,9 @@ test('long and blank input, empty results and reduced motion stay usable on mobi
   await input.press('Enter');
   await expect.poll(() => new URL(page.url()).searchParams.get('q')).toBe(long.slice(0, 200));
   await expect(cards(page)).toHaveCount(0);
-  await expect(page.getByRole('status').filter({ hasText: 'matching' })).toContainText('0 films');
+  await expect(page.getByRole('status').filter({ hasText: '0 films' })).toBeVisible();
+  await expect(page.getByText(/films? matching/)).toHaveCount(0);
+  await expect(page.getByText(en.LibrarySearch.empty.replace('{query}', long.slice(0, 200)), { exact: true })).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await capture(page, 'empty-long-mobile');
   const again = await open(page);

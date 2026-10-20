@@ -81,9 +81,7 @@ export default function AskClient() {
   return (
     <main className="page-x min-h-screen bg-canvas pb-20 pt-36 text-ink">
       <div className="max-w-4xl">
-        <p className="type-label text-ink-subtle">{t("eyebrow")}</p>
-        <h1 className="mt-3 type-display-editorial">{t("title")}</h1>
-        <p className="mt-5 max-w-2xl leading-7 text-ink-muted">{t("description")}</p>
+        <h1 className="type-display-editorial">{t("title")}</h1>
         <div className="my-7 flex flex-wrap gap-3" role="group" aria-label={t("mode")}>
           <Button disabled={busy} aria-pressed={mode === "question"} variant={mode === "question" ? "primary" : "secondary"} onClick={() => switchMode("question")}>{t("questionMode")}</Button>
           <Button disabled={busy} aria-pressed={mode === "form"} variant={mode === "form" ? "primary" : "secondary"} onClick={() => switchMode("form")}>{t("formMode")}</Button>

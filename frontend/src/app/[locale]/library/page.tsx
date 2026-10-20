@@ -147,13 +147,12 @@ export default async function LibraryPage({ searchParams }: LibraryPageProps) {
         <header className="flex flex-col gap-7 border-b border-line pb-8 lg:flex-row lg:items-end lg:justify-between">
           <div>
             <h1 className="type-display-editorial">{t("title")}</h1>
-            {view !== "all" ? <p className="mt-3 type-label text-ink-subtle">{careT(VIEW_LABELS[view])}</p> : null}
           </div>
           <div className="flex flex-wrap items-center gap-x-1 gap-y-3 sm:gap-3 lg:justify-end">
             <a href={`/${locale}/library/identity-review`} className="focus-ring inline-flex min-h-11 items-center type-label text-ink-subtle hover:text-ink sm:px-3">{careT("identityReview")}</a>
             {view === "all" && (filmPage.library_total > 0 || invalidRanges.length > 0) ? (
               <>
-                {!invalidRanges.length && <span className="mr-1 hidden text-xs font-bold tracking-widest text-ink-subtle uppercase md:inline-block">{t("filmsCount", {count:filmPage.total})}</span>}
+                {!invalidRanges.length && <span role="status" className="mr-1 hidden text-xs font-bold tracking-widest text-ink-subtle uppercase md:inline-block">{t("filmsCount", {count:filmPage.total})}</span>}
                 <LibraryFilters key={buildLibraryHref(queryState)} state={queryState} locale={locale} />
                 <Disclosure label={t("sort")} icon={<ArrowUpDown className="h-4 w-4" />}>
                       {SORT_OPTIONS.map((option) => {
@@ -175,11 +174,6 @@ export default async function LibraryPage({ searchParams }: LibraryPageProps) {
           </div>
         </header>
 
-        {query && view === "all" && !invalidRanges.length ? (
-          <p role="status" className="mt-6 max-w-3xl [overflow-wrap:anywhere] text-sm text-ink-muted">
-            {searchT("results", { count: filmPage.total, query })}
-          </p>
-        ) : null}
         {view === "all" ? <LibraryFilterSummary state={queryState} /> : null}
         {view === "all" && !invalidRanges.length && filmPage.library_total > 0 ? <p role="status" className="mt-4 text-xs text-ink-subtle md:hidden">{t("filmsCount", {count:filmPage.total})}</p> : null}
 
