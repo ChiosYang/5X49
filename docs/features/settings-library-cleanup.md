@@ -37,7 +37,19 @@ pause/resume, decoder results and restart persistence.
 - English desktop: `libfile_701ee877b6948191bfbfa2b2ee7878e8`.
 - Chinese mobile: `libfile_32d94c064ae08191b1d6572354b9d77a`.
 - Failed health write with unchanged switch: `libfile_981767c415d88191a79932b7c2e5c853`.
+- English 320px after the narrow-button fix: `libfile_4f33ab801f088191a11634eefd49628e`.
 - Independent review and final-head CI: pending.
+
+The first full CI run (`39365727754`) passed Frontend and Backend, with 133 E2E
+passes and one English 320px layout failure. Its trace confirms that the scroll-width
+assertion ran while the clear-data dialog was still exiting (320×1000 viewport,
+overlay `translateY(0.458928px) scale(0.998758)`). The old screenshot also exposed
+a long health action extending into the content's right margin. Health buttons
+now have a maximum width of their content container. The test waits for fonts
+and actual dialog removal, retains the strict document-width assertion and adds
+per-button bounds checks. After this fix, lint, typecheck, the production webpack
+build and all 16 settings/video-health E2E checks passed locally. A new exact-head
+review and full CI run are required.
 
 All local acceptance writes use the existing isolated harness with generated
 media and a temporary SQLite database. No real user settings, media or provider

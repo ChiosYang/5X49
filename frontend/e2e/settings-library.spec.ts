@@ -46,6 +46,7 @@ for (const locale of ['en', 'zh'] as const) {
       await page.goto(`/${locale}/settings?section=library`);
       const panel = page.getByLabel(copy.MediaRoots.title, { exact: true });
       await expect(page.getByLabel(copy.MediaRoots.directory.replace('{number}', '1'), { exact: true })).toHaveValue(roots[0]);
+      await page.evaluate(() => document.fonts.ready);
       for (const text of [copy.Settings.librarySource, copy.Settings.librarySourceDesc, copy.MediaRoots.configuration,
         copy.MediaRoots.help, copy.MediaRoots.primary, copy.MediaRoots.removal, copy.MediaRoots.docker,
         copy.Settings.artworkLanguageDesc, copy.Settings.advancedLibraryDesc, copy.VideoHealth.description,
@@ -89,6 +90,9 @@ for (const locale of ['en', 'zh'] as const) {
         .toBe(await autoScan.evaluate((element, key) => getComputedStyle(element).getPropertyValue(key), property));
       const row = await toggle.locator('..').boundingBox(), control = await toggle.boundingBox();
       expect(row && control && control.x + control.width >= row.x + row.width - 1).toBeTruthy();
+      for (const button of await video.getByRole('button').all()) {
+        expect(await button.evaluate(element => element.getBoundingClientRect().right <= element.parentElement!.getBoundingClientRect().right + 1)).toBe(true);
+      }
       await expect(video.getByRole('link', { name: copy.VideoHealth.maintenanceLink, exact: true })).toHaveAttribute('href', `${locale === 'zh' ? '' : '/en'}/library/manage#video-health`);
       await page.locator('summary').filter({ hasText: copy.Settings.advanced }).click();
       await expect(page.getByText(copy.Settings.autoOrganizeRootDesc, { exact: true })).toBeVisible();
@@ -101,6 +105,7 @@ for (const locale of ['en', 'zh'] as const) {
       await expect(dialog.getByRole('textbox')).toBeVisible();
       await expect(dialog.getByRole('button', { name: copy.LibraryCare.danger.confirm, exact: true })).toBeDisabled();
       await dialog.getByRole('button', { name: copy.LibraryCare.danger.cancel, exact: true }).click();
+      await expect(dialog).toHaveCount(0);
       await page.evaluate(() => window.scrollTo(0, 0));
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
       await page.screenshot({ path: `e2e-artifacts/settings-library-${locale}-${width}.png`, fullPage: true, animations: 'disabled' });

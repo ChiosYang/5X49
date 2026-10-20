@@ -39,9 +39,9 @@ export default function VideoHealthSettings() {
         <ToggleSwitch checked={data.config.enabled} disabled={busy} label={t("automatic")} onChange={() => void perform(API.videoHealthConfig(), { enabled: !data.config.enabled }, "PUT")} />
       </div>
       <div className="mt-5 flex flex-wrap items-center gap-3">
-        <Button size="sm" busy={busy} onClick={() => void perform(API.videoHealthQueue())}>{t("queue")}</Button>
-        <Button size="sm" disabled={busy} onClick={() => void perform(API.videoHealthConfig(), { paused: !data.config.paused }, "PUT")}>{t(data.config.paused ? "resume" : "pause")}</Button>
-        <Button size="sm" disabled={busy} onClick={() => void perform(API.videoHealthCancel())}>{t("cancel")}</Button>
+        <Button className="max-w-full" size="sm" busy={busy} onClick={() => void perform(API.videoHealthQueue())}>{t("queue")}</Button>
+        <Button className="max-w-full" size="sm" disabled={busy} onClick={() => void perform(API.videoHealthConfig(), { paused: !data.config.paused }, "PUT")}>{t(data.config.paused ? "resume" : "pause")}</Button>
+        <Button className="max-w-full" size="sm" disabled={busy} onClick={() => void perform(API.videoHealthCancel())}>{t("cancel")}</Button>
       </div>
     </> : null}
     <Link href="/library/manage#video-health" className="focus-ring mt-3 inline-flex min-h-11 items-center text-sm underline underline-offset-4">{t("maintenanceLink")}</Link>
