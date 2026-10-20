@@ -1,5 +1,5 @@
-import LibraryManagementClient from "./LibraryManagementClient";
+import LegacySettingsRedirect from "@/components/settings/LegacySettingsRedirect";
 
 export default function LibraryManagementPage() {
-  return <LibraryManagementClient />;
+  return <LegacySettingsRedirect source="manage" />;
 }

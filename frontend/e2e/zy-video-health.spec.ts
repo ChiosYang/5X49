@@ -1,6 +1,7 @@
 import { test, expect, type APIRequestContext } from '@playwright/test';
 import { writeFile, access, rm } from 'node:fs/promises';
 import path from 'node:path';
+import zh from '../messages/zh.json';
 
 test.describe.configure({ mode: 'serial' });
 const backend = process.env.E2E_BACKEND!;
@@ -18,9 +19,9 @@ test.beforeEach(async ({ context }) => {
 
 test('settings preserve backend schedule and support durable queue, pause and resume', async ({ page, request }) => {
   expect((await request.put(`${endpoint}/config`, { data: { start_minute: 0, end_minute: 0, daily_budget_minutes: 5 } })).ok()).toBeTruthy();
-  await page.goto('/zh/settings?section=library');
-  const panel = page.locator('section[aria-labelledby="video-health-settings"]');
-  await expect(panel.getByRole('heading', { name: '视频健康检查' })).toBeVisible();
+  await page.goto('/zh/settings?section=video-checks');
+  const panel = page.locator('section[aria-labelledby="video-health-controls"]');
+  await expect(panel.getByRole('heading', { name: zh.VideoHealth.controls })).toBeVisible();
   await expect(panel.locator('input[type="time"], input[type="number"]')).toHaveCount(0);
   await expect.poll(async () => (await status(request)).config.daily_budget_minutes).toBe(5);
   await panel.getByRole('button', { name: '一键排队检查片库' }).dblclick();
@@ -71,8 +72,8 @@ test('file replacement expires old result; cancelling queue does not report dama
   await panel.getByLabel('Show results').selectOption('all');
   await panel.getByRole('button', { name: 'Inspection details' }).first().click();
   await expect(panel.getByText('This is an earlier or unavailable file version.', { exact: false })).toBeVisible();
-  await page.goto('/en/settings?section=library');
-  const settings = page.locator('section[aria-labelledby="video-health-settings"]');
+  await page.goto('/en/settings?section=video-checks');
+  const settings = page.locator('section[aria-labelledby="video-health-controls"]');
   await settings.getByRole('button', { name: 'Queue library check' }).click();
   await settings.getByRole('button', { name: 'Cancel queued and active checks' }).click();
   await expect.poll(async () => (await status(request)).queue_sweep_pending).toBeFalsy();
@@ -87,6 +88,6 @@ test('backend restart retains queue configuration and old abnormal version notif
   await expect.poll(async () => { try { await access(path.join(root, 'restarted')); return true; } catch { return false; } }, { timeout: 30000 }).toBeTruthy();
   await expect.poll(async () => (await status(request)).config.daily_budget_minutes).toBe(before.config.daily_budget_minutes);
   expect((await status(request)).unread).toBe(before.unread);
-  await page.goto('/zh/settings?section=library');
-  await expect(page.locator('section[aria-labelledby="video-health-settings"]').getByRole('button', { name: '恢复检查' })).toBeVisible();
+  await page.goto('/zh/settings?section=video-checks');
+  await expect(page.locator('section[aria-labelledby="video-health-controls"]').getByRole('button', { name: '恢复检查' })).toBeVisible();
 });

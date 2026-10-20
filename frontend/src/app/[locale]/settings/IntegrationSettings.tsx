@@ -4,8 +4,6 @@ import { useEffect, useMemo, useState } from "react";
 import { Search } from "lucide-react";
 import { useTranslations } from "next-intl";
 import {
-  DisclosurePanel,
-  SectionIntro,
   SettingRow,
   SettingsPanel,
 } from "@/components/settings/SettingsPrimitives";
@@ -174,8 +172,6 @@ export default function IntegrationSettings() {
 
   return (
     <div className="space-y-8">
-      <SectionIntro title={t("integrations")} />
-
       <SettingsPanel title={t("aiProvider")}>
         <SettingRow
           title={t("model")}
@@ -266,6 +262,53 @@ export default function IntegrationSettings() {
             ) : null
           }
         />
+        <SettingRow
+          title={t("baseUrl")}
+          feedback={
+            baseUrlSaveError ? (
+              <InlineFeedback tone="error">{t("baseUrlSaveFailed")}</InlineFeedback>
+            ) : baseUrlDraft !== undefined && !baseUrlValid ? (
+              <InlineFeedback tone="warning">{t("invalidBaseUrl")}</InlineFeedback>
+            ) : baseUrlSaveResult ? (
+              <InlineFeedback tone="success">{t("saved")}</InlineFeedback>
+            ) : null
+          }
+        >
+          <div className="flex flex-col gap-3 sm:flex-row">
+            <TextInput
+              type="url"
+              value={baseUrlValue}
+              onChange={(event) => setBaseUrlDraft(event.target.value)}
+              aria-label={t("baseUrl")}
+              placeholder="https://openrouter.ai/api/v1"
+            />
+            <Button
+              onClick={handleBaseUrlSave}
+              disabled={!baseUrlDirty || !baseUrlValid || baseUrlSaving}
+              busy={baseUrlSaving}
+              variant="primary"
+            >
+              {baseUrlSaving ? t("saving") : t("save")}
+            </Button>
+          </div>
+          <div className="mt-4 flex flex-wrap gap-2">
+            {[
+              ["OpenRouter", "https://openrouter.ai/api/v1"],
+              ["OpenAI", "https://api.openai.com/v1"],
+              ["Anthropic", "https://api.anthropic.com/v1"],
+            ].map(([label, value]) => (
+              <Button
+                key={label}
+                onClick={() => setBaseUrlDraft(value)}
+                size="sm"
+                variant="ghost"
+                className="border border-line text-ink-subtle hover:border-line-strong"
+              >
+                {label}
+              </Button>
+            ))}
+          </div>
+        </SettingRow>
       </SettingsPanel>
 
       <SettingsPanel title={t("tmdbIntegration")}>
@@ -331,59 +374,7 @@ export default function IntegrationSettings() {
         </SettingRow>
       </SettingsPanel>
 
-      <DisclosurePanel
-        title={t("advanced")}
-        description={t("advancedIntegrationsDesc")}
-        summary={baseUrlData?.base_url ?? t("notConfigured")}
-      >
-        <SettingRow
-          title={t("baseUrl")}
-          feedback={
-            baseUrlSaveError ? (
-              <InlineFeedback tone="error">{t("baseUrlSaveFailed")}</InlineFeedback>
-            ) : baseUrlDraft !== undefined && !baseUrlValid ? (
-              <InlineFeedback tone="warning">{t("invalidBaseUrl")}</InlineFeedback>
-            ) : baseUrlSaveResult ? (
-              <InlineFeedback tone="success">{t("saved")}</InlineFeedback>
-            ) : null
-          }
-        >
-          <div className="flex flex-col gap-3 sm:flex-row">
-            <TextInput
-              type="url"
-              value={baseUrlValue}
-              onChange={(event) => setBaseUrlDraft(event.target.value)}
-              aria-label={t("baseUrl")}
-              placeholder="https://openrouter.ai/api/v1"
-            />
-            <Button
-              onClick={handleBaseUrlSave}
-              disabled={!baseUrlDirty || !baseUrlValid || baseUrlSaving}
-              busy={baseUrlSaving}
-              variant="primary"
-            >
-              {baseUrlSaving ? t("saving") : t("save")}
-            </Button>
-          </div>
-          <div className="mt-4 flex flex-wrap gap-2">
-            {[
-              ["OpenRouter", "https://openrouter.ai/api/v1"],
-              ["OpenAI", "https://api.openai.com/v1"],
-              ["Anthropic", "https://api.anthropic.com/v1"],
-            ].map(([label, value]) => (
-              <Button
-                key={label}
-                onClick={() => setBaseUrlDraft(value)}
-                size="sm"
-                variant="ghost"
-                className="border border-line text-ink-subtle hover:border-line-strong"
-              >
-                {label}
-              </Button>
-            ))}
-          </div>
-        </SettingRow>
-      </DisclosurePanel>
+
     </div>
   );
 }

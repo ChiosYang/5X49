@@ -16,7 +16,7 @@ import { Link, useRouter } from "@/i18n/routing";
 import { API } from "@/lib/api";
 import type { MissingLibraryItemsResponse, WorkflowAccepted } from "@/types/movie";
 
-export default function LibraryOfflineCare({ initialData, filmsHref }: { initialData: MissingLibraryItemsResponse; filmsHref: string }) {
+export default function LibraryOfflineCare({ initialData, filmsHref, embedded = false, scanDisabled = false }: { initialData?: MissingLibraryItemsResponse; filmsHref: string; embedded?: boolean; scanDisabled?: boolean }) {
   const t = useTranslations("LibraryCare");
   const locale = useLocale();
   const router = useRouter();
@@ -79,6 +79,7 @@ export default function LibraryOfflineCare({ initialData, filmsHref }: { initial
   }
 
   if (items.length === 0) {
+    if (embedded) return <section className="space-y-4 border-b border-line pb-6"><h3 className="type-label text-ink-muted">{t("offlineTitle")}</h3><p className="text-sm text-ink-muted">{completed ? t("offlineComplete") : t("offlineEmpty")}</p>{feedback ? <InlineFeedback tone={feedback.tone}>{feedback.message}</InlineFeedback> : null}</section>;
     return (
       <div className="border-y border-line py-16 text-center">
         <CheckCircle2 className="mx-auto h-8 w-8 text-success" />
@@ -95,11 +96,11 @@ export default function LibraryOfflineCare({ initialData, filmsHref }: { initial
     <section className="min-w-0">
       <div className="flex flex-col gap-5 border-b border-line pb-6 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <h2 className="type-section-title text-ink">{t("offlineTitle")}</h2>
+          {embedded ? <h3 className="type-label text-ink-muted">{t("offlineTitle")}</h3> : <h2 className="type-section-title text-ink">{t("offlineTitle")}</h2>}
           <p className="mt-2 max-w-2xl text-sm leading-6 text-ink-subtle">{t("offlineDesc")}</p>
         </div>
         <div className="flex flex-col gap-3 sm:flex-row">
-          <Button busy={scan.isMutating} onClick={() => void startScan()}>{t("scanAgain")}</Button>
+          <Button disabled={scanDisabled} busy={scan.isMutating} onClick={() => void startScan()}>{t("scanAgain")}</Button>
           <Button variant="danger" icon={<Trash2 className="h-4 w-4" />} onClick={() => setConfirmOpen(true)}>
             {t("cleanAllOffline", { count: items.length })}
           </Button>

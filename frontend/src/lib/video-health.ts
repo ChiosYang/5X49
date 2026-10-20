@@ -14,6 +14,23 @@ export type HealthStatus = {
   active_progress: { decoded_seconds: number; duration_seconds: number | null } | null;
 };
 export const healthStates: HealthState[] = ["unchecked", "queued", "checking", "passed", "abnormal", "incomplete", "unsupported"];
+export function parseHealthLocation(search: URLSearchParams) {
+  const rawFilter = search.get("health_state") ?? "abnormal";
+  const filter = ["all", ...healthStates].includes(rawFilter) ? rawFilter : "abnormal";
+  const rawOffset = search.get("health_offset") ?? "0";
+  const offset = /^\d+$/.test(rawOffset) && Number.isSafeInteger(Number(rawOffset)) ? Math.min(1_000_000, Number(rawOffset)) : 0;
+  const rawSelected = search.get("health_file");
+  const selected = rawSelected && /^[a-z0-9_-]{1,100}$/i.test(rawSelected) ? rawSelected : null;
+  return { filter, offset, selected };
+}
+export function videoHealthHref(search: string, location: ReturnType<typeof parseHealthLocation>) {
+  const params = new URLSearchParams(search);
+  params.set("section", "video-checks");
+  params.set("health_state", location.filter);
+  params.set("health_offset", String(location.offset));
+  if (location.selected) params.set("health_file", location.selected); else params.delete("health_file");
+  return `/settings?${params.toString()}#video-health`;
+}
 export function minuteTime(minute: number): string {
   return `${String(Math.floor(minute / 60)).padStart(2, "0")}:${String(minute % 60).padStart(2, "0")}`;
 }

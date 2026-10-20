@@ -1,13 +1,11 @@
 "use client";
 
 import { useEffect } from "react";
-import { ChevronDown } from "lucide-react";
 import { useTranslations } from "next-intl";
+import { useSearchParams } from "next/navigation";
 import { usePathname, useRouter } from "@/i18n/routing";
 import {
-  SectionIntro,
   SettingRow,
-  SettingsPanel,
 } from "@/components/settings/SettingsPrimitives";
 import { Button } from "@/components/ui/Button";
 import { InlineFeedback, Spinner } from "@/components/ui/Feedback";
@@ -17,7 +15,8 @@ export default function GeneralSettings() {
   const t = useTranslations("Settings");
   const router = useRouter();
   const pathname = usePathname();
-  const { data: languageData } = useLanguageSetting();
+  const searchParams = useSearchParams();
+  const { data: languageData, mutate: cacheLanguage } = useLanguageSetting();
   const {
     trigger: updateLanguage,
     isMutating: languageSaving,
@@ -36,25 +35,15 @@ export default function GeneralSettings() {
     if (language === languageData?.language) return;
     try {
       await updateLanguage(language);
-      router.replace({ pathname }, { locale: language });
+      await cacheLanguage({ language }, false);
+      router.replace(`${pathname}${searchParams.size ? `?${searchParams.toString()}` : ""}${window.location.hash}`, { locale: language });
     } catch {
       // Mutation state renders the localized error in the row.
     }
   };
 
-  const roadmapItems = [
-    [t("roadmapAnimations"), t("roadmapAnimationsDesc")],
-    [t("roadmapCompactMode"), t("roadmapCompactModeDesc")],
-    [t("roadmapDefaultSort"), t("roadmapDefaultSortDesc")],
-    [t("roadmapPosterQuality"), t("roadmapPosterQualityDesc")],
-    [t("autoAnalyze"), t("autoAnalyzeDesc")],
-  ];
-
   return (
     <div className="space-y-8">
-      <SectionIntro title={t("general")} />
-
-      <SettingsPanel title={t("preferences")}>
         <SettingRow
           title={t("languagePref")}
           control={
@@ -63,6 +52,7 @@ export default function GeneralSettings() {
                 {(["zh", "en"] as const).map((language) => (
                   <Button
                     key={language}
+                    aria-pressed={languageData?.language === language}
                     onClick={() => handleLanguageChange(language)}
                     disabled={languageSaving}
                     size="sm"
@@ -84,30 +74,6 @@ export default function GeneralSettings() {
             ) : null
           }
         />
-      </SettingsPanel>
-
-      <details className="group border-b border-line pb-6">
-        <summary className="focus-ring flex cursor-pointer list-none items-center justify-between gap-4 py-1">
-          <span>
-            <span className="block text-sm font-medium tracking-widest text-ink uppercase">
-              {t("roadmap")}
-            </span>
-            <span className="mt-1 block text-xs leading-5 text-ink-disabled">{t("roadmapDesc")}</span>
-          </span>
-          <span className="flex shrink-0 items-center gap-3 text-[10px] font-bold tracking-[0.2em] text-ink-disabled uppercase group-open:text-ink-muted">
-            <span className="hidden sm:inline">{t("comingSoon")}</span>
-            <ChevronDown className="duration-standard h-4 w-4 transition-transform group-open:rotate-180" />
-          </span>
-        </summary>
-        <div className="mt-6 space-y-6 border-t border-line pt-6">
-          {roadmapItems.map(([title, description]) => (
-            <div key={title} className="border-b border-line pb-6 last:border-b-0 last:pb-0">
-              <p className="text-sm font-medium tracking-widest text-ink-muted uppercase">{title}</p>
-              <p className="mt-2 text-xs leading-5 text-ink-disabled">{description}</p>
-            </div>
-          ))}
-        </div>
-      </details>
     </div>
   );
 }

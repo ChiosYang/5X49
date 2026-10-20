@@ -2,6 +2,9 @@ export const RETURN_CONTEXT_KEY = "5x49:return-context:v1";
 export interface ReturnContext { href: string; filmId: string; scrollY: number; savedAt: number; focusId?: string }
 export function safeReturnHref(value: unknown): string | null {
   if (typeof value !== "string" || value.length > 2000 || /[\\\r\n]/.test(value)) return null;
+  if (/^\/(?:en\/|zh\/)?settings\?/.test(value)) {
+    return new URL(value, "https://5x49.local").searchParams.get("section") === "video-checks" ? value : null;
+  }
   if (!/^\/(?:en\/|zh\/)?(?:library|search|explore|diary|ask)(?:\?|$)/.test(value)) return null;
   return value;
 }

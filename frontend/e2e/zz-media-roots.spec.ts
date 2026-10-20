@@ -1,6 +1,7 @@
 import { test, expect, type APIRequestContext } from '@playwright/test';
 import { access, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
+import zh from '../messages/zh.json';
 import type { LibraryFilmSummary } from '../src/types/movie';
 
 test.describe.configure({ mode: 'serial' });
@@ -46,8 +47,10 @@ test('configure ordered roots in UI, reject overlap, scan root and nested files;
   await panel.getByRole('button', { name: 'Save', exact: true }).click();
   await expect(panel.getByText('Configuration saved.', { exact: false })).toBeVisible();
   expect(await multiFilms(request)).toHaveLength(0);
+  await page.goto('/en/settings?section=library-maintenance');
+  const scanPanel = page.getByLabel('Media scan coverage', { exact: true });
   const queued = page.waitForResponse(r => r.url().endsWith('/api/library/scan') && r.request().method() === 'POST');
-  await panel.getByRole('button', { name: 'Scan all directories' }).click();
+  await scanPanel.getByRole('button', { name: 'Scan all directories' }).click();
   const id = (await (await queued).json()).workflow_id;
   await expect.poll(async () => (await read(request, `/workflows/${id}`)).status).toBe('succeeded');
   const result = (await read(request, '/library/sync/status')).sync.last_result;
@@ -57,7 +60,7 @@ test('configure ordered roots in UI, reject overlap, scan root and nested files;
   editionIds = films.map((film: { primary_item: { id: string } }) => film.primary_item.id).sort();
   artwork = films.find(film => String(film.identities.tmdb) === '982002')!.primary_item.artwork.poster_local!;
   expect((await request.get(`${backend}${artwork}`)).ok()).toBeTruthy();
-  await expect(panel.getByText(/^Complete scan · Scanned 3/)).toBeVisible();
+  await expect(scanPanel.getByText(/^Complete scan · Scanned 3/)).toBeVisible();
   await page.evaluate(() => window.scrollTo(0, 0));
   await page.screenshot({ path: 'e2e-artifacts/media-roots-desktop-en.png', fullPage: true });
 });
@@ -88,6 +91,8 @@ test('offline root produces incomplete coverage without missing editions; narrow
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/zh/settings?section=library');
   await expect(page.locator('#media-root-1')).toHaveValue(roots[1]);
+  await expect(page.getByRole('img', { name: zh.MediaRoots.offline, exact: true })).toBeVisible();
+  await page.goto('/zh/settings?section=library-maintenance');
   await page.getByRole('button', { name: '扫描全部目录' }).scrollIntoViewIfNeeded();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await page.evaluate(() => window.scrollTo(0, 0));

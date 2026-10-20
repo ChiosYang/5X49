@@ -22,7 +22,7 @@ test.beforeEach(async ({ context }) => {
 
 test('one-click archive restores through offline CLI and boots with no task replay; desktop pixels', async ({ page, request }) => {
   await page.setViewportSize({ width: 1440, height: 1100 });
-  await page.goto('/zh/library/manage');
+  await page.goto('/zh/settings?section=backup');
   await expect(panel(page).getByRole('button', { name: '一键备份下载' })).toBeEnabled();
   const received = page.waitForEvent('download');
   await panel(page).getByRole('button', { name: '一键备份下载' }).click();
@@ -44,7 +44,7 @@ test('one-click archive restores through offline CLI and boots with no task repl
 test('lost create response and rapid repeat clicks retain a single generation', async ({ page, request }) => {
   const before = (await control(request, 'backup_receipts')).count;
   await control(request, 'hold_backup');
-  await page.goto('/en/library/manage');
+  await page.goto('/en/settings?section=backup');
   const bodies: string[] = [];
   await page.route('**/api/maintenance/backups', async route => {
     if (route.request().method() !== 'POST') return route.continue();
@@ -63,7 +63,7 @@ test('lost create response and rapid repeat clicks retain a single generation', 
 
 test('downloading an older success does not discard a pending generation', async ({ page, request }) => {
   await control(request, 'hold_backup');
-  await page.goto('/en/library/manage');
+  await page.goto('/en/settings?section=backup');
   await panel(page).getByRole('button', { name: 'Back up and download' }).click();
   await expect(panel(page).getByRole('button', { name: 'Generating backup…' })).toBeDisabled();
   const id = await page.evaluate(() => sessionStorage.getItem('5x49:pending-backup:v1'));
@@ -79,7 +79,7 @@ test('downloading an older success does not discard a pending generation', async
 test('generation and transfer failures retain previous success and permit retry', async ({ page, request }) => {
   const previous = (await status(request)).last_success.id;
   await control(request, 'fail_backup');
-  await page.goto('/en/library/manage');
+  await page.goto('/en/settings?section=backup');
   let release!: () => void;
   const held = new Promise<void>(resolve => { release = resolve; });
   await page.route('**/api/maintenance/backups/*', async route => {
@@ -106,7 +106,7 @@ test('generation and transfer failures retain previous success and permit retry'
 test('server restart marks interrupted generation and keeps the previous archive', async ({ page, request }) => {
   const previous = (await status(request)).last_success.id;
   await control(request, 'hold_backup');
-  await page.goto('/en/library/manage');
+  await page.goto('/en/settings?section=backup');
   await panel(page).getByRole('button', { name: 'Back up and download' }).click();
   await expect(panel(page).getByRole('button', { name: 'Generating backup…' })).toBeDisabled();
   await rm(path.join(root, 'restarted'), { force: true });
@@ -121,7 +121,7 @@ test('server restart marks interrupted generation and keeps the previous archive
 test('expiry, truthful unreadable state and narrow Chinese pixels', async ({ page, request }) => {
   const previous = (await status(request)).last_success.id;
   await control(request, 'expire_backup');
-  await page.goto('/en/library/manage');
+  await page.goto('/en/settings?section=backup');
   await expect(panel(page).getByText('This package has expired,', { exact: false })).toBeVisible();
   await expect(panel(page).getByRole('button', { name: 'Download again' })).toHaveCount(0);
   expect((await request.get(`${endpoint}/${previous}/download`)).status()).toBe(410);
@@ -131,7 +131,7 @@ test('expiry, truthful unreadable state and narrow Chinese pixels', async ({ pag
   await expect(panel(page).getByRole('button', { name: 'Back up and download' })).toBeDisabled();
   await page.unroute('**/api/maintenance/backups');
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/zh/library/manage');
+  await page.goto('/zh/settings?section=backup');
   const received = page.waitForEvent('download');
   await panel(page).getByRole('button', { name: '一键备份下载' }).click();
   await received;
@@ -143,7 +143,7 @@ test('expiry, truthful unreadable state and narrow Chinese pixels', async ({ pag
 
 test('stalled create request times out and retries the same identifier', async ({ page, request }) => {
   const before = (await control(request, 'backup_receipts')).count;
-  await page.goto('/en/library/manage');
+  await page.goto('/en/settings?section=backup');
   await expect(panel(page).getByRole('button', { name: 'Back up and download' })).toBeEnabled();
   let release!: () => void;
   const held = new Promise<void>(resolve => { release = resolve; });
@@ -166,7 +166,7 @@ test('stalled create request times out and retries the same identifier', async (
 });
 
 test('stalled status refresh after successful POST cannot lock generation or download', async ({ page }) => {
-  await page.goto('/en/library/manage');
+  await page.goto('/en/settings?section=backup');
   await expect(panel(page).getByRole('button', { name: 'Back up and download' })).toBeEnabled();
   let release!: () => void, committed = false;
   const held = new Promise<void>(resolve => { release = resolve; });
@@ -187,7 +187,7 @@ test('stalled status refresh after successful POST cannot lock generation or dow
 });
 
 test('stalled trigger acknowledgement is bounded and never claims a saved file', async ({ page }) => {
-  await page.goto('/en/library/manage');
+  await page.goto('/en/settings?section=backup');
   await expect(panel(page).getByRole('button', { name: 'Download again' })).toBeEnabled();
   let release!: () => void;
   const held = new Promise<void>(resolve => { release = resolve; });

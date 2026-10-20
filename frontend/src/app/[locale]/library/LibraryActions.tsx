@@ -160,7 +160,7 @@ export default function LibraryActions({ showScan = true }: { showScan?: boolean
           </button>
           {!tmdb.isLoading && !tmdb.data?.configured ? (
             <Link
-              href="/settings?section=integrations"
+              href="/settings?section=connections"
               onClick={() => setOpen(false)}
               className="focus-ring mx-3 mb-2 block border-l border-warning/50 pl-3 text-[11px] leading-5 text-warning hover:text-ink"
             >

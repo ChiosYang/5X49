@@ -417,7 +417,7 @@ export function buildManagementConstellation(
     { id: "cleanup-missing", nodeIds: ["sync", "missing-items"], danger: true, disabledReason: missing.length === 0 ? "empty" : null, destination: "/library?view=offline" },
     { id: "open-settings", nodeIds: ["watcher", "library"], danger: false, disabledReason: null, destination: "/settings?section=library" },
     { id: "open-activity", nodeIds: ["library"], danger: false, disabledReason: null, destination: "/library/activity" },
-    { id: "clear-data", nodeIds: ["library"], danger: true, disabledReason: null, destination: "/settings?section=library#danger-zone" },
+    { id: "clear-data", nodeIds: ["library"], danger: true, disabledReason: null, destination: "/settings?section=cleanup#danger-zone" },
   ];
 
   return {
