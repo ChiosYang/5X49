@@ -31,7 +31,8 @@ test('real queue: repeated inspection, close, escape, back and personal data ret
   const writes: string[] = [];
   page.on('request', r => { if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(r.method()) && r.url().includes('/api/')) writes.push(r.url()); });
   await page.goto('/en/library');
-  await page.getByRole('link', { name: 'Identity review', exact: true }).click();
+  await page.getByRole('button', { name: 'More', exact: true }).click();
+  await page.getByRole('menuitem', { name: 'Identity review', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Identity review', exact: true })).toBeVisible();
   const row = page.getByRole('listitem').filter({ hasText: 'Identity copy' });
   const inspect = row.getByRole('button', { name: 'Inspect conflict' });
