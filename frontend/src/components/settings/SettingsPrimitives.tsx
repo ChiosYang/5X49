@@ -77,7 +77,7 @@ export function DisclosurePanel({
   children,
 }: {
   title: string;
-  description: string;
+  description?: string;
   summary?: string;
   children: ReactNode;
 }) {
@@ -88,7 +88,7 @@ export function DisclosurePanel({
           <span className="block text-sm font-medium tracking-widest text-ink uppercase">
             {title}
           </span>
-          <span className="mt-1 block text-xs leading-5 text-ink-muted">{description}</span>
+          {description && <span className="mt-1 block text-xs leading-5 text-ink-muted">{description}</span>}
         </span>
         <span className="flex shrink-0 items-center gap-3">
           {summary && (

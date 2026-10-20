@@ -16,14 +16,12 @@ test.beforeEach(async ({ context }) => {
   await context.route('**/*', route => ['127.0.0.1', 'localhost'].includes(new URL(route.request().url()).hostname) ? route.continue() : route.abort('blockedbyclient'));
 });
 
-test('settings save UTC schedule, one-click durable queue, pause and resume', async ({ page, request }) => {
+test('settings preserve backend schedule and support durable queue, pause and resume', async ({ page, request }) => {
+  expect((await request.put(`${endpoint}/config`, { data: { start_minute: 0, end_minute: 0, daily_budget_minutes: 5 } })).ok()).toBeTruthy();
   await page.goto('/zh/settings?section=library');
   const panel = page.locator('section[aria-labelledby="video-health-settings"]');
   await expect(panel.getByRole('heading', { name: '视频健康检查' })).toBeVisible();
-  await panel.getByLabel('允许开始时间（UTC）').fill('00:00');
-  await panel.getByLabel('允许结束时间（UTC）').fill('00:00');
-  await panel.getByLabel('每日预算（分钟）').fill('5');
-  await panel.getByRole('button', { name: '保存调度设置' }).click();
+  await expect(panel.locator('input[type="time"], input[type="number"]')).toHaveCount(0);
   await expect.poll(async () => (await status(request)).config.daily_budget_minutes).toBe(5);
   await panel.getByRole('button', { name: '一键排队检查片库' }).dblclick();
   await expect.poll(async () => (await status(request)).queue_sweep_pending).toBeTruthy();
