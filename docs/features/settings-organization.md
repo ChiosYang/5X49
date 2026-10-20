@@ -51,6 +51,8 @@ transparent navigation remain intact.
 
 - Canonical URLs remain `/settings?section=<category>`, so categories support
   refresh, Back and Forward. Settings-local drafts survive category navigation.
+  Maintenance and cleanup confirmation flows unmount when leaving their category,
+  releasing modal focus/background/scroll isolation even on browser Back.
 - Video result filter, offset and selected inspection are encoded in `health_*`
   query parameters. Film return context permits only the Video checks settings
   category, alongside the existing local list destinations.
@@ -105,6 +107,13 @@ external provider calls were made. Earlier focused Library/video/root cases
 also passed. The Windows backup failure displayed an honest generation error;
 the UI handler and backend are unchanged. Complete Linux CI, including all nine
 backup cases, and independent review remain merge requirements.
+
+Final modal-history hardening build passed lint/typecheck/build and all 16
+organization cases: 14 passed in the complete run, then both expanded diagnostic/
+cleanup history cases passed after correcting the test's mobile navigation helper.
+Browser Back releases confirmation focus/background/scroll isolation; Forward
+returns to an unopened confirmation flow. The application bundle was unchanged
+between those two runs.
 
 Visually reviewed all 48 category screenshots in six contact sheets and inspected
 representative pages at full resolution, including the final build in real Chrome.

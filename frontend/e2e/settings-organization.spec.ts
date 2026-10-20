@@ -199,6 +199,18 @@ for (const locale of ['en', 'zh'] as const) {
     await confirmation.getByRole('textbox').fill('wrong'); await expect(confirm).toBeDisabled();
     await confirmation.getByRole('textbox').fill(copy.LibraryCare.danger.phrase); await expect(confirm).toBeEnabled();
     await page.keyboard.press('Escape'); await expect(confirmation).toHaveCount(0);
+    await choose(page, locale, 390, 'general');
+    await choose(page, locale, 390, 'cleanup');
+    await page.getByRole('button', { name: copy.LibraryCare.danger.clearButton, exact: true }).click();
+    await expect(confirmation).toBeVisible();
+    await page.goBack();
+    await expect(page.locator('#settings-title-general')).toBeVisible();
+    await expect(confirmation).toHaveCount(0);
+    await expect(page.locator('body')).not.toHaveCSS('overflow', 'hidden');
+    await expect(page.getByRole('button', { name: 'en', exact: true })).toBeEnabled();
+    await page.goForward();
+    await expect(page.getByRole('button', { name: copy.LibraryCare.danger.clearButton, exact: true })).toBeEnabled();
+    await expect(confirmation).toHaveCount(0);
   });
 
   test(`${locale} video result filter/page/detail survive refresh, Film return and retry`, async ({ page, request }) => {

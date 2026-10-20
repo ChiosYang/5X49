@@ -100,7 +100,10 @@ function SettingsContent() {
           <div className="max-w-3xl">
             {visited.map(section => <section key={section} hidden={section !== activeSection} aria-labelledby={`settings-title-${section}`}>
               <h2 id={`settings-title-${section}`} tabIndex={-1} className="focus-ring type-section-title">{area(section)}</h2>
-              <div className="mt-8"><CategoryContent section={section} /></div>
+              <div className="mt-8">
+                {/* Unmount confirmation flows on history navigation to release modal isolation. */}
+                {(section === activeSection || !["library-maintenance", "cleanup"].includes(section)) && <CategoryContent section={section} />}
+              </div>
             </section>)}
           </div>
         </div>
