@@ -60,7 +60,10 @@ test.describe('desktop with a mouse', () => {
     await expect(page.locator('a[id^="film-link-"]')).toHaveCount(films.length);
     await expect(page.getByRole('form', { name: 'Library filters' })).toHaveCount(0);
     await expect(page.locator('h1')).toHaveClass(/type-display-editorial/);
-    await expect(page.getByRole('link', { name: 'Identity review', exact: true })).toHaveAttribute('href', '/en/library/identity-review');
+    await expect(page.getByRole('link', { name: 'Identity review', exact: true })).toHaveCount(0);
+    await page.getByRole('button', { name: 'More', exact: true }).click();
+    await expect(page.getByRole('menuitem', { name: 'Identity review', exact: true })).toHaveAttribute('href', '/en/library/identity-review');
+    await page.keyboard.press('Escape');
     const grid = page.locator('.library-card-media').first().locator('..').locator('..').locator('..');
     expect(await grid.evaluate(el => getComputedStyle(el).gridTemplateColumns.split(' ').length)).toBe(4);
     for (const name of ['Filter', 'Sort', 'Scan for Films', 'More']) {
@@ -132,7 +135,7 @@ test.describe('desktop with a mouse', () => {
     await expect(dialog.getByRole('link', { name: 'Clear all conditions', exact: true })).toBeFocused();
     await page.keyboard.press('Tab');
     await expect(dialog.getByRole('button', { name: 'Close filters', exact: true })).toBeFocused();
-    await expect(page.getByRole('link', { name: 'Identity review', exact: true })).toHaveCount(0); // Modal background is isolated.
+    await expect(page.getByRole('button', { name: 'More', exact: true })).toHaveCount(0); // Modal background is isolated.
     await expect(dialog.getByLabel('Earliest year', { exact: true })).toHaveValue('1900');
     await capture(page, 'library-ui-filter-drawer.png');
     await page.keyboard.press('Escape');

@@ -53,7 +53,7 @@ function NavigationBar({ query, children }: { query: string; children: ReactNode
 
   return (
     <nav data-search-open={open} className="navigation-bar z-navigation fixed top-0 right-0 left-0 flex items-center justify-between p-8 pr-0 text-ink sm:pr-8">
-      <div className="navigation-menu"><NavigationMenu onSearch={() => setOpen(true)} /></div>
+      <div className="navigation-menu"><NavigationMenu /></div>
       <Link href="/" className="navigation-logo focus-ring z-navigation absolute left-1/2 -translate-x-1/2 font-serif text-2xl font-bold tracking-tighter drop-shadow-lg">5X49</Link>
       <div className="navigation-tools flex min-w-0 items-center gap-0 sm:gap-4">
         <div className="navigation-search" data-open={open}>

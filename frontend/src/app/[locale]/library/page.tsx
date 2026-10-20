@@ -149,7 +149,6 @@ export default async function LibraryPage({ searchParams }: LibraryPageProps) {
             <h1 className="type-display-editorial">{t("title")}</h1>
           </div>
           <div className="flex flex-wrap items-center gap-x-1 gap-y-3 sm:gap-3 lg:justify-end">
-            <a href={`/${locale}/library/identity-review`} className="focus-ring inline-flex min-h-11 items-center type-label text-ink-subtle hover:text-ink sm:px-3">{careT("identityReview")}</a>
             {view === "all" && (filmPage.library_total > 0 || invalidRanges.length > 0) ? (
               <>
                 {!invalidRanges.length && <span role="status" className="mr-1 hidden text-xs font-bold tracking-widest text-ink-subtle uppercase md:inline-block">{t("filmsCount", {count:filmPage.total})}</span>}
@@ -170,7 +169,7 @@ export default async function LibraryPage({ searchParams }: LibraryPageProps) {
                 </Disclosure>
               </>
             ) : null}
-            {view !== "all" || emptyState !== "onboarding" ? <LibraryActions /> : null}
+            <LibraryActions showScan={view !== "all" || emptyState !== "onboarding"} />
           </div>
         </header>
 

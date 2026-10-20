@@ -95,12 +95,15 @@ for (const locale of ['en', 'zh'] as const) {
   }
 }
 
-test('menu search shares the control; history, pagination and filters keep committed keywords', async ({ page }) => {
+test('sidebar omits Search; navigation search, history, pagination and filters keep committed keywords', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto('/en/explore');
   await nav(page).getByRole('button', { name: 'Menu', exact: true }).click();
-  await page.getByRole('dialog', { name: 'Menu', exact: true }).getByRole('button', { name: 'Search', exact: true }).click();
-  const input = nav(page).getByRole('searchbox');
+  const menu = page.getByRole('dialog', { name: 'Menu', exact: true });
+  await expect(menu.getByRole('button', { name: 'Search', exact: true })).toHaveCount(0);
+  await expect(menu.getByRole('link', { name: 'Search', exact: true })).toHaveCount(0);
+  await page.keyboard.press('Escape');
+  const input = await open(page);
   await expect(input).toBeFocused();
   await input.fill('Shelf');
   await input.press('Enter');
