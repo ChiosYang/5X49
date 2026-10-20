@@ -4,6 +4,7 @@ import en from '../messages/en.json';
 import zh from '../messages/zh.json';
 import { settingSections, type SettingSection } from '../src/lib/settings-navigation';
 import type { HealthConfig } from '../src/lib/video-health';
+import type { WorkflowRunView } from '../src/types/movie';
 
 const backend = process.env.E2E_BACKEND!;
 const copies = { en, zh };
@@ -152,6 +153,61 @@ for (const locale of ['en', 'zh'] as const) {
     await page.reload(); await expect(page.getByRole('textbox', { name: copy.Settings.baseUrl, exact: true })).not.toHaveValue('https://draft.invalid/v1');
   });
 
+  test(`${locale} directory drafts block only scan retries until Discard or Save`, async ({ page }) => {
+    await page.setViewportSize({ width: 320, height: 1000 });
+    const scans = ['library.reconcile', 'library.scan_folder', 'library.refresh_item'];
+    const others = ['library.mark_path_missing', 'library.resolve_relink', 'metadata.scrape_library', 'organizer.organize_root', 'external_scores.refresh_library'];
+    const workflow = (type: string, index: number, status: WorkflowRunView['status']): WorkflowRunView => ({
+      id: `guard_${index}`, type, status, definition_version: `${type}.v1`, subject_type: 'library',
+      result_summary: `Guard ${type} ${status}`, cancel_requested: false, steps: [],
+      created_at: '2026-10-20T00:00:00Z', updated_at: '2026-10-20T00:00:00Z',
+    });
+    const records = [...scans, ...others].map((type, index) => workflow(type, index, index % 2 ? 'cancelled' : 'failed'));
+    const active = workflow('library.reconcile', records.length, 'running');
+    const operations: Array<{ id: string; operation: string }> = [];
+    await page.route(/\/api\/workflows(?:\?|$)/, route => route.fulfill({ json: [...records, active] }));
+    await page.route(/\/api\/workflows\/guard_\d+\/(?:retry|cancel)$/, route => {
+      const [id, operation] = new URL(route.request().url()).pathname.split('/').slice(-2);
+      operations.push({ id, operation });
+      return route.fulfill({ status: 202, json: { workflow_id: id } });
+    });
+    await page.goto(`/${locale}/settings?section=library`);
+    await expect(page.locator('#media-root-0')).toHaveValue(roots[0]);
+    await page.locator('#media-root-0').fill(roots[1]);
+    await choose(page, locale, 320, 'library-maintenance');
+    const tasks = page.getByRole('region', { name: copy.SettingsArea.recentWorkflows, exact: true });
+    const retry = (record: WorkflowRunView) => tasks.getByRole('listitem').filter({ hasText: record.result_summary! }).getByRole('button', { name: copy.LibraryManagement.constellation.retryWorkflow, exact: true });
+    for (const record of records.slice(0, scans.length)) await expect(retry(record)).toBeDisabled();
+    expect(operations).toEqual([]);
+    await page.evaluate(() => document.fonts.ready);
+    await page.screenshot({ path: path.join('e2e-artifacts', `organization-${locale}-320-scan-retry-guard.png`), fullPage: true, animations: 'disabled' });
+    for (const record of records.slice(scans.length)) {
+      await expect(retry(record)).toBeEnabled(); await retry(record).click();
+      await expect.poll(() => operations.filter(operation => operation.id === record.id && operation.operation === 'retry').length).toBe(1);
+    }
+    const cancel = tasks.getByRole('listitem').filter({ hasText: active.result_summary! }).getByRole('button', { name: copy.LibraryManagement.constellation.cancelWorkflow, exact: true });
+    await expect(cancel).toBeEnabled(); await cancel.click();
+    await expect.poll(() => operations.filter(operation => operation.operation === 'cancel').length).toBe(1);
+    expect(operations.filter(operation => records.slice(0, scans.length).some(record => record.id === operation.id))).toEqual([]);
+
+    for (const resolution of ['discard', 'save'] as const) {
+      await choose(page, locale, 320, 'library');
+      await page.getByRole('button', { name: copy.MediaRoots[resolution], exact: true }).click();
+      if (resolution === 'save') await expect(page.getByText(copy.MediaRoots.saved, { exact: true })).toBeVisible();
+      await choose(page, locale, 320, 'library-maintenance');
+      for (const record of records.slice(0, scans.length)) {
+        await expect(retry(record)).toBeEnabled(); await retry(record).click();
+        await expect.poll(() => operations.filter(operation => operation.id === record.id).length).toBe(resolution === 'discard' ? 1 : 2);
+      }
+      if (resolution === 'discard') {
+        await choose(page, locale, 320, 'library');
+        await page.locator('#media-root-0').fill(roots[1]);
+        await choose(page, locale, 320, 'library-maintenance');
+        for (const record of records.slice(0, scans.length)) await expect(retry(record)).toBeDisabled();
+      }
+    }
+  });
+
   test(`${locale} legacy entries resolve to one category and preserve their functional anchors`, async ({ page }) => {
     const cases: Array<[string, string, string]> = [
       ['/library/manage', 'library-maintenance', ''], ['/library/manage#video-health', 'video-checks', '#video-health'],
@@ -231,6 +287,7 @@ for (const locale of ['en', 'zh'] as const) {
     await page.goto(`/${locale}/settings?section=video-checks`);
     const results = page.locator('#video-health');
     await results.getByRole('combobox', { name: copy.VideoHealth.filter, exact: true }).selectOption('all');
+    await expect.poll(() => new URL(page.url()).searchParams.get('health_state')).toBe('all');
     await results.getByRole('button', { name: copy.VideoHealth.next, exact: true }).click();
     await expect.poll(() => new URL(page.url()).searchParams.get('health_offset')).toBe('20');
     await expect(results.getByText('Inspection 20 · video-20.mp4', { exact: true })).toBeVisible();

@@ -58,6 +58,6 @@ export default function LibraryMaintenanceSettings() {
     <section id="root-files" className="scroll-mt-28 space-y-3 border-b border-line pb-6"><h3 className="type-label text-ink-muted">{area("rootFiles")}</h3><Link href="/library?view=inbox" className="focus-ring inline-flex min-h-11 items-center text-sm underline underline-offset-4">{t("actions.organize-files.label")}</Link>{organizer.error || organizer.data?.last_error ? <InlineFeedback tone="error">{organizer.data?.last_error || t("loadFailed")}</InlineFeedback> : null}</section>
     <section id="missing-files" className="scroll-mt-28"><LibraryOfflineCare embedded scanDisabled={scanBlocked} filmsHref="/library" /></section>
     <div role={notice?.failed ? "alert" : "status"} aria-live="polite">{notice ? <InlineFeedback tone={notice.failed ? "error" : "success"}>{notice.text}</InlineFeedback> : null}</div>
-    <MaintenanceWorkflows />
+    <MaintenanceWorkflows scanBlocked={scanBlocked} />
   </div>;
 }

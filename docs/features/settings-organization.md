@@ -72,6 +72,12 @@ transparent navigation remain intact.
   configuration update. Existing pending backup receipt recovery is retained.
 - Directory changes require Save. Scan remains blocked until pending directory
   changes are saved or discarded, even across categories.
+  Recent-task Retry applies the same guard to `library.reconcile`,
+  `library.scan_folder` and `library.refresh_item` (which delegates to folder
+  scanning), in both the button and handler. `library.mark_path_missing`,
+  `library.resolve_relink`, metadata/organizer/score retries and cancellation
+  remain available. Classification follows the backend workflow definitions and
+  actors; it is not a blanket `library.*` block.
 - Toggle/save semantics, permissions, confirmation and backend behavior remain.
 - Hidden video scheduling fields, budget and runtime-statistics prose stay hidden.
 - Necessary state, errors, action impact, privacy and recovery boundaries remain.
@@ -114,6 +120,19 @@ cleanup history cases passed after correcting the test's mobile navigation helpe
 Browser Back releases confirmation focus/background/scroll isolation; Forward
 returns to an unopened confirmation flow. The application bundle was unchanged
 between those two runs.
+
+Head `7130ca4fffa42cd8c88f326e6111b726d9aa34d5` passed all three CI jobs in
+run `39392774156`; the E2E log confirms 150 passed, including all nine backup
+generation/download/recovery cases. Independent review then identified the
+recent-task scan Retry bypass during directory drafts. The review fix propagates
+the shared guard to the button and handler and classifies the three actual scan
+actors, while preserving other retries and cancellation. The revised code passed
+101 unit tests, lint, typecheck, production webpack build and all 18 organization
+E2E cases in one clean rerun. Both locales verify blocked scan retries, permitted
+non-scan retries/cancellation, and Discard/Save recovery. A pagination test now
+waits for the selected filter URL to commit before its next interaction; its
+refresh/return assertions are unchanged. The revised head requires fresh complete
+152-case CI and independent re-review before merge.
 
 Visually reviewed all 48 category screenshots in six contact sheets and inspected
 representative pages at full resolution, including the final build in real Chrome.
