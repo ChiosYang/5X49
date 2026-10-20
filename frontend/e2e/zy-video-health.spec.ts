@@ -53,7 +53,7 @@ test('maintenance separates quick/deep results, version evidence, unknown locati
   const navigation = page.locator('nav').first();
   await expect(navigation.getByRole('link', { name: /video version.*attention/ })).toBeVisible();
   const logo = await navigation.getByRole('link', { name: '5X49', exact: true }).boundingBox();
-  const search = await navigation.getByRole('link', { name: 'Search', exact: true }).boundingBox();
+  const search = await navigation.getByRole('button', { name: 'Search', exact: true }).boundingBox();
   expect(logo && search && logo.x + logo.width <= search.x).toBeTruthy();
   await page.setViewportSize({ width: 1440, height: 1100 });
   await panel.getByRole('button', { name: 'Mark notification read' }).click();

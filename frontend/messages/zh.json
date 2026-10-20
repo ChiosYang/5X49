@@ -388,6 +388,7 @@
     }
   },
   "LibrarySearch": {
+    "close": "关闭搜索",
     "refine": "在影视库中组合筛选",
     "askLink": "用自然语言查片 →",
     "title": "搜索资料库",

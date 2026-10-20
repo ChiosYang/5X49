@@ -64,6 +64,8 @@ test('all conditions, sorting, reload, detail return and history retain one comm
   await expect(cards(page)).toHaveCount(1);
   await page.goBack();
   await expect(page).toHaveURL(url);
+  await expect.poll(() => titles(page)).toEqual(['Orbit Echo', 'Orbit Dawn']);
+  await expect(cards(page).first()).toHaveAttribute('type', 'button');
   await openFilters(page);
   await expect(page.getByLabel('Latest year', { exact: true })).toHaveValue('2001');
   await expect.poll(() => titles(page)).toEqual(['Orbit Echo', 'Orbit Dawn']);
@@ -75,7 +77,7 @@ test('empty, invalid ranges, clear all, legacy favorite and pagination are deter
   await page.getByRole('searchbox', { name: 'Search library', exact: true }).fill('no-match');
   await page.getByRole('button', { name: 'Apply filters', exact: true }).click();
   await expect(cards(page)).toHaveCount(0);
-  await expect(page.getByText('No Films match the current filter.', { exact: true })).toBeVisible();
+  await expect(page.getByText('No films match “no-match”. Try a different title or keyword.', { exact: true })).toBeVisible();
   await page.getByRole('link', { name: 'Clear all conditions', exact: true }).click();
   await expect(cards(page)).toHaveCount(40);
   await openFilters(page);
@@ -105,7 +107,7 @@ test('empty, invalid ranges, clear all, legacy favorite and pagination are deter
 
 test('search handoff, unsubmitted drafts and consecutive applies do not show stale results', async ({ page }) => {
   await page.goto('/en/search?q=Orbit');
-  await page.getByRole('link', { name: 'Refine in Library', exact: true }).click();
+  await expect(page).toHaveURL(/\/en\/library\?q=Orbit$/);
   await openFilters(page);
   await expect(page.getByRole('searchbox', { name: 'Search library', exact: true })).toHaveValue('Orbit');
   await expect(cards(page)).toHaveCount(5);
@@ -173,11 +175,11 @@ for (const locale of ['en', 'zh']) test(`a mutation before event subscription re
 });
 
 test('prefetching the previous language cannot overwrite the current locale cookie', async ({ request }) => {
-  const previous = await request.get('/en/search', { headers: { cookie: 'NEXT_LOCALE=zh', 'next-router-prefetch': '1' } });
-  expect(previous.ok()).toBeTruthy();
+  const previous = await request.get('/en/search', { maxRedirects: 0, headers: { cookie: 'NEXT_LOCALE=zh', 'next-router-prefetch': '1' } });
+  expect(previous.status()).toBe(307);
   expect(previous.headers()['set-cookie'] || '').not.toContain('NEXT_LOCALE=');
-  const navigation = await request.get('/en/search', { headers: { cookie: 'NEXT_LOCALE=zh' } });
-  expect(navigation.ok()).toBeTruthy();
+  const navigation = await request.get('/en/search', { maxRedirects: 0, headers: { cookie: 'NEXT_LOCALE=zh' } });
+  expect(navigation.status()).toBe(307);
   expect(navigation.headers()['set-cookie']).toContain('NEXT_LOCALE=en');
 });
 

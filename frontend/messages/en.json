@@ -388,6 +388,7 @@
     }
   },
   "LibrarySearch": {
+    "close": "Close search",
     "refine": "Refine in Library",
     "askLink": "Ask in your own words →",
     "title": "Search your library",

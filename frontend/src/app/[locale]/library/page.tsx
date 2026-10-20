@@ -10,7 +10,7 @@ import {
   Type,
 } from "lucide-react";
 
-import { Link } from "@/i18n/routing";
+import { Link, redirect } from "@/i18n/routing";
 import {
   buildLibraryCareState,
   buildLibraryHref,
@@ -95,6 +95,7 @@ export default async function LibraryPage({ searchParams }: LibraryPageProps) {
   const t = await getTranslations("Library");
   const careT = await getTranslations("LibraryCare");
   const filtersT = await getTranslations("LibraryFilters");
+  const searchT = await getTranslations("LibrarySearch");
   const resolvedSearchParams = searchParams ? await searchParams : {};
   const view = normalizeLibraryView(firstParam(resolvedSearchParams.view));
   const sort = normalizeSort(firstParam(resolvedSearchParams.sort));
@@ -117,6 +118,9 @@ export default async function LibraryPage({ searchParams }: LibraryPageProps) {
     getMissingLibraryItems(),
   ]);
   const filmPage = await filmsPromise;
+  if (query && view === "all" && filmPage.total > 0 && page > Math.ceil(filmPage.total / FILM_PAGE_SIZE)) {
+    redirect({ href: buildLibraryHref({ ...queryState, page: Math.ceil(filmPage.total / FILM_PAGE_SIZE) }), locale });
+  }
   const films = filmPage.items;
   const [organizationResult, missingResult] = await auxiliaryPromise;
   const organizationCandidates = organizationResult.status === "fulfilled" ? organizationResult.value : [];
@@ -171,6 +175,11 @@ export default async function LibraryPage({ searchParams }: LibraryPageProps) {
           </div>
         </header>
 
+        {query && view === "all" && !invalidRanges.length ? (
+          <p role="status" className="mt-6 max-w-3xl [overflow-wrap:anywhere] text-sm text-ink-muted">
+            {searchT("results", { count: filmPage.total, query })}
+          </p>
+        ) : null}
         {view === "all" ? <LibraryFilterSummary state={queryState} /> : null}
         {view === "all" && !invalidRanges.length && filmPage.library_total > 0 ? <p role="status" className="mt-4 text-xs text-ink-subtle md:hidden">{t("filmsCount", {count:filmPage.total})}</p> : null}
 
@@ -214,11 +223,11 @@ export default async function LibraryPage({ searchParams }: LibraryPageProps) {
           <div className="mt-12"><LibraryOfflineCare initialData={missingData} filmsHref={filmsHref} /></div>
         ) : invalidRanges.length > 0 ? (
           <p className="py-16 text-center text-ink-subtle">{filtersT("correctRanges")}</p>
-        ) : emptyState === "onboarding" ? (
+        ) : emptyState === "onboarding" && !query ? (
           <LibraryOnboarding rootVideoCount={organizationCandidates.length} />
-        ) : emptyState === "filtered-empty" ? (
+        ) : emptyState === "filtered-empty" || (query && filmPage.total === 0) ? (
           <div className="mt-20 space-y-4 py-24 text-center">
-            <p className="font-serif text-xl text-ink-subtle italic">{t("emptyFiltered")}</p>
+            <p className="[overflow-wrap:anywhere] font-serif text-xl text-ink-subtle italic">{query ? searchT("empty", { query }) : t("emptyFiltered")}</p>
             <Link href={buildLibraryHref(clearLibraryFilters(queryState), "all")} className="focus-ring inline-flex min-h-10 items-center border border-line-strong px-4 text-xs font-medium tracking-widest text-ink-muted uppercase hover:border-ink-disabled hover:text-ink">{t("resetFilter")}</Link>
           </div>
         ) : (
