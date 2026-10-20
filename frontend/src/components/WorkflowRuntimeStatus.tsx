@@ -21,7 +21,7 @@ const WORKFLOW_EVENTS = [
   "workflow_cancelled",
 ] as const;
 
-function workflowLabel(type: string, translate: (key: string) => string) {
+export function workflowLabel(type: string, translate: (key: string) => string) {
   const labels: Record<string, string> = {
     "library.reconcile": "types.libraryReconcile",
     "library.scan_folder": "types.folderScan",

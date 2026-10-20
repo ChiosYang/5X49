@@ -8,7 +8,7 @@ import { API } from "@/lib/api";
 import { fetcher, responseError } from "@/lib/fetcher";
 import { Button, IconButton } from "@/components/ui/Button";
 import { TextInput } from "@/components/ui/FormControls";
-import MediaScanResults from "./MediaScanResults";
+import { useSettingsSession } from "./SettingsSession";
 
 export interface MediaRoots {
   media_dirs: string[];
@@ -19,8 +19,7 @@ export default function MediaRootsControl() {
   const t = useTranslations("MediaRoots");
   const { data, error, mutate } = useSWR<MediaRoots>(API.settingsMediaDirs(), fetcher, { refreshInterval: 5000 });
   const { mutate: refresh } = useSWRConfig();
-  const [draft, setDraft] = useState<string[] | null>(null);
-  const [busy, setBusy] = useState(false);
+  const { rootsDraft: draft, setRootsDraft: setDraft, rootsSaving: busy, setRootsSaving: setBusy } = useSettingsSession();
   const [notice, setNotice] = useState<string | null>(null);
   const lock = useRef(false);
   const values = draft ?? data?.media_dirs ?? [];
@@ -71,6 +70,5 @@ export default function MediaRootsControl() {
       {draft ? <Button variant="ghost" disabled={busy} onClick={() => { setDraft(null); setNotice(null); }}>{t("discard")}</Button> : null}
     </div>
     {notice ? <p role={notice === "saved" ? "status" : "alert"} className={`text-sm ${notice === "saved" ? "text-success" : "text-danger"}`}>{t(notice)}</p> : null}
-    <MediaScanResults disabled={busy || draft !== null} />
   </div>;
 }

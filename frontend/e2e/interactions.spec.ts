@@ -502,8 +502,11 @@ test('navigation traps focus, closes with Escape and production diagnostics are 
   await expect(dialog.getByRole('button',{name:'Close',exact:true})).toBeFocused();
   await page.keyboard.press('Escape');
   await expect(menu).toBeFocused();await expect(menu).toHaveAttribute('aria-expanded','false');
-  await page.goto('/en/settings?section=maintenance');
+  await page.goto('/en/settings?section=backup');
+  await page.goto('/en/settings?section=diagnostics');
   await expect(page.getByRole('heading',{name:'System diagnostics',exact:true})).toBeVisible();
+  await expect(page.getByRole('heading',{name:'Backup and recovery',exact:true})).toHaveCount(0);
+  await page.goto('/en/settings?section=backup');
   await expect(page.getByRole('heading',{name:'Backup and recovery',exact:true})).toBeVisible();
   await expect(page.getByText('Full database restore requires the application to be stopped',{exact:true})).toBeHidden();
   await page.locator('summary').filter({hasText:'Advanced backup and recovery steps'}).click();
@@ -519,7 +522,7 @@ test('cinematic controls preserve touch size, keyboard focus and collapsed maint
   await page.keyboard.press('Enter');
   await expect(page.getByRole('dialog',{name:'Menu',exact:true})).toBeVisible();
   await page.keyboard.press('Escape');await expect(menu).toBeFocused();
-  await page.goto('/en/settings?section=maintenance');
+  await page.goto('/en/settings?section=backup');
   const summary=page.locator('summary').filter({hasText:'Advanced backup and recovery steps'});
   await expect(page.getByText('Full database restore requires the application to be stopped',{exact:true})).toBeHidden();
   await expect(page.getByText(/Full database backups can contain credentials/)).toBeVisible();

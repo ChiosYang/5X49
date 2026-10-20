@@ -212,7 +212,7 @@ export default function LibraryOnboarding({ rootVideoCount }: { rootVideoCount: 
                 </li>
               </ul>
               <Link
-                href="/settings?section=integrations"
+                href="/settings?section=connections"
                 className="focus-ring mt-5 inline-flex items-center gap-2 text-xs font-medium tracking-widest text-ink-muted uppercase hover:text-ink"
               >
                 {t("configureIntegrations")}

@@ -15,3 +15,10 @@ test('return context rejects stale or malformed state, preserves focus and scrol
   assert.deepEqual(parseReturnContext(JSON.stringify({...context,focusId}),2000), {...context,focusId});
   assert.deepEqual(parseReturnContext(JSON.stringify({...context,focusId:'unrelated-control'}),2000), context);
 });
+test('video inspection return context allows only its scoped local settings category', () => {
+  const href = '/en/settings?section=video-checks&health_state=all&health_offset=20&health_file=health_abc';
+  assert.equal(safeReturnHref(href), href);
+  assert.equal(safeReturnHref('/settings?section=cleanup'), null);
+  assert.equal(safeReturnHref('//evil.test/settings?section=video-checks'), null);
+  assert.equal(safeReturnHref('/settings/other?section=video-checks'), null);
+});

@@ -1,18 +1,14 @@
 "use client";
 
-import { ArrowUpRight } from "lucide-react";
 import { useEffect } from "react";
 import { useTranslations } from "next-intl";
 import MediaRootsControl from "@/components/settings/MediaRootsControl";
 import {
-  DisclosurePanel,
-  SectionIntro,
   SettingRow,
   SettingsPanel,
 } from "@/components/settings/SettingsPrimitives";
 import { InlineFeedback } from "@/components/ui/Feedback";
 import { ToggleSwitch } from "@/components/ui/FormControls";
-import { Link } from "@/i18n/routing";
 import {
   type ArtworkLanguage,
   useArtworkLanguageSetting,
@@ -25,7 +21,6 @@ import {
   useUpdateScrapeConfirmation,
 } from "@/hooks/useSettings";
 import VideoHealthSettings from "@/components/settings/VideoHealthSettings";
-import LibraryDangerZone from "./LibraryDangerZone";
 
 function useTransientMutationResult(result: unknown, reset: () => void) {
   useEffect(() => {
@@ -38,6 +33,7 @@ function useTransientMutationResult(result: unknown, reset: () => void) {
 export default function LibrarySettings() {
   const t = useTranslations("Settings");
   const roots = useTranslations("MediaRoots");
+  const area = useTranslations("SettingsArea");
   const { data: artworkLanguageData } = useArtworkLanguageSetting();
   const { data: libraryWatchData, mutate: refreshLibraryWatch } = useLibraryWatchSetting();
   const { data: autoOrganizeData, mutate: refreshAutoOrganize } = useAutoOrganizeRootSetting();
@@ -123,13 +119,54 @@ export default function LibrarySettings() {
 
   return (
     <div className="space-y-8">
-      <SectionIntro title={t("librarySettings")} />
-
-      <SettingRow title={roots("title")}>
-        <MediaRootsControl />
-      </SettingRow>
-
-      <SettingsPanel title={t("metadataPreferences")}>
+      <section id="media-directories" className="scroll-mt-28">
+        <SettingRow title={roots("title")}><MediaRootsControl /></SettingRow>
+      </section>
+      <SettingsPanel title={area("scanRules")}>
+        <SettingRow
+          title={t("autoScan")}
+          description={t("autoScanDesc")}
+          control={
+            <ToggleSwitch
+              checked={Boolean(libraryWatchData?.watch_library)}
+              disabled={watchSaving}
+              label={t("autoScan")}
+              onChange={handleLibraryWatchChange}
+            />
+          }
+          feedback={
+            watchError ? (
+              <InlineFeedback tone="error">{t("autoScanSaveFailed")}</InlineFeedback>
+            ) : watchSaveResult ? (
+              <InlineFeedback tone="success">{t("saved")}</InlineFeedback>
+            ) : (
+              <InlineFeedback>
+                {libraryWatchData?.watch_library ? t("watching") : t("notWatching")}
+              </InlineFeedback>
+            )
+          }
+        />
+        <SettingRow
+          title={t("autoOrganizeRoot")}
+          description={t("autoOrganizeRootDesc")}
+          control={
+            <ToggleSwitch
+              checked={Boolean(autoOrganizeData?.auto_organize_root_videos)}
+              disabled={autoOrganizeSaving}
+              label={t("autoOrganizeRoot")}
+              onChange={handleAutoOrganizeChange}
+            />
+          }
+          feedback={
+            autoOrganizeError ? (
+              <InlineFeedback tone="error">{t("autoOrganizeSaveFailed")}</InlineFeedback>
+            ) : autoOrganizeSaveResult ? (
+              <InlineFeedback tone="success">{t("saved")}</InlineFeedback>
+            ) : null
+          }
+        />
+      </SettingsPanel>
+      <SettingsPanel title={area("metadataArtwork")}>
         <SettingRow
           title={t("artworkLanguage")}
           feedback={
@@ -158,56 +195,6 @@ export default function LibrarySettings() {
             ))}
           </div>
         </SettingRow>
-      </SettingsPanel>
-
-      <SettingsPanel title={t("automation")}>
-        <SettingRow
-          title={t("autoScan")}
-          description={t("autoScanDesc")}
-          control={
-            <ToggleSwitch
-              checked={Boolean(libraryWatchData?.watch_library)}
-              disabled={watchSaving}
-              label={t("autoScan")}
-              onChange={handleLibraryWatchChange}
-            />
-          }
-          feedback={
-            watchError ? (
-              <InlineFeedback tone="error">{t("autoScanSaveFailed")}</InlineFeedback>
-            ) : watchSaveResult ? (
-              <InlineFeedback tone="success">{t("saved")}</InlineFeedback>
-            ) : (
-              <InlineFeedback>
-                {libraryWatchData?.watch_library ? t("watching") : t("notWatching")}
-              </InlineFeedback>
-            )
-          }
-        />
-      </SettingsPanel>
-
-      <DisclosurePanel
-        title={t("advanced")}
-      >
-        <SettingRow
-          title={t("autoOrganizeRoot")}
-          description={t("autoOrganizeRootDesc")}
-          control={
-            <ToggleSwitch
-              checked={Boolean(autoOrganizeData?.auto_organize_root_videos)}
-              disabled={autoOrganizeSaving}
-              label={t("autoOrganizeRoot")}
-              onChange={handleAutoOrganizeChange}
-            />
-          }
-          feedback={
-            autoOrganizeError ? (
-              <InlineFeedback tone="error">{t("autoOrganizeSaveFailed")}</InlineFeedback>
-            ) : autoOrganizeSaveResult ? (
-              <InlineFeedback tone="success">{t("saved")}</InlineFeedback>
-            ) : null
-          }
-        />
         <SettingRow
           title={t("scrapeRequireConfirmation")}
           description={t("scrapeRequireConfirmationDesc")}
@@ -227,22 +214,8 @@ export default function LibrarySettings() {
             ) : null
           }
         />
-        <SettingRow
-          title={t("librarySystemStatus")}
-          description={t("librarySystemStatusDesc")}
-        >
-          <Link
-            href="/library/manage"
-            className="focus-ring inline-flex min-h-10 items-center gap-2 border border-line-strong px-4 type-label text-ink-muted hover:border-ink-disabled hover:text-ink"
-          >
-            {t("openLibrarySystemStatus")}
-            <ArrowUpRight className="h-3.5 w-3.5" />
-          </Link>
-        </SettingRow>
-      </DisclosurePanel>
-
+      </SettingsPanel>
       <VideoHealthSettings />
-      <LibraryDangerZone />
     </div>
   );
 }

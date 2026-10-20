@@ -128,16 +128,16 @@ export default function MaintenanceBackup() {
   const generating = last?.status === "generating";
   const date = (value: string | null) => value ? new Date(value).toLocaleString(locale) : "—";
   return (
-    <section aria-labelledby="backup-heading" className="page-x pt-6">
+    <section id="backup-download" aria-labelledby="backup-heading" className="min-w-0 scroll-mt-28">
       <div className="border border-white/10 px-5 py-5 sm:px-6">
         <div className="flex flex-col justify-between gap-4 xl:flex-row xl:items-start">
           <div className="min-w-0 max-w-3xl">
-            <h2 id="backup-heading" className="text-lg font-semibold tracking-tight">{t("title")}</h2>
+            <h3 id="backup-heading" className="type-label text-ink-muted">{t("title")}</h3>
             <p className="mt-2 text-sm leading-6 text-neutral-400">{t("contents")}</p>
             <p className="mt-1 text-xs leading-5 text-neutral-500">{t("exclusions")}</p>
           </div>
-          <div className="flex shrink-0 flex-wrap gap-2">
-            <Button onClick={() => void create()} busy={busy} disabled={!status.data || Boolean(status.error) || Boolean(generating)} icon={<Download className="h-4 w-4" />}>
+          <div className="flex max-w-full shrink-0 flex-wrap gap-2">
+            <Button className="max-w-full" onClick={() => void create()} busy={busy} disabled={!status.data || Boolean(status.error) || Boolean(generating)} icon={<Download className="h-4 w-4" />}>
               {generating ? t("generating") : pending ? t("retry") : t("create")}
             </Button>
             {success?.available ? <Button variant="ghost" disabled={busy} onClick={() => void download(success)}>{t("redownload")}</Button> : null}

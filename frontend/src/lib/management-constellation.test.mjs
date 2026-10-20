@@ -85,7 +85,7 @@ test("action registry covers all commands and reports disabled reasons", () => {
   assert.equal(model.actions.find((action) => action.id === "review-metadata").destination, "/library?view=metadata");
   assert.equal(model.actions.find((action) => action.id === "organize-files").destination, "/library?view=inbox");
   assert.equal(model.actions.find((action) => action.id === "cleanup-missing").destination, "/library?view=offline");
-  assert.equal(model.actions.find((action) => action.id === "clear-data").destination, "/settings?section=library#danger-zone");
+  assert.equal(model.actions.find((action) => action.id === "clear-data").destination, "/settings?section=cleanup#danger-zone");
   assert.equal(model.nodes.find((node) => node.id === "metadata").state, "unavailable");
 });
 

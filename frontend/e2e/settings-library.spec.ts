@@ -93,19 +93,11 @@ for (const locale of ['en', 'zh'] as const) {
       for (const button of await video.getByRole('button').all()) {
         expect(await button.evaluate(element => element.getBoundingClientRect().right <= element.parentElement!.getBoundingClientRect().right + 1)).toBe(true);
       }
-      await expect(video.getByRole('link', { name: copy.VideoHealth.maintenanceLink, exact: true })).toHaveAttribute('href', `${locale === 'zh' ? '' : '/en'}/library/manage#video-health`);
-      await page.locator('summary').filter({ hasText: copy.Settings.advanced }).click();
+      await expect(video.getByRole('link', { name: copy.VideoHealth.maintenanceLink, exact: true })).toHaveAttribute('href', `${locale === 'zh' ? '' : '/en'}/settings?section=video-checks#video-health`);
       await expect(page.getByText(copy.Settings.autoOrganizeRootDesc, { exact: true })).toBeVisible();
       await expect(page.getByText(copy.Settings.scrapeRequireConfirmationDesc, { exact: true })).toBeVisible();
-      await expect(page.locator('summary').filter({ hasText: copy.Settings.advanced })).toHaveText(copy.Settings.advanced);
-      await expect(page.locator('#danger-zone').getByText(copy.LibraryCare.danger.clearDesc, { exact: true })).toBeVisible();
-      await page.locator('#danger-zone').getByRole('button', { name: copy.LibraryCare.danger.clearButton, exact: true }).click();
-      const dialog = page.getByRole('dialog');
-      await expect(dialog.getByText(copy.LibraryCare.danger.impact.split('{films}')[0], { exact: false })).toBeVisible();
-      await expect(dialog.getByRole('textbox')).toBeVisible();
-      await expect(dialog.getByRole('button', { name: copy.LibraryCare.danger.confirm, exact: true })).toBeDisabled();
-      await dialog.getByRole('button', { name: copy.LibraryCare.danger.cancel, exact: true }).click();
-      await expect(dialog).toHaveCount(0);
+      await expect(page.locator('#danger-zone')).toHaveCount(0);
+      await expect(video.getByRole('button', { name: copy.VideoHealth.queue, exact: true })).toHaveCount(0);
       await page.evaluate(() => window.scrollTo(0, 0));
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
       await page.screenshot({ path: `e2e-artifacts/settings-library-${locale}-${width}.png`, fullPage: true, animations: 'disabled' });
