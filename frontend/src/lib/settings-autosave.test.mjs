@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { createBaseUrlAutosave, createMediaRootsAutosave, validateBaseUrl, validateRootDraft } from './settings-autosave.ts';
+import { createBaseUrlAutosave, createMediaRootsAutosave, createTmdbKeyAutosave, restoreBlankRootEdits, validateBaseUrl, validateRootDraft } from './settings-autosave.ts';
 
 const deferred = () => { let resolve, reject; const promise = new Promise((yes, no) => { resolve = yes; reject = no; }); return { promise, resolve, reject }; };
 function harness() {
@@ -75,6 +75,40 @@ test('a refreshed saved configuration never replaces an active draft', async () 
 test('base URLs require completed HTTP(S) URLs and preserve the original trimmed value', () => {
   for (const value of ['', 'https://', 'ftp://example.test', 'relative']) assert.equal(validateBaseUrl(value).error, 'invalidBaseUrl');
   assert.deepEqual(validateBaseUrl(' https://example.test/api/v1 '), { value: 'https://example.test/api/v1', error: null });
+});
+
+test('blank root edits restore saved entries and do not resurrect a superseded pending path', async () => {
+  const h = harness();
+  assert.deepEqual(restoreBlankRootEdits(['  ', ''], h.control.baseline()), ['/media/a']);
+  h.control.edit(['/media/b']); const done = h.control.commit();
+  h.control.edit(['/media/c']); h.control.commit();
+  const restored = restoreBlankRootEdits([''], h.control.baseline());
+  assert.deepEqual(restored, ['/media/c']); h.control.edit(restored); h.control.commit();
+  h.writes[0].resolve(['/media/b']); await Promise.resolve(); await Promise.resolve();
+  assert.deepEqual(h.writes[1].paths, ['/media/c']);
+  h.writes[1].resolve(['/media/c']); await done;
+  assert.deepEqual(h.saved(), ['/media/c']);
+});
+
+test('TMDB keys save only completed drafts, retain failures, and explicitly clear with a completed blank', async () => {
+  let state; const writes = [];
+  const control = createTmdbKeyAutosave({ initial: null, changed: value => { state = value; }, write: value => {
+    const pending = deferred(); writes.push({ value, ...pending }); return pending.promise;
+  } });
+  await control.commit(); assert.equal(writes.length, 0);
+  control.edit(' synthetic-first '); assert.equal(writes.length, 0); const done = control.commit();
+  control.edit('synthetic-latest'); control.commit(); writes[0].reject(Error('private provider detail')); await done;
+  assert.deepEqual(state, { draft: 'synthetic-latest', saving: false, notice: 'tmdbSaveFailed' });
+  const retry = control.commit(); assert.equal(writes[1].value, 'synthetic-latest'); writes[1].resolve('synthetic-latest'); await retry;
+  control.edit(' '); const clear = control.commit(); assert.equal(writes[2].value, ''); writes[2].resolve(''); await clear;
+  assert.equal(state.draft, null); control.edit('bad\nkey'); await control.commit(); assert.equal(writes.length, 3); assert.equal(state.notice, 'invalidTmdbKey');
+});
+
+test('blank restoration after a failed removal keeps the remaining root identity instead of an old index', async () => {
+  let state;
+  const control = createMediaRootsAutosave({ initial: ['/media/a', '/media/b'], changed: value => { state = value; }, write: async () => { throw Error('503'); } });
+  control.edit(['/media/b']); await control.commit(); assert.equal(state.notice, 'saveFailed');
+  control.edit(['']); assert.deepEqual(restoreBlankRootEdits([''], control.baseline()), ['/media/b']);
 });
 
 test('URL saves serialize, retain newer typing and retry without modifying another setting', async () => {

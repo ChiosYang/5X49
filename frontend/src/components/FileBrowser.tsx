@@ -18,7 +18,7 @@ interface FileBrowserProps {
 export default function FileBrowser({ initialPath, onSelect, onCancel, isOpen }: FileBrowserProps) {
   const t = useTranslations("FileBrowser");
   const [currentPath, setCurrentPath] = useState(initialPath || "/");
-  const { data, error, isLoading } = useDirectories(currentPath, isOpen);
+  const { data, error, isLoading, isValidating } = useDirectories(currentPath, isOpen);
 
   return (
     <Dialog
@@ -26,12 +26,11 @@ export default function FileBrowser({ initialPath, onSelect, onCancel, isOpen }:
       onClose={onCancel}
       closeLabel={t("close")}
       closeOnBackdrop={false}
-      closeOnEscape={false}
       lockScroll={false}
       ariaLabelledBy="file-browser-title"
       panelClassName="flex max-h-[80vh] flex-col"
     >
-      <div className="flex items-center justify-between border-b border-line-strong bg-canvas/35 p-4">
+      <div className="flex shrink-0 items-center justify-between border-b border-line-strong bg-canvas/35 p-4">
         <h3 id="file-browser-title" className="text-lg font-bold tracking-widest text-ink uppercase">
           {t("title")}
         </h3>
@@ -44,7 +43,7 @@ export default function FileBrowser({ initialPath, onSelect, onCancel, isOpen }:
         />
       </div>
 
-      <div className="flex items-center gap-2 border-b border-line-strong bg-canvas/20 p-4">
+      <div className="flex shrink-0 items-center gap-2 border-b border-line-strong bg-canvas/20 p-4">
         <Button
           size="sm"
           onClick={() => data?.parent_path && setCurrentPath(data.parent_path)}
@@ -52,12 +51,12 @@ export default function FileBrowser({ initialPath, onSelect, onCancel, isOpen }:
         >
           ⬆ {t("up")}
         </Button>
-        <div className="min-w-0 flex-1 break-all border border-line-strong bg-canvas/35 px-3 py-2 font-mono text-sm text-ink-muted">
+        <div className="max-h-32 min-w-0 flex-1 overflow-y-auto break-all border border-line-strong bg-canvas/35 px-3 py-2 font-mono text-sm text-ink-muted">
           {data?.current_path || currentPath}
         </div>
       </div>
 
-      <div className="min-h-[300px] flex-1 overflow-y-auto bg-canvas/25 p-2">
+      <div className="min-h-0 flex-1 basis-72 overflow-y-auto bg-canvas/25 p-2">
         {isLoading ? (
           <StateMessage state="loading" className="h-full border-0 bg-transparent">{t("loading")}</StateMessage>
         ) : error ? (
@@ -81,9 +80,9 @@ export default function FileBrowser({ initialPath, onSelect, onCancel, isOpen }:
         )}
       </div>
 
-      <div className="flex justify-end gap-3 border-t border-line-strong bg-canvas/25 p-4">
+      <div className="flex shrink-0 flex-col-reverse gap-3 border-t border-line-strong bg-canvas/25 p-4 sm:flex-row sm:justify-end">
         <Button variant="ghost" onClick={onCancel}>{t("cancel")}</Button>
-        <Button variant="primary" onClick={() => onSelect(data?.current_path || currentPath)}>
+        <Button variant="primary" disabled={isLoading || isValidating || Boolean(error) || !data?.current_path} onClick={() => data && onSelect(data.current_path)}>
           {t("selectCurrent")}
         </Button>
       </div>

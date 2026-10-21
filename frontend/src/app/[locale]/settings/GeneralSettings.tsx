@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect } from "react";
 import { useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { usePathname, useRouter } from "@/i18n/routing";
@@ -8,6 +7,7 @@ import {
   SettingRow,
 } from "@/components/settings/SettingsPrimitives";
 import { InlineFeedback, Spinner } from "@/components/ui/Feedback";
+import { ToggleSwitch } from "@/components/ui/FormControls";
 import { useLanguageSetting, useUpdateLanguage } from "@/hooks/useSettings";
 
 export default function GeneralSettings() {
@@ -19,16 +19,8 @@ export default function GeneralSettings() {
   const {
     trigger: updateLanguage,
     isMutating: languageSaving,
-    data: languageSaveResult,
     error: languageError,
-    reset: resetLanguageSave,
   } = useUpdateLanguage();
-
-  useEffect(() => {
-    if (!languageSaveResult) return;
-    const timer = window.setTimeout(() => resetLanguageSave(), 3000);
-    return () => window.clearTimeout(timer);
-  }, [languageSaveResult, resetLanguageSave]);
 
   const handleLanguageChange = async (language: "zh" | "en") => {
     if (language === languageData?.language) return;
@@ -46,29 +38,22 @@ export default function GeneralSettings() {
         <SettingRow
           title={t("languagePref")}
           control={
-            <div className="flex items-center gap-3">
-              <div role="group" aria-label={t("languagePref")} className="inline-flex h-7 items-center border border-line-strong bg-surface-raised p-0.5">
-                {(["zh", "en"] as const).map((language) => (
-                  <button
-                    key={language}
-                    type="button"
-                    aria-pressed={languageData?.language === language}
-                    onClick={() => handleLanguageChange(language)}
-                    disabled={languageSaving}
-                    className={`focus-ring duration-standard h-5 min-w-8 px-2 text-xs font-medium uppercase transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${languageData?.language === language ? "bg-inverse text-inverse-ink" : "text-ink-subtle hover:text-ink"}`}
-                  >
-                    {language}
-                  </button>
-                ))}
+            <div className="inline-flex h-7 items-center gap-3" aria-busy={languageSaving || undefined}>
+              <span className="inline-flex h-4 w-4 shrink-0" aria-live="polite">
+                {languageSaving ? <><Spinner className="text-ink-subtle" /><span className="sr-only">{t("saving")}</span></> : null}
+              </span>
+              <div role="group" aria-label={t("languagePref")} className="inline-flex h-7 items-center gap-2">
+                <span aria-hidden className={`text-xs ${languageData?.language === "zh" ? "font-semibold text-ink" : "text-ink-disabled"}`}>中</span>
+                <ToggleSwitch checked={languageData?.language === "en"} disabled={!languageData || languageSaving}
+                  label={t("languageCurrent", { language: languageData?.language === "en" ? "English" : "中文" })}
+                  onChange={() => void handleLanguageChange(languageData?.language === "en" ? "zh" : "en")} />
+                <span aria-hidden className={`text-xs ${languageData?.language === "en" ? "font-semibold text-ink" : "text-ink-disabled"}`}>EN</span>
               </div>
-              {languageSaving && <Spinner className="text-ink-subtle" />}
             </div>
           }
           feedback={
             languageError ? (
               <InlineFeedback tone="error">{t("languageSaveFailed")}</InlineFeedback>
-            ) : languageSaveResult ? (
-              <InlineFeedback tone="success">{t("saved")}</InlineFeedback>
             ) : null
           }
         />

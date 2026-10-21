@@ -304,22 +304,23 @@ export function useUpdateScrapeConfirmation() {
   );
 }
 
+export async function writeTmdbKey(apiKey: string): Promise<TmdbSettings & { status: string }> {
+  const res = await fetch(API.settingsTmdb(), {
+    method: "PUT", signal: AbortSignal.timeout(15000),
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ api_key: apiKey }),
+  });
+  if (!res.ok) throw new Error("Failed to update TMDB API key");
+  return res.json();
+}
+
 export function useUpdateTmdbKey() {
   const { mutate } = useSWRConfig();
 
   return useSWRMutation(
     API.settingsTmdb(),
-    async (url: string, { arg: apiKey }: { arg: string }): Promise<TmdbSettings & { status: string }> => {
-      const res = await fetch(url, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ api_key: apiKey }),
-      });
-      if (!res.ok) {
-        const errorBody = await res.json().catch(() => null);
-        throw new Error(errorBody?.detail || "Failed to update TMDB API key");
-      }
-      const data = await res.json();
+    async (_url: string, { arg: apiKey }: { arg: string }): Promise<TmdbSettings & { status: string }> => {
+      const data = await writeTmdbKey(apiKey);
       await mutate(API.settingsTmdb(), { configured: data.configured, source: data.source }, false);
       return data;
     }

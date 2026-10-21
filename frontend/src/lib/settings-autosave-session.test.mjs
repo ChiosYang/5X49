@@ -3,9 +3,9 @@ import test from 'node:test';
 import { createBaseUrlAutosave } from './settings-autosave.ts';
 import { createAutosaveSessionRegistry } from './settings-autosave-session.ts';
 
-function harness() {
+function harness(retainFailedDraft = false) {
   const registry = createAutosaveSessionRegistry(), writes = []; let made = 0;
-  const options = () => { made += 1; return { initial: { base_url: 'https://initial.test' }, value: result => result.base_url, create: createBaseUrlAutosave,
+  const options = () => { made += 1; return { initial: { base_url: 'https://initial.test' }, value: result => result.base_url, create: createBaseUrlAutosave, retainFailedDraft,
     write: value => new Promise((resolve, reject) => writes.push({ value, resolve: () => resolve({ base_url: value }), reject })),
   }; };
   return { get: () => registry.get(options), fresh: () => registry.get(options, false), writes, made: () => made };
@@ -42,4 +42,13 @@ test('same-turn reattachment retains drafts; an idle abandoned draft is discarde
 
 test('SSR sessions are not retained across requests', () => {
   const h = harness(); assert.notEqual(h.fresh(), h.fresh()); assert.equal(h.made(), 2);
+});
+
+test('opted-in failed drafts survive an idle detach and remount for retry', async () => {
+  const h = harness(true), old = h.get(), leave = old.subscribe(() => {});
+  old.edit('https://failed.test'); const done = old.commit(); h.writes[0].reject(Error('503')); await done;
+  leave(); await Promise.resolve(); const current = h.get(), detach = current.subscribe(() => {});
+  assert.equal(current.getSnapshot().draft, 'https://failed.test'); assert.equal(current.getSnapshot().notice, 'baseUrlSaveFailed');
+  const retry = current.commit(); h.writes[1].resolve(); await retry;
+  assert.equal(current.getSnapshot().draft, null); detach();
 });

@@ -58,7 +58,7 @@ for (const locale of ['en', 'zh'] as const) {
       });
       await page.setViewportSize({ width, height: 1000 });
       await page.goto(`/${locale}/settings`);
-      await expect(page.getByRole('button', { name: 'zh', exact: true })).toBeVisible();
+      await expect(page.getByRole('group', { name: copy.Settings.languagePref, exact: true }).getByRole('switch')).toBeVisible();
       await expect(page.getByText(copy.Settings.roadmap, { exact: true })).toHaveCount(0);
       if (width < 768) await page.getByRole('button', { name: copy.SettingsArea.categories, exact: true }).click();
       const nav = page.getByRole('navigation', { name: copy.Settings.settingsNavigation, exact: true });
@@ -70,7 +70,7 @@ for (const locale of ['en', 'zh'] as const) {
         await expect(page.getByRole('heading', { level: 1 })).toHaveText(copy.Settings.title);
         await expect(page.getByRole('heading', { level: 2 })).toHaveText(copy.SettingsArea[section]);
         await expect(page.getByRole('tab')).toHaveCount(0);
-        if (section === 'general') await expect(page.getByRole('button', { name: originalLanguage, exact: true })).toHaveAttribute('aria-pressed', 'true');
+        if (section === 'general') await expect(page.getByRole('group', { name: copy.Settings.languagePref, exact: true }).getByRole('switch')).toHaveAttribute('aria-checked', String(originalLanguage === 'en'));
         else if (section === 'library') {
           await expect(page.locator('#media-root-0')).toHaveValue(roots[0]);
           await expect(page.getByRole('heading', { name: copy.SettingsArea.scanRules, exact: true })).toBeVisible();
@@ -135,7 +135,7 @@ for (const locale of ['en', 'zh'] as const) {
     await page.goForward(); await expect(page.getByRole('button', { name: copy.MediaRoots.scanAll, exact: true })).toBeDisabled();
     expect((await read(request, '/settings/media-dirs')).media_dirs).toEqual([roots[0]]);
     await choose(page, locale, 320, 'library');
-    await page.getByRole('button', { name: copy.MediaRoots.discard, exact: true }).click();
+    { await page.locator('#media-root-0').fill(''); await page.locator('#media-root-0').press('Tab'); await expect(page.locator('#media-root-0')).toHaveValue(roots[0]); }
     await choose(page, locale, 320, 'library-maintenance');
     await expect(page.getByRole('button', { name: copy.MediaRoots.scanAll, exact: true })).toBeEnabled();
     await choose(page, locale, 320, 'library');
@@ -153,7 +153,7 @@ for (const locale of ['en', 'zh'] as const) {
     await page.reload(); await expect(page.getByRole('textbox', { name: copy.Settings.baseUrl, exact: true })).not.toHaveValue('https://');
   });
 
-  test(`${locale} directory drafts block only scan retries until Discard or completed input`, async ({ page }) => {
+  test(`${locale} directory drafts block only scan retries until blank abandonment or completed input`, async ({ page }) => {
     await page.setViewportSize({ width: 320, height: 1000 });
     const scans = ['library.reconcile', 'library.scan_folder', 'library.refresh_item'];
     const others = ['library.mark_path_missing', 'library.resolve_relink', 'metadata.scrape_library', 'organizer.organize_root', 'external_scores.refresh_library'];
@@ -192,7 +192,7 @@ for (const locale of ['en', 'zh'] as const) {
 
     for (const resolution of ['discard', 'save'] as const) {
       await choose(page, locale, 320, 'library');
-      if (resolution === 'discard') await page.getByRole('button', { name: copy.MediaRoots.discard, exact: true }).click();
+      if (resolution === 'discard') { await page.locator('#media-root-0').fill(''); await page.locator('#media-root-0').press('Tab'); await expect(page.locator('#media-root-0')).toHaveValue(roots[0]); }
       else { await page.locator('#media-root-0').fill(roots[1]); await page.locator('#media-root-0').press('Enter'); await expect(page.getByText(copy.MediaRoots.saved, { exact: true })).toBeVisible(); }
       await choose(page, locale, 320, 'library-maintenance');
       for (const record of records.slice(0, scans.length)) {
@@ -263,7 +263,7 @@ for (const locale of ['en', 'zh'] as const) {
     await expect(page.locator('#settings-title-general')).toBeVisible();
     await expect(confirmation).toHaveCount(0);
     await expect(page.locator('body')).not.toHaveCSS('overflow', 'hidden');
-    await expect(page.getByRole('button', { name: 'en', exact: true })).toBeEnabled();
+    await expect(page.getByRole('group', { name: copy.Settings.languagePref, exact: true }).getByRole('switch')).toBeEnabled();
     await page.goForward();
     await expect(page.getByRole('button', { name: copy.LibraryCare.danger.clearButton, exact: true })).toBeEnabled();
     await expect(confirmation).toHaveCount(0);
@@ -313,15 +313,16 @@ test('language saves preserve the selected category and URL context', async ({ p
   await page.goto('/en/settings?section=general&context=library');
   let reject = true;
   await page.route(/\/api\/settings\/language\?/, route => route.request().method() === 'PUT' && reject ? route.fulfill({ status: 503, json: {} }) : route.continue());
-  await expect(page.getByRole('button', { name: 'en', exact: true })).toHaveAttribute('aria-pressed', 'true');
-  await page.getByRole('button', { name: 'zh', exact: true }).click();
+  const language = page.getByRole('group', { name: en.Settings.languagePref, exact: true }).getByRole('switch');
+  await expect(language).toHaveAttribute('aria-checked', 'true');
+  await language.click();
   await expect(page.getByText(en.Settings.languageSaveFailed, { exact: true })).toBeVisible();
   await expect(page.locator('html')).toHaveAttribute('lang', 'en');
   expect((await read(request, '/settings/language')).language).toBe('en');
   reject = false;
-  await page.getByRole('button', { name: 'zh', exact: true }).click();
+  await language.click();
   await expect(page.locator('html')).toHaveAttribute('lang', 'zh');
-  await expect(page.getByRole('button', { name: 'zh', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByRole('group', { name: zh.Settings.languagePref, exact: true }).getByRole('switch')).toHaveAttribute('aria-checked', 'false');
   expect(new URL(page.url()).searchParams.get('section')).toBe('general');
   expect(new URL(page.url()).searchParams.get('context')).toBe('library');
 });

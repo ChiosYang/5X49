@@ -10,6 +10,7 @@ export function createCompletedInputAutosave<T, N extends string>(options: {
   changed: (state: AutosaveState<T, N>) => void;
 }) {
   let draft: T | null = null, confirmed = structuredClone(options.initial), latestSaved = structuredClone(options.initial);
+  let completed = structuredClone(options.initial);
   let version = 0, saving = false, notice: N | "saved" | null = null;
   let queued: CompletedDraft<T> | null = null, current: CompletedDraft<T> | null = null;
   let flight: Promise<void> | null = null;
@@ -39,6 +40,7 @@ export function createCompletedInputAutosave<T, N extends string>(options: {
     if (draft === null) return flight ?? Promise.resolve();
     const validated = options.validate(clone(draft));
     if (validated.error) { notice = validated.error; emit(); return flight ?? Promise.resolve(); }
+    completed = clone(validated.value);
     if (saving) {
       if (current?.version !== version) queued = { version, value: validated.value };
       return flight ?? Promise.resolve();
@@ -49,10 +51,11 @@ export function createCompletedInputAutosave<T, N extends string>(options: {
   };
   const discard = () => {
     if (saving) return;
-    version += 1; draft = null; queued = null; confirmed = structuredClone(latestSaved); notice = null; emit();
+    version += 1; draft = null; queued = null; confirmed = structuredClone(latestSaved); completed = structuredClone(latestSaved); notice = null; emit();
   };
-  const syncSaved = (value: T) => { latestSaved = clone(value); if (draft === null && !saving) confirmed = clone(value); };
-  return { edit, commit, discard, syncSaved };
+  const syncSaved = (value: T) => { latestSaved = clone(value); if (draft === null && !saving) { confirmed = clone(value); completed = clone(value); } };
+  const baseline = () => structuredClone(draft !== null ? completed : latestSaved);
+  return { edit, commit, discard, syncSaved, baseline };
 }
 
 type RootsError = "saveFailed" | "absolute" | "overlap" | "incomplete";
@@ -66,6 +69,10 @@ export function validateRootDraft(values: string[]) {
     || (value.startsWith("\\\\") ? !/^\\\\[^\\/]+[\\/][^\\/]+/.test(value)
       : !value.startsWith("/") && !/^[a-z]:[\\/]/i.test(value) && !/^~[\\/].+/.test(value)));
   return { paths, error: invalid ? "absolute" as const : null };
+}
+
+export function restoreBlankRootEdits(values: string[], baseline: string[]) {
+  return values.flatMap((value, index) => value.trim() ? [value] : baseline[index] ? [baseline[index]] : []);
 }
 
 export function createMediaRootsAutosave(options: {
@@ -97,4 +104,16 @@ export function createBaseUrlAutosave(options: {
   changed: (state: BaseUrlSaveState) => void;
 }) {
   return createCompletedInputAutosave<string, BaseUrlError>({ ...options, validate: validateBaseUrl, failure: () => "baseUrlSaveFailed" });
+}
+
+type TmdbKeyError = "invalidTmdbKey" | "tmdbSaveFailed";
+export function createTmdbKeyAutosave(options: {
+  initial: string | null;
+  write: (value: string) => Promise<string>;
+  changed: (state: AutosaveState<string, TmdbKeyError>) => void;
+}) {
+  return createCompletedInputAutosave<string, TmdbKeyError>({ ...options,
+    validate: value => ({ value: value.trim(), error: /[\0\r\n]/.test(value) ? "invalidTmdbKey" : null }),
+    failure: () => "tmdbSaveFailed",
+  });
 }
