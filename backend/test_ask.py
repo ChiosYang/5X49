@@ -204,6 +204,7 @@ class AskTests(unittest.TestCase):
                      "Movies/private film.mkv", r"Movies\private film.mkv", "'My Movies/private film.mkv'",
                      "'Movies/My Private Film.mkv'", '"Movies/My Private Film.mkv"',
                      "Movies/O'Brien's Private Film.mkv", "Movies/私人的电影.mkv",
+                     "\u0060/private.mkv\u0060", "\u0060~/Movies/private.mkv\u0060", "\u0060./Movies/private.mkv\u0060",
                      "'/private.mkv'", "(~/Movies/private.mkv)", "路径：./私密/片单.txt",
                      "my api_key=private", "use sk-abcdefgh12345678"):
             question = "Japanese films featuring " + path
@@ -221,6 +222,8 @@ class AskTests(unittest.TestCase):
             with self.subTest(title=title):
                 self.assertFalse(has_private_input(title))
                 self.assertFalse(has_private_input("find " + title))
+                for quote in ("'", '"', "\u0060"):
+                    self.assertFalse(has_private_input(quote + title + quote))
 
     def test_unsupported_or_vague_intents_never_run_local_queries(self):
         for state in ("unsupported", "clarify"):

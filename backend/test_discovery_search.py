@@ -263,6 +263,7 @@ class DiscoverySearchTests(unittest.TestCase):
                      "Japanese films featuring Movies/private.mkv", r"Japanese films featuring Movies\private.mkv",
                      "Japanese films featuring 'Movies/My Private Film.mkv'",
                      "Japanese films featuring Movies/My Private Film.mkv",
+                     "Japanese films featuring \u0060/private.mkv\u0060",
                      r"films featuring .\Movies\private.mkv", r"films featuring \private.mkv"):
             response = self.client.post("/explore/search/interpret", json={"question": text, "allow_ai": True})
             self.assertEqual(response.status_code, 422)
