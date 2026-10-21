@@ -43,6 +43,8 @@ the original implementation and verification record.
 - [x] Viewing, sort, pagination focus and existing detail links are preserved.
 - [x] Successful card saves refresh collection previews/counts and current results without changing URL/history;
   delayed saves use the latest query and cannot refresh a page or detail overlay the user has navigated to.
+- [x] A shrinking result set corrects invalid offsets to the last valid page with history replace;
+  stale responses cannot replace newer navigation and nonempty sets never show a false zero state.
 - [x] Coverage, Lens and Fact Finder concepts are absent from the primary Explore UI.
 - [x] Existing LibraryMovieCard, Button, TextInput, typography, colors and spacing are reused.
 - [x] Full backend suite, frontend checks, related browser suites and responsive visual inspection complete.
@@ -76,6 +78,11 @@ the original implementation and verification record.
 - Mobile collection entries scroll within one row; desktop uses the existing
   grid/spacing tokens. Missing artwork uses a quiet placeholder.
 - The old modal Fact Finder remains available to Ask, which already reused it.
+- Saved-card refresh receipts live in the existing fetcher-free SWR cache and survive leaving Explore/Back.
+  Refresh waits for newer navigation to settle, runs only on the active Explore page and acknowledges
+  successful reads without consuming newer saves. The receipt contains only revision counters.
+- Invalid offsets use `replace` with filters, viewing state and sorting intact. The correction retains
+  the viewport, adds no history entry and shows a loader while fetching a nonempty valid page.
 
 ## Open questions
 
@@ -162,15 +169,16 @@ Current browse/filter implementation (2026-10-21):
   canonical TEMP/TMP paths and read-only Git identity. This avoided existing MAX_PATH/short-name
   fixture failures without changing application code or touching the active database/media.
 - `.venv/Scripts/python.exe -m compileall -q app` — passed.
-- `npm run test:unit` — 122 passed; Windows used canonical TEMP/TMP for the existing glob tests.
+- `npm run test:unit` — 123 passed; Windows used canonical TEMP/TMP for the existing glob tests.
 - `npm run lint`, `npm run typecheck`, and production `next build` through the E2E harness — passed.
 - `npm run test:e2e -- explore-ui.spec.ts interactions.spec.ts navigation-search.spec.ts library-ui.spec.ts library-menus.spec.ts site-copy.spec.ts` — 74 passed.
-- Final `node e2e/run.mjs explore-ui.spec.ts` — 22 passed, including independent search pagination/retry,
+- Final `node e2e/run.mjs explore-ui.spec.ts` — 24 passed, including independent search pagination/retry,
   delayed search responses, rapid filter navigation, People All/Any and legacy URLs, viewing/sort/history,
   result pagination/detail return, strict zero results and empty/sparse/empty-view fallbacks.
-  Six mutation regressions cover desktop/mobile default collections, favorite/watched saves, current
+  Eight mutation regressions cover desktop/mobile default collections, favorite/watched saves, current
   Unwatched result removal, one refresh per save, unchanged URL/history/viewport (within document bounds),
-  and saves completing after changing filters or entering a detail page without clearing search or stealing focus.
+  41-to-40 last-page replacement, late invalid-page responses, saves completing while newer filter RSC is
+  still pending, and detail navigation/Back without stale cached collections, lost search or stolen focus.
 - English/Chinese at 1920, 1024, 768, 390 and 320px — no page overflow or hydration errors.
   Internal desktop/mobile captures were inspected; screenshots remain local. Only generated local
   fixtures and mocked transports were used, with real AI/provider requests disabled.

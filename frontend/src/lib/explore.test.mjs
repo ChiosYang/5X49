@@ -5,6 +5,7 @@ import {
   buildExploreContextSearchParams,
   buildExploreSearchParams,
   clearExploreFilters,
+  correctedExploreOffset,
   exploreNavigation,
   formatExploreFacetLabel,
   graphNodeHref,
@@ -16,6 +17,12 @@ import {
 
 const genre = `con_${"a".repeat(32)}`;
 const person = `person_${"b".repeat(32)}`;
+
+test("Explore corrects pages invalidated by shrinking results without moving valid offsets", () => {
+  for (const [offset, total, expected] of [[40, 41, 40], [40, 40, 0], [80, 80, 40], [120, 120, 80], [40, 0, 0], [0, 0, 0], [31, 40, 31]]) {
+    assert.equal(correctedExploreOffset(offset, total, 40), expected);
+  }
+});
 
 test("New people searches intersect while legacy URLs retain their original union", () => {
   const other = `person_${"c".repeat(32)}`;

@@ -205,7 +205,7 @@ export function ResultStage({
             <span className="block h-full w-1/3 animate-pulse bg-ink/70" />
           </div>
         ) : null}
-        {!results ? (
+        {!results || (results.total > 0 && results.items.length === 0) ? (
           <div className="flex min-h-80 items-center justify-center">
             <Spinner className="text-ink" />
           </div>
@@ -248,7 +248,7 @@ export function ResultStage({
         )}
       </div>
 
-      {results && (previousOffset !== null || nextOffset !== null) ? (
+      {results && results.items.length > 0 && (previousOffset !== null || nextOffset !== null) ? (
         <nav className="mt-8 flex items-center justify-between border-t border-line pt-5" aria-label={t("paginationLabel")}>
           <Button
             variant="ghost"

@@ -1,11 +1,12 @@
 "use client";
 
 import { useEffect, useLayoutEffect, useMemo, useOptimistic, useRef, useState, useSyncExternalStore, useTransition } from "react";
+import useSWR from "swr";
 import { useReducedMotion } from "framer-motion";
 import { useTranslations } from "next-intl";
 
-import { useRouter } from "@/i18n/routing";
-import { clearExploreFilters, exploreNavigation, hasExploreFilters, withExploreFacet, withoutExploreFacet, type ExploreQueryState } from "@/lib/explore";
+import { usePathname, useRouter } from "@/i18n/routing";
+import { clearExploreFilters, correctedExploreOffset, exploreNavigation, hasExploreFilters, withExploreFacet, withoutExploreFacet, type ExploreQueryState } from "@/lib/explore";
 import type { ExploreCollection, ExploreCollections, ExploreDimension, ExploreFacetSummary, ExploreFilmPage, ExploreView } from "@/types/movie";
 import ExploreSearch from "./ExploreSearch";
 import { CollectionEntries, QueryRibbon, ResultStage } from "./ExploreViews";
@@ -13,6 +14,9 @@ import { CollectionEntries, QueryRibbon, ResultStage } from "./ExploreViews";
 const subscribeHydration = () => () => {};
 const getHydratedSnapshot = () => true;
 const getServerSnapshot = () => false;
+
+// A fetcher-free SWR receipt survives route unmounts/Back, without storing profile data.
+const initialProfileRefresh = { revision: 0, acknowledged: 0 };
 
 export default function ExploreClient({ collections, locale, query, results }: {
   collections: ExploreCollections | null;
@@ -22,6 +26,12 @@ export default function ExploreClient({ collections, locale, query, results }: {
 }) {
   const t = useTranslations("Explore");
   const router = useRouter();
+  const pathname = usePathname();
+  const { data: profileRefresh = initialProfileRefresh, mutate: mutateProfileRefresh } = useSWR<typeof initialProfileRefresh>(
+    "explore:profile-refresh", null, { fallbackData: initialProfileRefresh },
+  );
+  const profileRefreshAttempt = useRef<{ revision: number; baseline: ExploreFilmPage } | null>(null);
+  useEffect(() => () => { profileRefreshAttempt.current = null; }, []);
   const reducedMotion = useReducedMotion() ?? false;
   const localizeCountries = useSyncExternalStore(subscribeHydration, getHydratedSnapshot, getServerSnapshot);
   const [optimisticQuery, setOptimisticQuery] = useOptimistic(query);
@@ -67,20 +77,51 @@ export default function ExploreClient({ collections, locale, query, results }: {
   const setView = (view: ExploreView) => navigate({ ...optimisticQuery, view, offset: 0 });
   const setSort = (sort: ExploreQueryState["sort"]) => navigate({ ...optimisticQuery, sort, dir: sort === "year" ? "desc" : "asc", offset: 0 });
 
-  const refreshAfterProfileSaved = () => {
-    const activeQuery = activeQueryRef.current;
-    // An in-flight card save may finish after its card or Explore route is left.
-    // Keep the latest query; never refresh a different page or a detail overlay.
-    if (!activeQuery || !/\/explore\/?$/.test(window.location.pathname)) return;
-    scrollTarget.current = {
-      href: exploreNavigation(activeQuery, "filter").href,
-      x: window.scrollX,
-      y: window.scrollY,
-    };
-    // These results and collections are RSC props, outside the card's SWR caches.
-    // Refresh the current route once after a successful save, without pushing history.
-    startTransition(() => router.refresh());
+  const recordProfileSaved = () => {
+    void mutateProfileRefresh(current => ({
+      ...(current ?? initialProfileRefresh),
+      revision: (current?.revision ?? 0) + 1,
+    }), { revalidate: false });
   };
+
+  useEffect(() => {
+    const activeQuery = activeQueryRef.current;
+    if (!activeQuery || !/\/explore\/?$/.test(pathname) || !/\/explore\/?$/.test(window.location.pathname)) {
+      profileRefreshAttempt.current = null;
+      return;
+    }
+    // Wait for newer navigation before refreshing; a save cannot cancel its query.
+    if (pending || exploreNavigation(activeQuery, "filter").href !== exploreNavigation(query, "filter").href) return;
+    const attempt = profileRefreshAttempt.current;
+    if (attempt) {
+      if (results === attempt.baseline) return;
+      profileRefreshAttempt.current = null;
+      // An older read must not consume a newer save receipt.
+      void mutateProfileRefresh(current => ({
+        ...(current ?? initialProfileRefresh),
+        acknowledged: Math.max(current?.acknowledged ?? 0, attempt.revision),
+      }), { revalidate: false });
+      return;
+    }
+    if (profileRefresh.revision <= profileRefresh.acknowledged) return;
+    profileRefreshAttempt.current = { revision: profileRefresh.revision, baseline: results };
+    scrollTarget.current = {
+      href: exploreNavigation(query, "filter").href, x: window.scrollX, y: window.scrollY,
+    };
+    startTransition(() => router.refresh());
+  }, [mutateProfileRefresh, pathname, pending, profileRefresh, query, results, router]);
+
+  useEffect(() => {
+    const activeQuery = activeQueryRef.current;
+    if (pending || !activeQuery || !/\/explore\/?$/.test(window.location.pathname)
+        || exploreNavigation(activeQuery, "filter").href !== exploreNavigation(query, "filter").href) return;
+    const offset = correctedExploreOffset(query.offset, results.total, results.limit);
+    if (offset === query.offset) return;
+    const href = exploreNavigation({ ...query, offset }, "filter").href;
+    scrollTarget.current = { href, x: window.scrollX, y: window.scrollY };
+    // Correct this history entry, retaining every filter and the current viewport.
+    startTransition(() => router.replace(href, { scroll: false }));
+  }, [pending, query, results.limit, results.total, router]);
 
   useLayoutEffect(() => {
     const target = scrollTarget.current;
@@ -121,7 +162,7 @@ export default function ExploreClient({ collections, locale, query, results }: {
           sectionRef={sectionRef} headingRef={headingRef} onView={setView} onSort={setSort}
           onDirection={() => navigate({ ...optimisticQuery, dir: optimisticQuery.dir === "asc" ? "desc" : "asc", offset: 0 })}
           onPage={offset => navigate({ ...optimisticQuery, offset }, "page")} onClear={clear}
-          onProfileSaved={refreshAfterProfileSaved}
+          onProfileSaved={recordProfileSaved}
         />
       </div>
     </div>

@@ -96,6 +96,11 @@ export function hasExploreFilters(query: ExploreQueryState) {
   return EXPLORE_DIMENSIONS.some((dimension) => query[dimension].length > 0);
 }
 
+export function correctedExploreOffset(offset: number, total: number, limit: number) {
+  if (offset === 0 || offset < total) return offset;
+  return Math.max(0, Math.ceil(total / limit) - 1) * limit;
+}
+
 export function initialExploreLens(query: ExploreQueryState): ExploreDimension | null {
   return EXPLORE_DIMENSIONS.find((dimension) => query[dimension].length > 0) ?? null;
 }

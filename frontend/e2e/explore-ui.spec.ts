@@ -57,6 +57,19 @@ async function singleUnwatchedCountry(request: APIRequestContext) {
   return target;
 }
 
+const firstShelfPage = '/en/explore?decade=1980&view=unwatched&sort=year&dir=asc';
+async function lastUnwatchedPage(request: APIRequestContext) {
+  const all: ExploreFilmPage = await read(request, '/explore/films?decade=1980&sort=year&dir=asc&limit=100');
+  expect(all.total).toBe(42);
+  for (const { film } of all.items) {
+    if (film.profile_state.watched) expect((await request.put(`${backend}/films/${film.id}/profile-state`, { data: { watched: false } })).ok()).toBeTruthy();
+  }
+  expect((await request.put(`${backend}/films/${all.items[0].film.id}/profile-state`, { data: { watched: true } })).ok()).toBeTruthy();
+  const last: ExploreFilmPage = await read(request, '/explore/films?decade=1980&view=unwatched&sort=year&dir=asc&offset=40');
+  expect(last.total).toBe(41); expect(last.items).toHaveLength(1);
+  return last.items[0].film;
+}
+
 test.beforeAll(async ({ request }) => {
   await control(request, 'identity_cleanup');
   const media = path.join(process.env.E2E_ROOT!, 'normal/media');
@@ -330,17 +343,105 @@ for (const width of [1440, 390]) {
   });
 }
 
-test('a delayed card save refreshes the latest filters without clearing search or taking focus', async ({ page, request }) => {
+test('a 41-to-40 save replaces the invalid last page and never shows a false zero result', async ({ page, request }) => {
+  const target = await lastUnwatchedPage(request);
+  await page.goto('/en/library'); const previous = page.url();
+  await page.goto(firstShelfPage);
+  await expect(results(page)).toHaveText('41 Films');
+  await page.getByRole('button', { name: 'Next', exact: true }).click();
+  await expect(cards(page)).toHaveCount(1);
+  const history = await page.evaluate(() => window.history.length);
+  let release!: () => void;
+  const held = new Promise<void>(resolve => { release = resolve; });
+  const requests: URL[] = []; let writes = 0;
+  await page.route('**/en/explore?**', async route => {
+    const url = new URL(route.request().url());
+    if (route.request().headers().rsc === '1') {
+      requests.push(url);
+      if (!url.searchParams.has('offset')) await held;
+    }
+    await route.continue();
+  });
+  page.on('request', request => { if (request.method() === 'PUT' && new URL(request.url()).pathname === `/api/films/${target.id}/profile-state`) writes++; });
+  try {
+    const trigger = page.locator(`#film-link-${target.id}`);
+    await trigger.click();
+    const corrected = page.waitForRequest(request => new URL(request.url()).pathname === '/en/explore' && !new URL(request.url()).searchParams.has('offset') && request.headers().rsc === '1');
+    await page.locator('.library-card-media').filter({ has: trigger }).getByRole('button', { name: en.Library.markWatched, exact: true }).click();
+    await corrected;
+    await expect(results(page)).toHaveText('40 Films');
+    await expect(page.getByRole('heading', { name: en.Explore.zeroTitle, exact: true })).toHaveCount(0);
+    release();
+    await expect(page).toHaveURL(new URL(firstShelfPage, page.url()).href);
+    await expect(cards(page)).toHaveCount(40);
+    await expect(results(page)).toHaveText('40 Films');
+    expect(writes).toBe(1); expect(requests).toHaveLength(2);
+    expect(requests[0].searchParams.get('offset')).toBe('40');
+    expect(requests[1].searchParams.has('offset')).toBe(false);
+    expect(await page.evaluate(() => window.history.length)).toBe(history);
+    await page.goBack(); await expect(page).toHaveURL(new URL(firstShelfPage, page.url()).href);
+    await page.goBack(); await expect(page).toHaveURL(previous);
+  } finally { release(); }
+});
+
+test('a late invalid-page response cannot replace newer filter navigation', async ({ page, request }) => {
+  const target = await lastUnwatchedPage(request);
+  await page.goto(firstShelfPage);
+  await page.getByRole('button', { name: 'Next', exact: true }).click();
+  await expect(cards(page)).toHaveCount(1);
+  let release!: () => void, captured!: () => void;
+  const held = new Promise<void>(resolve => { release = resolve; });
+  const fetched = new Promise<void>(resolve => { captured = resolve; });
+  const requests: URL[] = [];
+  await page.route('**/en/explore?**', async route => {
+    const url = new URL(route.request().url());
+    if (route.request().headers().rsc === '1') requests.push(url);
+    if (url.searchParams.get('offset') === '40') {
+      const response = await route.fetch(); captured(); await held;
+      await route.fulfill({ response }).catch(() => {}); // A newer navigation may cancel this stale response.
+    } else await route.continue();
+  });
+  try {
+    const trigger = page.locator(`#film-link-${target.id}`);
+    await trigger.click();
+    await page.locator('.library-card-media').filter({ has: trigger }).getByRole('button', { name: en.Library.markWatched, exact: true }).click();
+    await fetched;
+    const history = await page.evaluate(() => window.history.length);
+    await page.getByRole('group', { name: en.Explore.viewLabel, exact: true }).getByRole('button', { name: 'All', exact: true }).click();
+    const search = page.getByRole('textbox', { name: en.Explore.searchAll, exact: true });
+    await search.fill('Shelf'); await expect(search).toBeFocused();
+    release();
+    await expect(page).toHaveURL(new URL('/en/explore?decade=1980&sort=year&dir=asc', page.url()).href);
+    await expect(results(page)).toHaveText('42 Films');
+    await expect(page.locator('[aria-labelledby="explore-results-title"] [aria-busy]')).toHaveAttribute('aria-busy', 'false');
+    await expect(search).toHaveValue('Shelf'); await expect(search).toBeFocused();
+    expect(new URL(page.url()).searchParams.has('view')).toBe(false);
+    expect(requests).toHaveLength(2);
+    expect(await page.evaluate(() => window.history.length)).toBe(history + 1);
+  } finally { release(); }
+});
+
+test('a delayed card save waits for pending filter navigation without clearing search or taking focus', async ({ page, request }) => {
   const target = await singleUnwatchedCountry(request);
   await page.setViewportSize({ width: 1440, height: 1000 });
   await page.goto('/en/explore?sort=year');
-  let release!: () => void;
+  let release!: () => void, releaseView!: () => void, capturedView!: () => void;
   const held = new Promise<void>(resolve => { release = resolve; });
-  let writes = 0, trackRefresh = false;
+  const viewHeld = new Promise<void>(resolve => { releaseView = resolve; });
+  const viewReady = new Promise<void>(resolve => { capturedView = resolve; });
+  let writes = 0, trackRefresh = false, holdFirstView = true;
   const refreshes: string[] = [];
   await page.route(`**/api/films/${target.id}/profile-state`, async route => {
     if (route.request().method() === 'PUT') { writes++; await held; }
     await route.continue();
+  });
+  await page.route('**/en/explore?**', async route => {
+    const params = new URL(route.request().url()).searchParams;
+    if (holdFirstView && params.get('country') === 'DE' && params.get('view') === 'watched') {
+      holdFirstView = false;
+      const response = await route.fetch(); capturedView(); await viewHeld;
+      await route.fulfill({ response }).catch(() => {});
+    } else await route.continue();
   });
   page.on('request', request => {
     if (trackRefresh && new URL(request.url()).pathname === '/en/explore' && request.headers().rsc === '1') refreshes.push(request.url());
@@ -354,30 +455,31 @@ test('a delayed card save refreshes the latest filters without clearing search o
     await search.fill('Germany');
     await page.getByRole('region', { name: 'Country', exact: true }).getByRole('button').click();
     await expect.poll(() => new URL(page.url()).searchParams.get('country')).toBe('DE');
-    const beforeView = page.url();
+    const beforeView = page.url(), history = await page.evaluate(() => window.history.length);
     await page.getByRole('button', { name: 'Watched', exact: true }).click();
-    await expect(results(page)).toHaveText('0 Films');
+    await viewReady; // The new query's RSC response is still pending and contains the pre-save result.
     await search.focus();
-    const href = page.url(), history = await page.evaluate(() => window.history.length);
-    const scrollY = await page.evaluate(() => window.scrollY);
     trackRefresh = true;
     release();
+    await expect.poll(async () => (await read(request, `/films/${target.id}/profile-state`)).watched).toBe(true);
+    await expect(search).toBeFocused(); await expect(search).toHaveValue('Germany');
+    releaseView();
+    await expect.poll(() => new URL(page.url()).searchParams.get('view')).toBe('watched');
     await expect(results(page)).toHaveText('1 Film');
-    await expect(page).toHaveURL(href);
     await expect(search).toHaveValue('Germany'); await expect(search).toBeFocused();
     expect(writes).toBe(1); expect(refreshes).toHaveLength(1);
     expect(new URL(refreshes[0]).searchParams.get('country')).toBe('DE');
     expect(new URL(refreshes[0]).searchParams.get('view')).toBe('watched');
-    expect(await page.evaluate(() => window.history.length)).toBe(history);
-    expect(await page.evaluate(() => window.scrollY)).toBe(scrollY);
+    expect(await page.evaluate(() => window.history.length)).toBe(history + 1);
     await page.goBack(); await expect(page).toHaveURL(beforeView);
-  } finally { release(); }
+  } finally { release(); releaseView(); }
 });
 
 test('a save completing after detail navigation cannot refresh the new page or steal its focus', async ({ page, request }) => {
   const target = await singleUnwatchedCountry(request);
   await page.setViewportSize({ width: 390, height: 1000 });
   await page.goto('/en/explore?sort=year');
+  const exploreHref = page.url();
   let release!: () => void;
   const held = new Promise<void>(resolve => { release = resolve; });
   let writes = 0, trackRefresh = false;
@@ -411,6 +513,14 @@ test('a save completing after detail navigation cannot refresh the new page or s
     await expect(page).toHaveURL(href); await expect(back).toBeFocused();
     expect(await page.evaluate(() => window.history.length)).toBe(history);
     expect(writes).toBe(1); expect(refreshes).toHaveLength(0);
+    await page.goBack(); // Exercise the cached Explore history entry, rather than the detail page's Library link.
+    await expect(page).toHaveURL(exploreHref);
+    const collections = page.getByRole('region', { name: en.Explore.collectionsTitle, exact: true });
+    await expect(collections.getByText('Unwatched films from Germany', { exact: true })).toHaveCount(0);
+    await expect(results(page)).toHaveText('59 Films');
+    await expect(page.locator(`#film-link-${target.id}`).getByLabel(en.Library.watched, { exact: true })).toHaveCount(1);
+    expect(writes).toBe(1);
+    expect(await page.evaluate(() => window.history.length)).toBe(history);
   } finally { release(); }
 });
 
