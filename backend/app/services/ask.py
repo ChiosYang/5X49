@@ -30,7 +30,7 @@ _PRIVATE_INPUT = re.compile(
     # A separator plus a known media/sidecar extension distinguishes an
     # unprefixed relative path from titles such as Face/Off, V/H/S and 9/11.
     r"(?:^|[\s\"'(\[{=，。！？；：\u0060])(?:[^\s\\/\"'<>:|?*\u0060]+[\\/])+"
-    r"[^\s\\/\"'<>:|?*\u0060]*\.(?:mkv|mp4|m4v|avi|mov|webm|wmv|mpg|mpeg|m2ts|ts|vob|iso|"
+    r"[^\\/\r\n]*\.(?:mkv|mp4|m4v|avi|mov|webm|wmv|mpg|mpeg|m2ts|ts|vob|iso|"
     r"nfo|srt|ass|ssa|vtt|sub|idx|jpe?g|png|gif|webp|txt|json|xml|db|sqlite3?|env|pem|key)"
     r"(?=$|[\s\"')\]}>,.;:!?，。！？；：\u0060]))", re.IGNORECASE,
 )

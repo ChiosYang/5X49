@@ -201,6 +201,9 @@ class AskTests(unittest.TestCase):
                      "Movies/private.mkv", r"Movies\private.mkv", "Movies/subdir/private.mkv",
                      "Movies/字幕.srt", "Movies/poster.jpg", "路径：Movies/片单.nfo",
                      "Movies/private.MKV", "\u0060Movies/private.mkv\u0060", "notes/.env",
+                     "Movies/private film.mkv", r"Movies\private film.mkv", "'My Movies/private film.mkv'",
+                     "'Movies/My Private Film.mkv'", '"Movies/My Private Film.mkv"',
+                     "Movies/O'Brien's Private Film.mkv", "Movies/私人的电影.mkv",
                      "'/private.mkv'", "(~/Movies/private.mkv)", "路径：./私密/片单.txt",
                      "my api_key=private", "use sk-abcdefgh12345678"):
             question = "Japanese films featuring " + path

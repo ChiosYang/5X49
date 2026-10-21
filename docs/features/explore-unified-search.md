@@ -33,7 +33,8 @@ manual fallback form, mode selection or routine confirmation precedes results.
   Explicit leading find/找 commands affect only the effective keyword term; all
   other title words and the original input remain. Absolute, home-relative and
   dot-relative paths, plus relative media/sidecar paths with no prefix, are
-  rejected in the UI and again before model transport.
+  rejected in the UI and again before model transport, including quoted and
+  unquoted relative media filenames containing spaces.
 - Jev is deferred: official Choice is a finite routing primitive, with separate
   credentials/calibration. No new supplier dependency or live call is introduced.
   [Choice](https://docs.typesafe.ai/primitives/choice),
@@ -98,6 +99,10 @@ manual fallback form, mode selection or routine confirmation precedes results.
   lint and typecheck passed; production-build unified browser group: 28 passed.
   Both locales cover title/person commands, unsupported roles/languages and zero
   provider calls for private paths. Full revised CI and incremental review are pending.
+- Filename-space follow-up: 34 backend and 132 frontend unit tests, lint/typecheck,
+  production build and both targeted locale privacy browser cases pass. The corpus
+  covers quoted/unquoted relative filenames, spaces, apostrophes and Unicode while
+  retaining ordinary slash titles. Full final-head CI remains required.
 
 ## Remaining risks
 

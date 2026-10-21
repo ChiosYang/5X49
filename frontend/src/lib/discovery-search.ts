@@ -30,7 +30,7 @@ export function discoveryKeywords(query: string) {
 export function hasPrivateDiscoveryInput(value: string) {
   // Keep both path patterns aligned with the provider-boundary guard in ask.py.
   const credentialOrRoot = /(?:\bsk-[A-Za-z0-9_-]{8,}|\bgh[pousr]_[A-Za-z0-9]{10,}|\b(?:api[_ -]?key|authorization|password|secret|token)\s*[:=]|\bbearer\s+\S+|[A-Za-z]:[\\/]|\\\\[^\s\\]+\\|file:\/\/|(?:^|[\s"'(\[{=，。！？；：])(?:~[^\\/\s]*[\\/]|\.{1,2}[\\/]|[\\/])[^\s"'<>)}\]]+)/i.test(value);
-  const relativeMediaPath = /(?:^|[\s"'(\[{=，。！？；：\u0060])(?:[^\s\\/"'<>:|?*\u0060]+[\\/])+[^\s\\/"'<>:|?*\u0060]*\.(?:mkv|mp4|m4v|avi|mov|webm|wmv|mpg|mpeg|m2ts|ts|vob|iso|nfo|srt|ass|ssa|vtt|sub|idx|jpe?g|png|gif|webp|txt|json|xml|db|sqlite3?|env|pem|key)(?=$|[\s"')\]}>,.;:!?，。！？；：\u0060])/i.test(value);
+  const relativeMediaPath = /(?:^|[\s"'(\[{=，。！？；：\u0060])(?:[^\s\\/"'<>:|?*\u0060]+[\\/])+[^\\/\r\n]*\.(?:mkv|mp4|m4v|avi|mov|webm|wmv|mpg|mpeg|m2ts|ts|vob|iso|nfo|srt|ass|ssa|vtt|sub|idx|jpe?g|png|gif|webp|txt|json|xml|db|sqlite3?|env|pem|key)(?=$|[\s"')\]}>,.;:!?，。！？；：\u0060])/i.test(value);
   return credentialOrRoot || relativeMediaPath;
 }
 export function discoveryHref(query: string, state: DiscoveryState = {}) {
