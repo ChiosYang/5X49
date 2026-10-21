@@ -37,6 +37,128 @@ SAFE_ARTWORK_KEYS = {
 class ExploreQueryService:
     """Serve strict factual Library exploration from synchronous read models."""
 
+    def catalog(self, *, category: str = "all", query: str = "", featured: bool = False,
+                limit: int = 24, offset: int = 0) -> dict[str, Any]:
+        """Named, addressable local collections. Viewing state never defines identity."""
+        with Session(engine) as session:
+            self._require(session)
+            films = {row.film_id: row for row in session.exec(select(ExploreFilmReadModel)).all()}
+            entries = self._collection_memberships(session, films)
+            needle = normalize_metadata_text(query.strip())
+            candidates = [entry for entry in entries if len(entry["ids"]) >= 2
+                          and (not needle or self._collection_matches(entry, needle))]
+            candidates.sort(key=lambda entry: (-len(entry["ids"]), entry["label"].casefold(), entry["key"]))
+            # Exact duplicates within a category are quieted in the directory. Direct
+            # addresses still work for every valid definition, including singletons.
+            unique, seen = [], set()
+            for entry in candidates:
+                signature = (entry["kind"], frozenset(entry["ids"]))
+                if signature not in seen:
+                    unique.append(entry)
+                    seen.add(signature)
+            categories = {kind: sum(entry["kind"] == kind for entry in unique)
+                          for kind in ("director", "country", "decade")}
+            selected = [entry for entry in unique if category == "all" or entry["kind"] == category]
+            if featured:
+                buckets = [deque(entry for entry in selected if entry["kind"] == kind)
+                           for kind in ("director", "country", "decade")]
+                featured_entries = []
+                while any(buckets) and len(featured_entries) < limit:
+                    for bucket in buckets:
+                        while bucket:
+                            entry = bucket.popleft()
+                            # Avoid a homepage made of nearly identical shelves.
+                            if any(len(entry["ids"] & other["ids"]) / len(entry["ids"] | other["ids"]) >= .85
+                                   for other in featured_entries):
+                                continue
+                            featured_entries.append(entry)
+                            break
+                        if len(featured_entries) == limit:
+                            break
+                selected = featured_entries
+            total = len(selected)
+            if featured:
+                summaries = self._collection_summaries(session, selected, films, distinct_previews=True)
+                total = len(summaries)
+                items = summaries[offset:offset + limit]
+            else:
+                items = self._collection_summaries(session, selected[offset:offset + limit], films)
+            return {"visibility_policy": EXPLORE_VISIBILITY_POLICY, "strict": True,
+                    "total_films": len(films), "categories": categories, "items": items,
+                    "total": total, "limit": limit, "offset": offset,
+                    "next_offset": offset + len(items) if offset + len(items) < total else None}
+
+    def collection(self, kind: str, key: str, *, view: str, sort: str, direction: str,
+                   limit: int, offset: int) -> dict[str, Any] | None:
+        with Session(engine) as session:
+            self._require(session)
+            films = {row.film_id: row for row in session.exec(select(ExploreFilmReadModel)).all()}
+            entries = self._collection_memberships(session, films, kind=kind, key=key)
+            if not entries:
+                return None
+            summary = self._collection_summaries(session, entries, films)[0]
+        dimension = "person" if kind in ("director", "person") else kind
+        filters = {dimension: [key]}
+        results = self.list_films(filters=filters, view=view, sort=sort, direction=direction,
+                                  limit=limit, offset=offset,
+                                  person_roles={key: "director"} if kind == "director" else None)
+        return {"collection": summary, "results": results}
+
+    @staticmethod
+    def _collection_memberships(session: Session, films: dict[str, ExploreFilmReadModel],
+                                *, kind: str | None = None, key: str | None = None):
+        statement = select(ExploreFacetReadModel).where(ExploreFacetReadModel.eligible.is_(True))
+        if kind:
+            statement = statement.where(ExploreFacetReadModel.dimension == ("person" if kind == "director" else kind))
+        else:
+            statement = statement.where(ExploreFacetReadModel.dimension.in_(("person", "country", "decade")))
+        if key:
+            statement = statement.where(ExploreFacetReadModel.facet_key == key)
+        rows = session.exec(statement.order_by(ExploreFacetReadModel.normalized_label,
+                                              ExploreFacetReadModel.facet_key)).all()
+        grouped = {}
+        for row in rows:
+            if row.film_id not in films:
+                continue
+            entry_kind = kind or ("director" if row.dimension == "person" else row.dimension)
+            if entry_kind == "director" and "director" not in (row.payload or {}).get("roles", []):
+                continue
+            entry = grouped.setdefault((entry_kind, row.facet_key), {
+                "kind": entry_kind, "key": row.facet_key, "label": row.display_label, "ids": set(),
+            })
+            entry["ids"].add(row.film_id)
+        return list(grouped.values())
+
+    @staticmethod
+    def _collection_matches(entry: dict[str, Any], query: str) -> bool:
+        if query in normalize_metadata_text(entry["label"]) or query in entry["key"].casefold():
+            return True
+        if entry["kind"] == "country":
+            return any(query in alias and code == entry["key"] for alias, code in VOCABULARY.country_aliases.items())
+        if entry["kind"] == "decade":
+            return query.removesuffix("年代").removesuffix("s").strip() == entry["key"]
+        return False
+
+    @staticmethod
+    def _collection_summaries(session: Session, entries: list[dict[str, Any]],
+                              films: dict[str, ExploreFilmReadModel], *, distinct_previews: bool = False) -> list[dict[str, Any]]:
+        previews, used = {}, set()
+        for entry in entries:
+            candidates = entry["ids"] - used if distinct_previews else entry["ids"]
+            ids = sorted(candidates, key=lambda film_id: (films[film_id].sort_title, film_id))[:4]
+            previews[f"{entry['kind']}:{entry['key']}"] = ids
+            if distinct_previews:
+                used.update(ids)
+        ids = {film_id for page in previews.values() for film_id in page}
+        library = {row.film_id: row for row in session.exec(select(LibraryFilmReadModel)
+                   .where(LibraryFilmReadModel.film_id.in_(ids))).all()} if ids else {}
+        return [{"id": f"{entry['kind']}:{entry['key']}", "kind": entry["kind"],
+                 "key": entry["key"], "label": entry["label"], "count": len(entry["ids"]),
+                 "unwatched_count": sum(not films[film_id].watched for film_id in entry["ids"]),
+                 "previews": [json.loads(json.dumps(library[film_id].payload, ensure_ascii=False))
+                              for film_id in previews[f"{entry['kind']}:{entry['key']}"] if film_id in library]}
+                for entry in entries if previews[f"{entry['kind']}:{entry['key']}"]]
+
     def collections(self, *, view: str = "all", limit: int = 6) -> dict[str, Any]:
         """A bounded, deterministic set of nonempty local entry points; no inference."""
         with Session(engine) as session:

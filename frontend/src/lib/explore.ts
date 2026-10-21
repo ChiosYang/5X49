@@ -87,9 +87,9 @@ export function buildExploreContextSearchParams(query: ExploreQueryState, limit 
   return params;
 }
 
-export function exploreHref(query: ExploreQueryState) {
+export function exploreHref(query: ExploreQueryState, basePath = "/explore") {
   const params = buildExploreSearchParams(query);
-  return `/explore${params.size ? `?${params}` : ""}`;
+  return `${basePath}${params.size ? `?${params}` : ""}`;
 }
 
 export function hasExploreFilters(query: ExploreQueryState) {
@@ -105,9 +105,9 @@ export function initialExploreLens(query: ExploreQueryState): ExploreDimension |
   return EXPLORE_DIMENSIONS.find((dimension) => query[dimension].length > 0) ?? null;
 }
 
-export function exploreNavigation(query: ExploreQueryState, intent: "filter" | "page") {
+export function exploreNavigation(query: ExploreQueryState, intent: "filter" | "page", basePath = "/explore") {
   return {
-    href: exploreHref(query),
+    href: exploreHref(query, basePath),
     scroll: false as const,
     focusResults: intent === "page",
   };

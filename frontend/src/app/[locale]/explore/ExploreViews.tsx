@@ -1,56 +1,14 @@
 "use client";
 
 import { Fragment, type RefObject } from "react";
-import Image from "next/image";
 import { motion } from "framer-motion";
-import { ArrowDown, ArrowUp, ChevronLeft, ChevronRight, Compass, Film, X } from "lucide-react";
+import { ArrowDown, ArrowUp, ChevronLeft, ChevronRight, Compass, X } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { API } from "@/lib/api";
 import { EXPLORE_DIMENSIONS, formatExploreFacetLabel, hasExploreFilters, type ExploreQueryState } from "@/lib/explore";
-import type { ExploreCollection, ExploreCollections, ExploreDimension, ExploreFilmPage, ExploreView } from "@/types/movie";
+import type { ExploreDimension, ExploreFilmPage, ExploreView } from "@/types/movie";
 import { Button, IconButton } from "@/components/ui/Button";
 import LibraryMovieCard from "@/app/[locale]/library/LibraryMovieCard";
 import { Spinner } from "@/components/ui/Feedback";
-
-export function CollectionEntries({ collections, emptyView, locale, localizeCountries, onSelect }: {
-  collections: ExploreCollections;
-  emptyView: boolean;
-  locale: string;
-  localizeCountries: boolean;
-  onSelect: (item: ExploreCollection) => void;
-}) {
-  const t = useTranslations("Explore");
-  return (
-    <section aria-labelledby="explore-collections-title">
-      <h2 id="explore-collections-title" className="font-serif text-2xl text-ink">{t("collectionsTitle")}</h2>
-      {collections.items.length === 0 ? (
-        <p className="mt-3 text-sm leading-6 text-ink-muted">{t(collections.total_films === 0 ? "emptyLibrary" : emptyView ? "emptyViewDetail" : "collectionsFallback")}</p>
-      ) : (
-        <div className="mt-4 grid auto-cols-[85%] grid-flow-col gap-4 overflow-x-auto pb-2 sm:auto-cols-auto sm:grid-flow-row sm:grid-cols-2 sm:gap-x-6 sm:overflow-visible lg:grid-cols-3">
-          {collections.items.map(item => {
-            const label = formatExploreFacetLabel(item.dimension, item.key, item.label, locale, localizeCountries);
-            const title = t(item.dimension === "country" && item.view === "unwatched" ? "collectionUnwatchedCountry" : `collectionTitles.${item.dimension}`, { label });
-            const artwork = item.preview_film.artwork;
-            const local = artwork?.poster_thumb_local || artwork?.poster_local;
-            const src = local ? API.mediaUrl(local) : artwork?.poster_provider ? API.providerArtworkUrl(artwork.poster_provider) : null;
-            return (
-              <button key={`${item.dimension}:${item.key}:${item.view}`} type="button" onClick={() => onSelect(item)} className="focus-ring duration-standard group flex min-w-0 items-center gap-4 border-b border-line pb-4 text-left transition-colors hover:border-ink-muted">
-                <span className="relative block h-24 w-16 shrink-0 overflow-hidden rounded-media bg-surface-raised">
-                  {src ? <Image src={src} alt="" fill sizes="64px" className="object-cover" /> : <Film className="m-auto mt-9 h-5 w-5 text-ink-disabled" />}
-                </span>
-                <span className="min-w-0">
-                  <span className="line-clamp-2 text-sm font-medium leading-6 text-ink">{title}</span>
-                  <span className="mt-1 block text-xs text-ink-subtle">{t("filmCount", { count: item.count })}{item.view !== "all" ? ` · ${t(`views.${item.view}`)}` : ""}</span>
-                  <span className="mt-2 block truncate text-xs text-ink-muted">{item.preview_film.title}</span>
-                </span>
-              </button>
-            );
-          })}
-        </div>
-      )}
-    </section>
-  );
-}
 
 export function QueryRibbon({ query, labels, unresolved, locale, localizeCountries, onRemove, onClear, onPersonMatch }: {
   query: ExploreQueryState;
@@ -116,7 +74,7 @@ type ResultStageProps = {
   onDirection: () => void;
   onPage: (offset: number) => void;
   onClear: () => void;
-  onProfileSaved: () => void;
+  showMatchedFacts?: boolean;
 };
 
 export function ResultStage({
@@ -132,7 +90,7 @@ export function ResultStage({
   onDirection,
   onPage,
   onClear,
-  onProfileSaved,
+  showMatchedFacts = true,
 }: ResultStageProps) {
   const t = useTranslations("Explore");
   const total = results?.total ?? 0;
@@ -219,8 +177,8 @@ export function ResultStage({
           >
             {results.items.map((item) => (
               <div key={item.film.id} className="min-w-0">
-                <LibraryMovieCard movie={item.film} onProfileSaved={onProfileSaved} />
-                {item.matched_facts.length > 0 ? (
+                <LibraryMovieCard movie={item.film} />
+                {showMatchedFacts && item.matched_facts.length > 0 ? (
                   <p className="mt-2 line-clamp-2 text-[10px] leading-4 text-ink-subtle">
                     {item.matched_facts
                       .map((fact) =>

@@ -291,6 +291,34 @@ export interface ExploreCollections {
   items: ExploreCollection[];
 }
 
+export type CollectionKind = "director" | "person" | "country" | "decade";
+export type CollectionCategory = Exclude<CollectionKind, "person"> | "all";
+
+export interface LocalCollection {
+  id: string;
+  kind: CollectionKind;
+  key: string;
+  label: string;
+  count: number;
+  unwatched_count: number;
+  previews: LibraryFilmSummary[];
+}
+
+export interface CollectionCatalog {
+  total_films: number;
+  categories: Record<Exclude<CollectionCategory, "all">, number>;
+  items: LocalCollection[];
+  total: number;
+  limit: number;
+  offset: number;
+  next_offset: number | null;
+}
+
+export interface LocalCollectionPage {
+  collection: LocalCollection;
+  results: ExploreFilmPage;
+}
+
 export interface ExploreCoverage {
   total_films: number;
   covered_films: number;

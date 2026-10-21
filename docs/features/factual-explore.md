@@ -1,8 +1,13 @@
 # Local Explore: Browse, Search and Filter
 
-Status: In Progress
+Status: Done
 Last updated: 2026-10-21
 Related: Product Roadmap — Factual Explore
+
+PR #40 completed the browse/filter iteration, including independent review and
+CI, and merged as `86a8fd972a054982fce0b037d5fb685047bf7e9f`. The next presentation
+iteration is tracked in [Explore Collection Browsing](explore-collections.md).
+The precise query and state-refresh contracts below remain regression requirements.
 
 ## Goal
 
@@ -48,7 +53,7 @@ the original implementation and verification record.
 - [x] Coverage, Lens and Fact Finder concepts are absent from the primary Explore UI.
 - [x] Existing LibraryMovieCard, Button, TextInput, typography, colors and spacing are reused.
 - [x] Full backend suite, frontend checks, related browser suites and responsive visual inspection complete.
-- [ ] Independent code review and required CI complete before merge.
+- [x] Independent code review and required CI complete before merge (PR #40).
 
 ## Decisions
 

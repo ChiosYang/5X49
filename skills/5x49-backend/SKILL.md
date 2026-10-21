@@ -5,6 +5,24 @@ description: 5X49 Fresh Canonical FastAPI 的 Film、LibraryItem、Factual Explo
 
 # 5X49 Backend API
 
+## Addressable local collections
+
+- `GET /explore/catalog`: optional `category=all|director|country|decade`, literal
+  bilingual `q` (200 max), `featured` (false), `limit` (1–24), `offset` (>=0).
+  Returns `items,total,limit,offset,next_offset,total_films,categories,strict`.
+  Directory entries require two eligible local Films. Featured entries balance
+  categories, suppress >=85% membership overlap and never repeat preview Films.
+- `GET /explore/collections/{kind}/{key}`: kind is `director|person|country|decade`;
+  key is canonical Person ID, ISO country code or release-year decade. Returns
+  `{collection,results}`; unknown/empty definitions are 404, invalid IDs are 422.
+  Collection fields: `id,kind,key,label,count,unwatched_count,previews` (up to four
+  existing Library Film summaries). Identity and count use All, independent of
+  temporary `view,sort,dir,limit,offset`. Results retain the strict Film page contract.
+  Director membership requires an accepted director role; Person means actor OR
+  director for the same canonical identity. Conflicted/missing facts never match.
+- Old `/explore/collections`, `/explore/films` and Person All/Any contracts remain
+  unchanged. No inferred series, external catalog, AI or new persistence is involved.
+
 ## Multiple media roots
 
 - Preference PUTs write only their owned Setting rows transactionally. Root writes

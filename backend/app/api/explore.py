@@ -43,6 +43,35 @@ def get_explore_collections(
     return explore_query_service.collections(view=view, limit=limit)
 
 
+@router.get("/explore/catalog")
+def get_explore_catalog(
+    category: Literal["all", "director", "country", "decade"] = "all",
+    q: str = Query(default="", max_length=200),
+    featured: bool = False,
+    limit: int = Query(default=24, ge=1, le=24),
+    offset: int = Query(default=0, ge=0),
+):
+    return explore_query_service.catalog(category=category, query=q, featured=featured, limit=limit, offset=offset)
+
+
+@router.get("/explore/collections/{kind}/{key}")
+def get_explore_collection(
+    kind: Literal["director", "person", "country", "decade"],
+    key: str,
+    view: Literal["all", "watched", "unwatched"] = "all",
+    sort: Literal["title", "year"] = "title",
+    dir: Literal["asc", "desc"] | None = None,
+    limit: int = Query(default=40, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
+):
+    _validate_values("person" if kind in ("director", "person") else kind, [key])
+    result = explore_query_service.collection(kind, key, view=view, sort=sort,
+        direction=dir or ("desc" if sort == "year" else "asc"), limit=limit, offset=offset)
+    if result is None:
+        raise HTTPException(status_code=404, detail="Local collection is unavailable")
+    return result
+
+
 @router.get("/explore/facets/{dimension}")
 def get_explore_facets(
     dimension: Literal["genre", "person", "country", "decade"],
