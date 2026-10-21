@@ -260,6 +260,7 @@ class DiscoverySearchTests(unittest.TestCase):
         for text in (r"C:\Movies\private", "my api_key=private", "find /mnt/private/films",
                      "Japanese films featuring ~/Movies/private.mkv", "Japanese films featuring ./Movies/private.mkv",
                      "Japanese films featuring /private.mkv", "日本电影：../私人/片单.txt",
+                     "Japanese films featuring Movies/private.mkv", r"Japanese films featuring Movies\private.mkv",
                      r"films featuring .\Movies\private.mkv", r"films featuring \private.mkv"):
             response = self.client.post("/explore/search/interpret", json={"question": text, "allow_ai": True})
             self.assertEqual(response.status_code, 422)

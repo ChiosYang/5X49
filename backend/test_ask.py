@@ -198,17 +198,23 @@ class AskTests(unittest.TestCase):
                      "/mnt/private/films", "/private.mkv", "~/Movies/private.mkv", "~user/Movies/private.mkv",
                      "./Movies/private.mkv", "../Movies/private.mkv", "../../private.mkv",
                      r".\Movies\private.mkv", r"..\Movies\private.mkv", r"\private.mkv",
+                     "Movies/private.mkv", r"Movies\private.mkv", "Movies/subdir/private.mkv",
+                     "Movies/字幕.srt", "Movies/poster.jpg", "路径：Movies/片单.nfo",
+                     "Movies/private.MKV", "\u0060Movies/private.mkv\u0060", "notes/.env",
                      "'/private.mkv'", "(~/Movies/private.mkv)", "路径：./私密/片单.txt",
                      "my api_key=private", "use sk-abcdefgh12345678"):
             question = "Japanese films featuring " + path
             for method in (interpreter.interpret, interpreter.interpret_search):
-                with self.subTest(path=path, method=method.__name__), self.assertRaisesRegex(AskError, "ask_private_input"):
+                with self.subTest(path=path, method=method.__name__), \
+                     patch.dict(os.environ, {"OPENROUTER_API_KEY": "synthetic-only"}), \
+                     self.assertRaisesRegex(AskError, "ask_private_input"):
                     method(AskQuestion(question=question))
         factory.assert_not_called()
 
     def test_ordinary_titles_are_not_private_paths(self):
         for title in ("Face/Off", "V/H/S", "9/11", "Fate/stay night", "D: The Movie",
-                      "The Secret Life of Walter Mitty", "In the Mood for Love", "日与夜", "1/2"):
+                      "The Secret Life of Walter Mitty", "In the Mood for Love", "日与夜", "1/2",
+                      "provider/model-2.5"):
             with self.subTest(title=title):
                 self.assertFalse(has_private_input(title))
                 self.assertFalse(has_private_input("find " + title))

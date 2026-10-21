@@ -32,7 +32,8 @@ manual fallback form, mode selection or routine confirmation precedes results.
   legacy Explore queries, stable collections, global Library search and Return.
   Explicit leading find/找 commands affect only the effective keyword term; all
   other title words and the original input remain. Absolute, home-relative and
-  dot-relative paths are rejected in the UI and again before model transport.
+  dot-relative paths, plus relative media/sidecar paths with no prefix, are
+  rejected in the UI and again before model transport.
 - Jev is deferred: official Choice is a finite routing primitive, with separate
   credentials/calibration. No new supplier dependency or live call is introduced.
   [Choice](https://docs.typesafe.ai/primitives/choice),

@@ -26,8 +26,10 @@ is 0–100000; boolean fields are strict. `edited:true` denotes explicit chip/vi
 correction; the UI identifies adjusted conditions. Missing/conflicted facts never
 match and Person roles apply before count/pagination. Unsupported original requests
 cannot be converted into partial conditions. Private input fails 422 before any
-provider, including home-relative, dot-relative, Windows-rooted and single-leaf
-absolute paths; service errors have allowlisted codes, without question/provider bodies.
+provider, including home-relative, dot-relative, Windows-rooted, single-leaf
+absolute and unprefixed relative media/sidecar paths. Directory separators plus
+known extensions distinguish the latter from ordinary slash-containing titles.
+Service errors have allowlisted codes, without question/provider bodies.
 
 UI state lives at `/explore/search`, retaining original input and bounded validated
 plan. For keyword lookup only, an explicit leading find/找 command is removed from

@@ -20,7 +20,8 @@ description: 5X49 Fresh Canonical FastAPI 的 Film、LibraryItem、Factual Explo
 - Preserve literal Person names before filler/facet parsing. Unsupported roles
   (producer/writer/etc.) and language requests must not become director/country
   filters. Produced in France is a country clause; in French is a language clause.
-  Absolute, home-relative and dot-relative paths are rejected before transport.
+  Absolute, home-relative, dot-relative and unprefixed relative media/sidecar
+  paths are rejected before transport; slash-containing titles remain usable.
   Keyword lookup removes only an explicit leading find/找 command, retaining raw
   input for display/history and preserving inner title words.
 - Refresh/Back/page/mutations must never infer. Keep global Library search and old
