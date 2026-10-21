@@ -164,6 +164,93 @@ class ExploreQueryTests(unittest.TestCase):
         filters["person"].append(self.people["other"])
         self.assertEqual(explore_query_service.context(filters=filters, view="all", limit=6, person_match="all")["current_total"], 1)
 
+    def test_catalog_is_bounded_deterministic_paginated_and_exact(self):
+        statements = []
+        def count_statement(*_args):
+            statements.append(1)
+        sqlalchemy_event.listen(self.engine, "before_cursor_execute", count_statement)
+        try:
+            catalog = explore_query_service.catalog()
+        finally:
+            sqlalchemy_event.remove(self.engine, "before_cursor_execute", count_statement)
+        self.assertLessEqual(len(statements), 6)
+        self.assertEqual(catalog, explore_query_service.catalog())
+        self.assertEqual(catalog["total_films"], 3)
+        self.assertGreater(catalog["total"], 1)
+        self.assertEqual(catalog["categories"]["director"], 0)  # No singleton shelves.
+        for item in catalog["items"]:
+            self.assertGreaterEqual(item["count"], 2)
+            self.assertNotIn("ids", item)
+            detail = explore_query_service.collection(item["kind"], item["key"], view="all",
+                sort="title", direction="asc", limit=100, offset=0)
+            self.assertEqual(item["count"], detail["results"]["total"])
+            ids = {entry["film"]["id"] for entry in detail["results"]["items"]}
+            self.assertTrue({film["id"] for film in item["previews"]}.issubset(ids))
+        first = explore_query_service.catalog(limit=1)
+        second = explore_query_service.catalog(limit=1, offset=first["next_offset"])
+        self.assertNotEqual(first["items"][0]["id"], second["items"][0]["id"])
+        self.assertNotIn(str(self.root).casefold(), str(catalog).casefold())
+
+    def test_director_collections_do_not_include_acting_only_films_for_same_identity(self):
+        args = dict(view="all", sort="title", direction="asc", limit=40, offset=0)
+        director = explore_query_service.collection("director", self.people["shared"], **args)
+        person = explore_query_service.collection("person", self.people["shared"], **args)
+        self.assertEqual(director["collection"]["count"], 1)
+        self.assertEqual([entry["film"]["id"] for entry in director["results"]["items"]], [self.films["Alpha"]])
+        self.assertEqual(person["collection"]["count"], 2)
+        self.assertEqual(person["results"]["total"], 2)
+        self.assertIsNone(explore_query_service.collection("director", self.people["other"], **args))
+        self.assertIsNone(explore_query_service.collection("person", "person_" + "f" * 32, **args))
+        with Session(self.engine) as session:
+            self._add_credit(session, self.films["Beta"], self.people["shared"], "Directing", "Director", "d")
+            session.commit()
+        director = explore_query_service.catalog(category="director")
+        self.assertEqual(director["total"], 1)
+        self.assertEqual(director["items"][0]["count"], 2)
+
+    def test_featured_collections_quiet_overlap_and_literal_bilingual_search(self):
+        featured = explore_query_service.catalog(featured=True)
+        sets = []
+        for item in featured["items"]:
+            detail = explore_query_service.collection(item["kind"], item["key"], view="all",
+                sort="title", direction="asc", limit=40, offset=0)
+            ids = {entry["film"]["id"] for entry in detail["results"]["items"]}
+            self.assertTrue(all(len(ids & other) / len(ids | other) < .85 for other in sets))
+            sets.append(ids)
+        for query in ("Japan", "日本", "JP"):
+            found = explore_query_service.catalog(query=query)
+            self.assertEqual([(item["kind"], item["key"]) for item in found["items"]], [("country", "JP")])
+        self.assertEqual(explore_query_service.catalog(query="%_")["items"], [])
+        self.assertEqual(explore_query_service.catalog(category="country")["total"], 1)
+
+    def test_collection_identity_and_count_survive_last_unwatched_film_save(self):
+        args = dict(view="unwatched", sort="year", direction="desc", limit=40, offset=0)
+        before = explore_query_service.collection("country", "JP", **args)
+        self.assertEqual(before["results"]["total"], 1)
+        user_state_module.film_profile_state_manager.upsert(self.films["Alpha"], watched=True,
+            favorite=True, fields_set={"watched", "favorite"})
+        after = explore_query_service.collection("country", "JP", **args)
+        self.assertEqual(after["results"]["total"], 0)
+        self.assertEqual(after["collection"]["id"], before["collection"]["id"])
+        self.assertEqual(after["collection"]["count"], 2)
+        self.assertEqual(after["collection"]["unwatched_count"], 0)
+        self.assertTrue(all(film["profile_state"]["watched"] for film in after["collection"]["previews"]))
+        self.assertTrue(all(film["id"] != self.films["Gamma"] for film in after["collection"]["previews"]))
+
+    def test_catalog_empty_sparse_and_conflicted_definitions_fail_closed(self):
+        args = dict(view="all", sort="title", direction="asc", limit=40, offset=0)
+        self.assertIsNone(explore_query_service.collection("country", "US", **args))
+        self.assertIsNone(explore_query_service.collection("country", "FR", **args))
+        with Session(self.engine) as session:
+            session.exec(delete(ExploreFacetReadModel))
+            session.commit()
+        self.assertEqual(explore_query_service.catalog()["items"], [])
+        self.assertEqual(explore_query_service.catalog()["total_films"], 3)
+        with Session(self.engine) as session:
+            session.exec(delete(ExploreFilmReadModel))
+            session.commit()
+        self.assertEqual(explore_query_service.catalog()["total_films"], 0)
+
     def test_collections_are_deterministic_nonempty_exact_local_sets(self):
         statements = []
         def count_statement(*_args):

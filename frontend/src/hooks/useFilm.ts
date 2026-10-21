@@ -7,6 +7,7 @@ import { fetcher, responseError } from "@/lib/fetcher";
 import { refreshViewingReadCaches } from "@/lib/viewing-write";
 import { isDnaCacheKey } from "@/lib/cinema-dna";
 import { isMetadataReadCache } from "@/lib/film-metadata";
+import { notifyExploreWrite } from "@/lib/explore-refresh";
 import type {
   FilmAnalysisView,
   FilmGraphView,
@@ -56,7 +57,9 @@ export function useUpdateFilmProfileState(filmId: string) {
         body: JSON.stringify(arg),
       });
       if (!response.ok) throw await responseError(response, "Failed to update Film state");
-      return response.json();
+      const saved = await response.json();
+      notifyExploreWrite();
+      return saved;
     },
     { revalidate: false },
   );
@@ -86,7 +89,9 @@ export function useCreateFilmViewing(filmId: string) {
         body: JSON.stringify(arg),
       });
       if (!response.ok) throw await responseError(response, "Failed to create Viewing");
-      return response.json();
+      const saved = await response.json();
+      notifyExploreWrite();
+      return saved;
     },
     { revalidate: false },
   );
@@ -102,7 +107,9 @@ export function useUpdateViewing(viewingId?: string | null) {
         body: JSON.stringify(arg),
       });
       if (!response.ok) throw await responseError(response, "Failed to update Viewing");
-      return response.json();
+      const saved = await response.json();
+      notifyExploreWrite();
+      return saved;
     },
     { revalidate: false },
   );
@@ -114,7 +121,9 @@ export function useDeleteViewing(viewingId?: string | null) {
     async (_key: string, { arg }: { arg: { revision: string } }): Promise<ViewingDeleteResult> => {
       const response = await fetch(`${API.viewing(viewingId || "")}?revision=${encodeURIComponent(arg.revision)}`, { method: "DELETE" });
       if (!response.ok) throw await responseError(response, "Failed to delete Viewing");
-      return response.json();
+      const saved = await response.json();
+      notifyExploreWrite();
+      return saved;
     },
     { revalidate: false },
   );

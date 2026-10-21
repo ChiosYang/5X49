@@ -50,6 +50,8 @@ CANONICAL_ROUTES = {
     ("GET", "/explore"),
     ("GET", "/explore/context"),
     ("GET", "/explore/collections"),
+    ("GET", "/explore/catalog"),
+    ("GET", "/explore/collections/{kind}/{key}"),
     ("GET", "/explore/facets/{dimension}"),
     ("GET", "/explore/films"),
     ("GET", "/films/{film_id}/artwork"),
@@ -342,6 +344,22 @@ class ApiRouteContractTests(unittest.TestCase):
             response = self.client.get(f"/films/{film_id}/graph")
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["root"]["id"], film_id)
+
+    def test_collection_routes_validate_identity_and_separate_temporary_view(self):
+        for path in ("/explore/catalog?category=series", "/explore/catalog?limit=25", "/explore/catalog?offset=-1",
+                     "/explore/collections/country/Japan", "/explore/collections/decade/1995",
+                     "/explore/collections/director/invalid", "/explore/collections/series/abc",
+                     "/explore/collections/country/JP?view=bad"):
+            self.assertEqual(self.client.get(path).status_code, 422, path)
+        with patch("app.api.explore.explore_query_service.catalog", return_value={"items": []}) as catalog:
+            self.assertEqual(self.client.get("/explore/catalog?category=director&featured=true&q=Test&limit=3&offset=2").status_code, 200)
+        self.assertEqual(catalog.call_args.kwargs, {"category": "director", "query": "Test", "featured": True, "limit": 3, "offset": 2})
+        with patch("app.api.explore.explore_query_service.collection", return_value=None):
+            self.assertEqual(self.client.get("/explore/collections/country/JP").status_code, 404)
+        with patch("app.api.explore.explore_query_service.collection", return_value={"collection": {}, "results": {}}) as collection:
+            self.assertEqual(self.client.get("/explore/collections/country/JP?view=unwatched&sort=year&offset=40").status_code, 200)
+        self.assertEqual(collection.call_args.args, ("country", "JP"))
+        self.assertEqual(collection.call_args.kwargs, {"view": "unwatched", "sort": "year", "direction": "desc", "limit": 40, "offset": 40})
 
     def test_explore_routes_validate_strict_filter_contracts(self):
         for path in ("/explore/films?person_match=bad", "/explore/context?person_match=bad", "/explore/collections?view=bad", "/explore/collections?limit=13"):

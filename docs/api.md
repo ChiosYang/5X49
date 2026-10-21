@@ -322,6 +322,40 @@ conflict state, never internal provenance references.
 
 ## Factual Explore
 
+### Addressable local collections
+
+`GET /explore/catalog` accepts `category=all|director|country|decade` (default
+`all`), literal local `q` (maximum 200 characters), `featured=false`, `limit=24`
+(1–24) and `offset=0` (nonnegative). Country names include bundled bilingual
+aliases. The directory requires at least two eligible local Films per collection
+and removes identical memberships within a category. Featured mode round-robins
+categories, suppresses membership overlaps of 85% or more and uses distinct
+preview Films across shelves. It does not rank quality or infer recommendations.
+
+Response: `{visibility_policy,strict,total_films,categories,items,total,limit,
+offset,next_offset}`. `categories` counts director/country/decade definitions after
+the literal search and directory deduplication. Every item has
+`{id,kind,key,label,count,unwatched_count,previews}`; previews contain up to four
+existing public Library Film summaries. Catalog reads use at most six SQL statements,
+including projection readiness checks, with no per-collection query loop.
+
+`GET /explore/collections/{kind}/{key}` defines a stable collection, where kind is
+`director|person|country|decade` and key is a Canonical Person ID, uppercase ISO
+country code or release-year decade. Invalid identities are 422; absent/empty
+definitions are 404. A valid direct collection can contain one Film even though
+the directory only suggests larger sets. Director membership requires an eligible
+director credit. Person membership includes eligible actor OR director credits,
+deduplicated by Canonical identity. Missing or conflicted memberships fail closed.
+
+Returns `{collection,results}`. Collection identity, count and description always
+refer to the All set. Optional temporary `view=all|watched|unwatched`,
+`sort=title|year`, `dir=asc|desc`, `limit=40` (1–100) and `offset=0` use the
+existing strict Explore Film page contract for `results`. Viewing changes do not
+rename or remove a collection. The frontend corrects invalid last-page offsets
+with history replace. No new schema, persistent curated data, series inference,
+external catalog or model request is involved. The historical endpoints below
+retain their existing contracts.
+
 All Explore routes read only the synchronous Schema v4 Explore projections and
 use visibility policy `factual-explore.v1`. They never invoke a model, generate
 similar results, relax constraints, or fall back to Canonical live joins. A

@@ -1,37 +1,30 @@
 "use client";
 
 import { useEffect, useLayoutEffect, useMemo, useOptimistic, useRef, useState, useSyncExternalStore, useTransition } from "react";
-import useSWR from "swr";
 import { useReducedMotion } from "framer-motion";
 import { useTranslations } from "next-intl";
 
-import { usePathname, useRouter } from "@/i18n/routing";
-import { clearExploreFilters, correctedExploreOffset, exploreNavigation, hasExploreFilters, withExploreFacet, withoutExploreFacet, type ExploreQueryState } from "@/lib/explore";
-import type { ExploreCollection, ExploreCollections, ExploreDimension, ExploreFacetSummary, ExploreFilmPage, ExploreView } from "@/types/movie";
+import { Link, useRouter } from "@/i18n/routing";
+import { clearExploreFilters, correctedExploreOffset, exploreHref, exploreNavigation, formatExploreFacetLabel, withExploreFacet, withoutExploreFacet, type ExploreQueryState } from "@/lib/explore";
+import { useExploreRefresh } from "@/hooks/useExploreRefresh";
+import { ButtonLink } from "@/components/ui/Button";
+import type { LocalCollection, ExploreDimension, ExploreFacetSummary, ExploreFilmPage, ExploreView } from "@/types/movie";
 import ExploreSearch from "./ExploreSearch";
-import { CollectionEntries, QueryRibbon, ResultStage } from "./ExploreViews";
+import { QueryRibbon, ResultStage } from "./ExploreViews";
 
 const subscribeHydration = () => () => {};
 const getHydratedSnapshot = () => true;
 const getServerSnapshot = () => false;
 
-// A fetcher-free SWR receipt survives route unmounts/Back, without storing profile data.
-const initialProfileRefresh = { revision: 0, acknowledged: 0 };
-
-export default function ExploreClient({ collections, locale, query, results }: {
-  collections: ExploreCollections | null;
+export default function ExploreClient({ collection, basePath = "/explore/filter", locale, query, results }: {
+  collection?: LocalCollection;
+  basePath?: string;
   locale: string;
   query: ExploreQueryState;
   results: ExploreFilmPage;
 }) {
-  const t = useTranslations("Explore");
+  const c = useTranslations("Collections");
   const router = useRouter();
-  const pathname = usePathname();
-  const { data: profileRefresh = initialProfileRefresh, mutate: mutateProfileRefresh } = useSWR<typeof initialProfileRefresh>(
-    "explore:profile-refresh", null, { fallbackData: initialProfileRefresh },
-  );
-  const profileRefreshAttempt = useRef<{ revision: number; baseline: ExploreFilmPage } | null>(null);
-  useEffect(() => () => { profileRefreshAttempt.current = null; }, []);
   const reducedMotion = useReducedMotion() ?? false;
   const localizeCountries = useSyncExternalStore(subscribeHydration, getHydratedSnapshot, getServerSnapshot);
   const [optimisticQuery, setOptimisticQuery] = useOptimistic(query);
@@ -46,20 +39,24 @@ export default function ExploreClient({ collections, locale, query, results }: {
     activeQueryRef.current = optimisticQuery;
     return () => { activeQueryRef.current = null; };
   }, [optimisticQuery]);
-  const filtered = hasExploreFilters(optimisticQuery);
+  const beginRead = useExploreRefresh(results, pending, exploreHref(optimisticQuery, basePath), exploreHref(query, basePath));
+  const collectionLabel = collection ? formatExploreFacetLabel(
+    collection.kind === "director" || collection.kind === "person" ? "person" : collection.kind,
+    collection.key, collection.label, locale, localizeCountries,
+  ) : "";
   const labels = useMemo(() => {
     const map = new Map(Object.entries(remembered));
-    collections?.items.forEach(item => map.set(`${item.dimension}:${item.key}`, { label: item.label }));
     results.filters.forEach(item => map.set(`${item.dimension}:${item.key}`, item));
     return map;
-  }, [collections, remembered, results]);
+  }, [remembered, results]);
   const unresolved = useMemo(() => new Set(results.unresolved_filters.map(item => `${item.dimension}:${item.key}`)), [results]);
 
   const navigate = (next: ExploreQueryState, intent: "filter" | "page" = "filter") => {
-    const navigation = exploreNavigation(next, intent);
+    const navigation = exploreNavigation(next, intent, basePath);
     paginationTarget.current = navigation.focusResults ? navigation.href : null;
     scrollTarget.current = navigation.focusResults ? null : { href: navigation.href, x: window.scrollX, y: window.scrollY };
     startTransition(() => {
+      beginRead(navigation.href);
       setOptimisticQuery(next);
       router.push(navigation.href, { scroll: navigation.scroll });
     });
@@ -69,100 +66,71 @@ export default function ExploreClient({ collections, locale, query, results }: {
     setRemembered(current => ({ ...current, [`${dimension}:${item.key}`]: item }));
     navigate(withExploreFacet(optimisticQuery, dimension, item.key));
   };
-  const openCollection = (item: ExploreCollection) => {
-    setRemembered(current => ({ ...current, [`${item.dimension}:${item.key}`]: { label: item.label } }));
-    navigate({ ...clearExploreFilters(optimisticQuery), [item.dimension]: [item.key], view: item.view });
-  };
   const clear = () => navigate(clearExploreFilters(optimisticQuery));
   const setView = (view: ExploreView) => navigate({ ...optimisticQuery, view, offset: 0 });
   const setSort = (sort: ExploreQueryState["sort"]) => navigate({ ...optimisticQuery, sort, dir: sort === "year" ? "desc" : "asc", offset: 0 });
 
-  const recordProfileSaved = () => {
-    void mutateProfileRefresh(current => ({
-      ...(current ?? initialProfileRefresh),
-      revision: (current?.revision ?? 0) + 1,
-    }), { revalidate: false });
-  };
-
   useEffect(() => {
     const activeQuery = activeQueryRef.current;
-    if (!activeQuery || !/\/explore\/?$/.test(pathname) || !/\/explore\/?$/.test(window.location.pathname)) {
-      profileRefreshAttempt.current = null;
-      return;
-    }
-    // Wait for newer navigation before refreshing; a save cannot cancel its query.
-    if (pending || exploreNavigation(activeQuery, "filter").href !== exploreNavigation(query, "filter").href) return;
-    const attempt = profileRefreshAttempt.current;
-    if (attempt) {
-      if (results === attempt.baseline) return;
-      profileRefreshAttempt.current = null;
-      // An older read must not consume a newer save receipt.
-      void mutateProfileRefresh(current => ({
-        ...(current ?? initialProfileRefresh),
-        acknowledged: Math.max(current?.acknowledged ?? 0, attempt.revision),
-      }), { revalidate: false });
-      return;
-    }
-    if (profileRefresh.revision <= profileRefresh.acknowledged) return;
-    profileRefreshAttempt.current = { revision: profileRefresh.revision, baseline: results };
-    scrollTarget.current = {
-      href: exploreNavigation(query, "filter").href, x: window.scrollX, y: window.scrollY,
-    };
-    startTransition(() => router.refresh());
-  }, [mutateProfileRefresh, pathname, pending, profileRefresh, query, results, router]);
-
-  useEffect(() => {
-    const activeQuery = activeQueryRef.current;
-    if (pending || !activeQuery || !/\/explore\/?$/.test(window.location.pathname)
-        || exploreNavigation(activeQuery, "filter").href !== exploreNavigation(query, "filter").href) return;
+    if (pending || !activeQuery || !/\/explore(?:\/|$)/.test(window.location.pathname)
+        || exploreNavigation(activeQuery, "filter", basePath).href !== exploreNavigation(query, "filter", basePath).href) return;
     const offset = correctedExploreOffset(query.offset, results.total, results.limit);
     if (offset === query.offset) return;
-    const href = exploreNavigation({ ...query, offset }, "filter").href;
+    const href = exploreNavigation({ ...query, offset }, "filter", basePath).href;
     scrollTarget.current = { href, x: window.scrollX, y: window.scrollY };
     // Correct this history entry, retaining every filter and the current viewport.
-    startTransition(() => router.replace(href, { scroll: false }));
-  }, [pending, query, results.limit, results.total, router]);
+    startTransition(() => { beginRead(href); router.replace(href, { scroll: false }); });
+  }, [basePath, beginRead, pending, query, results.limit, results.total, router]);
 
   useLayoutEffect(() => {
     const target = scrollTarget.current;
-    if (!target || target.href !== exploreNavigation(query, "filter").href) return;
+    if (!target || target.href !== exploreNavigation(query, "filter", basePath).href) return;
     window.scrollTo(target.x, target.y);
     const frame = window.requestAnimationFrame(() => {
       window.scrollTo(target.x, target.y);
       if (scrollTarget.current === target) scrollTarget.current = null;
     });
     return () => window.cancelAnimationFrame(frame);
-  }, [query]);
+  }, [basePath, query]);
   useEffect(() => {
-    if (pending || paginationTarget.current !== exploreNavigation(query, "page").href) return;
+    if (pending || paginationTarget.current !== exploreNavigation(query, "page", basePath).href) return;
     paginationTarget.current = null;
     const frame = window.requestAnimationFrame(() => {
       headingRef.current?.focus({ preventScroll: true });
       sectionRef.current?.scrollIntoView({ behavior: reducedMotion ? "auto" : "smooth", block: "start" });
     });
     return () => window.cancelAnimationFrame(frame);
-  }, [pending, query, reducedMotion]);
+  }, [basePath, pending, query, reducedMotion]);
 
   return (
     <div className="page-x min-h-screen bg-canvas pb-24 pt-38 text-ink selection:bg-inverse selection:text-inverse-ink md:pt-44">
+      <nav aria-label={c("breadcrumb")} className="mb-5 flex flex-wrap gap-4 text-sm text-ink-muted">
+        <Link prefetch={false} href="/explore" scroll={false} className="focus-ring hover:text-ink">{c("homeTitle")}</Link>
+        {collection ? <Link prefetch={false} href="/explore/collections" className="focus-ring hover:text-ink">{c("directoryTitle")}</Link> : null}
+      </nav>
       <header className="flex flex-col gap-7 border-b border-line pb-8 lg:flex-row lg:items-end lg:justify-between">
-        <div><h1 className="type-display-editorial">{t("title")}</h1></div>
+        <div className="min-w-0">
+          <h1 className="type-display-editorial break-words">{collection ? c(`titles.${collection.kind}`, { label: collectionLabel }) : c("filterTitle")}</h1>
+          <p className="mt-4 max-w-2xl text-sm leading-6 text-ink-muted">{collection ? c(`descriptions.${collection.kind}`, { label: collectionLabel, count: collection.count }) : c("filterDescription")}</p>
+        </div>
+        {collection ? <ButtonLink prefetch={false} href="/explore/filter" variant="ghost" size="sm">{c("filterTitle")}</ButtonLink> : null}
       </header>
       <div className="mt-6 min-w-0 space-y-8">
-        {!filtered && collections ? <CollectionEntries collections={collections} emptyView={results.total === 0} locale={locale} localizeCountries={localizeCountries} onSelect={openCollection} /> : null}
-        <ExploreSearch query={optimisticQuery} locale={locale} localizeCountries={localizeCountries} onSelect={select} />
+        {!collection ? <ExploreSearch query={optimisticQuery} locale={locale} localizeCountries={localizeCountries} onSelect={select} /> : null}
+        {!collection ?
         <QueryRibbon
           query={optimisticQuery} labels={labels} unresolved={unresolved} locale={locale} localizeCountries={localizeCountries}
           onRemove={(dimension, key) => navigate(withoutExploreFacet(optimisticQuery, dimension, key))}
           onClear={clear}
           onPersonMatch={personMatch => navigate({ ...optimisticQuery, personMatch, offset: 0 })}
         />
+        : null}
         <ResultStage
           query={optimisticQuery} results={results} pending={pending} locale={locale} localizeCountries={localizeCountries}
           sectionRef={sectionRef} headingRef={headingRef} onView={setView} onSort={setSort}
           onDirection={() => navigate({ ...optimisticQuery, dir: optimisticQuery.dir === "asc" ? "desc" : "asc", offset: 0 })}
           onPage={offset => navigate({ ...optimisticQuery, offset }, "page")} onClear={clear}
-          onProfileSaved={recordProfileSaved}
+          showMatchedFacts={!collection}
         />
       </div>
     </div>

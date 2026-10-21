@@ -1,0 +1,81 @@
+# Explore Collection Browsing
+
+Status: In Progress
+Last updated: 2026-10-21
+Related: factual-explore.md; PR #40
+
+## Goal
+
+Browse a local topic, enter its collection, then choose a film. The homepage
+organizes content; query editing is an explicit, separate mode.
+
+## Scope and decisions
+
+- `/explore`: a few factual collection shelves, a lightweight search entry,
+  the collection directory and an explicit combined-filter entry. No whole-library grid.
+- `/explore/collections`: paginated directory with optional director/region/decade categories.
+- `/explore/collections/{kind}/{key}`: stable definition independent of temporary
+  viewing/sorting/page parameters; exact director roles, any-role person collections.
+- `/explore/search`: existing Library film search plus local people and collection
+  lookup. Film opens detail; person opens a collection. No automatic filter chips.
+- `/explore/filter`: PR40 exact combinations. Historical `/explore?...` queries keep
+  their original semantics, including People Any defaults.
+- Existing cards, controls, typography and tokens throughout. No hero or redesign.
+- Catalog shelves require two films. Featured shelves suppress highly overlapping
+  sets. Direct definitions may contain one film; empty or unavailable ones fail closed.
+- Only accepted synchronous local facts. No new series inference, AI, external lists,
+  schema migration, credential or media changes. Ask's shared Finder stays unchanged.
+- Collection previews reuse LibraryMovieCard; directory covers reuse existing image
+  handling. Mobile uses the existing two-column grid so card actions are not clipped.
+- Profile and viewing commits publish an in-memory SWR revision. Each Explore
+  address acknowledges its own fresh read, including cached Back entries. Managed
+  filter/page reads begun after a commit do not trigger duplicate refreshes;
+  pending navigation wins. Other mounted addresses conservatively validate their snapshot.
+- Explore links do not prefetch the other heavy page modes. Existing Film card
+  navigation, browser modifier keys, history and scroll handling remain in place.
+
+## Acceptance criteria
+
+- [x] Homepage, directory, search and stable collection detail implement the hierarchy.
+- [x] Direct/refresh/Back/Forward restore identity, view, sort and page; home position returns.
+- [x] Legacy exact filters and People All/Any semantics stay intact.
+- [x] Saved state updates all Explore surfaces, including cached Back entries and delayed writes.
+- [x] Last-page shrink uses replace; newer navigation/focus/history are never overwritten.
+- [x] Empty/small/sparse/conflicted data yield honest, usable fallbacks and exact counts.
+- [x] Bilingual desktop/mobile and keyboard behavior verified; Ask's shared UI is unchanged.
+- [x] Focused/full local checks and internal visual review complete.
+- [ ] Required PR CI is successful before ready/merge.
+- [ ] Independent parent review passes before ready/merge.
+
+## Slices
+
+1. Additive local catalog and role-correct stable collection API, contract tests/docs.
+2. Reorganize locale routes using existing controls and mutation/navigation protection.
+3. Fixture browser coverage, complete checks, responsive visual review, draft PR/CI.
+
+## Verification evidence
+
+- `python -X utf8 -m unittest test_explore_query.py test_api_routes.py test_factual_explore_evaluation.py -q`: 47 passed.
+- Full backend `unittest discover`: 432 tests, OK with 3 skipped. Used a verified
+  tracked-source snapshot under an owned short Windows temporary path, canonical
+  TEMP/TMP and read-only Git identity, avoiding existing fixture path limitations.
+- `npm run test:unit`: 126 passed. `npm run typecheck` and `npm run lint`: passed.
+- `node e2e/run.mjs explore-collections.spec.ts explore-ui.spec.ts`: production build
+  and 43 browser cases passed. Includes the original precise-filter races and
+  both 41-to-40 corrections, single refresh per save, cached directory/home Back,
+  a save completing during a held collection Link, legacy People Any, pagination,
+  independent search groups and empty/sparse local data. No real provider calls.
+- English/Chinese at 1920, 1024, 768, 390 and 320px: hierarchy and keyboard checks
+  pass. Internal home/directory/detail captures inspected; discovery search also
+  inspected at 1440/390/320px in a separate read-only fixture browser. No horizontal
+  page overflow; screenshots remain local and contain generated fixtures only.
+- `node e2e/run.mjs --max-failures=2`: full production build and 222 real-API
+  browser cases passed, including Explore 43 and the related Library/navigation,
+  keyboard, copy, Viewing and existing Ask surfaces. All transports are isolated;
+  only generated local data is used. Final lint has no warnings.
+- `git diff --check`: passed. PR CI and independent review remain the merge gate.
+
+## Remaining risks
+
+Synthetic metadata establishes correctness, not real-library editorial variety.
+Independent review remains the merge gate.

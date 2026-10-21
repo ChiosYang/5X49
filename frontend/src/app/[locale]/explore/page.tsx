@@ -1,8 +1,10 @@
 import { getTranslations } from "next-intl/server";
 
-import { hasExploreFilters, parseExploreQuery } from "@/lib/explore";
-import { getExploreCollections, getExploreFilms } from "@/lib/server-api";
+import { parseExploreQuery } from "@/lib/explore";
+import { hasLegacyExploreQuery } from "@/lib/collections";
+import { getCollectionCatalog, getExploreFilms } from "@/lib/server-api";
 import ExploreClient from "./ExploreClient";
+import CollectionBrowse from "./CollectionBrowse";
 
 
 interface ExplorePageProps {
@@ -13,6 +15,9 @@ interface ExplorePageProps {
 export default async function ExplorePage({ params, searchParams }: ExplorePageProps) {
   const { locale } = await params;
   const resolvedSearchParams = searchParams ? await searchParams : {};
+  if (!hasLegacyExploreQuery(resolvedSearchParams)) {
+    return <CollectionBrowse catalog={await getCollectionCatalog({ featured: true, limit: 3 })} locale={locale} />;
+  }
   const query = parseExploreQuery({
     genre: resolvedSearchParams.genre,
     person: resolvedSearchParams.person,
@@ -24,11 +29,7 @@ export default async function ExplorePage({ params, searchParams }: ExplorePageP
     dir: resolvedSearchParams.dir,
     offset: resolvedSearchParams.offset,
   });
-  const [collections, results] = await Promise.all([
-    hasExploreFilters(query) ? Promise.resolve(null) : getExploreCollections(query.view),
-    getExploreFilms(query),
-  ]);
-  return <ExploreClient collections={collections} locale={locale} query={query} results={results} />;
+  return <ExploreClient locale={locale} query={query} results={await getExploreFilms(query)} />;
 }
 
 export async function generateMetadata() {

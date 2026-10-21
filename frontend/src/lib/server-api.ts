@@ -5,6 +5,10 @@ import type {
   ExploreCollections,
   ExploreFilmPage,
   ExploreOverview,
+  CollectionCatalog,
+  CollectionCategory,
+  LocalCollectionPage,
+  ExploreFacetPage,
   LibraryFilmDetail,
   LibraryFilmSummary,
   LibraryFilmPage,
@@ -56,6 +60,29 @@ export async function getExploreFilms(query: ExploreQueryState): Promise<Explore
   params.set("limit", "40");
   const response = await fetch(`${backendUrl()}/explore/films?${params}`, { cache: "no-store" });
   if (!response.ok) throw new Error(`Failed to fetch Explore Films: ${response.status}`);
+  return response.json();
+}
+
+export async function getCollectionCatalog({ category = "all", query = "", featured = false, offset = 0, limit = 24 }: {
+  category?: CollectionCategory; query?: string; featured?: boolean; offset?: number; limit?: number;
+} = {}): Promise<CollectionCatalog> {
+  const params = new URLSearchParams({ category, q: query, featured: String(featured), offset: String(offset), limit: String(limit) });
+  const response = await fetch(`${backendUrl()}/explore/catalog?${params}`, { cache: "no-store" });
+  if (!response.ok) throw new Error(`Failed to fetch collection directory: ${response.status}`);
+  return response.json();
+}
+
+export async function getLocalCollection(kind: string, key: string, query: ExploreQueryState): Promise<LocalCollectionPage | null> {
+  const response = await fetch(`${backendUrl()}/explore/collections/${encodeURIComponent(kind)}/${encodeURIComponent(key)}?${buildExploreSearchParams(query)}`, { cache: "no-store" });
+  if (response.status === 404) return null;
+  if (!response.ok) throw new Error(`Failed to fetch local collection: ${response.status}`);
+  return response.json();
+}
+
+export async function getLocalPeople(query: string, offset = 0): Promise<ExploreFacetPage> {
+  const params = new URLSearchParams({ q: query.slice(0, 100), limit: "12", offset: String(offset) });
+  const response = await fetch(`${backendUrl()}/explore/facets/person?${params}`, { cache: "no-store" });
+  if (!response.ok) throw new Error(`Failed to fetch local people: ${response.status}`);
   return response.json();
 }
 
