@@ -2,7 +2,7 @@
 
 Status: In Progress
 Last updated: 2026-10-21
-Related: PR41 Collection hierarchy; PR28 remains independently held
+Related: PR42 unified search; PR41 Collection hierarchy; PR28 remains independently held
 
 ## Goal
 
@@ -56,6 +56,8 @@ manual fallback form, mode selection or routine confirmation precedes results.
 
 - Backend focused discovery/Ask/Explore/API group: 71 passed, real providers disabled.
 - Frontend unit: 130 passed with canonical Windows TEMP/TMP; lint and typecheck passed.
+- Full Windows backend: 445 tests, OK with 3 platform skips, from the verified
+  tracked-source short temporary snapshot. Real provider calls remain disabled.
 - First complete unified browser group: 18 passed in a production build with real
   routes/SQLite and mocked provider transport. Includes both locales, 1440/320px,
   IME, ordinary suggestions, direct local rules, corrected chips, pointer Return,
@@ -70,7 +72,15 @@ manual fallback form, mode selection or routine confirmation precedes results.
   internally at 1440/320px. Existing controls/tokens/grid are retained. Mobile input
   uses the ordinary TextInput spacing and a concise placeholder; the two secondary
   homepage entries share the existing small button size. Screenshots stay local.
-- Full suites are pending.
+- Full browser replay found a migrated assertion selecting a hidden inspector link
+  instead of the visible Film title. The page correctly rendered its two results.
+  The selector now targets the same visible title used for navigation; the complete
+  interaction and matching-race suites then passed 26/26 in a fresh production build.
+- The initial CI had 240 browser passes, one migrated-selector failure and 15 serial
+  cases not run. Its existing matching-race cases passed. One local full run also
+  observed an unchanged matching More disclosure close early; the trace is retained,
+  and the complete 26-case replay passed without matching code/test changes. This is
+  not claimed as a fixed matching defect. Final full CI remains the merge gate.
   No real AI call or evaluation-ledger operation has run.
 
 ## Remaining risks

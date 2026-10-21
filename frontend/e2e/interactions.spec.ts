@@ -154,7 +154,7 @@ test('legacy Ask opens unified search; local facts run directly and detail reloa
   const input=page.getByRole('searchbox',{name:'Search Explore',exact:true});
   await input.fill('Japanese films'); await input.press('Enter');
   await expect(page.locator('#explore-results-title')).toBeVisible();
-  await expect(page.locator('a[href*="/library/film_"]').first()).toBeVisible();
+  await expect(page.locator('.library-card-title').first()).toBeVisible();
   const saved=page.url();
   await page.locator('.library-card-title').first().click();
   await page.getByRole('button', { name: 'Watched today', exact: true }).waitFor();
@@ -162,7 +162,7 @@ test('legacy Ask opens unified search; local facts run directly and detail reloa
   await page.getByRole('button', { name: /^Return to library$/i }).click();
   await expect(page).toHaveURL(saved);
   await expect(input).toHaveValue('Japanese films');
-  await expect(page.locator('a[href*="/library/film_"]').first()).toBeVisible();
+  await expect(page.locator('.library-card-title').first()).toBeVisible();
 });
 
 test('filtered Library detail return preserves URL, focus and scroll', async ({ page }) => {
