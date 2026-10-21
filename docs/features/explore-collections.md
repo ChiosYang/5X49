@@ -91,6 +91,15 @@ organizes content; query editing is an explicit, separate mode.
   asserts JP exists in the directory. This case also passed after the correction.
 - The final head must rerun the complete CI browser suite (now 234 cases) and pass
   independent re-review before ready/merge.
+- CI `39578344452` passed against application head
+  `cb6cf3bc5c8df81bbe03154b1f13988f635d58d6`: Backend 432 (1 skip), RC tooling 15,
+  Frontend 127 plus audit/lint/types/build, and all 234 browser cases.
+- An additional Windows full replay had 233 passes and exposed a second test-side
+  navigation race: the collection history case recorded pre-navigation URLs and
+  reloaded before either View or Sort committed, then Back reached `about:blank`.
+  The test now waits for each committed URL and checks selected controls after
+  reload. The corrected case passed three consecutive repetitions; application
+  code is unchanged. The final test-only head reruns required CI before merge.
 
 ## Remaining risks
 
