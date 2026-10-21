@@ -116,6 +116,7 @@ type ResultStageProps = {
   onDirection: () => void;
   onPage: (offset: number) => void;
   onClear: () => void;
+  onProfileSaved: () => void;
 };
 
 export function ResultStage({
@@ -131,6 +132,7 @@ export function ResultStage({
   onDirection,
   onPage,
   onClear,
+  onProfileSaved,
 }: ResultStageProps) {
   const t = useTranslations("Explore");
   const total = results?.total ?? 0;
@@ -217,7 +219,7 @@ export function ResultStage({
           >
             {results.items.map((item) => (
               <div key={item.film.id} className="min-w-0">
-                <LibraryMovieCard movie={item.film} />
+                <LibraryMovieCard movie={item.film} onProfileSaved={onProfileSaved} />
                 {item.matched_facts.length > 0 ? (
                   <p className="mt-2 line-clamp-2 text-[10px] leading-4 text-ink-subtle">
                     {item.matched_facts

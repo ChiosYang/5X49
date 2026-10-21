@@ -31,6 +31,11 @@ export default function ExploreClient({ collections, locale, query, results }: {
   const headingRef = useRef<HTMLHeadingElement>(null);
   const paginationTarget = useRef<string | null>(null);
   const scrollTarget = useRef<{ href: string; x: number; y: number } | null>(null);
+  const activeQueryRef = useRef<ExploreQueryState | null>(null);
+  useLayoutEffect(() => {
+    activeQueryRef.current = optimisticQuery;
+    return () => { activeQueryRef.current = null; };
+  }, [optimisticQuery]);
   const filtered = hasExploreFilters(optimisticQuery);
   const labels = useMemo(() => {
     const map = new Map(Object.entries(remembered));
@@ -61,6 +66,21 @@ export default function ExploreClient({ collections, locale, query, results }: {
   const clear = () => navigate(clearExploreFilters(optimisticQuery));
   const setView = (view: ExploreView) => navigate({ ...optimisticQuery, view, offset: 0 });
   const setSort = (sort: ExploreQueryState["sort"]) => navigate({ ...optimisticQuery, sort, dir: sort === "year" ? "desc" : "asc", offset: 0 });
+
+  const refreshAfterProfileSaved = () => {
+    const activeQuery = activeQueryRef.current;
+    // An in-flight card save may finish after its card or Explore route is left.
+    // Keep the latest query; never refresh a different page or a detail overlay.
+    if (!activeQuery || !/\/explore\/?$/.test(window.location.pathname)) return;
+    scrollTarget.current = {
+      href: exploreNavigation(activeQuery, "filter").href,
+      x: window.scrollX,
+      y: window.scrollY,
+    };
+    // These results and collections are RSC props, outside the card's SWR caches.
+    // Refresh the current route once after a successful save, without pushing history.
+    startTransition(() => router.refresh());
+  };
 
   useLayoutEffect(() => {
     const target = scrollTarget.current;
@@ -101,6 +121,7 @@ export default function ExploreClient({ collections, locale, query, results }: {
           sectionRef={sectionRef} headingRef={headingRef} onView={setView} onSort={setSort}
           onDirection={() => navigate({ ...optimisticQuery, dir: optimisticQuery.dir === "asc" ? "desc" : "asc", offset: 0 })}
           onPage={offset => navigate({ ...optimisticQuery, offset }, "page")} onClear={clear}
+          onProfileSaved={refreshAfterProfileSaved}
         />
       </div>
     </div>

@@ -41,6 +41,8 @@ the original implementation and verification record.
 - [x] Search text remains presentation state; selected filters and People mode round-trip through URL/history.
 - [x] New People selections default to All; old links remain Any. Missing/conflicted people fail closed in All.
 - [x] Viewing, sort, pagination focus and existing detail links are preserved.
+- [x] Successful card saves refresh collection previews/counts and current results without changing URL/history;
+  delayed saves use the latest query and cannot refresh a page or detail overlay the user has navigated to.
 - [x] Coverage, Lens and Fact Finder concepts are absent from the primary Explore UI.
 - [x] Existing LibraryMovieCard, Button, TextInput, typography, colors and spacing are reused.
 - [x] Full backend suite, frontend checks, related browser suites and responsive visual inspection complete.
@@ -163,9 +165,12 @@ Current browse/filter implementation (2026-10-21):
 - `npm run test:unit` — 122 passed; Windows used canonical TEMP/TMP for the existing glob tests.
 - `npm run lint`, `npm run typecheck`, and production `next build` through the E2E harness — passed.
 - `npm run test:e2e -- explore-ui.spec.ts interactions.spec.ts navigation-search.spec.ts library-ui.spec.ts library-menus.spec.ts site-copy.spec.ts` — 74 passed.
-- Final `node e2e/run.mjs explore-ui.spec.ts` — 16 passed, including independent search pagination/retry,
+- Final `node e2e/run.mjs explore-ui.spec.ts` — 22 passed, including independent search pagination/retry,
   delayed search responses, rapid filter navigation, People All/Any and legacy URLs, viewing/sort/history,
   result pagination/detail return, strict zero results and empty/sparse/empty-view fallbacks.
+  Six mutation regressions cover desktop/mobile default collections, favorite/watched saves, current
+  Unwatched result removal, one refresh per save, unchanged URL/history/viewport (within document bounds),
+  and saves completing after changing filters or entering a detail page without clearing search or stealing focus.
 - English/Chinese at 1920, 1024, 768, 390 and 320px — no page overflow or hydration errors.
   Internal desktop/mobile captures were inspected; screenshots remain local. Only generated local
   fixtures and mocked transports were used, with real AI/provider requests disabled.

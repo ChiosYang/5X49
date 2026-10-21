@@ -2,7 +2,7 @@ import { test, expect, type APIRequestContext, type Page } from '@playwright/tes
 import path from 'node:path';
 import en from '../messages/en.json';
 import zh from '../messages/zh.json';
-import type { ExploreCollections, ExploreFacetSummary } from '../src/types/movie';
+import type { ExploreCollections, ExploreFacetSummary, ExploreFilmPage } from '../src/types/movie';
 
 const backend = process.env.E2E_BACKEND!;
 const cards = (page: Page) => page.locator('[id^="film-link-"]');
@@ -38,6 +38,23 @@ async function capture(page: Page, name: string) {
 }
 async function noOverflow(page: Page) {
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+}
+
+async function singleUnwatchedCountry(request: APIRequestContext) {
+  const targetPage: ExploreFilmPage = await read(request, '/explore/films?country=DE');
+  expect(targetPage.total).toBe(1);
+  const target = targetPage.items[0].film;
+  const countries: { items: ExploreFacetSummary[] } = await read(request, '/explore/facets/country?limit=100');
+  const params = new URLSearchParams({ limit: '100' });
+  countries.items.forEach(country => params.append('country', country.key));
+  const films: ExploreFilmPage = await read(request, `/explore/films?${params}`);
+  for (const { film } of films.items) {
+    const saved = await request.put(`${backend}/films/${film.id}/profile-state`, {
+      data: film.id === target.id ? { watched: false, favorite: false } : { watched: true },
+    });
+    expect(saved.ok()).toBeTruthy();
+  }
+  return target;
 }
 
 test.beforeAll(async ({ request }) => {
@@ -237,6 +254,164 @@ test('rapid filter selections keep both conditions when an older navigation fini
   const expected = await read(request, `/explore/films?${params}`);
   await expect(results(page)).toHaveText(new RegExp(`^${expected.total}\\b`));
   await expect(page).toHaveURL(committed);
+});
+
+for (const width of [1440, 390]) {
+  test(`saved card changes refresh default collections once without changing history or scroll at ${width}px`, async ({ page, request }) => {
+    const target = await singleUnwatchedCountry(request);
+    await page.setViewportSize({ width, height: 1000 });
+    await page.goto('/en/library');
+    const previous = page.url();
+    await page.goto('/en/explore?sort=year');
+    const href = page.url();
+    const history = await page.evaluate(() => window.history.length);
+    const collection = page.getByRole('region', { name: en.Explore.collectionsTitle, exact: true })
+      .getByRole('button').filter({ has: page.getByText('Unwatched films from Germany', { exact: true }) });
+    await expect(collection).toHaveCount(1);
+    await expect(collection.getByText('1 Film · Unwatched', { exact: true })).toBeVisible();
+    const writes: string[] = [], refreshes: string[] = [];
+    page.on('request', request => {
+      const url = new URL(request.url());
+      if (url.pathname === `/api/films/${target.id}/profile-state` && request.method() === 'PUT') writes.push(request.postData()!);
+      if (url.pathname === '/en/explore' && request.headers().rsc === '1') refreshes.push(request.url());
+    });
+    const trigger = page.locator(`#film-link-${target.id}`);
+    await trigger.click();
+    const panel = page.locator('.library-card-media').filter({ has: trigger }).locator('.library-card-inspector');
+    const refreshed = page.waitForResponse(response => new URL(response.url()).pathname === '/en/explore' && response.request().headers().rsc === '1' && response.ok());
+    await panel.getByRole('button', { name: en.Library.favorite, exact: true }).click();
+    await refreshed;
+    await expect(page.locator('[aria-labelledby="explore-results-title"] [aria-busy]')).toHaveAttribute('aria-busy', 'false');
+    await expect(panel.getByRole('button', { name: en.Library.unfavorite, exact: true })).toBeVisible();
+    expect(refreshes).toHaveLength(1); expect(writes).toHaveLength(1);
+    const watched = panel.getByRole('button', { name: en.Library.markWatched, exact: true });
+    await watched.scrollIntoViewIfNeeded();
+    const scrollY = await page.evaluate(() => window.scrollY);
+    await watched.click();
+    await expect(collection).toHaveCount(0);
+    expect(refreshes).toHaveLength(2); expect(writes).toHaveLength(2);
+    await expect(page).toHaveURL(href);
+    expect(await page.evaluate(() => window.history.length)).toBe(history);
+    await expect.poll(() => page.evaluate(before => Math.abs(window.scrollY - Math.max(0,
+      Math.min(before, document.documentElement.scrollHeight - innerHeight))), scrollY)).toBeLessThanOrEqual(1);
+    await page.goBack(); await expect(page).toHaveURL(previous);
+  });
+
+  test(`marking a result watched refreshes the active Unwatched set and count at ${width}px`, async ({ page, request }) => {
+    const target = await singleUnwatchedCountry(request);
+    await page.setViewportSize({ width, height: 1000 });
+    await page.goto('/en/library');
+    const previous = page.url();
+    await page.goto('/en/explore?country=DE&view=unwatched&sort=year');
+    const href = page.url();
+    const history = await page.evaluate(() => window.history.length);
+    await expect(results(page)).toHaveText('1 Film');
+    const writes: string[] = [], refreshes: string[] = [];
+    page.on('request', request => {
+      const url = new URL(request.url());
+      if (url.pathname === `/api/films/${target.id}/profile-state` && request.method() === 'PUT') writes.push(request.postData()!);
+      if (url.pathname === '/en/explore' && request.headers().rsc === '1') refreshes.push(request.url());
+    });
+    const trigger = page.locator(`#film-link-${target.id}`);
+    await trigger.click();
+    const watched = page.locator('.library-card-media').filter({ has: trigger }).getByRole('button', { name: en.Library.markWatched, exact: true });
+    await watched.scrollIntoViewIfNeeded();
+    const scrollY = await page.evaluate(() => window.scrollY);
+    await watched.click();
+    await expect(results(page)).toHaveText('0 Films');
+    await expect(trigger).toHaveCount(0);
+    await expect(page.getByRole('heading', { name: en.Explore.zeroTitle, exact: true })).toBeVisible();
+    expect(refreshes).toHaveLength(1); expect(writes).toHaveLength(1);
+    await expect(page).toHaveURL(href);
+    expect(await page.evaluate(() => window.history.length)).toBe(history);
+    await expect.poll(() => page.evaluate(before => Math.abs(window.scrollY - Math.max(0,
+      Math.min(before, document.documentElement.scrollHeight - innerHeight))), scrollY)).toBeLessThanOrEqual(1);
+    await page.goBack(); await expect(page).toHaveURL(previous);
+  });
+}
+
+test('a delayed card save refreshes the latest filters without clearing search or taking focus', async ({ page, request }) => {
+  const target = await singleUnwatchedCountry(request);
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.goto('/en/explore?sort=year');
+  let release!: () => void;
+  const held = new Promise<void>(resolve => { release = resolve; });
+  let writes = 0, trackRefresh = false;
+  const refreshes: string[] = [];
+  await page.route(`**/api/films/${target.id}/profile-state`, async route => {
+    if (route.request().method() === 'PUT') { writes++; await held; }
+    await route.continue();
+  });
+  page.on('request', request => {
+    if (trackRefresh && new URL(request.url()).pathname === '/en/explore' && request.headers().rsc === '1') refreshes.push(request.url());
+  });
+  try {
+    const trigger = page.locator(`#film-link-${target.id}`);
+    await trigger.click();
+    await page.locator('.library-card-media').filter({ has: trigger }).getByRole('button', { name: en.Library.markWatched, exact: true }).click();
+    await expect.poll(() => writes).toBe(1);
+    const search = page.getByRole('textbox', { name: en.Explore.searchAll, exact: true });
+    await search.fill('Germany');
+    await page.getByRole('region', { name: 'Country', exact: true }).getByRole('button').click();
+    await expect.poll(() => new URL(page.url()).searchParams.get('country')).toBe('DE');
+    const beforeView = page.url();
+    await page.getByRole('button', { name: 'Watched', exact: true }).click();
+    await expect(results(page)).toHaveText('0 Films');
+    await search.focus();
+    const href = page.url(), history = await page.evaluate(() => window.history.length);
+    const scrollY = await page.evaluate(() => window.scrollY);
+    trackRefresh = true;
+    release();
+    await expect(results(page)).toHaveText('1 Film');
+    await expect(page).toHaveURL(href);
+    await expect(search).toHaveValue('Germany'); await expect(search).toBeFocused();
+    expect(writes).toBe(1); expect(refreshes).toHaveLength(1);
+    expect(new URL(refreshes[0]).searchParams.get('country')).toBe('DE');
+    expect(new URL(refreshes[0]).searchParams.get('view')).toBe('watched');
+    expect(await page.evaluate(() => window.history.length)).toBe(history);
+    expect(await page.evaluate(() => window.scrollY)).toBe(scrollY);
+    await page.goBack(); await expect(page).toHaveURL(beforeView);
+  } finally { release(); }
+});
+
+test('a save completing after detail navigation cannot refresh the new page or steal its focus', async ({ page, request }) => {
+  const target = await singleUnwatchedCountry(request);
+  await page.setViewportSize({ width: 390, height: 1000 });
+  await page.goto('/en/explore?sort=year');
+  let release!: () => void;
+  const held = new Promise<void>(resolve => { release = resolve; });
+  let writes = 0, trackRefresh = false;
+  const refreshes: string[] = [];
+  await page.route(`**/api/films/${target.id}/profile-state`, async route => {
+    if (route.request().method() === 'PUT') { writes++; await held; }
+    await route.continue();
+  });
+  page.on('request', request => {
+    const pathname = new URL(request.url()).pathname;
+    if (trackRefresh && request.headers().rsc === '1' && request.headers()['next-router-prefetch'] !== '1'
+        && (pathname === '/en/explore' || pathname === `/en/library/${target.id}`)) refreshes.push(request.url());
+  });
+  try {
+    const trigger = page.locator(`#film-link-${target.id}`);
+    await trigger.click();
+    await page.locator('.library-card-media').filter({ has: trigger }).getByRole('button', { name: en.Library.markWatched, exact: true }).click();
+    await expect.poll(() => writes).toBe(1);
+    await page.keyboard.press('Escape');
+    await page.locator(`.library-card-title[href="/en/library/${target.id}"]`).click();
+    await expect(page).toHaveURL(new RegExp(`/en/library/${target.id}$`));
+    const back = page.getByRole('button', { name: /^(Return to library|Back)$/i }).first();
+    await back.focus(); await expect(back).toBeFocused();
+    const href = page.url(), history = await page.evaluate(() => window.history.length);
+    const saved = page.waitForResponse(response => response.request().method() === 'PUT' && new URL(response.url()).pathname === `/api/films/${target.id}/profile-state` && response.ok());
+    trackRefresh = true;
+    release();
+    await saved;
+    await expect.poll(async () => (await read(request, `/films/${target.id}/profile-state`)).watched).toBe(true);
+    await page.evaluate(() => new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
+    await expect(page).toHaveURL(href); await expect(back).toBeFocused();
+    expect(await page.evaluate(() => window.history.length)).toBe(history);
+    expect(writes).toBe(1); expect(refreshes).toHaveLength(0);
+  } finally { release(); }
 });
 
 test('empty and metadata-poor libraries keep usable search and real Film results', async ({ page, request }) => {
