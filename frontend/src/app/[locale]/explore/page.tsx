@@ -1,7 +1,7 @@
 import { getTranslations } from "next-intl/server";
 
 import { hasExploreFilters, parseExploreQuery } from "@/lib/explore";
-import { getExploreContext, getExploreFilms, getExploreOverview } from "@/lib/server-api";
+import { getExploreCollections, getExploreFilms } from "@/lib/server-api";
 import ExploreClient from "./ExploreClient";
 
 
@@ -16,6 +16,7 @@ export default async function ExplorePage({ params, searchParams }: ExplorePageP
   const query = parseExploreQuery({
     genre: resolvedSearchParams.genre,
     person: resolvedSearchParams.person,
+    person_match: resolvedSearchParams.person_match,
     country: resolvedSearchParams.country,
     decade: resolvedSearchParams.decade,
     view: resolvedSearchParams.view,
@@ -23,12 +24,11 @@ export default async function ExplorePage({ params, searchParams }: ExplorePageP
     dir: resolvedSearchParams.dir,
     offset: resolvedSearchParams.offset,
   });
-  const [overview, context, results] = await Promise.all([
-    getExploreOverview(),
-    getExploreContext(query),
-    hasExploreFilters(query) ? getExploreFilms(query) : Promise.resolve(null),
+  const [collections, results] = await Promise.all([
+    hasExploreFilters(query) ? Promise.resolve(null) : getExploreCollections(query.view),
+    getExploreFilms(query),
   ]);
-  return <ExploreClient context={context} locale={locale} overview={overview} query={query} results={results} />;
+  return <ExploreClient collections={collections} locale={locale} query={query} results={results} />;
 }
 
 export async function generateMetadata() {

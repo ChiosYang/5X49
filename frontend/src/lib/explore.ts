@@ -13,6 +13,7 @@ export interface ExploreQueryState {
   person: string[];
   country: string[];
   decade: string[];
+  personMatch: "all" | "any";
   view: ExploreView;
   sort: ExploreSort;
   dir: ExploreDirection;
@@ -49,6 +50,9 @@ export function parseExploreQuery(input: SearchValues): ExploreQueryState {
   const safeSort: ExploreSort = sort === "year" ? "year" : "title";
   return {
     ...normalized,
+    // Existing person links retain union semantics; new searches start with intersection.
+    personMatch: first(input.person_match) === "all" ? "all"
+      : first(input.person_match) === "any" || normalized.person.length > 0 ? "any" : "all",
     view: view === "watched" || view === "unwatched" ? view : "all",
     sort: safeSort,
     dir: direction === "asc" || direction === "desc"
@@ -64,6 +68,7 @@ export function buildExploreSearchParams(query: ExploreQueryState) {
     [...new Set(query[dimension])].sort().forEach((value) => params.append(dimension, value));
   });
   if (query.view !== "all") params.set("view", query.view);
+  if (query.person.length > 0 && query.personMatch === "all") params.set("person_match", "all");
   if (query.sort !== "title") params.set("sort", query.sort);
   const defaultDirection = query.sort === "year" ? "desc" : "asc";
   if (query.dir !== defaultDirection) params.set("dir", query.dir);
@@ -77,6 +82,7 @@ export function buildExploreContextSearchParams(query: ExploreQueryState, limit 
     [...new Set(query[dimension])].sort().forEach((value) => params.append(dimension, value));
   });
   if (query.view !== "all") params.set("view", query.view);
+  if (query.person.length > 0 && query.personMatch === "all") params.set("person_match", "all");
   params.set("limit", String(limit));
   return params;
 }
@@ -120,13 +126,14 @@ export function withoutExploreFacet(
 ) {
   return {
     ...query,
+    ...(dimension === "person" && query.person.length === 1 ? { personMatch: "all" as const } : {}),
     [dimension]: query[dimension].filter((value) => value !== key),
     offset: 0,
   };
 }
 
 export function clearExploreFilters(query: ExploreQueryState) {
-  return { ...query, genre: [], person: [], country: [], decade: [], offset: 0 };
+  return { ...query, genre: [], person: [], country: [], decade: [], personMatch: "all" as const, offset: 0 };
 }
 
 export function formatExploreFacetLabel(

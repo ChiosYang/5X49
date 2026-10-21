@@ -243,6 +243,27 @@ curl -s "http://127.0.0.1:8000/explore/films?genre=con_0123456789abcdef012345678
   `release-year-decade.v1` 派生说明，不包含 source ref、路径、provider payload
   或凭据。
 
+### Browse and People combination contract (2026-10-21)
+
+- `GET /explore/collections?view=all&limit=6` returns deterministic nonempty local
+  entries (`dimension`, `key`, `label`, `view`, exact `count`, safe `preview_film`),
+  `total_films`, and the existing projection/policy metadata. Limits are 1..12.
+  Country entries use Unwatched from All; other entries preserve the view.
+  Identical Film sets are deduplicated. Empty/sparse Libraries may return no entries.
+  No model, external catalogue, inferred facts or automatic relaxation is involved.
+- Films and Context accept `person_match=any|all` (API default Any for old links).
+  All requires each selected canonical Person, as Actor or Director, on the Film.
+  One unavailable Person makes All empty. Genre/Country/Decade remain OR within
+  their dimension; dimensions and watched state remain AND. Filters are deduplicated.
+- Context uses `operator=and` and exact intersection `result_count` for People All;
+  existing Any context expansion remains compatible. Film `active_filters` echoes mode.
+- Facet `q` searches literal labels and bundled bilingual Genre/Country aliases;
+  Decades accept `1990s`/`1990年代`. Wildcards are literal. It is not semantic search.
+  The UI searches all four categories with debounce and separate facet pagination.
+- Collections use at most six bulk SQL statements; filtered pages skip suggestions.
+  Coverage remains in the existing API but is absent from the primary Explore UI.
+
+
 ## Profile State 与 Diary
 
 ```bash

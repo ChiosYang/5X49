@@ -223,6 +223,12 @@ def control(payload: dict, x_e2e_token: str = Header(default='')):
         rows = [viewing_manager.create(film['id'], date) for date in
             ['2025', '2026-01-02', '2026-01-02T23:30:00+08:00', None]]
         return {'film_id': film['id'], 'viewings': rows}
+    elif action == 'explore_sparse_fixture':
+        from app.services.library import library_manager
+        video = root / 'Explore unknown.mkv'
+        video.write_bytes(b'explore fixture without factual metadata')
+        library_manager.add_observations([dict(title='Explore Unknown', folder_name='Explore Unknown', media_path=str(video))])
+        return {'created': True}
     elif action == 'library_filter_fixture':
         from app.services.library import library_manager
         from app.services.user_state import film_profile_state_manager

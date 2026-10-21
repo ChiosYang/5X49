@@ -1,38 +1,31 @@
 import { test, expect, type APIRequestContext, type Page } from '@playwright/test';
 import path from 'node:path';
-import type { ExploreContext } from '../src/types/movie';
+import en from '../messages/en.json';
+import zh from '../messages/zh.json';
+import type { ExploreCollections, ExploreFacetSummary } from '../src/types/movie';
 
 const backend = process.env.E2E_BACKEND!;
-const copy = {
-  en: { title: 'EXPLORE', find: 'Find a fact', finder: 'Fact Finder', search: 'Search Genre',
-    journey: 'Current journey', where: 'Show films where', clear: 'Clear all',
-    removed: ['Local factual exploration', 'Rediscover your collection through Genre, People, Countries, and Decades.', 'Accepted facts only', 'Data confidence'] },
-  zh: { title: '探索', find: '查找事实', finder: '事实查找器', search: '搜索类型',
-    journey: '当前探索路径', where: '显示符合以下事实的影片', clear: '清除全部',
-    removed: ['本地事实探索', '沿着类型、人物、国家与年代，重新发现你的收藏。', '仅使用已接受事实', '数据可信度'] },
-};
+const cards = (page: Page) => page.locator('[id^="film-link-"]');
+const results = (page: Page) => page.locator('#explore-results-title');
 
 async function read(request: APIRequestContext, url: string) {
   const response = await request.get(`${backend}${url}`);
-  expect(response.ok()).toBeTruthy();
-  return response.json();
+  expect(response.ok()).toBeTruthy(); return response.json();
 }
-
-async function cleanup(request: APIRequestContext) {
-  expect((await request.post(`${backend}/__e2e/control`, {
-    headers: { 'x-e2e-token': process.env.E2E_TOKEN! }, data: { action: 'identity_cleanup' },
-  })).ok()).toBeTruthy();
+async function control(request: APIRequestContext, action: string) {
+  const response = await request.post(`${backend}/__e2e/control`, {
+    headers: { 'x-e2e-token': process.env.E2E_TOKEN! }, data: { action },
+  });
+  expect(response.ok()).toBeTruthy(); return response.json();
 }
-
 async function capture(page: Page, name: string) {
   await page.evaluate(async () => {
     await document.fonts.ready;
-    const visibleImages = [...document.images].filter(image => {
+    await Promise.all([...document.images].filter(image => {
       const bounds = image.getBoundingClientRect();
       return bounds.bottom > 0 && bounds.top < innerHeight && bounds.right > 0 && bounds.left < innerWidth;
-    });
-    await Promise.all(visibleImages.map(image => image.decode().catch(() => {})));
-    // Refresh Chrome's composited frame after local artwork finishes decoding.
+    }).map(image => image.decode().catch(() => {})));
+    // Chrome on Windows can retain an old composited frame after decoding local artwork.
     const root = document.documentElement;
     const opacity = root.style.opacity;
     const frame = () => new Promise<void>(resolve => requestAnimationFrame(() => resolve()));
@@ -43,136 +36,221 @@ async function capture(page: Page, name: string) {
   });
   await page.screenshot({ path: path.join('e2e-artifacts', name), animations: 'disabled' });
 }
-
-async function titleMetrics(page: Page) {
-  await page.evaluate(() => document.fonts.ready);
-  return page.locator('h1').evaluate(heading => {
-    const style = getComputedStyle(heading);
-    const bounds = heading.getBoundingClientRect();
-    const header = getComputedStyle(heading.closest('header')!);
-    return {
-      font: style.fontFamily, size: style.fontSize, weight: style.fontWeight,
-      lineHeight: style.lineHeight, spacing: style.letterSpacing,
-      x: bounds.x, y: bounds.y,
-      direction: header.flexDirection, gap: header.gap, paddingBottom: header.paddingBottom,
-    };
-  });
+async function noOverflow(page: Page) {
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 }
 
 test.beforeAll(async ({ request }) => {
-  await cleanup(request);
+  await control(request, 'identity_cleanup');
   const media = path.join(process.env.E2E_ROOT!, 'normal/media');
   const saved = await request.put(`${backend}/settings/media-dir?media_dir=${encodeURIComponent(media)}`);
   expect(saved.ok()).toBeTruthy();
-  // The backend canonicalizes Windows short temp paths when saving the root.
-  const { media_dir: canonicalMedia } = await saved.json();
-  const scan = await request.post(`${backend}/library/scan?media_dir=${encodeURIComponent(canonicalMedia)}`);
+  const { media_dir } = await saved.json();
+  const scan = await request.post(`${backend}/library/scan?media_dir=${encodeURIComponent(media_dir)}`);
   expect(scan.ok()).toBeTruthy();
   const { workflow_id } = await scan.json();
   await expect.poll(async () => (await read(request, `/workflows/${workflow_id}`)).status, { timeout: 45000 }).toBe('succeeded');
+  await control(request, 'library_filter_fixture'); // 47 more real local Films, watched states and pagination.
 });
-
-test.afterAll(async ({ request }) => { await cleanup(request); });
-
+test.afterAll(async ({ request }) => { await control(request, 'identity_cleanup'); });
 test.beforeEach(async ({ context }) => {
   await context.route('**/*', route => ['127.0.0.1', 'localhost'].includes(new URL(route.request().url()).hostname)
     ? route.continue() : route.abort('blockedbyclient'));
 });
 
-for (const locale of ['en', 'zh'] as const) {
+for (const [locale, copy] of [['en', en.Explore], ['zh', zh.Explore]] as const) {
   for (const width of [1920, 1024, 768, 390, 320]) {
-    test(`${locale} Explore keeps a clean header and accessible local filtering at ${width}px`, async ({ page, request }) => {
-      const text = copy[locale];
-      const askRequests: string[] = [];
-      page.on('request', request => {
-        if (request.method() === 'POST' && new URL(request.url()).pathname.startsWith('/api/ask')) askRequests.push(request.url());
-      });
+    test(`${locale} Explore browses concrete collections and searches all categories at ${width}px`, async ({ page, request }) => {
+      const errors: string[] = [], ai: string[] = [];
+      page.on('pageerror', error => errors.push(error.message));
+      page.on('request', request => { if (request.method() === 'POST' && /\/(ask|analysis)/.test(request.url())) ai.push(request.url()); });
       await page.setViewportSize({ width, height: width === 1920 ? 1080 : 844 });
-      await page.goto(`/${locale}/library`);
-      const libraryTitle = await titleMetrics(page);
       await page.goto(`/${locale}/explore`);
-      const header = page.locator('header').filter({ has: page.getByRole('heading', { name: text.title, exact: true }) });
-      await expect(header.getByRole('heading', { level: 1 })).toBeVisible();
-      await expect(header.locator('h1')).toHaveClass('type-display-editorial');
-      expect(await titleMetrics(page)).toEqual(libraryTitle);
-      await expect(page.locator('nav.fixed').first()).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
-      // No dynamic collection count or header helper copy remains, regardless of its value.
-      await expect(header.locator('p, span')).toHaveCount(0);
-      expect(await header.innerText()).not.toMatch(/\d/);
-      for (const removed of text.removed) await expect(page.getByText(removed, { exact: true })).toHaveCount(0);
-      const deck = page.locator('section[aria-labelledby="lens-deck-title"]');
-      const cards = deck.getByRole('button');
-      await expect(cards).toHaveCount(4);
-      await expect(cards.locator('svg')).toHaveCount(0);
-      await expect(deck.locator('details')).toHaveCount(0);
-      await expect(deck).toHaveCSS('border-bottom-width', '0px');
-      await expect(deck).toHaveCSS('border-top-width', '0px');
-      const overview = await read(request, '/explore');
-      for (const [index, dimension] of overview.dimensions.entries()) {
-        const card = cards.nth(index);
-        await expect(card).toHaveCSS('border-width', '1px');
-        const ratio = card.locator('span[aria-label]');
-        await expect(ratio).toHaveText(`${dimension.coverage.covered_films}/${dimension.coverage.total_films}`);
-        await expect(ratio).toHaveAttribute('aria-label', /\S/);
+      await expect(page.locator('h1')).toHaveClass('type-display-editorial');
+      const collectionSection = page.getByRole('region', { name: copy.collectionsTitle, exact: true });
+      const collections: ExploreCollections = await read(request, '/explore/collections');
+      expect(collections.items.length).toBeGreaterThan(0);
+      await expect(collectionSection.getByRole('button')).toHaveCount(collections.items.length);
+      await expect(cards(page)).toHaveCount(40);
+      await expect(page.getByText(copy.findFact, { exact: true })).toHaveCount(0);
+      await expect(page.getByText(copy.currentLens, { exact: true })).toHaveCount(0);
+      await noOverflow(page);
+      if (width === 1920 || width === 390) await capture(page, `explore-collections-${locale}-${width}.png`);
+      await collectionSection.getByRole('button').first().click();
+      const first = collections.items[0];
+      await expect.poll(() => new URL(page.url()).searchParams.get(first.dimension)).toBe(first.key);
+      await expect(results(page)).toHaveText(new RegExp(`^${first.count}\\b`));
+      await page.getByRole('button', { name: copy.clearAll, exact: true }).click();
+      await expect.poll(() => new URL(page.url()).searchParams.has(first.dimension)).toBe(false);
+      // Collection country suggestions may explicitly select Unwatched; reset to All.
+      await page.getByRole('group', { name: copy.viewLabel, exact: true }).getByRole('button', { name: copy.views.all, exact: true }).click();
+      const search = page.getByRole('textbox', { name: copy.searchAll, exact: true });
+      await search.fill(locale === 'zh' ? '日本' : 'Japan');
+      const finder = page.getByRole('region', { name: copy.searchTitle, exact: true });
+      for (const label of Object.values(copy.dimensions)) await expect(finder.getByRole('region', { name: label, exact: true })).toBeVisible();
+      const country = finder.getByRole('region', { name: copy.dimensions.country, exact: true });
+      const countryName = new Intl.DisplayNames([locale], { type: 'region' }).of('JP')!;
+      await country.getByRole('button').filter({ has: page.getByText(countryName, { exact: true }) }).click();
+      await expect.poll(() => new URL(page.url()).searchParams.get('country')).toBe('JP');
+      const filtered = await read(request, '/explore/films?country=JP');
+      await expect(results(page)).toHaveText(new RegExp(`^${filtered.total}\\b`));
+      await expect(search).toHaveValue(locale === 'zh' ? '日本' : 'Japan');
+      expect(new URL(page.url()).searchParams.has('q')).toBe(false);
+      const selected = page.getByRole('region', { name: copy.activeFilters, exact: true });
+      await expect(selected).toBeVisible();
+      await noOverflow(page);
+      if (width === 1920 || width === 390) {
+        await search.scrollIntoViewIfNeeded(); await capture(page, `explore-filters-${locale}-${width}.png`);
+        await results(page).scrollIntoViewIfNeeded(); await capture(page, `explore-results-${locale}-${width}.png`);
       }
-      // Country display names switch from stable server keys after hydration.
-      // Wait for that visible state before capturing or clicking client controls.
-      const context: ExploreContext = await read(request, '/explore/context?limit=6');
-      const country = context.dimensions.find(dimension => dimension.dimension === 'country')!.items[0];
-      const countryName = new Intl.DisplayNames([locale], { type: 'region' }).of(country.key)!;
-      await expect(cards.nth(2).locator('p[title]')).toHaveText(countryName);
-      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-      if (width === 1920 || width === 390) await capture(page, `explore-cards-${locale}-${width}.png`);
-
-      const initialUrl = page.url();
-      const find = header.getByRole('button', { name: text.find, exact: true });
-      await find.click();
-      const dialog = page.getByRole('dialog', { name: text.finder, exact: true });
-      await expect(dialog).toBeVisible();
-      const input = dialog.getByRole('textbox', { name: text.search, exact: true });
-      await expect(input).toBeFocused();
-      expect(page.url()).toBe(initialUrl);
-      const facets = await read(request, '/explore/facets/genre?limit=30');
-      const fact = facets.items[0];
-      expect(fact).toBeTruthy();
-      const searched = page.waitForResponse(response => {
-        const url = new URL(response.url());
-        return url.pathname === '/api/explore/facets/genre' && url.searchParams.get('q') === fact.label && response.ok();
-      });
-      await input.fill(fact.label);
-      await searched;
-      await input.press('Enter');
-      await expect(dialog).toBeVisible();
-      expect(page.url()).toBe(initialUrl);
-      await dialog.getByRole('button').filter({ has: page.getByText(fact.label, { exact: true }) }).click();
-      await expect(dialog).toBeHidden();
-      await expect.poll(() => new URL(page.url()).searchParams.get('genre')).toBe(fact.key);
-      const journey = page.getByRole('region', { name: text.journey, exact: true });
-      await expect(journey).toBeVisible();
-      await expect(journey.getByText(text.where, { exact: true })).toBeVisible();
-      const label = journey.locator('#query-ribbon-title');
-      await expect(label).toHaveClass('sr-only');
-      const bounds = await label.boundingBox();
-      expect(bounds?.width).toBe(1); expect(bounds?.height).toBe(1);
-      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-      await journey.getByRole('button', { name: text.clear, exact: true }).click();
-      await expect.poll(() => new URL(page.url()).search).toBe('');
-      await expect(journey).toHaveCount(0);
-      await find.click();
-      await expect(dialog).toBeVisible();
-      await page.keyboard.press('Escape');
-      await expect(find).toBeFocused();
-      expect(askRequests).toEqual([]);
+      await selected.getByRole('button', { name: copy.removeFact.replace('{fact}', countryName), exact: true }).click();
+      await expect.poll(() => new URL(page.url()).searchParams.has('country')).toBe(false);
+      await search.focus(); await page.keyboard.press('Escape'); await expect(search).toHaveValue('');
+      await page.locator('h1').click(); await page.keyboard.press('/'); await expect(search).toBeFocused();
+      expect(ai).toEqual([]); expect(errors).toEqual([]);
     });
   }
 }
 
-test('empty Explore keeps live 0/0 coverage and usable lens entries', async ({ page }) => {
-  await cleanup(page.request);
+test('people intersections, legacy union URLs, viewing, sort and history remain explicit', async ({ page, request }) => {
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  const people: ExploreFacetSummary[] = (await read(request, '/explore/facets/person?limit=100')).items;
+  const director = people.find(person => person.label === 'Director 1')!;
+  const actor = people.find(person => person.label === 'Actor 1')!;
+  expect(director).toBeTruthy(); expect(actor).toBeTruthy();
+  const params = `person=${director.key}&person=${actor.key}`;
+  const all = await read(request, `/explore/films?${params}&person_match=all`);
+  const any = await read(request, `/explore/films?${params}`);
+  expect(all.total).toBeGreaterThan(0); expect(any.total).toBeGreaterThan(all.total);
   await page.goto('/en/explore');
-  const cards = page.locator('section[aria-labelledby="lens-deck-title"] button');
-  await expect(cards).toHaveCount(4);
-  for (const card of await cards.all()) await expect(card.locator('span[aria-label]')).toHaveText('0/0');
-  await cards.first().click();
-  await expect(page.getByRole('dialog')).toBeVisible();
+  const search = page.getByRole('textbox', { name: en.Explore.searchAll, exact: true });
+  const finder = page.getByRole('region', { name: en.Explore.searchTitle, exact: true });
+  for (const person of [director, actor]) {
+    await search.fill(person.label);
+    await finder.getByRole('region', { name: 'Person', exact: true }).getByRole('button').filter({ has: page.getByText(person.label, { exact: true }) }).click();
+    await expect.poll(() => new URL(page.url()).searchParams.getAll('person').includes(person.key)).toBe(true);
+  }
+  await expect(results(page)).toHaveText(`${all.total} Film`);
+  await expect(page.getByRole('button', { name: 'Match all', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  const allUrl = page.url();
+  await page.getByRole('button', { name: 'Match any', exact: true }).click();
+  await expect(results(page)).toHaveText(`${any.total} Films`);
+  const anyUrl = page.url();
+  await page.goBack(); await expect(page).toHaveURL(allUrl); await expect(results(page)).toHaveText(`${all.total} Film`);
+  await page.goForward(); await expect(page).toHaveURL(anyUrl); await page.reload();
+  await expect(page.getByRole('button', { name: 'Match any', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  await page.goto(`/en/explore?${params}`);
+  await expect(results(page)).toHaveText(`${any.total} Films`);
+  await expect(page.getByRole('button', { name: 'Match any', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  await page.getByRole('button', { name: 'Year', exact: true }).click();
+  await expect.poll(() => new URL(page.url()).searchParams.get('sort')).toBe('year');
+  await page.getByRole('button', { name: 'Watched', exact: true }).click();
+  await expect.poll(() => new URL(page.url()).searchParams.get('view')).toBe('watched');
+  const watchedUrl = page.url(); await page.reload(); await expect(page).toHaveURL(watchedUrl);
+});
+
+test('pagination focuses results, detail return preserves URL, and unknown filters stay strict', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto('/en/explore');
+  await page.getByRole('button', { name: 'Next', exact: true }).click();
+  await expect.poll(() => new URL(page.url()).searchParams.get('offset')).toBe('40');
+  await expect(results(page)).toBeFocused();
+  const paged = page.url();
+  await page.reload(); await expect(page).toHaveURL(paged); await expect(cards(page)).toHaveCount(19);
+  await page.locator('.library-card-title').first().click();
+  await expect(page).toHaveURL(/\/library\/film_[a-f0-9]{32}$/);
+  await page.goBack(); await expect(page).toHaveURL(paged);
+  await expect(cards(page)).toHaveCount(19);
+  await page.goBack(); await expect.poll(() => new URL(page.url()).searchParams.has('offset')).toBe(false);
+  await page.goto('/en/explore?country=ZZ');
+  await expect(results(page)).toHaveText('0 Films');
+  await expect(page.getByRole('heading', { name: en.Explore.zeroTitle, exact: true })).toBeVisible();
+  await expect(page.getByRole('region', { name: en.Explore.activeFilters, exact: true }).getByText('Unavailable', { exact: true })).toBeVisible();
+  expect(new URL(page.url()).searchParams.get('country')).toBe('ZZ');
+});
+
+test('late responses cannot restore old search results or leak the search text into the URL', async ({ page }) => {
+  let release!: () => void;
+  const held = new Promise<void>(resolve => { release = resolve; });
+  await page.route('**/api/explore/facets/*?*', async route => {
+    if (new URL(route.request().url()).searchParams.get('q') === 'Director') await held;
+    await route.continue();
+  });
+  await page.goto('/en/explore');
+  const search = page.getByRole('textbox', { name: en.Explore.searchAll, exact: true });
+  const finder = page.getByRole('region', { name: en.Explore.searchTitle, exact: true });
+  const waiting = page.waitForRequest(request => new URL(request.url()).searchParams.get('q') === 'Director');
+  await search.fill('Director'); await waiting;
+  await search.fill('Actor');
+  await expect(finder.getByText('Actor 1', { exact: true })).toBeVisible();
+  release();
+  await expect(finder.getByText('Director 1', { exact: true })).toHaveCount(0);
+  expect(new URL(page.url()).search).toBe('');
+});
+
+test('filter searches paginate independently and recover a failed category read', async ({ page }) => {
+  let failed = true;
+  await page.route('**/api/explore/facets/person?*', route => failed
+    ? route.fulfill({ status: 503, json: { detail: 'Fixture read unavailable' } }) : route.continue());
+  await page.goto('/en/explore');
+  const finder = page.getByRole('region', { name: en.Explore.searchTitle, exact: true });
+  await finder.getByRole('button', { name: 'Person', exact: true }).click();
+  const people = finder.getByRole('region', { name: 'Person', exact: true });
+  await expect(people.getByText(en.Explore.facetLoadFailed)).toBeVisible();
+  failed = false;
+  await people.getByRole('button', { name: 'Retry', exact: true }).click();
+  await expect(people.getByRole('button').filter({ has: page.getByText('Director 1', { exact: true }) })).toBeVisible();
+  await people.getByRole('button', { name: 'Load more', exact: true }).click();
+  await expect.poll(() => people.getByRole('button').count()).toBe(13);
+  await page.getByRole('textbox', { name: en.Explore.searchAll, exact: true }).fill('Actor');
+  await expect(people.getByText('Director 1', { exact: true })).toHaveCount(0);
+  await expect.poll(() => people.getByRole('button').count()).toBe(7);
+  expect(new URL(page.url()).search).toBe('');
+});
+
+test('rapid filter selections keep both conditions when an older navigation finishes last', async ({ page, request }) => {
+  let release!: () => void;
+  const held = new Promise<void>(resolve => { release = resolve; });
+  await page.goto('/en/explore');
+  const search = page.getByRole('textbox', { name: en.Explore.searchAll, exact: true });
+  const finder = page.getByRole('region', { name: en.Explore.searchTitle, exact: true });
+  await search.fill('Japan');
+  await expect(finder.getByText('Japan', { exact: true })).toBeVisible();
+  await page.route('**/en/explore?**', async route => {
+    const params = new URL(route.request().url()).searchParams;
+    if (params.get('country') === 'JP' && !params.has('person')) await held;
+    await route.continue();
+  });
+  const waiting = page.waitForRequest(request => {
+    const url = new URL(request.url());
+    return url.pathname === '/en/explore' && url.searchParams.get('country') === 'JP';
+  });
+  await finder.getByRole('region', { name: 'Country', exact: true }).getByRole('button').click();
+  await waiting;
+  await search.fill('Actor 1');
+  await finder.getByRole('region', { name: 'Person', exact: true }).getByRole('button').filter({ has: page.getByText('Actor 1', { exact: true }) }).click();
+  await expect.poll(() => new URL(page.url()).searchParams.getAll('person').length).toBe(1);
+  const committed = page.url();
+  const params = new URL(committed).searchParams;
+  expect(params.get('country')).toBe('JP');
+  release();
+  const expected = await read(request, `/explore/films?${params}`);
+  await expect(results(page)).toHaveText(new RegExp(`^${expected.total}\\b`));
+  await expect(page).toHaveURL(committed);
+});
+
+test('empty and metadata-poor libraries keep usable search and real Film results', async ({ page, request }) => {
+  await control(request, 'identity_cleanup');
+  await page.goto('/en/explore');
+  await expect(page.getByText(en.Explore.emptyLibrary, { exact: true })).toBeVisible();
+  await expect(cards(page)).toHaveCount(0);
+  await expect(page.getByRole('textbox', { name: en.Explore.searchAll, exact: true })).toBeVisible();
+  await control(request, 'explore_sparse_fixture');
+  await page.reload();
+  await expect(page.getByText(en.Explore.collectionsFallback, { exact: true })).toBeVisible();
+  await expect(cards(page)).toHaveCount(1);
+  await expect(results(page)).toHaveText('1 Film');
+  await page.getByRole('button', { name: 'Watched', exact: true }).click();
+  await expect(page.getByRole('region', { name: en.Explore.collectionsTitle, exact: true }).getByText(en.Explore.emptyViewDetail, { exact: true })).toBeVisible();
+  await expect(page.getByText(en.Explore.collectionsFallback, { exact: true })).toHaveCount(0);
 });

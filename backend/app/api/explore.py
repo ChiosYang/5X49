@@ -24,13 +24,23 @@ def get_explore_context(
     country: list[str] = Query(default=[]),
     decade: list[str] = Query(default=[]),
     view: Literal["all", "watched", "unwatched"] = "all",
+    person_match: Literal["any", "all"] = "any",
     limit: int = Query(default=6, ge=1, le=12),
 ):
     return explore_query_service.context(
         filters=_validated_filters(genre, person, country, decade),
         view=view,
         limit=limit,
+        person_match=person_match,
     )
+
+
+@router.get("/explore/collections")
+def get_explore_collections(
+    view: Literal["all", "watched", "unwatched"] = "all",
+    limit: int = Query(default=6, ge=1, le=12),
+):
+    return explore_query_service.collections(view=view, limit=limit)
 
 
 @router.get("/explore/facets/{dimension}")
@@ -55,6 +65,7 @@ def get_explore_films(
     country: list[str] = Query(default=[]),
     decade: list[str] = Query(default=[]),
     view: Literal["all", "watched", "unwatched"] = "all",
+    person_match: Literal["any", "all"] = "any",
     sort: Literal["title", "year"] = "title",
     dir: Literal["asc", "desc"] | None = None,
     limit: int = Query(default=40, ge=1, le=100),
@@ -69,6 +80,7 @@ def get_explore_films(
         direction=direction,
         limit=limit,
         offset=offset,
+        person_match=person_match,
     )
 
 

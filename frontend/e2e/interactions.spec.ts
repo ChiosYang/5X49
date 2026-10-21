@@ -446,17 +446,14 @@ test('film More can close during a pending operation and consumes a repeated cli
   await expect(refresh).toBeEnabled();expect(writes).toBe(1);
 });
 
-test('Explore exposes all four cinematic entries in the first narrow-screen viewport', async ({ page }) => {
+test('Explore local collections can be opened with the keyboard on narrow screens', async ({ page }) => {
   for (const locale of ['en','zh']) {
     await page.setViewportSize({width:390,height:844});await page.goto(`/${locale}/explore`);
-    const deck=page.locator('section[aria-labelledby="lens-deck-title"]');
-    const entries=deck.locator('button');await expect(entries).toHaveCount(4);
-    for (const entry of await entries.all()) {
-      const rect=await entry.boundingBox();expect(rect!.y+rect!.height).toBeLessThanOrEqual(844);
-      await entry.focus();await page.keyboard.press('Enter');
-      await expect(page.getByRole('dialog').first()).toBeVisible();await page.keyboard.press('Escape');
-      await expect(entry).toBeFocused();
-    }
+    const entries=page.locator('section[aria-labelledby="explore-collections-title"] button');
+    expect(await entries.count()).toBeGreaterThan(0);
+    await entries.first().focus();await page.keyboard.press('Enter');
+    await expect.poll(()=>new URL(page.url()).search.length).toBeGreaterThan(0);
+    await expect(page.locator('#query-ribbon-title')).toBeVisible();
     expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
   }
 });
@@ -532,19 +529,14 @@ test('cinematic controls preserve touch size, keyboard focus and collapsed maint
   await expect(page.getByText('Full database restore requires the application to be stopped',{exact:true})).toBeHidden();
 });
 
-test('cinematic Explore has neutral cards and a keyboard-accessible fact finder', async ({ page }) => {
+test('Explore reuses the standard input and supports keyboard search without a dialog', async ({ page }) => {
   await page.goto('/en/explore');
-  const lens=page.getByRole('button',{name:'Open the Genre lens',exact:true});
-  await lens.focus();await expect(lens).toHaveCSS('border-radius','6px');
-  await expect(lens).toHaveCSS('outline-style','solid');
-  await page.getByRole('button',{name:'Find a fact',exact:true}).click();
-  const dialog=page.getByRole('dialog',{name:'Fact Finder',exact:true});
-  await expect(dialog).toBeVisible();
-  const close=dialog.getByRole('button',{name:'Close Fact Finder',exact:true});
-  await expect.poll(()=>close.evaluate(node=>node.getBoundingClientRect().height)).toBeGreaterThanOrEqual(44);
-  await expect(dialog.getByRole('textbox')).toBeFocused();
-  await page.keyboard.press('Escape');
-  await expect(page.getByRole('button',{name:'Find a fact',exact:true})).toBeFocused();
+  const input=page.getByRole('textbox',{name:'Search genres, people, countries or decades',exact:true});
+  await page.keyboard.press('/');await expect(input).toBeFocused();
+  await expect(input).toHaveCSS('outline-style','solid');
+  await expect.poll(()=>input.evaluate(node=>node.getBoundingClientRect().height)).toBeGreaterThanOrEqual(44);
+  await input.fill('Japan');await page.keyboard.press('Escape');
+  await expect(input).toHaveValue('');await expect(input).toBeFocused();
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
 });
 
