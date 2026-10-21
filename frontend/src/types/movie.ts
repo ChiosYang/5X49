@@ -277,6 +277,20 @@ export type ExploreView = "all" | "watched" | "unwatched";
 export type ExploreSort = "title" | "year";
 export type ExploreDirection = "asc" | "desc";
 
+export interface ExploreCollection {
+  dimension: ExploreDimension;
+  key: string;
+  label: string;
+  view: ExploreView;
+  count: number;
+  preview_film: ExplorePreviewFilm;
+}
+
+export interface ExploreCollections {
+  total_films: number;
+  items: ExploreCollection[];
+}
+
 export interface ExploreCoverage {
   total_films: number;
   covered_films: number;
@@ -375,6 +389,7 @@ export interface ExploreFilmPage {
     view: ExploreView;
     sort: ExploreSort;
     dir: ExploreDirection;
+    person_match: "any" | "all";
   };
   filters: ExploreFilterRef[];
   unresolved_filters: ExploreFilterRef[];

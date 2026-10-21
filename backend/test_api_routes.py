@@ -49,6 +49,7 @@ CANONICAL_ROUTES = {
     ("GET", "/films/{film_id}/graph"),
     ("GET", "/explore"),
     ("GET", "/explore/context"),
+    ("GET", "/explore/collections"),
     ("GET", "/explore/facets/{dimension}"),
     ("GET", "/explore/films"),
     ("GET", "/films/{film_id}/artwork"),
@@ -343,6 +344,11 @@ class ApiRouteContractTests(unittest.TestCase):
         self.assertEqual(response.json()["root"]["id"], film_id)
 
     def test_explore_routes_validate_strict_filter_contracts(self):
+        for path in ("/explore/films?person_match=bad", "/explore/context?person_match=bad", "/explore/collections?view=bad", "/explore/collections?limit=13"):
+            self.assertEqual(self.client.get(path).status_code, 422)
+        with patch("app.api.explore.explore_query_service.collections", return_value={"total_films": 0, "items": []}) as collections:
+            self.assertEqual(self.client.get("/explore/collections?view=unwatched&limit=3").status_code, 200)
+        self.assertEqual(collections.call_args.kwargs, {"view": "unwatched", "limit": 3})
         response = self.client.get("/explore/films?genre=not-a-concept")
         self.assertEqual(response.status_code, 422)
         response = self.client.get("/explore/films?country=Japan")
@@ -360,10 +366,11 @@ class ApiRouteContractTests(unittest.TestCase):
             return_value={"items": [], "total": 0},
         ) as list_films:
             response = self.client.get(
-                f"/explore/films?genre=concept_{suffix}&genre=con_{suffix}"
+                f"/explore/films?genre=concept_{suffix}&genre=con_{suffix}&person_match=all"
             )
         self.assertEqual(response.status_code, 200)
         self.assertEqual(list_films.call_args.kwargs["filters"]["genre"], [f"con_{suffix}"])
+        self.assertEqual(list_films.call_args.kwargs["person_match"], "all")
 
         with patch(
             "app.api.explore.explore_query_service.context",

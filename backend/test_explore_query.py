@@ -125,6 +125,96 @@ class ExploreQueryTests(unittest.TestCase):
             {"genre", "person", "country", "decade"},
         )
 
+    def test_people_all_intersects_identities_and_keeps_legacy_any_semantics(self):
+        with Session(self.engine) as session:
+            self._add_credit(session, self.films["Alpha"], self.people["other"], "Acting", "Actor", "d")
+            session.commit()
+        filters = {"genre": [], "person": list(self.people.values()), "country": [], "decade": []}
+        args = dict(filters=filters, view="all", sort="title", direction="asc", limit=40, offset=0)
+        self.assertEqual(explore_query_service.list_films(**args)["total"], 3)
+        result = explore_query_service.list_films(**args, person_match="all")
+        self.assertEqual(result["total"], 1)
+        self.assertEqual(result["items"][0]["film"]["id"], self.films["Alpha"])
+        self.assertEqual(len(result["items"][0]["matched_facts"]), 2)
+        filters["person"].append(self.people["shared"])
+        self.assertEqual(explore_query_service.list_films(**args, person_match="all")["total"], 1)
+        self.assertEqual(explore_query_service.list_films(**{**args, "view": "watched"}, person_match="all")["total"], 0)
+        roles = {self.people["shared"]: "actor"}
+        self.assertEqual(explore_query_service.list_films(**args, person_match="all", person_roles=roles)["total"], 0)
+        filters["person"].append("person_" + "f" * 32)
+        unavailable = explore_query_service.list_films(**args, person_match="all")
+        self.assertEqual(unavailable["total"], 0)
+        self.assertEqual(len(unavailable["unresolved_filters"]), 1)
+        self.assertEqual(explore_query_service.list_films(**args)["total"], 3)
+
+    def test_people_context_all_counts_match_strict_results(self):
+        with Session(self.engine) as session:
+            self._add_credit(session, self.films["Alpha"], self.people["other"], "Acting", "Actor", "d")
+            session.commit()
+        filters = {"genre": [], "person": [self.people["shared"]], "country": [], "decade": []}
+        context = explore_query_service.context(filters=filters, view="all", limit=6, person_match="all")
+        people = next(entry for entry in context["dimensions"] if entry["dimension"] == "person")
+        self.assertEqual(context["current_total"], 2)
+        self.assertEqual(people["operator"], "and")
+        other = people["items"][0]
+        self.assertEqual(other["key"], self.people["other"])
+        self.assertEqual(other["result_count"], 1)
+        self.assertEqual(other["additional_count"], 0)
+        self.assertEqual(other["preview_film"]["id"], self.films["Alpha"])
+        filters["person"].append(self.people["other"])
+        self.assertEqual(explore_query_service.context(filters=filters, view="all", limit=6, person_match="all")["current_total"], 1)
+
+    def test_collections_are_deterministic_nonempty_exact_local_sets(self):
+        statements = []
+        def count_statement(*_args):
+            statements.append(1)
+        sqlalchemy_event.listen(self.engine, "before_cursor_execute", count_statement)
+        try:
+            collections = explore_query_service.collections()
+        finally:
+            sqlalchemy_event.remove(self.engine, "before_cursor_execute", count_statement)
+        self.assertLessEqual(len(statements), 6)
+        self.assertEqual(collections, explore_query_service.collections())
+        self.assertEqual(collections["total_films"], 3)
+        self.assertTrue(collections["items"])
+        signatures = set()
+        for item in collections["items"]:
+            filters = {dimension: [] for dimension in ("genre", "person", "country", "decade")}
+            filters[item["dimension"]] = [item["key"]]
+            result = explore_query_service.list_films(filters=filters, view=item["view"], sort="title", direction="asc", limit=40, offset=0)
+            self.assertGreater(item["count"], 0)
+            self.assertEqual(item["count"], result["total"])
+            signature = frozenset(entry["film"]["id"] for entry in result["items"])
+            self.assertNotIn(signature, signatures)
+            signatures.add(signature)
+            self.assertIn(item["preview_film"]["id"], signature)
+            self.assertNotIn(item["key"], ["US", "FR"])
+        self.assertNotIn(str(self.root).casefold(), str(collections).casefold())
+        watched = explore_query_service.collections(view="watched")
+        self.assertEqual(len(watched["items"]), 1)
+        self.assertEqual(watched["items"][0]["count"], 1)
+        self.assertEqual(watched["items"][0]["view"], "watched")
+
+    def test_collections_degrade_honestly_with_no_metadata_or_no_films(self):
+        with Session(self.engine) as session:
+            session.exec(delete(ExploreFacetReadModel))
+            session.commit()
+        sparse = explore_query_service.collections()
+        self.assertEqual((sparse["total_films"], sparse["items"]), (3, []))
+        with Session(self.engine) as session:
+            session.exec(delete(ExploreFilmReadModel))
+            session.commit()
+        empty = explore_query_service.collections()
+        self.assertEqual((empty["total_films"], empty["items"]), (0, []))
+
+    def test_facet_search_uses_bundled_bilingual_aliases_and_literal_text(self):
+        for text in ("JP", "Japan", "日本"):
+            self.assertEqual(explore_query_service.list_facets("country", query=text, limit=30, offset=0)["items"][0]["key"], "JP")
+        self.assertEqual(explore_query_service.list_facets("genre", query="动作", limit=30, offset=0)["total"], 1)
+        self.assertEqual(explore_query_service.list_facets("decade", query="1990年代", limit=30, offset=0)["items"][0]["key"], "1990")
+        for text in ("%", "_"):
+            self.assertEqual(explore_query_service.list_facets("person", query=text, limit=30, offset=0)["total"], 0)
+
     def test_context_counts_and_preview_follow_strict_and_or_semantics(self):
         with Session(self.engine) as session:
             action = session.exec(select(Concept).where(Concept.canonical_name == "Action")).one()

@@ -1,7 +1,7 @@
-# Factual Explore and Explore Lens
+# Local Explore: Browse, Search and Filter
 
-Status: Done
-Last updated: 2026-09-02
+Status: In Progress
+Last updated: 2026-10-21
 Related: Product Roadmap — Factual Explore
 
 ## Goal
@@ -12,15 +12,12 @@ relaxed constraints.
 
 ## Scope
 
-- Schema v4 disposable synchronous Explore Film/facet projections.
-- Coverage that separates eligible, conflicted and missing facts.
-- Strict same-dimension OR, cross-dimension AND, and watched-state AND queries.
-- Paginated facets and Film results with stable URL serialization.
-- Bilingual `/explore` UI and Film Graph Person/Genre entry links.
-- Fixed-read `/explore/context` clues with exact AND/OR impact counts and safe,
-  deterministic preview Films.
-- Progressive Lens Deck, human-readable Query Ribbon, one contextual Lens and
-  one shared Fact Finder instead of four simultaneous filter panels.
+- Concrete, nonempty local collection entry points with existing artwork and exact counts.
+- Inline search across Genre, Person, Country and Decade, with optional category browsing.
+- Removable filters, viewing state, sort, paginated LibraryMovieCards and detail navigation on one page.
+- Explicit People All/Any combination; legacy URLs without a mode retain OR semantics.
+- Strict accepted local facts, conflict exclusion, missing values and honest empty/sparse fallbacks.
+- Existing design tokens, controls, bilingual labels and desktop/mobile layouts.
 
 ## Non-goals
 
@@ -30,28 +27,28 @@ relaxed constraints.
 
 ## Existing behavior
 
-Fresh Canonical v3 already had deterministic Library/Detail/Search/Graph read
-models and Resolver-selected factual metadata. Explore adds a separate
-rebuildable query surface; Canonical rows remain the sole source of truth.
+The Schema v4 synchronous read models remain authoritative. The previous Explore
+required choosing a dimension, opening a Lens panel, then using a modal Fact
+Finder. The new page replaces that entry flow; historical slices below retain
+the original implementation and verification record.
 
 ## Acceptance criteria
 
-- [x] Only visible Library Films receive Explore Film rows.
-- [x] Genre, Person and Country use Resolver-selected accepted factual state;
-  conflicts are countable but never eligible.
-- [x] Decades are deterministically derived from release year.
-- [x] Viewing/domain mutations refresh projections transactionally.
-- [x] API semantics and pagination are strict and reproducible.
-- [x] URL parsing, normalization and serialization are stable.
-- [x] The bilingual UI shows coverage, facets, active constraints, results and
-  strict zero-result state without copying the full Library on first entry.
-- [x] Person and Genre Graph nodes link to Explore; other Concepts remain read-only.
-- [x] Context clue totals match strict Film queries without facet-level N+1 reads.
-- [x] Filter, view and sort changes preserve the viewport; only result pagination
-  focuses and scrolls the result stage after new data arrives.
-- [x] Country localization remains deterministic during SSR/hydration.
-- [x] Explore Lens isolated bilingual desktop/375px browser smoke and final
-  complete-suite review pass.
+- [x] The default page shows real local collections and Film results without choosing a dimension.
+- [x] Each collection count and preview match the same strict filter/view query; identical sets are deduplicated.
+- [x] No collections are invented for empty, conflicted or metadata-poor Libraries.
+- [x] Search spans all four categories, groups results clearly and supports independent pagination.
+- [x] Search text remains presentation state; selected filters and People mode round-trip through URL/history.
+- [x] New People selections default to All; old links remain Any. Missing/conflicted people fail closed in All.
+- [x] Viewing, sort, pagination focus and existing detail links are preserved.
+- [x] Successful card saves refresh collection previews/counts and current results without changing URL/history;
+  delayed saves use the latest query and cannot refresh a page or detail overlay the user has navigated to.
+- [x] A shrinking result set corrects invalid offsets to the last valid page with history replace;
+  stale responses cannot replace newer navigation and nonempty sets never show a false zero state.
+- [x] Coverage, Lens and Fact Finder concepts are absent from the primary Explore UI.
+- [x] Existing LibraryMovieCard, Button, TextInput, typography, colors and spacing are reused.
+- [x] Full backend suite, frontend checks, related browser suites and responsive visual inspection complete.
+- [ ] Independent code review and required CI complete before merge.
 
 ## Decisions
 
@@ -63,18 +60,36 @@ rebuildable query surface; Canonical rows remain the sole source of truth.
 - Country labels render their stable ISO code during SSR/hydration, then localize
   with the browser's `Intl.DisplayNames` after hydration so different ICU/CLDR
   versions cannot produce a React text mismatch.
-- The current Lens is presentation state, not query state. The URL continues to
-  contain only strict facts, viewing state, sort, direction and pagination.
 - Context clues are factual navigation, not recommendations. They use fixed
   synchronous read-model queries and never invoke similarity or a model.
 
+- `person_match=any|all` defaults to Any in the API. Existing person URLs keep
+  union semantics. Fresh UI searches serialize All when selecting a person.
+- A Person means participation as Actor or Director, deduplicated by canonical
+  identity. Collection labels say "Films with" rather than claiming director-only work.
+- Collection generation uses at most six bulk SQL statements, round-robins
+  Country/Decade/Person/Genre candidates and deduplicates identical Film sets.
+  Country entry points use Unwatched from the All view; explicit views are preserved.
+- Search debounces by 200ms, uses the existing paginated facet endpoint for each
+  category, and isolates responses by category/query keys. Old responses cannot
+  repopulate a newer search. Bilingual aliases use the bundled vocabulary.
+- Filtered pages do not fetch collection suggestions. No overview/coverage or
+  context-clue requests are needed by the main Explore UI.
+- Mobile collection entries scroll within one row; desktop uses the existing
+  grid/spacing tokens. Missing artwork uses a quiet placeholder.
+- The old modal Fact Finder remains available to Ask, which already reused it.
+- Saved-card refresh receipts live in the existing fetcher-free SWR cache and survive leaving Explore/Back.
+  Refresh waits for newer navigation to settle, runs only on the active Explore page and acknowledges
+  successful reads without consuming newer saves. The receipt contains only revision counters.
+- Invalid offsets use `replace` with filters, viewing state and sorting intact. The correction retains
+  the viewport, adds no history entry and shows a loader while fetching a nonempty valid page.
+
 ## Open questions
 
-- Engineering scope and the four-dimension Beta contract are frozen. PR #4 was
-  merged into `main` as `07d89530f110` after its required CI passed.
-- Representative real-library coverage, external Alpha comprehension and
-  repeat-use evidence remain product-gate work; this engineering handoff does
-  not claim those results.
+- Parent task owns independent code review and the final merge gate. This task
+  delivers a draft PR and does not merge before that review and all related CI pass.
+- Representative real-library metadata quality remains a product gate; synthetic
+  fixtures establish behavior, not recommendation quality.
 
 ## Slices
 
@@ -133,7 +148,43 @@ Status: Complete
 - Verification: focused backend context/API tests, frontend unit/lint/typecheck,
   production build and isolated responsive browser smoke pass locally.
 
+### Slice 7 — Browse before filtering
+
+Status: Complete (implementation and local verification; independent review pending)
+
+- Replaced the Lens landing/sidebar/sheet with local entry points and same-page search, filters and Films.
+- Added `/explore/collections`, People All semantics for Films and Context, literal/bilingual facet search.
+- Added fixture coverage for exact counts, role/identity deduplication, unresolved people, races, URL history,
+  viewing/sort, result pagination, and empty/sparse Libraries. No real AI or provider calls are used.
+- Verification: 41 focused backend tests, complete backend suite, frontend checks,
+  74 related browser tests and the final 16-case Explore suite passed.
+
 ## Verification evidence
+
+Current browse/filter implementation (2026-10-21):
+
+- `.venv/Scripts/python.exe -X utf8 -m unittest test_explore_query.py test_api_routes.py test_factual_explore_evaluation.py -q` — 41 passed.
+- `.venv/Scripts/python.exe -X utf8 -m unittest discover -s . -p "test_*.py" -q` — 426 tests, OK with 3 skipped.
+  On Windows the full suite used an identical tracked-source snapshot in an owned short temporary path,
+  canonical TEMP/TMP paths and read-only Git identity. This avoided existing MAX_PATH/short-name
+  fixture failures without changing application code or touching the active database/media.
+- `.venv/Scripts/python.exe -m compileall -q app` — passed.
+- `npm run test:unit` — 123 passed; Windows used canonical TEMP/TMP for the existing glob tests.
+- `npm run lint`, `npm run typecheck`, and production `next build` through the E2E harness — passed.
+- `npm run test:e2e -- explore-ui.spec.ts interactions.spec.ts navigation-search.spec.ts library-ui.spec.ts library-menus.spec.ts site-copy.spec.ts` — 74 passed.
+- Final `node e2e/run.mjs explore-ui.spec.ts` — 24 passed, including independent search pagination/retry,
+  delayed search responses, rapid filter navigation, People All/Any and legacy URLs, viewing/sort/history,
+  result pagination/detail return, strict zero results and empty/sparse/empty-view fallbacks.
+  Eight mutation regressions cover desktop/mobile default collections, favorite/watched saves, current
+  Unwatched result removal, one refresh per save, unchanged URL/history/viewport (within document bounds),
+  41-to-40 last-page replacement, late invalid-page responses, saves completing while newer filter RSC is
+  still pending, and detail navigation/Back without stale cached collections, lost search or stolen focus.
+- English/Chinese at 1920, 1024, 768, 390 and 320px — no page overflow or hydration errors.
+  Internal desktop/mobile captures were inspected; screenshots remain local. Only generated local
+  fixtures and mocked transports were used, with real AI/provider requests disabled.
+- `git diff --check` — passed. Independent review and required PR CI remain the merge gate.
+
+Historical implementation evidence:
 
 - `uv run python -m app.evaluation.factual_explore --run-id
   w7-engineering-20260901-01 --seed 549 --count 200 --scale-count 1000` —

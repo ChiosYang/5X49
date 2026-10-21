@@ -331,6 +331,7 @@ missing or stale Library/Explore projection returns `503` with stable code
 | Method | Path | Purpose |
 | --- | --- | --- |
 | `GET` | `/explore` | Return visible Film total, per-dimension coverage and the top 12 facets. |
+| `GET` | `/explore/collections` | Return nonempty local collections with exact counts and representative artwork. |
 | `GET` | `/explore/context` | Return deterministic next-step factual clues for the current strict query. |
 | `GET` | `/explore/facets/{dimension}` | Search and paginate one `genre`, `person`, `country`, or `decade` facet set. |
 | `GET` | `/explore/films` | Return the reproducible strict intersection selected by repeated fact filters. |
@@ -351,6 +352,8 @@ entry for each dimension:
   is the exact strict total after adding it;
 - when that dimension already has a selected value, `operator=or` and
   `additional_count` is the number of Films newly admitted by that clue;
+- with `person_match=all`, selected People instead use `operator=and` and
+  `result_count` is the exact intersection after adding another Person;
 - selected and ineligible facets are excluded, ordering is deterministic, and
   `has_more` indicates that Fact Finder can reveal more than the returned
   clues.
@@ -364,11 +367,29 @@ fixed bulk reads rather than one query per facet, and preserves the same
 unresolved, conflict, privacy and `503 projection_unavailable` semantics as the
 other Explore endpoints.
 
+`GET /explore/collections` accepts `view=all|watched|unwatched` (default `all`)
+and `limit=1..12` (default 6). Each item contains `dimension`, `key`, `label`,
+`view`, exact `count` and `preview_film`. Country collections use Unwatched when
+the current view is All; other entries preserve the view. Decade, Person and
+Genre collections alternate with Country entries, ranked by count and stable
+label/key. Identical Film sets are shown only once. People collections mean
+participation as Actor or Director, not a director-only filmography. Counts
+exactly match `/explore/films` for that item's single filter and view. Only
+eligible local facts are used, previews belong to their actual set, and empty
+sets are omitted. `total_films` remains the visible Library size. An empty or
+metadata-poor Library can return `items=[]`; no substitute suggestions are
+invented. The implementation uses at most six bulk SQL statements without
+per-collection queries and returns the same safe projection/policy metadata.
+
 `GET /explore/facets/{dimension}` accepts optional `q` (at most 100
 characters), `limit` (default 30, 1–100), and non-negative `offset`. The
 response includes `total`, `next_offset`, and the complete coverage summary for
 that dimension. Person Directors and Actors share one facet collection; roles
-are returned as `director` and/or `actor`.
+are returned as `director` and/or `actor`. Search is literal, case-insensitive
+label matching plus the bundled bilingual Genre/Country aliases and decade
+suffixes (`1990s`, `1990年代`); it is not natural-language semantic search.
+The Explore UI debounces input and queries all four categories, with independent
+pagination. No external catalogue or model is consulted.
 
 `GET /explore/films` accepts repeated Canonical `genre=con_<id>` (and
 normalizes the longer `concept_<id>` spelling),
@@ -376,16 +397,24 @@ normalizes the longer `concept_<id>` spelling),
 parameters, with at most 20 unique values per dimension. It also accepts:
 
 - `view=all|watched|unwatched` (default `all`);
+- `person_match=any|all` (default `any`, also accepted by `/explore/context`);
 - `sort=title|year` (default `title`);
 - `dir=asc|desc` (default `asc` for title and `desc` for year);
 - `limit` (default 40, 1–100) and non-negative `offset`.
 
-Values are deduplicated and sorted. Values within one dimension are ORed;
+Values are deduplicated and sorted. Values within one dimension are ORed, except
+People with explicit `person_match=all`, which must all participate in each Film;
 non-empty dimensions and the Viewing-derived watched state are ANDed. Empty
 release years never match a decade. Malformed values return `422`. A validly
 formatted but missing, deleted, conflicted, or otherwise unavailable facet is
 preserved in `unresolved_filters`. A dimension containing only unresolved
-values therefore matches zero Films; it is never removed from the query.
+values therefore matches zero Films; it is never removed from the query. Any
+unavailable Person in `person_match=all` makes the intersection empty. Omitting
+the parameter preserves historical OR links. Fresh UI searches start with All
+and serialize `person_match=all` once a Person is selected; both modes are
+explicitly selectable, preserved by history/refresh, and echoed in
+`active_filters.person_match`. Actor/Director roles share the same Person
+identity and never count as separate people.
 
 The Film response includes normalized `active_filters`, display-ready filter
 details, `unresolved_filters`, strict total/pagination fields, public

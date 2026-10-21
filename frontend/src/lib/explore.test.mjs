@@ -5,16 +5,39 @@ import {
   buildExploreContextSearchParams,
   buildExploreSearchParams,
   clearExploreFilters,
+  correctedExploreOffset,
   exploreNavigation,
   formatExploreFacetLabel,
   graphNodeHref,
   initialExploreLens,
   parseExploreQuery,
   withExploreFacet,
+  withoutExploreFacet,
 } from "./explore.ts";
 
 const genre = `con_${"a".repeat(32)}`;
 const person = `person_${"b".repeat(32)}`;
+
+test("Explore corrects pages invalidated by shrinking results without moving valid offsets", () => {
+  for (const [offset, total, expected] of [[40, 41, 40], [40, 40, 0], [80, 80, 40], [120, 120, 80], [40, 0, 0], [0, 0, 0], [31, 40, 31]]) {
+    assert.equal(correctedExploreOffset(offset, total, 40), expected);
+  }
+});
+
+test("New people searches intersect while legacy URLs retain their original union", () => {
+  const other = `person_${"c".repeat(32)}`;
+  const fresh = withExploreFacet(withExploreFacet(parseExploreQuery({}), "person", person), "person", other);
+  assert.equal(fresh.personMatch, "all");
+  assert.equal(buildExploreSearchParams(fresh).get("person_match"), "all");
+  assert.equal(buildExploreContextSearchParams(fresh).get("person_match"), "all");
+  const legacy = parseExploreQuery({ person: [person, other], offset: "40" });
+  assert.equal(legacy.personMatch, "any");
+  assert.equal(buildExploreSearchParams(legacy).has("person_match"), false);
+  assert.equal(parseExploreQuery(Object.fromEntries(buildExploreSearchParams(fresh))).personMatch, "all");
+  assert.equal(parseExploreQuery({ person, person_match: "bad" }).personMatch, "any");
+  assert.equal(withoutExploreFacet(parseExploreQuery({ person }), "person", person).personMatch, "all");
+  assert.equal(clearExploreFilters(legacy).personMatch, "all");
+});
 
 test("Explore query parsing rejects malformed values and serializes in stable order", () => {
   const query = parseExploreQuery({

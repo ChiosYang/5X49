@@ -2,6 +2,7 @@ import "server-only";
 
 import type {
   ExploreContext,
+  ExploreCollections,
   ExploreFilmPage,
   ExploreOverview,
   LibraryFilmDetail,
@@ -41,6 +42,12 @@ export async function getLibraryFilmPage(params: URLSearchParams): Promise<Libra
 export async function getExploreOverview(): Promise<ExploreOverview> {
   const response = await fetch(`${backendUrl()}/explore`, { cache: "no-store" });
   if (!response.ok) throw new Error(`Failed to fetch Explore overview: ${response.status}`);
+  return response.json();
+}
+
+export async function getExploreCollections(view: ExploreQueryState["view"]): Promise<ExploreCollections> {
+  const response = await fetch(`${backendUrl()}/explore/collections?view=${view}`, { cache: "no-store" });
+  if (!response.ok) throw new Error(`Failed to fetch Explore collections: ${response.status}`);
   return response.json();
 }
 

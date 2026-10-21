@@ -1,373 +1,170 @@
 "use client";
 
-import {
-  useEffect,
-  useLayoutEffect,
-  useMemo,
-  useOptimistic,
-  useRef,
-  useState,
-  useSyncExternalStore,
-  useTransition,
-} from "react";
-import { Compass, X } from "lucide-react";
+import { useEffect, useLayoutEffect, useMemo, useOptimistic, useRef, useState, useSyncExternalStore, useTransition } from "react";
+import useSWR from "swr";
 import { useReducedMotion } from "framer-motion";
 import { useTranslations } from "next-intl";
 
-import { Button, IconButton } from "@/components/ui/Button";
-import { Dialog } from "@/components/ui/Dialog";
-import { useRouter } from "@/i18n/routing";
-import {
-  clearExploreFilters,
-  exploreNavigation,
-  hasExploreFilters,
-  initialExploreLens,
-  withExploreFacet,
-  withoutExploreFacet,
-  type ExploreQueryState,
-} from "@/lib/explore";
-import type {
-  ExploreContext,
-  ExploreContextItem,
-  ExploreDimension,
-  ExploreFacetSummary,
-  ExploreFilmPage,
-  ExploreOverview,
-  ExploreView,
-} from "@/types/movie";
-import ExploreFactFinder from "./ExploreFactFinder";
-import {
-  ExploreHeader,
-  LensDeck,
-  LensPanel,
-  QueryRibbon,
-  ResultStage,
-} from "./ExploreViews";
+import { usePathname, useRouter } from "@/i18n/routing";
+import { clearExploreFilters, correctedExploreOffset, exploreNavigation, hasExploreFilters, withExploreFacet, withoutExploreFacet, type ExploreQueryState } from "@/lib/explore";
+import type { ExploreCollection, ExploreCollections, ExploreDimension, ExploreFacetSummary, ExploreFilmPage, ExploreView } from "@/types/movie";
+import ExploreSearch from "./ExploreSearch";
+import { CollectionEntries, QueryRibbon, ResultStage } from "./ExploreViews";
 
 const subscribeHydration = () => () => {};
 const getHydratedSnapshot = () => true;
 const getServerSnapshot = () => false;
-const desktopQuery = "(min-width: 1280px)";
 
-function subscribeDesktop(callback: () => void) {
-  const media = window.matchMedia(desktopQuery);
-  media.addEventListener("change", callback);
-  return () => media.removeEventListener("change", callback);
-}
+// A fetcher-free SWR receipt survives route unmounts/Back, without storing profile data.
+const initialProfileRefresh = { revision: 0, acknowledged: 0 };
 
-function getDesktopSnapshot() {
-  return window.matchMedia(desktopQuery).matches;
-}
-
-function getDesktopServerSnapshot() {
-  return false;
-}
-
-type RememberedFact = {
-  label: string;
-  roles?: string[];
-};
-
-export default function ExploreClient({
-  context,
-  locale,
-  overview,
-  query,
-  results,
-}: {
-  context: ExploreContext;
+export default function ExploreClient({ collections, locale, query, results }: {
+  collections: ExploreCollections | null;
   locale: string;
-  overview: ExploreOverview;
   query: ExploreQueryState;
-  results: ExploreFilmPage | null;
+  results: ExploreFilmPage;
 }) {
   const t = useTranslations("Explore");
   const router = useRouter();
+  const pathname = usePathname();
+  const { data: profileRefresh = initialProfileRefresh, mutate: mutateProfileRefresh } = useSWR<typeof initialProfileRefresh>(
+    "explore:profile-refresh", null, { fallbackData: initialProfileRefresh },
+  );
+  const profileRefreshAttempt = useRef<{ revision: number; baseline: ExploreFilmPage } | null>(null);
+  useEffect(() => () => { profileRefreshAttempt.current = null; }, []);
   const reducedMotion = useReducedMotion() ?? false;
-  const localizeCountries = useSyncExternalStore(
-    subscribeHydration,
-    getHydratedSnapshot,
-    getServerSnapshot,
-  );
-  const isDesktop = useSyncExternalStore(
-    subscribeDesktop,
-    getDesktopSnapshot,
-    getDesktopServerSnapshot,
-  );
+  const localizeCountries = useSyncExternalStore(subscribeHydration, getHydratedSnapshot, getServerSnapshot);
   const [optimisticQuery, setOptimisticQuery] = useOptimistic(query);
   const [pending, startTransition] = useTransition();
-  const [activeLens, setActiveLens] = useState<ExploreDimension | null>(() => initialExploreLens(query));
-  const [lensSheetOpen, setLensSheetOpen] = useState(false);
-  const [finderOpen, setFinderOpen] = useState(false);
-  const [finderDimension, setFinderDimension] = useState<ExploreDimension>(
-    () => initialExploreLens(query) ?? "genre",
-  );
-  const [rememberedFacts, setRememberedFacts] = useState<Record<string, RememberedFact>>({});
-  const resultSectionRef = useRef<HTMLElement>(null);
-  const resultHeadingRef = useRef<HTMLHeadingElement>(null);
-  const paginationTarget = useRef<number | null>(null);
-  const filterScrollTarget = useRef<{ href: string; x: number; y: number } | null>(null);
-
-  const hasFilters = hasExploreFilters(optimisticQuery);
-  const resolvedLens = activeLens ?? initialExploreLens(optimisticQuery);
-  const unresolved = useMemo(
-    () => new Set((results?.unresolved_filters ?? []).map((item) => `${item.dimension}:${item.key}`)),
-    [results],
-  );
-  const factLabels = useMemo(() => {
-    const labels = new Map<string, RememberedFact>();
-    overview.dimensions.forEach((entry) => {
-      entry.items.forEach((item) => labels.set(`${entry.dimension}:${item.key}`, item));
-    });
-    context.dimensions.forEach((entry) => {
-      entry.items.forEach((item) => labels.set(`${entry.dimension}:${item.key}`, item));
-    });
-    results?.filters.forEach((item) => labels.set(`${item.dimension}:${item.key}`, item));
-    Object.entries(rememberedFacts).forEach(([key, fact]) => labels.set(key, fact));
-    return labels;
-  }, [context, overview, rememberedFacts, results]);
-
-  const remember = (
-    dimension: ExploreDimension,
-    item: Pick<ExploreContextItem | ExploreFacetSummary, "key" | "label" | "roles">,
-  ) => {
-    setRememberedFacts((current) => ({
-      ...current,
-      [`${dimension}:${item.key}`]: { label: item.label, roles: item.roles },
-    }));
-  };
+  const [remembered, setRemembered] = useState<Record<string, { label: string; roles?: string[] }>>({});
+  const sectionRef = useRef<HTMLElement>(null);
+  const headingRef = useRef<HTMLHeadingElement>(null);
+  const paginationTarget = useRef<string | null>(null);
+  const scrollTarget = useRef<{ href: string; x: number; y: number } | null>(null);
+  const activeQueryRef = useRef<ExploreQueryState | null>(null);
+  useLayoutEffect(() => {
+    activeQueryRef.current = optimisticQuery;
+    return () => { activeQueryRef.current = null; };
+  }, [optimisticQuery]);
+  const filtered = hasExploreFilters(optimisticQuery);
+  const labels = useMemo(() => {
+    const map = new Map(Object.entries(remembered));
+    collections?.items.forEach(item => map.set(`${item.dimension}:${item.key}`, { label: item.label }));
+    results.filters.forEach(item => map.set(`${item.dimension}:${item.key}`, item));
+    return map;
+  }, [collections, remembered, results]);
+  const unresolved = useMemo(() => new Set(results.unresolved_filters.map(item => `${item.dimension}:${item.key}`)), [results]);
 
   const navigate = (next: ExploreQueryState, intent: "filter" | "page" = "filter") => {
     const navigation = exploreNavigation(next, intent);
-    if (navigation.focusResults) {
-      paginationTarget.current = next.offset;
-      filterScrollTarget.current = null;
-    } else {
-      filterScrollTarget.current = {
-        href: navigation.href,
-        x: window.scrollX,
-        y: window.scrollY,
-      };
-    }
+    paginationTarget.current = navigation.focusResults ? navigation.href : null;
+    scrollTarget.current = navigation.focusResults ? null : { href: navigation.href, x: window.scrollX, y: window.scrollY };
     startTransition(() => {
       setOptimisticQuery(next);
       router.push(navigation.href, { scroll: navigation.scroll });
     });
   };
-
-  const openLens = (dimension: ExploreDimension) => {
-    setActiveLens(dimension);
-    if (!isDesktop) setLensSheetOpen(true);
-  };
-
-  const openFinder = (dimension?: ExploreDimension) => {
-    const target = dimension ?? resolvedLens ?? "genre";
-    setFinderDimension(target);
-    setFinderOpen(true);
-  };
-
-  const selectFact = (
-    dimension: ExploreDimension,
-    item: Pick<ExploreContextItem | ExploreFacetSummary, "key" | "label" | "roles">,
-  ) => {
-    remember(dimension, item);
-    setActiveLens(dimension);
-    setLensSheetOpen(false);
+  const select = (dimension: ExploreDimension, item: Pick<ExploreFacetSummary, "key" | "label" | "roles">) => {
+    if (optimisticQuery[dimension].includes(item.key)) return;
+    setRemembered(current => ({ ...current, [`${dimension}:${item.key}`]: item }));
     navigate(withExploreFacet(optimisticQuery, dimension, item.key));
   };
-
-  const removeFact = (dimension: ExploreDimension, key: string) => {
-    const next = withoutExploreFacet(optimisticQuery, dimension, key);
-    if (!hasExploreFilters(next)) {
-      setActiveLens(null);
-      setLensSheetOpen(false);
-    }
-    navigate(next);
+  const openCollection = (item: ExploreCollection) => {
+    setRemembered(current => ({ ...current, [`${item.dimension}:${item.key}`]: { label: item.label } }));
+    navigate({ ...clearExploreFilters(optimisticQuery), [item.dimension]: [item.key], view: item.view });
   };
-
-  const clearAll = () => {
-    setActiveLens(null);
-    setLensSheetOpen(false);
-    navigate(clearExploreFilters(optimisticQuery));
-  };
-
+  const clear = () => navigate(clearExploreFilters(optimisticQuery));
   const setView = (view: ExploreView) => navigate({ ...optimisticQuery, view, offset: 0 });
-  const setSort = (sort: ExploreQueryState["sort"]) => navigate({
-    ...optimisticQuery,
-    sort,
-    dir: sort === "year" ? "desc" : "asc",
-    offset: 0,
-  });
-  const toggleDirection = () => navigate({
-    ...optimisticQuery,
-    dir: optimisticQuery.dir === "asc" ? "desc" : "asc",
-    offset: 0,
-  });
-  const setPage = (offset: number) => navigate({ ...optimisticQuery, offset }, "page");
+  const setSort = (sort: ExploreQueryState["sort"]) => navigate({ ...optimisticQuery, sort, dir: sort === "year" ? "desc" : "asc", offset: 0 });
+
+  const recordProfileSaved = () => {
+    void mutateProfileRefresh(current => ({
+      ...(current ?? initialProfileRefresh),
+      revision: (current?.revision ?? 0) + 1,
+    }), { revalidate: false });
+  };
 
   useEffect(() => {
-    const handleShortcut = (event: KeyboardEvent) => {
-      const target = event.target;
-      const editing = target instanceof HTMLElement && (
-        target.matches("input, textarea, select") || target.isContentEditable
-      );
-      if (
-        event.key !== "/" ||
-        editing ||
-        event.altKey ||
-        event.ctrlKey ||
-        event.metaKey ||
-        finderOpen
-      ) return;
-      event.preventDefault();
-      openFinder();
+    const activeQuery = activeQueryRef.current;
+    if (!activeQuery || !/\/explore\/?$/.test(pathname) || !/\/explore\/?$/.test(window.location.pathname)) {
+      profileRefreshAttempt.current = null;
+      return;
+    }
+    // Wait for newer navigation before refreshing; a save cannot cancel its query.
+    if (pending || exploreNavigation(activeQuery, "filter").href !== exploreNavigation(query, "filter").href) return;
+    const attempt = profileRefreshAttempt.current;
+    if (attempt) {
+      if (results === attempt.baseline) return;
+      profileRefreshAttempt.current = null;
+      // An older read must not consume a newer save receipt.
+      void mutateProfileRefresh(current => ({
+        ...(current ?? initialProfileRefresh),
+        acknowledged: Math.max(current?.acknowledged ?? 0, attempt.revision),
+      }), { revalidate: false });
+      return;
+    }
+    if (profileRefresh.revision <= profileRefresh.acknowledged) return;
+    profileRefreshAttempt.current = { revision: profileRefresh.revision, baseline: results };
+    scrollTarget.current = {
+      href: exploreNavigation(query, "filter").href, x: window.scrollX, y: window.scrollY,
     };
-    window.addEventListener("keydown", handleShortcut);
-    return () => window.removeEventListener("keydown", handleShortcut);
-  });
+    startTransition(() => router.refresh());
+  }, [mutateProfileRefresh, pathname, pending, profileRefresh, query, results, router]);
+
+  useEffect(() => {
+    const activeQuery = activeQueryRef.current;
+    if (pending || !activeQuery || !/\/explore\/?$/.test(window.location.pathname)
+        || exploreNavigation(activeQuery, "filter").href !== exploreNavigation(query, "filter").href) return;
+    const offset = correctedExploreOffset(query.offset, results.total, results.limit);
+    if (offset === query.offset) return;
+    const href = exploreNavigation({ ...query, offset }, "filter").href;
+    scrollTarget.current = { href, x: window.scrollX, y: window.scrollY };
+    // Correct this history entry, retaining every filter and the current viewport.
+    startTransition(() => router.replace(href, { scroll: false }));
+  }, [pending, query, results.limit, results.total, router]);
 
   useLayoutEffect(() => {
-    const target = filterScrollTarget.current;
+    const target = scrollTarget.current;
     if (!target || target.href !== exploreNavigation(query, "filter").href) return;
     window.scrollTo(target.x, target.y);
-    const animationFrame = window.requestAnimationFrame(() => {
+    const frame = window.requestAnimationFrame(() => {
       window.scrollTo(target.x, target.y);
-      if (filterScrollTarget.current === target) filterScrollTarget.current = null;
+      if (scrollTarget.current === target) scrollTarget.current = null;
     });
-    return () => window.cancelAnimationFrame(animationFrame);
+    return () => window.cancelAnimationFrame(frame);
   }, [query]);
-
   useEffect(() => {
-    if (paginationTarget.current === null || paginationTarget.current !== query.offset || pending) return;
+    if (pending || paginationTarget.current !== exploreNavigation(query, "page").href) return;
     paginationTarget.current = null;
-    const animationFrame = window.requestAnimationFrame(() => {
-      resultHeadingRef.current?.focus({ preventScroll: true });
-      resultSectionRef.current?.scrollIntoView({
-        behavior: reducedMotion ? "auto" : "smooth",
-        block: "start",
-      });
+    const frame = window.requestAnimationFrame(() => {
+      headingRef.current?.focus({ preventScroll: true });
+      sectionRef.current?.scrollIntoView({ behavior: reducedMotion ? "auto" : "smooth", block: "start" });
     });
-    return () => window.cancelAnimationFrame(animationFrame);
-  }, [pending, query.offset, reducedMotion, results]);
+    return () => window.cancelAnimationFrame(frame);
+  }, [pending, query, reducedMotion]);
 
   return (
     <div className="page-x min-h-screen bg-canvas pb-24 pt-38 text-ink selection:bg-inverse selection:text-inverse-ink md:pt-44">
-      <ExploreHeader onFind={() => openFinder()} />
-
-      {hasFilters ? (
-        <div className="sticky top-0 z-sticky -mx-2 mt-5 bg-canvas/92 px-2 py-3 backdrop-blur-xl">
-          <QueryRibbon
-            query={optimisticQuery}
-            labels={factLabels}
-            unresolved={unresolved}
-            locale={locale}
-            localizeCountries={localizeCountries}
-            onRemove={removeFact}
-            onClear={clearAll}
-          />
-        </div>
-      ) : null}
-
-      <div className={`mt-6 min-w-0 ${resolvedLens ? "xl:grid xl:grid-cols-[minmax(0,1fr)_21rem] xl:gap-8" : ""}`}>
-        <div className="min-w-0">
-          {hasFilters ? (
-            <ResultStage
-              query={optimisticQuery}
-              results={results}
-              pending={pending}
-              locale={locale}
-              localizeCountries={localizeCountries}
-              sectionRef={resultSectionRef}
-              headingRef={resultHeadingRef}
-              onView={setView}
-              onSort={setSort}
-              onDirection={toggleDirection}
-              onPage={setPage}
-              onClear={clearAll}
-            />
-          ) : (
-            <LensDeck
-              overview={overview}
-              context={context}
-              locale={locale}
-              localizeCountries={localizeCountries}
-              onOpenLens={openLens}
-            />
-          )}
-        </div>
-
-        {resolvedLens ? (
-          <aside className="hidden min-w-0 border-l border-line pl-7 xl:block">
-            <div className="sticky top-36">
-              <LensPanel
-                activeDimension={resolvedLens}
-                context={context}
-                locale={locale}
-                localizeCountries={localizeCountries}
-                reducedMotion={reducedMotion}
-                onChangeDimension={setActiveLens}
-                onSelect={selectFact}
-                onBrowseAll={openFinder}
-              />
-            </div>
-          </aside>
-        ) : null}
+      <header className="flex flex-col gap-7 border-b border-line pb-8 lg:flex-row lg:items-end lg:justify-between">
+        <div><h1 className="type-display-editorial">{t("title")}</h1></div>
+      </header>
+      <div className="mt-6 min-w-0 space-y-8">
+        {!filtered && collections ? <CollectionEntries collections={collections} emptyView={results.total === 0} locale={locale} localizeCountries={localizeCountries} onSelect={openCollection} /> : null}
+        <ExploreSearch query={optimisticQuery} locale={locale} localizeCountries={localizeCountries} onSelect={select} />
+        <QueryRibbon
+          query={optimisticQuery} labels={labels} unresolved={unresolved} locale={locale} localizeCountries={localizeCountries}
+          onRemove={(dimension, key) => navigate(withoutExploreFacet(optimisticQuery, dimension, key))}
+          onClear={clear}
+          onPersonMatch={personMatch => navigate({ ...optimisticQuery, personMatch, offset: 0 })}
+        />
+        <ResultStage
+          query={optimisticQuery} results={results} pending={pending} locale={locale} localizeCountries={localizeCountries}
+          sectionRef={sectionRef} headingRef={headingRef} onView={setView} onSort={setSort}
+          onDirection={() => navigate({ ...optimisticQuery, dir: optimisticQuery.dir === "asc" ? "desc" : "asc", offset: 0 })}
+          onPage={offset => navigate({ ...optimisticQuery, offset }, "page")} onClear={clear}
+          onProfileSaved={recordProfileSaved}
+        />
       </div>
-
-      {hasFilters && resolvedLens ? (
-        <div className="fixed inset-x-0 bottom-5 z-sticky flex justify-center px-4 xl:hidden">
-          <Button variant="primary" onClick={() => setLensSheetOpen(true)}>
-            <Compass className="h-4 w-4" />
-            {t("continueExplore")}
-          </Button>
-        </div>
-      ) : null}
-
-      <Dialog
-        animated={!reducedMotion}
-        open={lensSheetOpen && Boolean(resolvedLens)}
-        onClose={() => setLensSheetOpen(false)}
-        closeLabel={t("closeLens")}
-        ariaLabel={t("currentLens")}
-        placement="bottom"
-        size="md"
-        panelClassName="max-h-[calc(100dvh-2rem)] overflow-y-auto rounded-control p-5 sm:rounded-control sm:p-6"
-      >
-        <div className="mb-4 flex justify-end">
-          <IconButton
-            variant="ghost"
-            onClick={() => setLensSheetOpen(false)}
-            aria-label={t("closeLens")}
-            icon={<X className="h-4 w-4" />}
-          />
-        </div>
-        {resolvedLens ? (
-          <LensPanel
-            activeDimension={resolvedLens}
-            context={context}
-            locale={locale}
-            localizeCountries={localizeCountries}
-            reducedMotion={reducedMotion}
-            onChangeDimension={setActiveLens}
-            onSelect={selectFact}
-            onBrowseAll={(dimension) => {
-              setLensSheetOpen(false);
-              openFinder(dimension);
-            }}
-          />
-        ) : null}
-      </Dialog>
-
-      <ExploreFactFinder
-        open={finderOpen}
-        dimension={finderDimension}
-        locale={locale}
-        localizeCountries={localizeCountries}
-        reducedMotion={reducedMotion}
-        onDimensionChange={setFinderDimension}
-        onClose={() => setFinderOpen(false)}
-        onSelect={selectFact}
-      />
     </div>
   );
 }

@@ -1,10 +1,10 @@
 from __future__ import annotations
 
 import json
-from collections import defaultdict
+from collections import defaultdict, deque
 from typing import Any
 
-from sqlalchemy import case, func
+from sqlalchemy import case, func, or_
 from sqlmodel import Session, select
 
 from app.canonical_models import (
@@ -14,7 +14,9 @@ from app.canonical_models import (
     ProjectionState,
 )
 from app.database import engine
+from app.contracts.structured_metadata import normalize_metadata_text
 from app.services.projections import PROJECTION_VERSIONS, ProjectionUnavailable
+from app.services.structured_metadata_vocab import STRUCTURED_METADATA_VOCABULARY as VOCABULARY
 
 
 EXPLORE_VISIBILITY_POLICY = "factual-explore.v1"
@@ -34,6 +36,90 @@ SAFE_ARTWORK_KEYS = {
 
 class ExploreQueryService:
     """Serve strict factual Library exploration from synchronous read models."""
+
+    def collections(self, *, view: str = "all", limit: int = 6) -> dict[str, Any]:
+        """A bounded, deterministic set of nonempty local entry points; no inference."""
+        with Session(engine) as session:
+            self._require(session)
+            films = list(session.exec(select(ExploreFilmReadModel)).all())
+            visible = {row.film_id for row in films}
+            viewed = {row.film_id for row in films if row.watched}
+            view_ids = visible if view == "all" else viewed if view == "watched" else visible - viewed
+            rows = session.exec(select(ExploreFacetReadModel)
+                .where(ExploreFacetReadModel.eligible.is_(True))
+                .order_by(ExploreFacetReadModel.normalized_label, ExploreFacetReadModel.facet_key)).all()
+            grouped: dict[tuple[str, str], dict[str, Any]] = {}
+            for row in rows:
+                if row.film_id not in view_ids:
+                    continue
+                entry = grouped.setdefault((row.dimension, row.facet_key), {
+                    "dimension": row.dimension, "key": row.facet_key,
+                    "label": row.display_label, "ids": set(),
+                })
+                entry["ids"].add(row.film_id)
+            buckets = []
+            for dimension in ("country", "decade", "person", "genre"):
+                bucket = []
+                for (kind, _key), entry in grouped.items():
+                    if kind != dimension:
+                        continue
+                    target_view = "unwatched" if kind == "country" and view == "all" else view
+                    ids = entry["ids"] - viewed if target_view == "unwatched" else entry["ids"]
+                    if ids:
+                        bucket.append({**entry, "ids": ids, "view": target_view})
+                bucket.sort(key=lambda entry: (-len(entry["ids"]), entry["label"].casefold(), entry["key"]))
+                buckets.append(deque(bucket))
+            candidates = []
+            seen: set[frozenset[str]] = set()
+            # Round robin gives a small library variety without repeating the same Film set.
+            while len(candidates) < limit and any(buckets):
+                for bucket in buckets:
+                    while bucket:
+                        entry = bucket.popleft()
+                        signature = frozenset(entry["ids"])
+                        if signature in seen:
+                            continue
+                        seen.add(signature)
+                        candidates.append(entry)
+                        break
+                    if len(candidates) == limit:
+                        break
+            preview_ids = set().union(*(entry["ids"] for entry in candidates))
+            library_rows = {row.film_id: row for row in session.exec(
+                select(LibraryFilmReadModel)
+            ).all()} if preview_ids else {}
+            items = []
+            for entry in candidates:
+                preview = self._preview_film(entry["ids"], library_rows)
+                if preview is None:
+                    continue
+                items.append({
+                    "dimension": entry["dimension"], "key": entry["key"], "label": entry["label"],
+                    "view": entry["view"], "count": len(entry["ids"]), "preview_film": preview,
+                })
+            return {
+                "visibility_policy": EXPLORE_VISIBILITY_POLICY,
+                "projection_version": EXPLORE_PROJECTION_VERSION,
+                "projection_versions": self._projection_versions(),
+                "strict": True, "total_films": len(visible), "items": items,
+            }
+
+    @staticmethod
+    def _search_condition(dimension: str, query: str):
+        """Literal local label/alias search, including the bundled bilingual vocabulary."""
+        condition = ExploreFacetReadModel.normalized_label.contains(query, autoescape=True)
+        alias_query = normalize_metadata_text(query)
+        if dimension == "country":
+            codes = {code for alias, code in VOCABULARY.country_aliases.items() if alias_query in alias}
+            condition = or_(condition, ExploreFacetReadModel.facet_key.in_(codes))
+        elif dimension == "genre":
+            names = {genre.canonical_name.casefold() for alias, genre in VOCABULARY.genre_aliases.items() if alias_query in alias}
+            condition = or_(condition, ExploreFacetReadModel.normalized_label.in_(names))
+        elif dimension == "decade":
+            decade = query.removesuffix("年代").removesuffix("s").strip()
+            if len(decade) == 4 and decade.isdigit() and decade.endswith("0"):
+                condition = or_(condition, ExploreFacetReadModel.facet_key == decade)
+        return condition
 
     def overview(self, *, top_limit: int = 12) -> dict[str, Any]:
         with Session(engine) as session:
@@ -80,10 +166,8 @@ class ExploreQueryService:
                 .where(ExploreFacetReadModel.eligible.is_(True))
             )
             if normalized_query:
-                base = base.where(
-                    ExploreFacetReadModel.normalized_label.contains(normalized_query)
-                )
-            total = len(set(session.exec(base).all()))
+                base = base.where(self._search_condition(dimension, normalized_query))
+            total = int(session.exec(select(func.count()).select_from(base.distinct().subquery())).one())
             items = self._facet_items(
                 session,
                 dimension,
@@ -111,6 +195,7 @@ class ExploreQueryService:
         filters: dict[str, list[str]],
         view: str,
         limit: int,
+        person_match: str = "any",
     ) -> dict[str, Any]:
         normalized = {
             dimension: sorted(set(filters.get(dimension, [])))
@@ -145,15 +230,16 @@ class ExploreQueryService:
                 row.film_id: row
                 for row in session.exec(select(LibraryFilmReadModel)).all()
             }
-            current_ids = self._strict_ids(view_ids, facet_rows, normalized)
+            current_ids = self._strict_ids(view_ids, facet_rows, normalized, person_match)
             dimensions = []
             for dimension in EXPLORE_DIMENSIONS:
                 other_filters = {
                     key: ([] if key == dimension else values)
                     for key, values in normalized.items()
                 }
-                base_ids = self._strict_ids(view_ids, facet_rows, other_filters)
+                base_ids = self._strict_ids(view_ids, facet_rows, other_filters, person_match)
                 selected = set(normalized[dimension])
+                conjunctive = dimension == "person" and person_match == "all" and bool(selected)
                 grouped: dict[str, dict[str, Any]] = {}
                 for row in facet_rows[dimension]:
                     if row.film_id not in base_ids or row.facet_key in selected:
@@ -181,10 +267,13 @@ class ExploreQueryService:
                 candidates = []
                 for item in grouped.values():
                     matching_ids = set(item.pop("film_ids"))
-                    additional_ids = matching_ids - current_ids if selected else set()
-                    if selected and not additional_ids:
+                    additional_ids = matching_ids - current_ids if selected and not conjunctive else set()
+                    if selected and not conjunctive and not additional_ids:
                         continue
-                    resulting_ids = current_ids | matching_ids if selected else matching_ids
+                    resulting_ids = (current_ids & matching_ids if conjunctive else
+                                     current_ids | matching_ids if selected else matching_ids)
+                    if not resulting_ids:
+                        continue
                     preview_ids = additional_ids if additional_ids else resulting_ids
                     candidates.append(
                         {
@@ -199,7 +288,7 @@ class ExploreQueryService:
                             "preview_ids": preview_ids,
                         }
                     )
-                metric = "additional_count" if selected else "result_count"
+                metric = "additional_count" if selected and not conjunctive else "result_count"
                 candidates.sort(
                     key=lambda item: (
                         -item[metric],
@@ -220,7 +309,7 @@ class ExploreQueryService:
                 dimensions.append(
                     {
                         "dimension": dimension,
-                        "operator": "or" if selected else "and",
+                        "operator": "or" if selected and not conjunctive else "and",
                         "has_more": has_more,
                         "items": items,
                     }
@@ -244,6 +333,7 @@ class ExploreQueryService:
         limit: int,
         offset: int,
         person_roles: dict[str, str] | None = None,
+        person_match: str = "any",
     ) -> dict[str, Any]:
         normalized = {
             dimension: sorted(set(filters.get(dimension, [])))
@@ -257,14 +347,19 @@ class ExploreQueryService:
                 keys = normalized[dimension]
                 if not keys:
                     continue
-                if dimension == "person" and person_roles:
+                if dimension == "person" and (person_roles or person_match == "all"):
                     facets = session.exec(select(ExploreFacetReadModel)
                         .where(ExploreFacetReadModel.dimension == "person")
                         .where(ExploreFacetReadModel.facet_key.in_(keys))
                         .where(ExploreFacetReadModel.eligible.is_(True))).all()
-                    matching = {row.film_id for row in facets
-                                if person_roles.get(row.facet_key, "any") == "any"
-                                or person_roles[row.facet_key] in (row.payload or {}).get("roles", [])}
+                    roles = person_roles or {}
+                    memberships = {key: set() for key in keys}
+                    for row in facets:
+                        if (roles.get(row.facet_key, "any") == "any"
+                                or roles[row.facet_key] in (row.payload or {}).get("roles", [])):
+                            memberships[row.facet_key].add(row.film_id)
+                    matching = (set.intersection(*memberships.values()) if person_match == "all"
+                                else set.union(*memberships.values()))
                 else:
                     matching = set(
                         session.exec(
@@ -324,6 +419,7 @@ class ExploreQueryService:
                     "view": view,
                     "sort": sort,
                     "dir": direction,
+                    "person_match": person_match,
                 },
                 "filters": active_filters,
                 "unresolved_filters": unresolved_filters,
@@ -363,7 +459,7 @@ class ExploreQueryService:
             .where(ExploreFacetReadModel.eligible.is_(True))
         )
         if query:
-            statement = statement.where(ExploreFacetReadModel.normalized_label.contains(query))
+            statement = statement.where(self._search_condition(dimension, query))
         statement = (
             statement.group_by(
                 ExploreFacetReadModel.facet_key,
@@ -510,17 +606,20 @@ class ExploreQueryService:
         view_ids: set[str],
         facet_rows: dict[str, list[ExploreFacetReadModel]],
         filters: dict[str, list[str]],
+        person_match: str = "any",
     ) -> set[str]:
         candidate_ids = set(view_ids)
         for dimension in EXPLORE_DIMENSIONS:
             keys = set(filters[dimension])
             if not keys:
                 continue
-            matching = {
-                row.film_id
-                for row in facet_rows[dimension]
-                if row.facet_key in keys
-            }
+            memberships = {key: set() for key in keys}
+            for row in facet_rows[dimension]:
+                if row.facet_key in keys:
+                    memberships[row.facet_key].add(row.film_id)
+            matching = (set.intersection(*memberships.values())
+                        if dimension == "person" and person_match == "all"
+                        else set.union(*memberships.values()))
             candidate_ids &= matching
         return candidate_ids
 
