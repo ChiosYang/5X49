@@ -43,12 +43,14 @@ export function SettingRow({
   description,
   control,
   feedback,
+  saveStatus,
   children,
 }: {
   title: string;
   description?: string;
   control?: ReactNode;
   feedback?: ReactNode;
+  saveStatus?: string;
   children?: ReactNode;
 }) {
   return (
@@ -66,8 +68,19 @@ export function SettingRow({
       <div className={feedback ? "mt-3" : undefined} aria-live="polite">
         {feedback}
       </div>
+      <SaveStatus message={saveStatus} />
     </div>
   );
+}
+
+export function SaveStatus({ message }: { message?: string }) {
+  return <span className="sr-only" aria-live="polite" role={message ? "status" : undefined}>{message}</span>;
+}
+
+// The first track is the input itself. Reserve identical action/result tracks
+// even for a field without actions, so feedback cannot change its width.
+export function ConnectionControlGrid({ children, label }: { children: ReactNode; label?: string }) {
+  return <div role={label ? "group" : undefined} aria-label={label} className="grid w-full min-w-0 max-w-xl grid-cols-[minmax(0,1fr)_2.75rem_1.25rem] items-start gap-x-2">{children}</div>;
 }
 
 export function DisclosurePanel({

@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/Button";
 import { ToggleSwitch } from "@/components/ui/FormControls";
 import type { HealthStatus } from "@/lib/video-health";
 import { settingsHref } from "@/lib/settings-navigation";
+import { SaveStatus } from "./SettingsPrimitives";
 
 async function write(url: string, body?: object, method = "POST") {
   const response = await fetch(url, { method, headers: { "Content-Type": "application/json" },
@@ -49,6 +50,7 @@ export default function VideoHealthSettings({ mode = "automatic" }: { mode?: "au
       </div>
     </> : null}
     {automatic ? <Link href={settingsHref("video-checks", "video-health")} className="focus-ring mt-3 inline-flex min-h-11 items-center text-sm underline underline-offset-4">{t("maintenanceLink")}</Link> : null}
-    {notice ? <p role={notice === "writeFailed" ? "alert" : "status"} className={`mt-3 text-xs ${notice === "writeFailed" ? "text-danger" : "text-success"}`}>{t(notice)}</p> : null}
+    <SaveStatus message={notice === "accepted" ? t("accepted") : ""} />
+    {notice === "writeFailed" ? <p role="alert" className="mt-3 text-xs text-danger">{t(notice)}</p> : null}
   </section>;
 }

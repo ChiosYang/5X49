@@ -1,3 +1,4 @@
+import { expectAnnouncedOnly } from './settings-feedback-assertions';
 import { test, expect, type APIRequestContext, type Page } from '@playwright/test';
 import path from 'node:path';
 import en from '../messages/en.json';
@@ -141,7 +142,7 @@ for (const locale of ['en', 'zh'] as const) {
     await choose(page, locale, 320, 'library');
     await page.locator('#media-root-0').fill(roots[1]);
     await page.locator('#media-root-0').press('Enter');
-    await expect(page.getByText(copy.MediaRoots.saved, { exact: true })).toBeVisible();
+    await expectAnnouncedOnly(page.getByText(copy.MediaRoots.saved, { exact: true }), copy.MediaRoots.saved);
     await choose(page, locale, 320, 'library-maintenance');
     await expect(page.getByRole('button', { name: copy.MediaRoots.scanAll, exact: true })).toBeEnabled();
     expect((await read(request, '/settings/media-dirs')).media_dirs).toEqual([roots[1]]);
@@ -193,7 +194,7 @@ for (const locale of ['en', 'zh'] as const) {
     for (const resolution of ['discard', 'save'] as const) {
       await choose(page, locale, 320, 'library');
       if (resolution === 'discard') { await page.locator('#media-root-0').fill(''); await page.locator('#media-root-0').press('Tab'); await expect(page.locator('#media-root-0')).toHaveValue(roots[0]); }
-      else { await page.locator('#media-root-0').fill(roots[1]); await page.locator('#media-root-0').press('Enter'); await expect(page.getByText(copy.MediaRoots.saved, { exact: true })).toBeVisible(); }
+      else { await page.locator('#media-root-0').fill(roots[1]); await page.locator('#media-root-0').press('Enter'); await expectAnnouncedOnly(page.getByText(copy.MediaRoots.saved, { exact: true }), copy.MediaRoots.saved); }
       await choose(page, locale, 320, 'library-maintenance');
       for (const record of records.slice(0, scans.length)) {
         await expect(retry(record)).toBeEnabled(); await retry(record).click();

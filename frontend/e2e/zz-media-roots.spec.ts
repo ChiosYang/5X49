@@ -1,3 +1,4 @@
+import { expectAnnouncedOnly } from './settings-feedback-assertions';
 import { test, expect, type APIRequestContext } from '@playwright/test';
 import { access, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
@@ -48,7 +49,7 @@ test('configure ordered roots in UI, reject overlap, scan root and nested files;
   expect((await read(request, '/settings/media-dirs')).media_dirs).toEqual([roots[0]]);
   await page.locator('#media-root-1').fill(roots[1]);
   await page.locator('#media-root-1').press('Enter');
-  await expect(panel.getByText('Configuration saved.', { exact: false })).toBeVisible();
+  await expectAnnouncedOnly(panel.getByRole('status'), en.MediaRoots.saved);
   expect(await multiFilms(request)).toHaveLength(0);
   await page.goto('/en/settings?section=library-maintenance');
   const scanPanel = page.getByLabel('Media scan coverage', { exact: true });
