@@ -7,7 +7,6 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Link } from "@/i18n/routing";
 import { Button } from "@/components/ui/Button";
 import { Dialog } from "@/components/ui/Dialog";
-import { SettingsSessionProvider } from "@/components/settings/SettingsSession";
 import { canonicalSettingsHref, resolveSettingsLocation, settingSections, settingsHref, type SettingSection } from "@/lib/settings-navigation";
 import GeneralSettings from "./GeneralSettings";
 import IntegrationSettings from "./IntegrationSettings";
@@ -132,7 +131,7 @@ function SettingsFallback() {
 export default function SettingsPage() {
   return (
     <Suspense fallback={<SettingsFallback />}>
-      <SettingsSessionProvider><SettingsContent /></SettingsSessionProvider>
+      <SettingsContent />
     </Suspense>
   );
 }

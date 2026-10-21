@@ -15,6 +15,7 @@ import {
   useTmdbSettings,
 } from "@/hooks/useSettings";
 import { useWorkflowCache } from "@/hooks/useWorkflows";
+import { useSettingsScanGuard } from "@/hooks/useSettingsScanGuard";
 import { Link, useRouter } from "@/i18n/routing";
 import { API } from "@/lib/api";
 import type { WorkflowAccepted } from "@/types/movie";
@@ -42,6 +43,7 @@ export default function LibraryActions({ showScan = true }: { showScan?: boolean
   const sync = useLibrarySyncStatus();
   const tmdb = useTmdbSettings();
   const scan = useScanLibrary();
+  const scanBlocked = useSettingsScanGuard();
   const scrape = useScrapeLibrary();
   const scores = useRefreshLibraryExternalScores();
   const { upsertWorkflow, refreshWorkflows } = useWorkflowCache();
@@ -99,6 +101,7 @@ export default function LibraryActions({ showScan = true }: { showScan?: boolean
         variant="ghost"
         aria-label={scanBusy ? t("scanning") : t("scanNow")}
         busy={scanBusy}
+        disabled={scanBlocked}
         icon={<ScanSearch className="h-4 w-4" />}
         onClick={() => void run(() => scan.trigger(), t("scanStarted"))}
       /> : null}

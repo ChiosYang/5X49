@@ -33,8 +33,10 @@ export default function VideoHealthSettings({ mode = "automatic" }: { mode?: "au
   const automatic = mode === "automatic";
   const headingId = automatic ? "video-health-settings" : "video-health-controls";
   return <section aria-labelledby={headingId} className="min-w-0 scroll-mt-28">
-    <div className={`flex items-center justify-between gap-4 ${automatic ? "border-b border-line pb-6" : ""}`}>
-      <h3 id={headingId} className="text-sm font-medium tracking-widest text-ink uppercase">{t(automatic ? "automatic" : "controls")}</h3>
+    <div className={`flex items-start justify-between gap-4 ${automatic ? "border-b border-line pb-6" : ""}`}>
+      <div className="min-w-0"><h3 id={headingId} className="text-sm font-medium tracking-widest text-ink uppercase">{t(automatic ? "automatic" : "controls")}</h3>
+        {automatic ? <p className="mt-2 text-xs leading-5 text-ink-muted">{t("automaticDescription")}</p> : null}
+      </div>
       {automatic && data ? <ToggleSwitch checked={data.config.enabled} disabled={busy} label={t("automatic")} onChange={() => void perform(API.videoHealthConfig(), { enabled: !data.config.enabled }, "PUT")} /> : null}
     </div>
     {query.error ? <p role="alert" className="mt-3 text-warning">{t("loadFailed")}</p> : null}

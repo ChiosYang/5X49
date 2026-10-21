@@ -32,7 +32,6 @@ function useTransientMutationResult(result: unknown, reset: () => void) {
 
 export default function LibrarySettings() {
   const t = useTranslations("Settings");
-  const roots = useTranslations("MediaRoots");
   const area = useTranslations("SettingsArea");
   const { data: artworkLanguageData } = useArtworkLanguageSetting();
   const { data: libraryWatchData, mutate: refreshLibraryWatch } = useLibraryWatchSetting();
@@ -120,7 +119,7 @@ export default function LibrarySettings() {
   return (
     <div className="space-y-8">
       <section id="media-directories" className="scroll-mt-28">
-        <SettingRow title={roots("title")}><MediaRootsControl /></SettingRow>
+        <MediaRootsControl />
       </section>
       <SettingsPanel title={area("scanRules")}>
         <SettingRow
@@ -139,11 +138,11 @@ export default function LibrarySettings() {
               <InlineFeedback tone="error">{t("autoScanSaveFailed")}</InlineFeedback>
             ) : watchSaveResult ? (
               <InlineFeedback tone="success">{t("saved")}</InlineFeedback>
-            ) : (
+            ) : libraryWatchData?.watch_library ? (
               <InlineFeedback>
-                {libraryWatchData?.watch_library ? t("watching") : t("notWatching")}
+                {t("watching")}
               </InlineFeedback>
-            )
+            ) : null
           }
         />
         <SettingRow

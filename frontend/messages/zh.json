@@ -15,7 +15,7 @@
     "refresh": "刷新",
     "scanRules": "扫描与整理规则",
     "metadataArtwork": "元数据与图片",
-    "pendingDirectories": "请先保存或放弃目录变更，再执行扫描。",
+    "pendingDirectories": "请先完成或放弃目录更改，再执行扫描。",
     "openDirectories": "打开目录设置",
     "metadata": "元数据",
     "externalScores": "外部评分",
@@ -27,6 +27,10 @@
     "fullBackup": "完整数据库备份与恢复（CLI）"
   },
   "MediaRoots": {
+    "incomplete": "请补全或移除空目录，再完成保存。",
+    "saving": "正在保存目录…",
+    "retry": "重试",
+    "addDirectory": "添加目录",
     "configuration": "保存有序根目录后，再运行扫描以发现其中的影片。",
     "title": "媒体根目录",
     "help": "扫描所有层级，也包括根目录直接放置的视频。相同目录自动去重，父目录和子目录不能同时作为根目录。跳过软链接和 Windows 目录联接。",
@@ -973,6 +977,8 @@
     "global": "全局"
   },
   "Settings": {
+    "testConnection": "测试 API 连接",
+    "retrySave": "重试",
     "maintenance": "诊断与备份",
     "title": "系统设置",
     "subtitle": "配置您的电影谱系体验",
@@ -1115,7 +1121,7 @@
     "autoScan": "自动扫描",
     "autoScanDesc": "监听媒体目录中的新增、修改和删除",
     "autoOrganizeRoot": "自动整理根目录",
-    "autoOrganizeRootDesc": "高级自动化：自动扫描运行时，高置信度匹配会直接整理媒体根目录中的稳定视频；低置信度项目仍进入审核",
+    "autoOrganizeRootDesc": "扫描时自动整理根目录中的高置信度匹配，其余需审核。",
     "watching": "监听中",
     "notWatching": "未监听",
     "note": "注意：",
@@ -1497,6 +1503,7 @@
     "filmCount": "共 {count} 部影片"
   },
   "VideoHealth": {
+    "automaticDescription": "空闲时检查新增、变更的视频，并抽检现有文件。",
     "controls": "排队与控制",
     "results": "检查结果",
     "title": "视频健康检查",

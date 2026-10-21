@@ -7,6 +7,7 @@ import { API } from "@/lib/api";
 import { fetcher } from "@/lib/fetcher";
 import { Button } from "@/components/ui/Button";
 import type { MediaRoots } from "./MediaRootsControl";
+import { settingsScanBlocked } from "@/lib/settings-scan-guard";
 
 interface ScanStatus {
   sync: { state: string; last_finished_at: string | null; last_result: {
@@ -24,7 +25,7 @@ export default function MediaScanResults({ disabled = false }: { disabled?: bool
   const [notice, setNotice] = useState<string | null>(null);
   const lock = useRef(false);
   async function start() {
-    if (lock.current) return;
+    if (lock.current || disabled || settingsScanBlocked()) return;
     lock.current = true; setBusy(true); setNotice(null);
     try {
       const response = await fetch(`${API.baseUrl}/library/scan`, { method: "POST", signal: AbortSignal.timeout(15000) });

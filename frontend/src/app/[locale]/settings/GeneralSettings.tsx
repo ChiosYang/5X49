@@ -7,7 +7,6 @@ import { usePathname, useRouter } from "@/i18n/routing";
 import {
   SettingRow,
 } from "@/components/settings/SettingsPrimitives";
-import { Button } from "@/components/ui/Button";
 import { InlineFeedback, Spinner } from "@/components/ui/Feedback";
 import { useLanguageSetting, useUpdateLanguage } from "@/hooks/useSettings";
 
@@ -48,19 +47,18 @@ export default function GeneralSettings() {
           title={t("languagePref")}
           control={
             <div className="flex items-center gap-3">
-              <div className="flex border border-line-strong bg-surface-raised p-1">
+              <div role="group" aria-label={t("languagePref")} className="inline-flex h-7 items-center border border-line-strong bg-surface-raised p-0.5">
                 {(["zh", "en"] as const).map((language) => (
-                  <Button
+                  <button
                     key={language}
+                    type="button"
                     aria-pressed={languageData?.language === language}
                     onClick={() => handleLanguageChange(language)}
                     disabled={languageSaving}
-                    size="sm"
-                    variant={languageData?.language === language ? "primary" : "ghost"}
-                    className="min-w-12"
+                    className={`focus-ring duration-standard h-5 min-w-8 px-2 text-xs font-medium uppercase transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${languageData?.language === language ? "bg-inverse text-inverse-ink" : "text-ink-subtle hover:text-ink"}`}
                   >
                     {language}
-                  </Button>
+                  </button>
                 ))}
               </div>
               {languageSaving && <Spinner className="text-ink-subtle" />}

@@ -217,6 +217,18 @@ the backend process. A successful `PUT` includes the same three fields plus its
 existing `status` and `message` fields. Invalid targets return `400` with an
 actionable `detail` string.
 
+### Settings persistence and autosave boundaries
+
+Existing preference PUT endpoints keep their request/response shapes. Each
+preference setter writes only its owned Setting rows in one transaction; directory
+writes update `media_dirs` and legacy `media_dir` together. Concurrent Base URL,
+model, TMDB key and other preference saves do not replay a whole-settings snapshot
+or delete unrelated rows. Clearing the TMDB key removes only that key.
+
+Reading Base URL and ordinary preferences, and saving preferences, do not refresh
+the model catalog or test provider credentials. Model-catalog reads/explicit
+refresh and connection-test endpoints retain their separate behavior.
+
 ## Library Films
 
 ### `GET /library/films`

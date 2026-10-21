@@ -127,11 +127,11 @@ for (const locale of ['en', 'zh'] as const) {
     await expect(dialog.getByRole('link', { name: copy.SettingsArea.cleanup, exact: true })).toBeFocused();
     await page.keyboard.press('Escape'); await expect(picker).toBeFocused();
     await choose(page, locale, 320, 'library');
-    await page.locator('#media-root-0').fill(roots[1]);
+    await page.locator('#media-root-0').fill('unfinished');
     await choose(page, locale, 320, 'library-maintenance');
     await expect(page.getByRole('button', { name: copy.MediaRoots.scanAll, exact: true })).toBeDisabled();
     await expect(page.getByText(copy.SettingsArea.pendingDirectories, { exact: false })).toBeVisible();
-    await page.goBack(); await expect(page.locator('#media-root-0')).toHaveValue(roots[1]);
+    await page.goBack(); await expect(page.locator('#media-root-0')).toHaveValue('unfinished');
     await page.goForward(); await expect(page.getByRole('button', { name: copy.MediaRoots.scanAll, exact: true })).toBeDisabled();
     expect((await read(request, '/settings/media-dirs')).media_dirs).toEqual([roots[0]]);
     await choose(page, locale, 320, 'library');
@@ -140,20 +140,20 @@ for (const locale of ['en', 'zh'] as const) {
     await expect(page.getByRole('button', { name: copy.MediaRoots.scanAll, exact: true })).toBeEnabled();
     await choose(page, locale, 320, 'library');
     await page.locator('#media-root-0').fill(roots[1]);
-    await page.getByRole('button', { name: copy.MediaRoots.save, exact: true }).click();
+    await page.locator('#media-root-0').press('Enter');
     await expect(page.getByText(copy.MediaRoots.saved, { exact: true })).toBeVisible();
     await choose(page, locale, 320, 'library-maintenance');
     await expect(page.getByRole('button', { name: copy.MediaRoots.scanAll, exact: true })).toBeEnabled();
     expect((await read(request, '/settings/media-dirs')).media_dirs).toEqual([roots[1]]);
     await choose(page, locale, 320, 'connections');
-    await page.getByRole('textbox', { name: copy.Settings.baseUrl, exact: true }).fill('https://draft.invalid/v1');
+    await page.getByRole('textbox', { name: copy.Settings.baseUrl, exact: true }).fill('https://');
     await choose(page, locale, 320, 'general');
-    await page.goBack(); await expect(page.getByRole('textbox', { name: copy.Settings.baseUrl, exact: true })).toHaveValue('https://draft.invalid/v1');
-    expect((await read(request, '/settings/base-url')).base_url).not.toBe('https://draft.invalid/v1');
-    await page.reload(); await expect(page.getByRole('textbox', { name: copy.Settings.baseUrl, exact: true })).not.toHaveValue('https://draft.invalid/v1');
+    await page.goBack(); await expect(page.getByRole('textbox', { name: copy.Settings.baseUrl, exact: true })).toHaveValue('https://');
+    expect((await read(request, '/settings/base-url')).base_url).not.toBe('https://');
+    await page.reload(); await expect(page.getByRole('textbox', { name: copy.Settings.baseUrl, exact: true })).not.toHaveValue('https://');
   });
 
-  test(`${locale} directory drafts block only scan retries until Discard or Save`, async ({ page }) => {
+  test(`${locale} directory drafts block only scan retries until Discard or completed input`, async ({ page }) => {
     await page.setViewportSize({ width: 320, height: 1000 });
     const scans = ['library.reconcile', 'library.scan_folder', 'library.refresh_item'];
     const others = ['library.mark_path_missing', 'library.resolve_relink', 'metadata.scrape_library', 'organizer.organize_root', 'external_scores.refresh_library'];
@@ -173,7 +173,7 @@ for (const locale of ['en', 'zh'] as const) {
     });
     await page.goto(`/${locale}/settings?section=library`);
     await expect(page.locator('#media-root-0')).toHaveValue(roots[0]);
-    await page.locator('#media-root-0').fill(roots[1]);
+    await page.locator('#media-root-0').fill('unfinished');
     await choose(page, locale, 320, 'library-maintenance');
     const tasks = page.getByRole('region', { name: copy.SettingsArea.recentWorkflows, exact: true });
     const retry = (record: WorkflowRunView) => tasks.getByRole('listitem').filter({ hasText: record.result_summary! }).getByRole('button', { name: copy.LibraryManagement.constellation.retryWorkflow, exact: true });
@@ -192,8 +192,8 @@ for (const locale of ['en', 'zh'] as const) {
 
     for (const resolution of ['discard', 'save'] as const) {
       await choose(page, locale, 320, 'library');
-      await page.getByRole('button', { name: copy.MediaRoots[resolution], exact: true }).click();
-      if (resolution === 'save') await expect(page.getByText(copy.MediaRoots.saved, { exact: true })).toBeVisible();
+      if (resolution === 'discard') await page.getByRole('button', { name: copy.MediaRoots.discard, exact: true }).click();
+      else { await page.locator('#media-root-0').fill(roots[1]); await page.locator('#media-root-0').press('Enter'); await expect(page.getByText(copy.MediaRoots.saved, { exact: true })).toBeVisible(); }
       await choose(page, locale, 320, 'library-maintenance');
       for (const record of records.slice(0, scans.length)) {
         await expect(retry(record)).toBeEnabled(); await retry(record).click();
@@ -201,7 +201,7 @@ for (const locale of ['en', 'zh'] as const) {
       }
       if (resolution === 'discard') {
         await choose(page, locale, 320, 'library');
-        await page.locator('#media-root-0').fill(roots[1]);
+        await page.locator('#media-root-0').fill('unfinished');
         await choose(page, locale, 320, 'library-maintenance');
         for (const record of records.slice(0, scans.length)) await expect(retry(record)).toBeDisabled();
       }

@@ -15,7 +15,7 @@
     "refresh": "Refresh",
     "scanRules": "Scan and organization rules",
     "metadataArtwork": "Metadata and artwork",
-    "pendingDirectories": "Save or discard directory changes before scanning.",
+    "pendingDirectories": "Finish or discard directory changes before scanning.",
     "openDirectories": "Open directories",
     "metadata": "Metadata",
     "externalScores": "External scores",
@@ -27,6 +27,10 @@
     "fullBackup": "Full database backup and recovery (CLI)"
   },
   "MediaRoots": {
+    "incomplete": "Complete or remove empty directories before saving.",
+    "saving": "Saving directories…",
+    "retry": "Retry",
+    "addDirectory": "Add directory",
     "configuration": "Save the ordered roots, then run a scan to discover their contents.",
     "title": "Media directories",
     "help": "Scan every level, including videos directly in each root. Identical roots are deduplicated; parent and child roots cannot overlap. Links and Windows junctions are skipped.",
@@ -973,6 +977,8 @@
     "global": "global"
   },
   "Settings": {
+    "testConnection": "Test API connection",
+    "retrySave": "Retry",
     "maintenance": "Diagnostics and backups",
     "title": "Settings",
     "subtitle": "Configure your film genealogy experience",
@@ -1115,7 +1121,7 @@
     "autoScan": "Auto Scan",
     "autoScanDesc": "Watch the media directory for added, changed, and deleted files",
     "autoOrganizeRoot": "Auto Organize Root",
-    "autoOrganizeRootDesc": "Advanced automation: while auto scan runs, high-confidence matches in the media root are organized immediately; low-confidence items still require review",
+    "autoOrganizeRootDesc": "Auto-organize high-confidence matches in root folders during scans; review the rest.",
     "watching": "Watching",
     "notWatching": "Not Watching",
     "note": "Note:",
@@ -1497,6 +1503,7 @@
     "filmCount": "{count, plural, one {# film} other {# films}}"
   },
   "VideoHealth": {
+    "automaticDescription": "Check new and changed videos when idle; sample existing files.",
     "controls": "Queue and controls",
     "results": "Inspection results",
     "title": "Video health",

@@ -7,6 +7,12 @@ description: 5X49 Fresh Canonical FastAPI 的 Film、LibraryItem、Factual Explo
 
 ## Multiple media roots
 
+- Preference PUTs write only their owned Setting rows transactionally. Root writes
+  update `media_dirs` plus legacy `media_dir` together; URL/model/TMDB/language and
+  toggle writes preserve other rows. Clearing TMDB removes only its key. Ordinary
+  preference reads/writes do not refresh models or test credentials. Model-list
+  reads/explicit refresh and connection testing remain separate operations.
+
 - GET/PUT `/settings/media-dirs`: ordered `{media_dirs: string[]}`; GET also
   reports `roots: [{id,path,state}]`. Save absolute backend-host paths (maximum
   32), canonicalize/deduplicate, reject overlapping parent/child roots. Offline

@@ -7,6 +7,9 @@ import { retainRecentWorkflows } from "@/lib/workflow-status";
 import { responseError } from "@/lib/fetcher";
 import { API } from "@/lib/api";
 import type { WorkflowRunView } from "@/types/movie";
+import { settingsScanBlocked } from "@/lib/settings-scan-guard";
+import { isLibraryScanWorkflow } from "@/lib/workflow-status";
+import { useTranslations } from "next-intl";
 
 const WORKFLOWS_KEY = `${API.workflows()}?limit=8&include_active=true`;
 
@@ -53,10 +56,13 @@ export function useCancelWorkflow() {
 }
 
 export function useRetryWorkflow() {
-  const { mutate } = useSWRConfig();
+  const t = useTranslations("SettingsArea");
+  const { mutate, cache } = useSWRConfig();
   return useSWRMutation(
     "workflow.retry",
     async (_key: string, { arg: workflowId }: { arg: string }) => {
+      const workflow = (cache.get(WORKFLOWS_KEY)?.data as WorkflowRunView[] | undefined)?.find(item => item.id === workflowId);
+      if (settingsScanBlocked() && (!workflow || isLibraryScanWorkflow(workflow.type))) throw new Error(t("pendingDirectories"));
       const response = await fetch(API.workflowRetry(workflowId), { method: "POST" });
       if (!response.ok) throw await responseError(response, "Failed to retry workflow");
       const data = await response.json();
