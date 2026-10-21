@@ -15,6 +15,22 @@ test('return context rejects stale or malformed state, preserves focus and scrol
   assert.deepEqual(parseReturnContext(JSON.stringify({...context,focusId}),2000), {...context,focusId});
   assert.deepEqual(parseReturnContext(JSON.stringify({...context,focusId:'unrelated-control'}),2000), context);
 });
+test('Explore returns cover known local list routes and preserve their queries', () => {
+  const person = `person_${'b'.repeat(32)}`;
+  for (const prefix of ['', '/en', '/zh']) for (const route of [
+    '/explore/filter?person='+person+'&person_match=all&view=unwatched&sort=year&offset=40',
+    '/explore/search?q=Shelf&page=2', '/explore/collections?category=country&offset=24',
+    '/explore/collections/director/'+person+'?view=unwatched&sort=year&dir=asc&offset=40',
+    '/explore/collections/person/'+person, '/explore/collections/country/JP', '/explore/collections/decade/1980',
+  ]) assert.equal(safeReturnHref(prefix+route), prefix+route);
+  for (const value of ['https://evil.test/explore/filter', '//evil.test/explore/filter', '///evil.test/explore/filter',
+    '/explore/other', '/explore/filter/country/JP', '/explore/collections/series/unknown',
+    '/explore/collections/person/invalid', '/explore/collections/country/Japan', '/explore/collections/decade/1995',
+    '/explore/filter/../../library/film_x', '/explore/collections/country/JP/extra',
+    '/explore/collections/person/%2f%2fevil.test', '/en/explore/search\t?x=1', '/explore/collections\\evil',
+  ]) assert.equal(safeReturnHref(value), null, value);
+});
+
 test('video inspection return context allows only its scoped local settings category', () => {
   const href = '/en/settings?section=video-checks&health_state=all&health_offset=20&health_file=health_abc';
   assert.equal(safeReturnHref(href), href);

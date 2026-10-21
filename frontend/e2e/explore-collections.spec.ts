@@ -168,11 +168,16 @@ test('collection last page shrinks 41 to 40 using replace with identity, view an
 
 test('saving inside a collection updates the cached directory and home on Back',async ({page,request})=>{
   await page.goto('/en/explore'); await page.getByRole('link',{name:en.Collections.directoryTitle,exact:true}).first().click();
+  await expect(page).toHaveURL(/\/en\/explore\/collections$/);
+  await expect(page.getByRole('heading',{name:en.Collections.directoryTitle,exact:true})).toBeVisible();
   const href='/en/explore/collections/country/JP';
+  const directory: CollectionCatalog=await read(request,'/explore/catalog');
+  expect(directory.items.some(item=>item.kind==='country'&&item.key==='JP')).toBe(true);
   const before: LocalCollectionPage=await read(request,'/explore/collections/country/JP');
   const target=before.collection.previews[0];
   expect((await request.put(`${backend}/films/${target.id}/profile-state`,{data:{watched:false}})).ok()).toBeTruthy();
   await page.reload();
+  await expect(page.getByRole('heading',{name:en.Collections.directoryTitle,exact:true})).toBeVisible();
   const directoryHref=page.url();
   await page.locator(`a[href="${href}"]`).click();
   const trigger=page.locator(`#film-link-${target.id}`); await trigger.click();
@@ -221,6 +226,43 @@ test('a delayed home save cannot cancel a pending collection Link and cached Bac
     expect(writes).toBe(1);
   }finally{releaseSave();releaseRead();}
 });
+
+for (const locale of ['en','zh']) for (const width of [1440,390]) for (const mode of ['collection','filter','search']) {
+  test(`${locale} ${mode} page Return restores query, history, focus and scroll at ${width}px`, async ({page,request})=>{
+    const copy=locale==='en'?en:zh, prefix=`/${locale}`;
+    const all: ExploreFilmPage=await read(request,'/explore/films?decade=1980&limit=100');
+    for(const {film} of all.items) if(film.profile_state.watched) expect((await request.put(`${backend}/films/${film.id}/profile-state`,{data:{watched:false}})).ok()).toBeTruthy();
+    const list=mode==='collection'?'/explore/collections/decade/1980?view=unwatched&sort=year&dir=asc&offset=40'
+      :mode==='filter'?'/explore/filter?decade=1980&view=unwatched&sort=year&dir=asc&offset=40'
+        :'/explore/search?q=Shelf&page=2';
+    await page.setViewportSize({width,height:900});
+    await page.goto(`${prefix}/explore`);const previous=page.url();
+    await page.goto(prefix+list);await expect(cards(page)).toHaveCount(2);
+    await expect(page.locator('html')).toHaveAttribute('lang',locale);
+    const href=page.url(), history=await page.evaluate(()=>window.history.length);
+    const link=page.locator('.library-card-title').first();
+    const filmHref=(await link.getAttribute('href'))!, filmId=filmHref.split('/').at(-1)!;
+    await link.scrollIntoViewIfNeeded();await link.focus();
+    await link.evaluate(node=>node.scrollIntoView({block:'center',behavior:'instant'}));
+    const y=await page.evaluate(()=>scrollY);
+    await page.keyboard.press('Enter');
+    await expect(page).toHaveURL(new RegExp(`/library/${filmId}$`));
+    const remembered=await page.evaluate(()=>JSON.parse(sessionStorage.getItem('5x49:return-context:v1')||'null'));
+    const source=new URL(href);
+    expect(remembered).toMatchObject({href:source.pathname+source.search,filmId,scrollY:y});
+    expect(await page.evaluate(()=>window.history.length)).toBe(history+1);
+    const button=page.getByRole('button',{name:copy.FilmDetail.return,exact:true});
+    await expect(button).toBeEnabled();
+    await button.focus();await page.keyboard.press('Enter');
+    await expect(page).toHaveURL(href);await expect(cards(page)).toHaveCount(2);
+    await expect(page.locator(`#film-link-${filmId}`)).toBeFocused();
+    await expect.poll(()=>page.evaluate(before=>Math.abs(scrollY-Math.max(0,Math.min(before,document.documentElement.scrollHeight-innerHeight))),y)).toBeLessThanOrEqual(1);
+    expect(await page.evaluate(()=>window.history.length)).toBe(history+2);
+    await page.goBack();await expect(page).toHaveURL(new RegExp(`/library/${filmId}$`));
+    await page.goBack();await expect(page).toHaveURL(href);await expect(cards(page)).toHaveCount(2);
+    await page.goBack();await expect(page).toHaveURL(previous);
+  });
+}
 
 test('empty and sparse libraries offer honest collection fallbacks and working film search',async ({page,request})=>{
   await control(request,'identity_cleanup'); await page.goto('/en/explore');

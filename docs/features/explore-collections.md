@@ -75,6 +75,23 @@ organizes content; query editing is an explicit, separate mode.
   only generated local data is used. Final lint has no warnings.
 - `git diff --check`: passed. PR CI and independent review remain the merge gate.
 
+### Review corrections
+
+- Expanded the Film return-context allowlist to the known Explore list routes and
+  canonical collection keys. External/protocol-relative URLs, control characters,
+  arbitrary descendants, invalid IDs and encoded path escapes remain rejected.
+- `npm run test:unit`: 127 passed; lint/typecheck and the production fixture build
+  passed after the correction. Twelve Return-button cases cover collection/filter/
+  search in English/Chinese at 1440/390px, preserving queries, page, scroll, focus,
+  the existing push behavior and subsequent browser Back history. All 12 passed.
+- The first PR CI had 221 passing browser cases and one test navigation race:
+  the directory test reloaded before its Link's RSC navigation committed. The
+  failure trace stayed on `/en/explore`, while the JP detail API returned two Films.
+  The test now waits for the directory URL and heading before reload and still
+  asserts JP exists in the directory. This case also passed after the correction.
+- The final head must rerun the complete CI browser suite (now 234 cases) and pass
+  independent re-review before ready/merge.
+
 ## Remaining risks
 
 Synthetic metadata establishes correctness, not real-library editorial variety.
