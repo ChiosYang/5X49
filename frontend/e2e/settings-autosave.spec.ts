@@ -1,3 +1,4 @@
+import { expectAnnouncedOnly } from './settings-feedback-assertions';
 import { test, expect, type APIRequestContext, type Page } from '@playwright/test';
 import path from 'node:path';
 import en from '../messages/en.json';
@@ -236,7 +237,7 @@ for (const locale of ['en', 'zh'] as const) {
       await expect(input).toHaveValue('https://latest.invalid/v1'); expect(urls).toEqual(['https://first.invalid/v1']);
       await capture(page, `autosave-${locale}-320-url-retry.png`);
       fail = false; await page.getByRole('button', { name: copy.Settings.retrySave, exact: true }).click();
-      await expect(page.getByText(copy.Settings.saved, { exact: true })).toBeVisible();
+      await expectAnnouncedOnly(page.getByText(copy.Settings.saved, { exact: true }), copy.Settings.saved);
       expect(urls).toEqual(['https://first.invalid/v1', 'https://latest.invalid/v1']); expect(modelReads.length).toBe(readsBefore); expect(providerCalls).toEqual([]);
       expect((await read(request, '/settings/model')).current_model).toBe(originalModel);
       expect((await read(request, '/settings/base-url')).base_url).toBe('https://latest.invalid/v1');

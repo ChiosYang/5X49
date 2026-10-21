@@ -1,3 +1,4 @@
+import { expectAnnouncedOnly } from './settings-feedback-assertions';
 import { test, expect, type APIRequestContext, type Page } from '@playwright/test';
 import en from '../messages/en.json';
 import zh from '../messages/zh.json';
@@ -132,7 +133,7 @@ for (const locale of ['en', 'zh'] as const) {
     expect((await read(request, `${backend}/settings/media-dirs`)).media_dirs).toEqual([roots[0]]);
     reject = false;
     await panel.getByRole('button', { name: copy.MediaRoots.retry, exact: true }).click();
-    await expect(panel.getByRole('status')).toHaveText(copy.MediaRoots.saved);
+    await expectAnnouncedOnly(panel.getByRole('status'), copy.MediaRoots.saved);
     expect((await read(request, `${backend}/settings/media-dirs`)).media_dirs).toEqual(roots);
     await page.reload();
     await expect(page.locator('#media-root-1')).toHaveValue(roots[1]);
@@ -173,7 +174,7 @@ for (const locale of ['en', 'zh'] as const) {
     reject = false;
     await toggle.focus(); await page.keyboard.press('Space');
     await expect(toggle).toHaveAttribute('aria-checked', 'false');
-    await expect(video.getByRole('status')).toHaveText(copy.VideoHealth.accepted);
+    await expectAnnouncedOnly(video.getByRole('status'), copy.VideoHealth.accepted);
     expect((await read(request, health)).config).toMatchObject({ ...schedule, enabled: false });
     expect(writes).toEqual([{ enabled: false }, { enabled: false }]);
     await page.reload();

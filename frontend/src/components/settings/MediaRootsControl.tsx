@@ -14,6 +14,7 @@ import FileBrowser from "@/components/FileBrowser";
 import { createAutosaveSessionRegistry } from "@/lib/settings-autosave-session";
 import { createSettingsScanGuard } from "@/lib/settings-scan-guard";
 import { resolveSettingsLocation } from "@/lib/settings-navigation";
+import { SaveStatus } from "./SettingsPrimitives";
 
 export interface MediaRoots {
   media_dirs: string[];
@@ -65,6 +66,7 @@ export default function MediaRootsControl() {
   return <div className="min-w-0 space-y-4 border-b border-line pb-6" aria-label={t("title")}>
     <div className="flex items-center justify-between gap-4">
       <h3 className="text-sm font-medium tracking-widest uppercase">{t("title")}</h3>
+      <SaveStatus message={busy ? t("saving") : notice === "saved" ? t("saved") : ""} />
       <span className="group/add relative inline-flex">
         <IconButton data-roots-action variant="ghost" aria-label={t("addDirectory")} aria-describedby="add-directory-tooltip" aria-expanded={pickerOpen} disabled={!data || values.length >= 32} icon={<Plus aria-hidden className="h-4 w-4" />} onClick={() => { complete(); setPickerOpen(true); }} />
         <span id="add-directory-tooltip" role="tooltip" className="pointer-events-none invisible absolute right-0 top-full z-20 mt-2 w-max max-w-56 border border-line-strong bg-surface-raised px-3 py-2 text-xs group-hover/add:visible group-focus-within/add:visible">{t("addDirectory")}</span>
@@ -95,7 +97,7 @@ export default function MediaRootsControl() {
     })}
     {!values.length ? <p className="text-sm text-ink-muted">{t("noRoots")}</p> : null}
     {notice === "saveFailed" ? <Button data-roots-action size="sm" disabled={busy} onClick={() => void autosave.commit()}>{t("retry")}</Button> : null}
-    {busy ? <p role="status" className="text-sm text-ink-muted">{t("saving")}</p> : notice ? <p role={notice === "saved" ? "status" : "alert"} className={`text-sm ${notice === "saved" ? "text-success" : "text-danger"}`}>{t(notice)}</p> : null}
+    {busy ? <p className="text-sm text-ink-muted">{t("saving")}</p> : notice && notice !== "saved" ? <p role="alert" className="text-sm text-danger">{t(notice)}</p> : null}
     {pickerOpen ? <FileBrowser isOpen initialPath={(result ?? data)?.roots.find(root => root.state === "accessible")?.path}
       onCancel={() => setPickerOpen(false)} onSelect={path => { setPickerOpen(false); if (values.length < 32) change([...restored(), path]); }} /> : null}
   </div>;

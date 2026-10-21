@@ -124,6 +124,7 @@ export default function LibrarySettings() {
       <SettingsPanel title={area("scanRules")}>
         <SettingRow
           title={t("autoScan")}
+          saveStatus={!watchSaving && !watchError && watchSaveResult ? t("saved") : ""}
           description={t("autoScanDesc")}
           control={
             <ToggleSwitch
@@ -136,17 +137,12 @@ export default function LibrarySettings() {
           feedback={
             watchError ? (
               <InlineFeedback tone="error">{t("autoScanSaveFailed")}</InlineFeedback>
-            ) : watchSaveResult ? (
-              <InlineFeedback tone="success">{t("saved")}</InlineFeedback>
-            ) : libraryWatchData?.watch_library ? (
-              <InlineFeedback>
-                {t("watching")}
-              </InlineFeedback>
             ) : null
           }
         />
         <SettingRow
           title={t("autoOrganizeRoot")}
+          saveStatus={!autoOrganizeSaving && !autoOrganizeError && autoOrganizeSaveResult ? t("saved") : ""}
           description={t("autoOrganizeRootDesc")}
           control={
             <ToggleSwitch
@@ -159,8 +155,6 @@ export default function LibrarySettings() {
           feedback={
             autoOrganizeError ? (
               <InlineFeedback tone="error">{t("autoOrganizeSaveFailed")}</InlineFeedback>
-            ) : autoOrganizeSaveResult ? (
-              <InlineFeedback tone="success">{t("saved")}</InlineFeedback>
             ) : null
           }
         />
@@ -168,11 +162,10 @@ export default function LibrarySettings() {
       <SettingsPanel title={area("metadataArtwork")}>
         <SettingRow
           title={t("artworkLanguage")}
+          saveStatus={!artworkLanguageSaving && !artworkLanguageError && artworkLanguageSaveResult ? t("saved") : ""}
           feedback={
             artworkLanguageError ? (
               <InlineFeedback tone="error">{t("artworkLanguageSaveFailed")}</InlineFeedback>
-            ) : artworkLanguageSaveResult ? (
-              <InlineFeedback tone="success">{t("saved")}</InlineFeedback>
             ) : null
           }
         >
@@ -196,6 +189,7 @@ export default function LibrarySettings() {
         </SettingRow>
         <SettingRow
           title={t("scrapeRequireConfirmation")}
+          saveStatus={!scrapeConfirmationSaving && !scrapeConfirmationError && scrapeConfirmationSaveResult ? t("saved") : ""}
           description={t("scrapeRequireConfirmationDesc")}
           control={
             <ToggleSwitch
@@ -208,8 +202,6 @@ export default function LibrarySettings() {
           feedback={
             scrapeConfirmationError ? (
               <InlineFeedback tone="error">{t("scrapeConfirmationSaveFailed")}</InlineFeedback>
-            ) : scrapeConfirmationSaveResult ? (
-              <InlineFeedback tone="success">{t("saved")}</InlineFeedback>
             ) : null
           }
         />

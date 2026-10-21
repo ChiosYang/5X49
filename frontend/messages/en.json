@@ -55,7 +55,7 @@
     "overlap": "A parent and its child cannot both be media roots. Remove one before saving.",
     "absolute": "Use absolute paths on the backend host.",
     "saveFailed": "Could not save directories. Check the paths and try again.",
-    "saved": "Configuration saved. Accessibility and scan results are shown separately.",
+    "saved": "Directories saved",
     "scanTitle": "Media scan coverage",
     "scanAll": "Scan all directories",
     "scanHelp": "Offline roots, permission errors, partial failures or cancellation never authorize missing-file changes. Only a complete scan followed by explicit absence checks can mark editions missing.",

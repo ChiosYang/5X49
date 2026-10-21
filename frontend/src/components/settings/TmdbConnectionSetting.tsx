@@ -5,7 +5,7 @@ import { useTranslations } from "next-intl";
 import { useTestTmdbKey } from "@/hooks/useSettings";
 import { useTmdbKeyAutosave } from "@/hooks/useTmdbKeyAutosave";
 import { useConnectionTest } from "@/hooks/useConnectionTest";
-import { SettingRow } from "./SettingsPrimitives";
+import { ConnectionControlGrid, SettingRow } from "./SettingsPrimitives";
 import { ConnectionTestResult } from "./ConnectionTestResult";
 import { Button, IconButton } from "@/components/ui/Button";
 import { InlineFeedback, Spinner } from "@/components/ui/Feedback";
@@ -24,11 +24,11 @@ export default function TmdbConnectionSetting() {
     if (current.saving || current.draft !== null || !data?.configured) return;
     void test.run();
   };
-  return <SettingRow title={t("tmdbApiKey")} description={t("tmdbApiKeyDesc")} feedback={
+  return <SettingRow title={t("tmdbApiKey")} saveStatus={state.notice === "saved" ? t("saved") : ""} feedback={
     state.notice && state.notice !== "saved" ? <div role="alert"><InlineFeedback tone="error">{t(state.notice)}</InlineFeedback></div> : error ? <div role="alert"><InlineFeedback tone="error">{t("tmdbLoadFailed")}</InlineFeedback></div> : null
   }>
-    <div className="flex min-w-0 items-start gap-2">
-      <div className="relative min-w-0 flex-1">
+    <ConnectionControlGrid>
+      <div className="relative min-w-0">
         <TextInput type="password" value={state.draft ?? ""} disabled={!editable} aria-label={t("tmdbApiKey")} aria-busy={state.saving}
           autoComplete="off" aria-description={t(editable ? "tmdbApiKeyPlaceholder" : "tmdbApiKeyEnvironment")} placeholder={editable ? t("tmdbKeyInput") : ""}
           className="pr-28" onChange={event => { test.invalidate(); autosave.edit(event.target.value); }}
@@ -45,7 +45,7 @@ export default function TmdbConnectionSetting() {
         <span id="tmdb-test-tooltip" role="tooltip" className="pointer-events-none invisible absolute right-0 top-full z-20 mt-2 w-max max-w-56 border border-line-strong bg-surface-raised px-3 py-2 text-xs group-hover/tmdb-test:visible group-focus-within/tmdb-test:visible">{t("tmdbTestBtn")}</span>
       </span>
       <ConnectionTestResult outcome={test.outcome} />
-    </div>
+    </ConnectionControlGrid>
     {state.notice === "tmdbSaveFailed" ? <Button size="sm" className="mt-3" disabled={state.saving} onClick={() => void autosave.commit()}>{t("retrySave")}</Button> : null}
   </SettingRow>;
 }

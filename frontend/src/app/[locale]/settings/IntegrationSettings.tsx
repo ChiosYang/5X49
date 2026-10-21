@@ -6,6 +6,7 @@ import { useTranslations } from "next-intl";
 import {
   SettingRow,
   SettingsPanel,
+  ConnectionControlGrid,
 } from "@/components/settings/SettingsPrimitives";
 import { IconButton } from "@/components/ui/Button";
 import { InlineFeedback } from "@/components/ui/Feedback";
@@ -81,18 +82,17 @@ export default function IntegrationSettings() {
       <SettingsPanel title={t("aiProvider")}>
         <SettingRow
           title={t("model")}
+          saveStatus={!modelSaving && !modelSaveError && modelSaveResult ? t("saved") : ""}
           feedback={
             modelSaving ? (
               <InlineFeedback>{t("saving")}</InlineFeedback>
             ) : modelSaveError ? (
               <InlineFeedback tone="error">{t("modelSaveFailed")}</InlineFeedback>
-            ) : modelSaveResult ? (
-              <InlineFeedback tone="success">{t("saved")}</InlineFeedback>
             ) : null
           }
         >
-          <div role="group" aria-label={t("model")} className="flex min-w-0 max-w-xl items-start gap-2">
-          <div className="relative min-w-0 flex-1">
+          <ConnectionControlGrid label={t("model")}>
+          <div className="relative min-w-0">
             <InputButton
               aria-expanded={modelMenuOpen}
               onClick={() => setModelMenuOpen((open) => !open)}
@@ -150,7 +150,7 @@ export default function IntegrationSettings() {
             <span id="api-test-tooltip" role="tooltip" className="pointer-events-none invisible absolute right-0 top-full z-20 mt-2 w-max max-w-56 border border-line-strong bg-surface-raised px-3 py-2 text-xs group-hover/api-test:visible group-focus-within/api-test:visible">{t("testConnection")}</span>
           </span>
           <ConnectionTestResult outcome={apiTest.outcome} />
-          </div>
+          </ConnectionControlGrid>
 
         </SettingRow>
 

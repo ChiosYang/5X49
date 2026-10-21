@@ -1,3 +1,4 @@
+import { expectAnnouncedOnly } from './settings-feedback-assertions';
 import { test, expect, type Page } from '@playwright/test';
 import path from 'node:path';
 import en from '../messages/en.json';
@@ -127,7 +128,7 @@ for (const locale of ['en', 'zh'] as const) {
       await expect(input).toHaveValue(roots[0]); await input.fill(roots[1]); await input.press('Enter'); await expect.poll(() => payloads.length).toBe(1);
       await input.fill(latest); await input.press('Enter'); await input.fill(''); await input.press('Tab'); await expect(input).toHaveValue(latest);
       held.release(); await expect.poll(() => payloads).toEqual([[roots[1]], [latest]]);
-      await expect(page.getByText(copy.MediaRoots.saved, { exact: true })).toBeVisible(); await page.reload(); await expect(input).toHaveValue(latest);
+      await expectAnnouncedOnly(page.getByText(copy.MediaRoots.saved, { exact: true }), copy.MediaRoots.saved); await page.reload(); await expect(input).toHaveValue(latest);
     } finally { held.release(); }
   });
 
@@ -213,7 +214,7 @@ for (const locale of ['en', 'zh'] as const) {
       await capture(page, `feedback-${locale}-320-tmdb-failed.png`);
       fail = false; await page.getByRole('button', { name: copy.Settings.retrySave, exact: true }).click();
       await expect(key).toHaveValue(''); expect(payloads).toEqual(['synthetic-first', 'synthetic-latest']);
-      await expect(page.getByText(copy.Settings.saved, { exact: true })).toHaveCount(0);
+      await expectAnnouncedOnly(page.getByText(copy.Settings.saved, { exact: true }), copy.Settings.saved);
     } finally { held.release(); }
   });
 
