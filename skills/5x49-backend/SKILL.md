@@ -5,6 +5,22 @@ description: 5X49 Fresh Canonical FastAPI 的 Film、LibraryItem、Factual Explo
 
 # 5X49 Backend API
 
+## Unified Explore search
+
+- `POST /explore/search/interpret`: `{question,locale,allow_ai:false}`; text 1–600,
+  strict boolean. Keyword/local rules are model-free. Only explicit submission may
+  set allow_ai true; at most one existing transport call, no retry, no library input.
+- `POST /explore/search/query`: `{question,plan,person_id:null,edited:false,offset:0}`;
+  always local, 40/page. Ask v1 facts only; exact roles and strict missing/conflict
+  handling. Edited conditions reflect explicit user corrections, never partial AI.
+- Envelope: discovery.v1, status, source, reason, plan, person_id, constraints,
+  issues, results. Status keyword/ready/needs_clarification/clarify/unsupported/
+  unavailable/needs_ai. Ambiguous identity needs a choice; unsupported/low-confidence/
+  ungrounded/malformed interpretations never run a partial query. Safe errors only.
+- Refresh/Back/page/mutations must never infer. Keep global Library search and old
+  exact Explore URL meanings. Ask UI redirects to Explore; old APIs stay compatible.
+  PR28 v2 and live-budget/review gates remain separate. No Jev dependency is added.
+
 ## Addressable local collections
 
 - `GET /explore/catalog`: optional `category=all|director|country|decade`, literal

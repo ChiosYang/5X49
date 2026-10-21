@@ -1,8 +1,13 @@
 # Explore Collection Browsing
 
-Status: In Progress
+Status: Done
 Last updated: 2026-10-21
 Related: factual-explore.md; PR #40
+
+Merged in PR41 as `e27a96c5ea6fa690a51c9ca0db1ef2cda3ef7d17`, after independent
+review and CI 39580467533 (432 backend / 1 skip, RC15, frontend127, browser234).
+The next [unified search](explore-unified-search.md) revision places its input
+directly above the shelves; the original lightweight-entry decision is historical.
 
 ## Goal
 
@@ -44,8 +49,8 @@ organizes content; query editing is an explicit, separate mode.
 - [x] Empty/small/sparse/conflicted data yield honest, usable fallbacks and exact counts.
 - [x] Bilingual desktop/mobile and keyboard behavior verified; Ask's shared UI is unchanged.
 - [x] Focused/full local checks and internal visual review complete.
-- [ ] Required PR CI is successful before ready/merge.
-- [ ] Independent parent review passes before ready/merge.
+- [x] Required PR CI is successful before ready/merge.
+- [x] Independent parent review passes before ready/merge.
 
 ## Slices
 

@@ -1,26 +1,48 @@
 import { getTranslations } from "next-intl/server";
-import { normalizeLibrarySearch } from "@/lib/library-search";
 import { normalizeFilmPage, FILM_PAGE_SIZE } from "@/lib/film-pagination";
 import { parseExploreQuery } from "@/lib/explore";
-import { getCollectionCatalog, getLibraryFilmPage, getLocalPeople } from "@/lib/server-api";
+import { discoveryFailure, discoveryReason, normalizeDiscoverySearch, parseDiscoveryPlan, type DiscoveryResolution, type DiscoveryState } from "@/lib/discovery-search";
+import { getCollectionCatalog, getDiscoveryResolution, getLibraryFilmPage, getLocalPeople } from "@/lib/server-api";
 import DiscoverySearch from "./DiscoverySearch";
 
+const first = (value?: string | string[]) => Array.isArray(value) ? value[0] : value;
 export default async function ExploreSearchPage({ params, searchParams }: {
   params: Promise<{ locale: string }>;
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const { locale } = await params;
   const search = await searchParams;
-  const query = normalizeLibrarySearch(search.q).slice(0, 100);
+  const query = normalizeDiscoverySearch(search.q);
   const page = normalizeFilmPage(search.page);
   const peopleOffset = parseExploreQuery({ offset: search.people_offset }).offset;
   const collectionOffset = parseExploreQuery({ offset: search.collection_offset }).offset;
-  const [films, people, collections] = query ? await Promise.all([
-    getLibraryFilmPage(new URLSearchParams({ q: query, limit: String(FILM_PAGE_SIZE), offset: String((page - 1) * FILM_PAGE_SIZE) })),
-    getLocalPeople(query, peopleOffset),
-    getCollectionCatalog({ query, offset: collectionOffset, limit: 12 }),
-  ]) : [null, null, null];
-  return <DiscoverySearch key={query} snapshot={films && people && collections ? { films, people, collections } : null}
+  const plan = parseDiscoveryPlan(first(search.p));
+  const state: DiscoveryState = { plan, personId: first(search.person_id), edited: first(search.edited) === "1",
+    offset: parseExploreQuery({ offset: search.offset }).offset, source: first(search.source) === "ai" ? "ai" : "local" };
+  const explicitKeyword = first(search.mode) === "keyword" && query.length <= 200;
+  let resolution: DiscoveryResolution | null = null;
+  if (query && !explicitKeyword) {
+    if (search.p !== undefined && !plan) resolution = discoveryFailure("invalid_request");
+    else if (plan) resolution = await getDiscoveryResolution(query, locale, { plan, person_id: state.personId ?? null, edited: state.edited, offset: state.offset });
+    else if (["unsupported", "clarify", "unavailable", "needs_ai"].includes(first(search.state) ?? "")) {
+      resolution = { ...discoveryFailure(discoveryReason(first(search.reason))), status: first(search.state) as DiscoveryResolution["status"] };
+    } else resolution = await getDiscoveryResolution(query, locale);
+    if (resolution.plan && !plan) {
+      state.plan = resolution.plan; state.personId = resolution.person_id;
+      resolution = await getDiscoveryResolution(query, locale, { plan: state.plan, person_id: state.personId, edited: false, offset: state.offset });
+    }
+  }
+  let snapshot = null;
+  if (query && (explicitKeyword || resolution?.status === "keyword")) {
+    try {
+      const [films, people, collections] = await Promise.all([
+        getLibraryFilmPage(new URLSearchParams({ q: query, limit: String(FILM_PAGE_SIZE), offset: String((page - 1) * FILM_PAGE_SIZE) })),
+        getLocalPeople(query, peopleOffset), getCollectionCatalog({ query, offset: collectionOffset, limit: 12 }),
+      ]);
+      snapshot = { films, people, collections }; resolution = null;
+    } catch { resolution = discoveryFailure("unavailable"); }
+  }
+  return <DiscoverySearch key={query} snapshot={snapshot} resolution={resolution} state={state} explicitKeyword={explicitKeyword}
     query={query} page={page} peopleOffset={peopleOffset} collectionOffset={collectionOffset} locale={locale} />;
 }
 

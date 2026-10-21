@@ -12,6 +12,8 @@ import { COLLECTION_CATEGORIES, catalogHref, collectionHref } from "@/lib/collec
 import { correctedExploreOffset, formatExploreFacetLabel } from "@/lib/explore";
 import { useExploreBrowsePosition, useExploreRefresh } from "@/hooks/useExploreRefresh";
 import type { CollectionCatalog, CollectionCategory, LocalCollection } from "@/types/movie";
+import UnifiedSearchInput from "./UnifiedSearchInput";
+import { useDiscoveryNavigation } from "./DiscoverySearchSession";
 
 const subscribe = () => () => {};
 
@@ -53,7 +55,8 @@ export default function CollectionBrowse({ catalog, locale, directory = false, c
   const href = directory ? catalogHref(category, offset) : "/explore";
   const [activeHref, setActiveHref] = useOptimistic(href);
   const [pending, startTransition] = useTransition();
-  const beginRead = useExploreRefresh(catalog, pending, activeHref, href);
+  const searchSession = useDiscoveryNavigation();
+  const beginRead = useExploreRefresh(catalog, pending || searchSession.pending, activeHref, href);
   useExploreBrowsePosition(href);
   useEffect(() => {
     if (!directory || pending || activeHref !== href) return;
@@ -63,6 +66,7 @@ export default function CollectionBrowse({ catalog, locale, directory = false, c
     });
   }, [activeHref, beginRead, catalog.limit, catalog.total, category, directory, href, offset, pending, router]);
   function navigate(target: string) {
+    searchSession.cancel();
     startTransition(() => { beginRead(target); setActiveHref(target); router.push(target); });
   }
   return <div className="page-x min-h-screen bg-canvas pb-24 pt-38 text-ink md:pt-44">
@@ -71,11 +75,12 @@ export default function CollectionBrowse({ catalog, locale, directory = false, c
       <div><h1 className="type-display-editorial">{t(directory ? "directoryTitle" : "homeTitle")}</h1>
         <p className="mt-4 max-w-2xl text-sm leading-6 text-ink-muted">{t(directory ? "directoryDescription" : "homeDescription")}</p></div>
       <div className="flex flex-wrap gap-2">
-        <ButtonLink prefetch={false} href="/explore/search" icon={<Search className="h-4 w-4" />}>{t("searchTitle")}</ButtonLink>
-        {!directory ? <ButtonLink prefetch={false} href="/explore/collections" variant="ghost">{t("directoryTitle")}</ButtonLink> : null}
+        {directory ? <ButtonLink prefetch={false} href="/explore/search" icon={<Search className="h-4 w-4" />}>{t("searchTitle")}</ButtonLink> : null}
+        {!directory ? <ButtonLink prefetch={false} href="/explore/collections" variant="ghost" size="sm">{t("directoryTitle")}</ButtonLink> : null}
         <ButtonLink prefetch={false} href="/explore/filter" variant="ghost" size="sm">{t("filterTitle")}</ButtonLink>
       </div>
     </header>
+    {!directory ? <UnifiedSearchInput /> : null}
     {directory ? <nav aria-label={t("categoryLabel")} className="mt-6 flex flex-wrap gap-2">
       {COLLECTION_CATEGORIES.map(kind => <ButtonLink prefetch={false} key={kind} href={catalogHref(kind)} aria-current={category === kind ? "page" : undefined} variant={category === kind ? "primary" : "ghost"} size="sm"
         onNavigate={event => { event.preventDefault(); navigate(catalogHref(kind)); }}>{t(`categories.${kind}`)}{kind !== "all" ? ` (${catalog.categories[kind]})` : ""}</ButtonLink>)}

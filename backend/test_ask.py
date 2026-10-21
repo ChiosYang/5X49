@@ -114,6 +114,7 @@ class AskTests(unittest.TestCase):
     def test_no_key_status_and_interpretation_leave_local_form_usable(self):
         with patch.dict(os.environ, {"OPENROUTER_API_KEY": ""}):
             self.assertFalse(self.client.get("/ask/status").json()["configured"])
+            self.assertFalse(self.client.get("/ask/status").json()["form_available"])
             response = self.client.post("/ask/interpret", json={"question": "find unwatched films"})
             self.assertEqual(response.status_code, 503)
             self.assertEqual(response.json()["detail"]["code"], "ask_not_configured")

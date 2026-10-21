@@ -19,6 +19,18 @@ import type {
 import { buildExploreContextSearchParams, buildExploreSearchParams, type ExploreQueryState } from "@/lib/explore";
 
 import { getBackendUrl as backendUrl } from "@/lib/backend-proxy";
+import { discoveryFailure, discoveryReason, type DiscoveryResolution } from "@/lib/discovery-search";
+
+export async function getDiscoveryResolution(question: string, locale: string, restored?: object): Promise<DiscoveryResolution> {
+  try {
+    const response = await fetch(`${backendUrl()}/explore/search/${restored ? "query" : "interpret"}`, {
+      method: "POST", cache: "no-store", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(restored ? { question, ...restored } : { question, locale, allow_ai: false }),
+    });
+    const result = await response.json().catch(() => null);
+    return response.ok ? result as DiscoveryResolution : discoveryFailure(discoveryReason(result?.detail?.code));
+  } catch { return discoveryFailure("unavailable"); }
+}
 
 export async function getLibraryFilm(filmId: string): Promise<LibraryFilmDetail | null> {
   const response = await fetch(`${backendUrl()}/library/films/${encodeURIComponent(filmId)}`, {

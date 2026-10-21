@@ -87,8 +87,9 @@ for (const locale of ['en', 'zh'] as const) {
             await expect(page.getByText(copy.LibrarySearch.empty.replace('{query}', 'tape'), { exact: true })).toBeVisible();
           }
           if (route === '/ask') {
-            await page.getByRole('button', { name: copy.Ask.questionMode, exact: true }).click();
-            await expect(page.getByText(copy.Ask.privacy, { exact: true })).toBeVisible();
+            await expect(page).toHaveURL(/\/explore$/);
+            await expect(page.getByRole('searchbox', { name: copy.Discovery.label, exact: true })).toBeVisible();
+            await expect(page.locator('#ask-form')).toHaveCount(0);
           }
           if (route === `/library/${films[0].id}`) {
             await expect(page.locator('h1').locator('..').locator('p')).toHaveCount(0);

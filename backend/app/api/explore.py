@@ -5,11 +5,31 @@ from typing import Literal
 
 from fastapi import APIRouter, HTTPException, Query
 
+from app.contracts.discovery_search import DiscoveryQuestion, DiscoveryQuery
+from app.services.ask import AskError
+from app.services.discovery_search import discovery_search_service
 from app.services.explore_query import EXPLORE_DIMENSIONS, explore_query_service
 from app.utils.security import validate_resource_id
 
 
 router = APIRouter()
+
+
+def _discovery_call(callback):
+    try:
+        return callback()
+    except AskError as exc:
+        raise HTTPException(exc.status, detail={"code": exc.code}) from None
+
+
+@router.post("/explore/search/interpret")
+def interpret_discovery(request: DiscoveryQuestion):
+    return _discovery_call(lambda: discovery_search_service.interpret(request))
+
+
+@router.post("/explore/search/query")
+def query_discovery(request: DiscoveryQuery):
+    return _discovery_call(lambda: discovery_search_service.query(request))
 
 
 @router.get("/explore")
