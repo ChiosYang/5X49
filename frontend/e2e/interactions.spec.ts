@@ -2,6 +2,7 @@ import { test, expect, type APIRequestContext, type Page } from '@playwright/tes
 import { writeFile, access, mkdir } from 'node:fs/promises';
 import path from 'node:path';
 import type { LibraryFilmSummary } from '../src/types/movie';
+import zh from '../messages/zh.json';
 
 test.describe.configure({ mode: 'serial' });
 const backend = process.env.E2E_BACKEND!;
@@ -146,32 +147,22 @@ test('long unbroken and Chinese titles stay within cards and away from the year'
   }
 });
 
-async function confirmAsk(page: Page) {
-  await page.getByRole('button', { name: 'Review conditions', exact: true }).click();
-  await page.getByRole('button', { name: 'Find films with these conditions', exact: true }).click();
-}
-test('no-key real facts, zero results require reconfirmation; detail reload restores Ask', async ({ page, request }) => {
+test('legacy Ask opens unified search; local facts run directly and detail reload restores conditions', async ({ page, request }) => {
   expect((await read(request, '/ask/status')).configured).toBe(false);
   await page.goto('/en/ask');
-  await expect(page.getByRole('button', { name: 'Use filters', exact: true })).toHaveAttribute('aria-pressed', 'true');
-  await page.getByRole('button', { name: 'Choose Genre', exact: true }).click();
-  const drama = page.getByRole('button', { name: /Drama/ }).first(); await drama.focus(); await page.keyboard.press('Enter');
-  await page.getByPlaceholder('Japan or JP').fill('JP');
-  await confirmAsk(page);
-  await page.getByRole('button', { name: 'Remove Genre', exact: true }).click();
-  await expect(page.getByPlaceholder('Japan or JP')).toHaveValue('JP');
-  await expect(page.getByRole('button', { name: 'Find films with these conditions', exact: true })).toHaveCount(0);
-  await confirmAsk(page);
-  await expect(page.locator('a[href*="/library/film_"]').first()).toBeVisible();
-  const saved = await page.evaluate(() => sessionStorage.getItem('5x49.ask.confirmed.v1'));
-  expect(saved).not.toContain('question');
-  await page.locator('a[href*="/library/film_"]').first().click();
+  await expect(page).toHaveURL(/\/en\/explore$/);
+  const input=page.getByRole('searchbox',{name:'Search Explore',exact:true});
+  await input.fill('Japanese films'); await input.press('Enter');
+  await expect(page.locator('#explore-results-title')).toBeVisible();
+  await expect(page.locator('.library-card-title').first()).toBeVisible();
+  const saved=page.url();
+  await page.locator('.library-card-title').first().click();
   await page.getByRole('button', { name: 'Watched today', exact: true }).waitFor();
   await page.reload();
   await page.getByRole('button', { name: /^Return to library$/i }).click();
-  await expect(page).toHaveURL(/\/en\/ask$/);
-  await expect(page.getByPlaceholder('Japan or JP')).toHaveValue('JP');
-  await expect(page.locator('a[href*="/library/film_"]').first()).toBeVisible();
+  await expect(page).toHaveURL(saved);
+  await expect(input).toHaveValue('Japanese films');
+  await expect(page.locator('.library-card-title').first()).toBeVisible();
 });
 
 test('filtered Library detail return preserves URL, focus and scroll', async ({ page }) => {
@@ -283,10 +274,10 @@ test('real process restart persists records; Chinese narrow-screen primary flow'
   await page.context().setExtraHTTPHeaders({ 'Accept-Language': 'zh-CN' });
   await page.context().addCookies([{ name: 'NEXT_LOCALE', value: 'zh', url: process.env.E2E_BASE_URL! }]);
   await page.goto('/ask');
-  await expect(page.getByRole('button', { name: '使用条件表单', exact: true })).toBeVisible();
-  await page.getByRole('button', { name: '确认筛选条件', exact: true }).click();
-  await page.getByRole('button', { name: '按这些条件查找', exact: true }).click();
-  await expect(page.locator('a[href*="/library/film_"]').first()).toBeVisible();
+  await expect(page).toHaveURL(/\/(?:zh\/)?explore$/);
+  const input=page.getByRole('searchbox',{name:zh.Discovery.label,exact:true});
+  await input.fill('未看电影'); await input.press('Enter');
+  await expect(page.locator('#explore-results-title')).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 });
 

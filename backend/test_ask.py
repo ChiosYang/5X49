@@ -18,7 +18,7 @@ import app.services.ask as ask_module
 from app.api.ask import router
 from app.canonical_models import Person, ProjectionState
 from app.contracts.ask import AskInterpretation, AskPlan, AskQuestion, AskQueryRequest, AskResolveRequest
-from app.services.ask import AskError, AskInterpreter, AskService
+from app.services.ask import AskError, AskInterpreter, AskService, has_private_input
 from app.services.projections import ProjectionUnavailable
 
 
@@ -114,6 +114,7 @@ class AskTests(unittest.TestCase):
     def test_no_key_status_and_interpretation_leave_local_form_usable(self):
         with patch.dict(os.environ, {"OPENROUTER_API_KEY": ""}):
             self.assertFalse(self.client.get("/ask/status").json()["configured"])
+            self.assertFalse(self.client.get("/ask/status").json()["form_available"])
             response = self.client.post("/ask/interpret", json={"question": "find unwatched films"})
             self.assertEqual(response.status_code, 503)
             self.assertEqual(response.json()["detail"]["code"], "ask_not_configured")
@@ -193,10 +194,36 @@ class AskTests(unittest.TestCase):
 
     def test_private_question_is_blocked_before_provider_call(self):
         interpreter, factory, _ = self._interpreter()
-        for question in (r"Find films under C:\Movies\private", "find /mnt/private/films", "my api_key=private", "use sk-abcdefgh12345678"):
-            with self.subTest(question=question), self.assertRaisesRegex(AskError, "ask_private_input"):
-                interpreter.interpret(AskQuestion(question=question))
+        for path in (r"C:\Movies\private", r"\\server\Movies\private.mkv", "file:///private.mkv",
+                     "/mnt/private/films", "/private.mkv", "~/Movies/private.mkv", "~user/Movies/private.mkv",
+                     "./Movies/private.mkv", "../Movies/private.mkv", "../../private.mkv",
+                     r".\Movies\private.mkv", r"..\Movies\private.mkv", r"\private.mkv",
+                     "Movies/private.mkv", r"Movies\private.mkv", "Movies/subdir/private.mkv",
+                     "Movies/字幕.srt", "Movies/poster.jpg", "路径：Movies/片单.nfo",
+                     "Movies/private.MKV", "\u0060Movies/private.mkv\u0060", "notes/.env",
+                     "Movies/private film.mkv", r"Movies\private film.mkv", "'My Movies/private film.mkv'",
+                     "'Movies/My Private Film.mkv'", '"Movies/My Private Film.mkv"',
+                     "Movies/O'Brien's Private Film.mkv", "Movies/私人的电影.mkv",
+                     "\u0060/private.mkv\u0060", "\u0060~/Movies/private.mkv\u0060", "\u0060./Movies/private.mkv\u0060",
+                     "'/private.mkv'", "(~/Movies/private.mkv)", "路径：./私密/片单.txt",
+                     "my api_key=private", "use sk-abcdefgh12345678"):
+            question = "Japanese films featuring " + path
+            for method in (interpreter.interpret, interpreter.interpret_search):
+                with self.subTest(path=path, method=method.__name__), \
+                     patch.dict(os.environ, {"OPENROUTER_API_KEY": "synthetic-only"}), \
+                     self.assertRaisesRegex(AskError, "ask_private_input"):
+                    method(AskQuestion(question=question))
         factory.assert_not_called()
+
+    def test_ordinary_titles_are_not_private_paths(self):
+        for title in ("Face/Off", "V/H/S", "9/11", "Fate/stay night", "D: The Movie",
+                      "The Secret Life of Walter Mitty", "In the Mood for Love", "日与夜", "1/2",
+                      "provider/model-2.5"):
+            with self.subTest(title=title):
+                self.assertFalse(has_private_input(title))
+                self.assertFalse(has_private_input("find " + title))
+                for quote in ("'", '"', "\u0060"):
+                    self.assertFalse(has_private_input(quote + title + quote))
 
     def test_unsupported_or_vague_intents_never_run_local_queries(self):
         for state in ("unsupported", "clarify"):

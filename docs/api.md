@@ -1,5 +1,44 @@
 # 5X49 Backend API
 
+## Unified Explore search
+
+`POST /explore/search/interpret` accepts `{question,locale:"en"|"zh",allow_ai:false}`
+(text 1–600). Simple keywords return `status:"keyword"`; complete local rules return
+resolved conditions with no provider call. Only an explicit client submission sets
+`allow_ai:true`. If necessary it makes at most one existing Ask transport call, with
+zero retries, only text/static schema, confidence >=0.9, literal grounding, complete
+JSON and local entity validation. Typing, restoration and refresh never infer.
+
+Responses are `{version:"discovery.v1",status,source:"local"|"ai",reason,plan,
+person_id,constraints,issues,results}`. Statuses: `keyword`, `ready`,
+`needs_clarification`, `clarify`, `unsupported`, `unavailable`, `needs_ai`. Plans use
+Ask v1's single genre/person/role/country/decade, viewing state and sort. Literal
+Person names survive filler/facet parsing; exact identities run directly, while
+partial or duplicate names require a candidate choice. Unknown values do not broaden
+results. Producer/writer/other unsupported roles and language requirements never
+become director or production-country filters. "Produced in France"/"from France"
+remain supported country clauses; "in French" is an unsupported language clause.
+
+`POST /explore/search/query` accepts `{question,plan,person_id:null,edited:false,
+offset:0}` and returns the same resolved envelope plus the strict Explore page,
+40 Films/page. It only queries local data, including on saved-address reload. Offset
+is 0–100000; boolean fields are strict. `edited:true` denotes explicit chip/view/sort
+correction; the UI identifies adjusted conditions. Missing/conflicted facts never
+match and Person roles apply before count/pagination. Unsupported original requests
+cannot be converted into partial conditions. Private input fails 422 before any
+provider, including home-relative, dot-relative, Windows-rooted, single-leaf
+absolute and unprefixed relative media/sidecar paths. Directory separators plus
+known extensions distinguish the latter from ordinary slash-containing titles.
+Service errors have allowlisted codes, without question/provider bodies.
+
+UI state lives at `/explore/search`, retaining original input and bounded validated
+plan. For keyword lookup only, an explicit leading find/找 command is removed from
+the effective term; the original input stays in the URL/input, with all inner title
+words intact. Ordinary keyword fallback is explicit and labeled. Legacy `/ask` redirects to
+Explore; legacy Ask APIs remain compatible (`/ask/status` now reports
+`form_available:false`). PR28's duration/rating v2 and held live
+evaluation are not enabled. Jev is deferred; no new credential/provider dependency.
+
 ## Multiple media roots and scan coverage
 
 `GET /settings/media-dirs` returns `{media_dirs: string[], roots: [{id, path,
@@ -721,9 +760,10 @@ presence does not certify provider availability. Errors expose stable codes:
 `503 ask_not_configured`, `429 ask_busy`, `504 ask_timeout`,
 `502 ask_invalid_response|ask_provider_unavailable`,
 `422 ask_private_input|ask_invalid_selection`. Contract validation uses `422`;
-stale projections return `503 projection_unavailable`. The local form remains
-usable without a model key. Natural-language quality still requires live
-acceptance, independently of the offline query tests and Analysis Gate B.
+stale projections return `503 projection_unavailable`. The local resolve/query APIs
+remain usable without a model key; Explore provides the current UI.
+Natural-language quality still requires live acceptance, independently of the
+offline query tests and Analysis Gate B.
 
 ## Analysis V2
 

@@ -1,17 +1,19 @@
 "use client";
 
-import { useEffect, useOptimistic, useRef, useState, useTransition, type FormEvent } from "react";
+import { useCallback, useEffect, useOptimistic, useTransition } from "react";
 import { useTranslations } from "next-intl";
 import { Link, useRouter } from "@/i18n/routing";
-import { Button, ButtonLink } from "@/components/ui/Button";
-import { TextInput } from "@/components/ui/FormControls";
+import { ButtonLink } from "@/components/ui/Button";
 import { Spinner } from "@/components/ui/Feedback";
 import LibraryMovieCard from "@/app/[locale]/library/LibraryMovieCard";
 import { useExploreRefresh } from "@/hooks/useExploreRefresh";
-import { collectionHref, discoverySearchHref } from "@/lib/collections";
-import { normalizeLibrarySearch } from "@/lib/library-search";
+import { collectionHref, discoverySearchHref as baseKeywordHref } from "@/lib/collections";
+import { discoveryHref, discoveryReason, type DiscoveryResolution, type DiscoveryState } from "@/lib/discovery-search";
 import type { CollectionCatalog, ExploreFacetPage, LibraryFilmPage } from "@/types/movie";
 import { CollectionDirectoryEntry } from "../CollectionBrowse";
+import UnifiedSearchInput from "../UnifiedSearchInput";
+import ConditionSearchResults from "./ConditionSearchResults";
+import { useDiscoveryNavigation } from "../DiscoverySearchSession";
 
 export interface DiscoverySnapshot {
   films: LibraryFilmPage;
@@ -19,46 +21,54 @@ export interface DiscoverySnapshot {
   collections: CollectionCatalog;
 }
 
-export default function DiscoverySearch({ snapshot, query, page, peopleOffset, collectionOffset, locale }: {
+export default function DiscoverySearch({ snapshot, resolution, state, explicitKeyword, query, page, peopleOffset, collectionOffset, locale }: {
+  resolution: DiscoveryResolution | null; state: DiscoveryState; explicitKeyword: boolean;
   snapshot: DiscoverySnapshot | null; query: string; page: number; peopleOffset: number; collectionOffset: number; locale: string;
 }) {
   const t = useTranslations("Collections");
   const searchT = useTranslations("LibrarySearch");
+  const unifiedT = useTranslations("Discovery");
   const router = useRouter();
-  const href = discoverySearchHref(query, page, peopleOffset, collectionOffset);
+  const discoverySearchHref = useCallback((q: string, p = 1, people = 0, collections = 0) => {
+    return `${baseKeywordHref(q, p, people, collections)}${explicitKeyword ? "&mode=keyword" : ""}`;
+  }, [explicitKeyword]);
+  const href = state.plan ? discoveryHref(query, state) : resolution
+    ? discoveryHref(query, { status: resolution.status, reason: resolution.reason })
+    : discoverySearchHref(query, page, peopleOffset, collectionOffset);
   const [activeHref, setActiveHref] = useOptimistic(href);
   const [pending, startTransition] = useTransition();
-  const [draft, setDraft] = useState(query);
-  const composing = useRef(false);
-  useExploreRefresh(snapshot, pending, activeHref, href);
+  const searchSession = useDiscoveryNavigation();
+  const beginRead = useExploreRefresh(resolution ?? snapshot, pending || searchSession.pending, activeHref, href);
   function navigate(target: string) {
-    startTransition(() => { setActiveHref(target); router.push(target, { scroll: false }); });
-  }
-  function submit(event: FormEvent) {
-    event.preventDefault();
-    if (!composing.current) navigate(discoverySearchHref(normalizeLibrarySearch(draft).slice(0, 100)));
+    searchSession.cancel();
+    startTransition(() => { beginRead(target); setActiveHref(target); router.push(target, { scroll: false }); });
   }
   useEffect(() => {
-    if (!snapshot || pending || activeHref !== href || snapshot.films.total === 0) return;
+    if (!snapshot || pending || activeHref !== href) return;
     const lastPage = Math.max(1, Math.ceil(snapshot.films.total / snapshot.films.limit));
-    if (page > lastPage) startTransition(() => router.replace(discoverySearchHref(query, lastPage, peopleOffset, collectionOffset), { scroll: false }));
-  }, [activeHref, collectionOffset, href, page, pending, peopleOffset, query, router, snapshot]);
+    if (page > lastPage) startTransition(() => {
+      const target = discoverySearchHref(query, lastPage, peopleOffset, collectionOffset);
+      beginRead(target); setActiveHref(target); router.replace(target, { scroll: false });
+    });
+  }, [activeHref, beginRead, collectionOffset, discoverySearchHref, href, page, pending, peopleOffset, query, router, setActiveHref, snapshot]);
   return <div className="page-x min-h-screen bg-canvas pb-24 pt-38 text-ink md:pt-44">
     <nav aria-label={t("breadcrumb")} className="mb-5 text-sm text-ink-muted"><Link prefetch={false} href="/explore" scroll={false} className="focus-ring hover:text-ink">{t("homeTitle")}</Link></nav>
     <header className="border-b border-line pb-8">
       <h1 className="type-display-editorial">{t("searchTitle")}</h1>
-      <p className="mt-4 max-w-2xl text-sm leading-6 text-ink-muted">{t("searchDescription")}</p>
-      <form role="search" aria-label={t("searchTitle")} onSubmit={submit} className="mt-6 flex max-w-2xl gap-2">
-        <label htmlFor="collection-search" className="sr-only">{searchT("query")}</label>
-        <TextInput id="collection-search" type="search" value={draft} maxLength={100} autoFocus
-          onChange={event => setDraft(event.target.value)} placeholder={t("searchPlaceholder")}
-          onCompositionStart={() => { composing.current = true; }} onCompositionEnd={() => { composing.current = false; }}
-          onKeyDown={event => { if (event.key === "Enter" && (composing.current || event.nativeEvent.isComposing || event.keyCode === 229)) event.preventDefault(); }} />
-        <Button type="submit" variant="primary">{searchT("submit")}</Button>
-      </form>
+      <p className="mt-4 max-w-2xl text-sm leading-6 text-ink-muted">{unifiedT("description")}</p>
+      <UnifiedSearchInput query={query} />
       <ButtonLink prefetch={false} href="/explore/filter" className="mt-4" variant="ghost" size="sm">{t("filterTitle")}</ButtonLink>
     </header>
-    {!snapshot ? <p className="py-10 text-sm text-ink-muted">{t("searchInitial")}</p> : <div className="space-y-12 pt-8" aria-busy={pending}>
+    {resolution ? <div className="pt-8">
+      {resolution.plan ? <ConditionSearchResults query={query} resolution={resolution} state={state} locale={locale}
+        pending={pending || activeHref !== href} navigate={navigate} replace={target => startTransition(() => { beginRead(target); setActiveHref(target); router.replace(target, { scroll: false }); })} />
+        : <section aria-live="polite" className="max-w-2xl space-y-4">
+          <h2 className="font-serif text-2xl">{unifiedT(`states.${resolution.status}`)}</h2>
+          <p className="text-sm leading-6 text-ink-muted">{unifiedT(`reasons.${discoveryReason(resolution.reason)}`)}</p>
+          {query.length <= 200 && resolution.reason !== "ask_private_input" ? <ButtonLink prefetch={false} href={`${baseKeywordHref(query)}&mode=keyword`}>{unifiedT("keywordFallback")}</ButtonLink> : null}
+        </section>}
+    </div> : !snapshot ? <p className="py-10 text-sm text-ink-muted">{t("searchInitial")}</p> : <div className="space-y-12 pt-8" aria-busy={pending}>
+      {explicitKeyword ? <p className="max-w-2xl text-sm text-ink-muted" role="status">{unifiedT("keywordOnly")}</p> : null}
       <section aria-labelledby="search-collections-title">
         <h2 id="search-collections-title" className="font-serif text-2xl">{t("collectionResults", { count: snapshot.collections.total })}</h2>
         {snapshot.collections.items.length ? <div className="mt-5 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">{snapshot.collections.items.map(item => <CollectionDirectoryEntry key={item.id} item={item} locale={locale} />)}</div> : <p className="mt-3 text-sm text-ink-muted">{t("noCollections")}</p>}

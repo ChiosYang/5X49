@@ -16,7 +16,7 @@ def _call(callback):
 @router.get("/ask/status")
 def ask_status():
     return {"version": ASK_CONTRACT_VERSION, "configured": ask_service.interpreter.configured(),
-            "read_only": True, "form_available": True}
+            "read_only": True, "form_available": False}
 
 
 @router.post("/ask/interpret")

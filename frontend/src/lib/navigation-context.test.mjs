@@ -16,6 +16,9 @@ test('return context rejects stale or malformed state, preserves focus and scrol
   assert.deepEqual(parseReturnContext(JSON.stringify({...context,focusId:'unrelated-control'}),2000), context);
 });
 test('Explore returns cover known local list routes and preserve their queries', () => {
+  const longSearch='/en/explore/search?'+new URLSearchParams({q:'未看日本电影'.repeat(80),p:'{"view":"unwatched"}'});
+  assert.ok(longSearch.length>2000); assert.equal(safeReturnHref(longSearch),longSearch);
+  assert.equal(safeReturnHref('/en/explore/search?q='+"x".repeat(12000)),null);
   const person = `person_${'b'.repeat(32)}`;
   for (const prefix of ['', '/en', '/zh']) for (const route of [
     '/explore/filter?person='+person+'&person_match=all&view=unwatched&sort=year&offset=40',

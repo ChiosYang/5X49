@@ -12,7 +12,7 @@ interface MovieDetailReturnProps {
 }
 
 const controlClassName =
-  "focus-ring duration-fast fixed z-sticky inline-flex min-h-11 max-w-[calc(100vw-2rem)] items-center gap-2 rounded-control border border-white/20 bg-black/70 px-4 type-label text-white backdrop-blur-md transition-colors hover:border-white/60 hover:bg-white hover:text-black";
+  "focus-ring duration-fast fixed z-navigation inline-flex min-h-11 max-w-[calc(100vw-2rem)] items-center gap-2 rounded-control border border-white/20 bg-black/70 px-4 type-label text-white backdrop-blur-md transition-colors hover:border-white/60 hover:bg-white hover:text-black";
 
 const subscribe = () => () => {};
 

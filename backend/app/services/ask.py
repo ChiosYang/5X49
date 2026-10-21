@@ -5,6 +5,7 @@ import json
 import os
 import re
 from threading import BoundedSemaphore
+from urllib.parse import urlsplit
 
 from openai import APITimeoutError, OpenAI
 from pydantic import ValidationError
@@ -12,6 +13,7 @@ from sqlmodel import Session, select
 
 from app.canonical_models import Concept, ExploreFacetReadModel, LibraryFilmReadModel, GraphEntity, Person, Setting
 from app.contracts.ask import AskInterpretation, AskPlan, AskQuestion, AskResolveRequest
+from app.contracts.discovery_search import DiscoveryInterpretation
 from app.contracts.structured_metadata import normalize_metadata_text
 from app.database import engine
 from app.services.explore_query import EXPLORE_DIMENSIONS, explore_query_service
@@ -24,7 +26,13 @@ _PRIVATE_INPUT = re.compile(
     r"(?:\bsk-[A-Za-z0-9_-]{8,}|\bgh[pousr]_[A-Za-z0-9]{10,}|"
     r"\b(?:api[_ -]?key|authorization|password|secret|token)\s*[:=]|"
     r"\bbearer\s+\S+|[A-Za-z]:[\\/]|\\\\[^\s\\]+\\|file://|"
-    r"(?:^|[\s\"'])/(?:[^\s/]+/)+)", re.IGNORECASE,
+    r"(?:^|[\s\"'(\[{=，。！？；：\u0060])(?:~[^\\/\s]*[\\/]|\.{1,2}[\\/]|[\\/])[^\s\"'<>)}\]]+|"
+    # A separator plus a known media/sidecar extension distinguishes an
+    # unprefixed relative path from titles such as Face/Off, V/H/S and 9/11.
+    r"(?:^|[\s\"'(\[{=，。！？；：\u0060])(?:[^\s\\/\"'<>:|?*\u0060]+[\\/])+"
+    r"[^\\/\r\n]*\.(?:mkv|mp4|m4v|avi|mov|webm|wmv|mpg|mpeg|m2ts|ts|vob|iso|"
+    r"nfo|srt|ass|ssa|vtt|sub|idx|jpe?g|png|gif|webp|txt|json|xml|db|sqlite3?|env|pem|key)"
+    r"(?=$|[\s\"')\]}>,.;:!?，。！？；：\u0060]))", re.IGNORECASE,
 )
 
 
@@ -33,6 +41,23 @@ class AskError(ValueError):
         super().__init__(code)
         self.code = code
         self.status = status
+
+
+def has_private_input(text: str) -> bool:
+    return bool(_PRIVATE_INPUT.search(text))
+
+
+def _strict_json(content):
+    # Adapted from PR28; duplicate/nonfinite JSON must fail before validation.
+    def pairs(items):
+        result = {}
+        for key, value in items:
+            if key in result:
+                raise ValueError("Duplicate JSON key")
+            result[key] = value
+        return result
+    return json.loads(content, object_pairs_hook=pairs,
+                      parse_constant=lambda _: (_ for _ in ()).throw(ValueError("Nonfinite JSON")))
 
 
 class AskInterpreter:
@@ -44,14 +69,21 @@ class AskInterpreter:
         return bool(os.getenv("OPENROUTER_API_KEY"))
 
     def interpret(self, question: AskQuestion) -> AskInterpretation:
-        if _PRIVATE_INPUT.search(question.question):
+        return self._interpret(question, AskInterpretation)
+
+    def interpret_search(self, question: AskQuestion) -> DiscoveryInterpretation:
+        return self._interpret(question, DiscoveryInterpretation)
+
+    def _interpret(self, question, response_type):
+        if has_private_input(question.question):
             raise AskError("ask_private_input", 422)
         if not self.configured():
             raise AskError("ask_not_configured", 503)
         if not _interpretation_slots.acquire(blocking=False):
             raise AskError("ask_busy", 429)
         try:
-            schema = AskInterpretation.model_json_schema()
+            schema = response_type.model_json_schema()
+            schema["required"] = list(response_type.model_fields)
             schema["$defs"]["AskPlan"]["required"] = list(AskPlan.model_fields)
             prompt = (
                 "Convert a film-library search request to one JSON object matching the schema. "
@@ -72,6 +104,10 @@ class AskInterpreter:
                 "Return status=clarify and plan=null for vague requests or unresolved pronouns. "
                 "Only return ready when the full question can be represented. Asking for all films "
                 "is supported. Include all plan fields and return no markdown or extra keys.\n"
+                + ("For discovery also return confidence (0..1) and unhandled (every requirement "
+                   "not represented, [] only when complete). Never guess: use clarify for uncertain "
+                   "intent, names or constraints. A complete plan needs confidence >=0.9.\n"
+                   if response_type is DiscoveryInterpretation else "")
                 + json.dumps(schema, ensure_ascii=False)
             )
             # Read only the two provider settings; general settings loading can
@@ -81,6 +117,13 @@ class AskInterpreter:
                 url_setting = session.get(Setting, "base_url")
                 model = model_setting.value if model_setting else os.getenv("MODEL_NAME", "openrouter/pony-alpha")
                 base_url = url_setting.value if url_setting else os.getenv("API_BASE_URL", "https://openrouter.ai/api/v1")
+            parsed_url = urlsplit(base_url)
+            if (parsed_url.scheme not in {"http", "https"} or not parsed_url.hostname
+                    or parsed_url.username or parsed_url.password or parsed_url.query or parsed_url.fragment
+                    or (parsed_url.scheme == "http" and parsed_url.hostname not in {"localhost", "127.0.0.1", "::1"})
+                    or not isinstance(model, str) or has_private_input(model)
+                    or re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._:/@+-]{0,159}", model) is None):
+                raise AskError("ask_provider_unavailable", 503)
             with self.client_factory(api_key=os.getenv("OPENROUTER_API_KEY"), base_url=base_url,
                                      timeout=20.0, max_retries=0) as client:
                 response = client.chat.completions.create(
@@ -92,7 +135,10 @@ class AskInterpreter:
             content = response.choices[0].message.content
             if response.choices[0].finish_reason != "stop" or not content or len(content) > 12_000:
                 raise AskError("ask_invalid_response", 502)
-            interpretation = AskInterpretation.model_validate_json(content)
+            data = _strict_json(content)
+            if not isinstance(data, dict) or set(data) != set(response_type.model_fields):
+                raise AskError("ask_invalid_response", 502)
+            interpretation = response_type.model_validate(data)
             if interpretation.plan and interpretation.plan.model_fields_set != set(AskPlan.model_fields):
                 raise AskError("ask_invalid_response", 502)
             return interpretation
@@ -100,7 +146,7 @@ class AskInterpreter:
             raise
         except APITimeoutError:
             raise AskError("ask_timeout", 504) from None
-        except (ValidationError, IndexError, AttributeError, TypeError):
+        except (ValidationError, ValueError, IndexError, AttributeError, TypeError):
             raise AskError("ask_invalid_response", 502) from None
         except Exception:
             # Do not log provider bodies, credentials or the question.
@@ -187,7 +233,7 @@ class AskService:
                            "films": [{"title": row.payload.get("title", ""), "year": row.release_year} for row in samples]})
         return result, bool(exact_rows)
 
-    def query(self, request) -> dict:
+    def query(self, request, *, limit=20) -> dict:
         resolution = self.resolve(request)
         if resolution["status"] != "ready":
             return {**resolution, "results": None}
@@ -197,7 +243,7 @@ class AskService:
         roles = {resolution["person_id"]: request.plan.person_role} if resolution["person_id"] else None
         results = explore_query_service.list_films(
             filters=filters, view=request.plan.view, sort=request.plan.sort,
-            direction=request.plan.direction, limit=20, offset=request.offset, person_roles=roles,
+            direction=request.plan.direction, limit=limit, offset=request.offset, person_roles=roles,
         )
         return {**resolution, "results": results}
 

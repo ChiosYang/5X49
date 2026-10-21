@@ -5,6 +5,8 @@ import { hasLegacyExploreQuery } from "@/lib/collections";
 import { getCollectionCatalog, getExploreFilms } from "@/lib/server-api";
 import ExploreClient from "./ExploreClient";
 import CollectionBrowse from "./CollectionBrowse";
+import { redirect } from "@/i18n/routing";
+import { discoveryHref, normalizeDiscoverySearch } from "@/lib/discovery-search";
 
 
 interface ExplorePageProps {
@@ -16,6 +18,8 @@ export default async function ExplorePage({ params, searchParams }: ExplorePageP
   const { locale } = await params;
   const resolvedSearchParams = searchParams ? await searchParams : {};
   if (!hasLegacyExploreQuery(resolvedSearchParams)) {
+    const search = normalizeDiscoverySearch(resolvedSearchParams.q);
+    if (search) redirect({ href: discoveryHref(search), locale });
     return <CollectionBrowse catalog={await getCollectionCatalog({ featured: true, limit: 3 })} locale={locale} />;
   }
   const query = parseExploreQuery({

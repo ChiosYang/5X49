@@ -54,6 +54,8 @@ CANONICAL_ROUTES = {
     ("GET", "/explore/collections/{kind}/{key}"),
     ("GET", "/explore/facets/{dimension}"),
     ("GET", "/explore/films"),
+    ("POST", "/explore/search/interpret"),
+    ("POST", "/explore/search/query"),
     ("GET", "/films/{film_id}/artwork"),
     ("PUT", "/films/{film_id}/artwork"),
     ("POST", "/films/{film_id}/scrape"),

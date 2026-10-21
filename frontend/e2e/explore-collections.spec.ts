@@ -114,10 +114,9 @@ test('collection view, sorting, pagination and browser history retain stable ide
 
 for (const locale of ['en','zh']) test(`${locale} discovery search reuses Library film matches and opens person collections`, async ({page,request}) => {
   const copy = locale === 'zh' ? zh.Collections : en.Collections;
-  const searchCopy = locale === 'zh' ? zh.LibrarySearch : en.LibrarySearch;
+  const searchCopy = locale === 'zh' ? zh.Discovery : en.Discovery;
   await page.goto(`/${locale}/explore`);
-  await page.getByRole('link',{name:copy.searchTitle,exact:true}).click();
-  const input=page.getByRole('searchbox',{name:searchCopy.query,exact:true});
+  const input=page.getByRole('searchbox',{name:searchCopy.label,exact:true});
   await input.fill('Director 1'); await input.press('Enter');
   await expect.poll(() => new URL(page.url()).searchParams.get('q')).toBe('Director 1');
   const expected=await read(request,'/library/films/page?q=Director+1&limit=40');
@@ -276,9 +275,8 @@ test('empty and sparse libraries offer honest collection fallbacks and working f
   await expect(page.getByRole('link',{name:en.Collections.openLibrary,exact:true})).toBeVisible();
   await control(request,'explore_sparse_fixture'); await page.goto('/en/explore');
   await expect(page.getByText(en.Collections.sparseDescription,{exact:true})).toBeVisible(); await expect(cards(page)).toHaveCount(0);
-  await page.getByRole('link',{name:en.Collections.searchTitle,exact:true}).click();
-  await page.getByRole('searchbox',{name:en.LibrarySearch.query,exact:true}).fill('Explore Unknown');
-  await page.getByRole('searchbox',{name:en.LibrarySearch.query,exact:true}).press('Enter');
+  await page.getByRole('searchbox',{name:en.Discovery.label,exact:true}).fill('Explore Unknown');
+  await page.getByRole('searchbox',{name:en.Discovery.label,exact:true}).press('Enter');
   await expect(cards(page)).toHaveCount(1); await expect(page.getByText(en.Collections.noCollections,{exact:true})).toBeVisible();
   await expect(page.getByText(en.Collections.noPeople,{exact:true})).toBeVisible();
 });

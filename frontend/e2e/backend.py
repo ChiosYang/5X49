@@ -30,6 +30,40 @@ from app.workflows.store import workflow_store
 from app.services.operation_manifests import operation_manifest_store
 from app.services import maintenance_backup as backup_module
 
+# Test-only provider transport; even 'configured' cases cannot reach a real model.
+import json
+from types import SimpleNamespace
+from app.services.ask import AskInterpreter
+from app.services.discovery_search import discovery_search_service
+discovery_ai_enabled = False
+discovery_ai_calls = 0
+discovery_ai_reply = {"status": "clarify", "plan": None, "confidence": 0.0, "unhandled": []}
+discovery_ai_failure = None
+discovery_ai_gate = threading.Event()
+discovery_ai_gate.set()
+discovery_original_names = {}
+
+class DiscoveryClient:
+    def __init__(self, **_kwargs):
+        self.chat = SimpleNamespace(completions=SimpleNamespace(create=self.create))
+    def __enter__(self): return self
+    def __exit__(self, *_args): pass
+    def create(self, **_kwargs):
+        global discovery_ai_calls
+        discovery_ai_calls += 1
+        reply, failure = discovery_ai_reply, discovery_ai_failure
+        if not discovery_ai_gate.wait(60): raise RuntimeError('Synthetic provider gate expired')
+        if failure == 'timeout':
+            import httpx
+            from openai import APITimeoutError
+            raise APITimeoutError(request=httpx.Request('POST', 'https://synthetic.invalid'))
+        if failure: raise RuntimeError('Synthetic provider failure')
+        return SimpleNamespace(choices=[SimpleNamespace(finish_reason='stop', message=SimpleNamespace(content=json.dumps(reply)))])
+
+discovery_interpreter = AskInterpreter(client_factory=DiscoveryClient)
+discovery_interpreter.configured = lambda: discovery_ai_enabled
+discovery_search_service.ask.interpreter = discovery_interpreter
+
 from app.services.video_health import video_health
 health_allowed = False
 class ControlledHealthLoad:
@@ -87,6 +121,37 @@ def control(payload: dict, x_e2e_token: str = Header(default='')):
         raise HTTPException(403)
     global health_allowed
     action = payload['action']
+    if action == 'discovery_ai':
+        global discovery_ai_enabled, discovery_ai_reply, discovery_ai_failure, discovery_ai_calls
+        discovery_ai_enabled = bool(payload.get('enabled'))
+        discovery_ai_reply = payload.get('reply', {"status":"clarify","plan":None,"confidence":0.0,"unhandled":[]})
+        discovery_ai_failure = payload.get('failure')
+        if payload.get('reset', True): discovery_ai_calls = 0
+        if payload.get('hold'): discovery_ai_gate.clear()
+        else: discovery_ai_gate.set()
+        return {'calls': discovery_ai_calls, 'enabled': discovery_ai_enabled}
+    elif action == 'discovery_ai_stats':
+        return {'calls': discovery_ai_calls, 'enabled': discovery_ai_enabled}
+    elif action == 'discovery_ambiguity':
+        from app.canonical_models import Person
+        from app.database import engine
+        from sqlmodel import Session, select
+        with Session(engine) as session:
+            if payload.get('enabled'):
+                for person in session.exec(select(Person).order_by(Person.id).limit(2)).all():
+                    discovery_original_names[person.id] = (person.canonical_name, person.normalized_name)
+                    person.canonical_name = 'Duplicate Person'
+                    person.normalized_name = 'duplicate person'
+                    session.add(person)
+            else:
+                for key, names in discovery_original_names.items():
+                    person = session.get(Person, key)
+                    if person:
+                        person.canonical_name, person.normalized_name = names
+                        session.add(person)
+                discovery_original_names.clear()
+            session.commit()
+        return {'changed': True}
     if action == 'search_failure':
         global search_unavailable
         search_unavailable = bool(payload['enabled'])

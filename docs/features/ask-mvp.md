@@ -4,6 +4,11 @@ Status: Done
 Last updated: 2026-09-28
 Related: Product roadmap W10; Product Spec JTBD-6
 
+The standalone UI and manual form described below are historical. The current
+Explore unified search replaces them; `/ask` redirects to Explore. Ask v1 backend
+resolution/query remains compatible. See [unified search](explore-unified-search.md).
+PR28's expanded interpreter and live evaluation remain separately held.
+
 ## Goal
 
 Turn a film-finding question into reviewable constraints, run a strict local

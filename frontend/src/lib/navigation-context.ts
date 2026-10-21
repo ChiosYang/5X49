@@ -1,7 +1,8 @@
 export const RETURN_CONTEXT_KEY = "5x49:return-context:v1";
 export interface ReturnContext { href: string; filmId: string; scrollY: number; savedAt: number; focusId?: string }
 export function safeReturnHref(value: unknown): string | null {
-  if (typeof value !== "string" || value.length > 2000 || /[\\\r\n]/.test(value)) return null;
+  if (typeof value !== "string" || value.length > 12_000 || /[\\\r\n]/.test(value)) return null;
+  if (value.length > 2000 && !/^\/(?:en\/|zh\/)?explore\/search(?:\?|$)/.test(value)) return null;
   if (!value.startsWith("/") || value.startsWith("//")
     || [...value].some(char => char.charCodeAt(0) < 32 || char.charCodeAt(0) === 127)) return null;
   // Restrict new return destinations to known list routes and canonical keys.
