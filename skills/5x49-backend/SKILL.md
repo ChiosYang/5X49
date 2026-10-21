@@ -15,8 +15,14 @@ description: 5X49 Fresh Canonical FastAPI 的 Film、LibraryItem、Factual Explo
   handling. Edited conditions reflect explicit user corrections, never partial AI.
 - Envelope: discovery.v1, status, source, reason, plan, person_id, constraints,
   issues, results. Status keyword/ready/needs_clarification/clarify/unsupported/
-  unavailable/needs_ai. Ambiguous identity needs a choice; unsupported/low-confidence/
+  unavailable/needs_ai. Partial/duplicate identity needs a choice; unsupported/low-confidence/
   ungrounded/malformed interpretations never run a partial query. Safe errors only.
+- Preserve literal Person names before filler/facet parsing. Unsupported roles
+  (producer/writer/etc.) and language requests must not become director/country
+  filters. Produced in France is a country clause; in French is a language clause.
+  Absolute, home-relative and dot-relative paths are rejected before transport.
+  Keyword lookup removes only an explicit leading find/找 command, retaining raw
+  input for display/history and preserving inner title words.
 - Refresh/Back/page/mutations must never infer. Keep global Library search and old
   exact Explore URL meanings. Ask UI redirects to Explore; old APIs stay compatible.
   PR28 v2 and live-budget/review gates remain separate. No Jev dependency is added.

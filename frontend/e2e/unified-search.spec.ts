@@ -98,6 +98,47 @@ for(const locale of ['en','zh'])for(const width of [1440,320]){
   });
 }
 
+for(const locale of ['en','zh']){
+  test(locale+' explicit find commands hit titles and people while retaining original text without inference',async({page,request})=>{
+    await control(request,'discovery_ai',{enabled:true});await page.goto('/'+locale+'/explore');
+    const title=locale==='zh'?'找Orbit':'find Orbit';await submit(page,title,locale);
+    await expect(cards(page)).toHaveCount(5);await expect(input(page,locale)).toHaveValue(title);
+    await page.reload();await expect(cards(page)).toHaveCount(5);await expect(input(page,locale)).toHaveValue(title);
+    const person=locale==='zh'?'找Director 4':'find Director 4';await submit(page,person,locale);
+    await expect(page.locator('[aria-labelledby="search-people-title"]').getByText('Director 4',{exact:true})).toBeVisible();
+    await expect(input(page,locale)).toHaveValue(person);
+    await page.goBack();await expect(cards(page)).toHaveCount(5);await expect(input(page,locale)).toHaveValue(title);
+    expect((await control(request,'discovery_ai_stats')).calls).toBe(0);
+  });
+  test(locale+' unsupported roles and language conditions never execute partial country or director results',async({page,request})=>{
+    const copy=locale==='zh'?zh:en;await control(request,'discovery_ai',{enabled:true});
+    await page.goto('/'+locale+'/explore');
+    const questions=locale==='zh'?['由Director 4监制并执导的日本电影','由Director 4编剧的日本电影','日语电影','法语电影']:
+      ['films produced by Director 4','films produced and directed by Director 4','films in French','movies in Japanese'];
+    for(const question of questions){
+      await submit(page,question,locale);
+      await expect(page.getByRole('heading',{name:copy.Discovery.states.unsupported,exact:true})).toBeVisible();
+      await expect(page.locator('#explore-results-title')).toHaveCount(0);await expect(input(page,locale)).toHaveValue(question);
+    }
+    await submit(page,'films produced in Japan',locale);await expect(cards(page)).toHaveCount(2);
+    expect((await control(request,'discovery_ai_stats')).calls).toBe(0);
+  });
+  test(locale+' private absolute and relative paths stay in the input and never reach model transport',async({page,request})=>{
+    const copy=locale==='zh'?zh:en;await control(request,'discovery_ai',{enabled:true});await page.goto('/'+locale+'/explore');
+    await expect(input(page,locale)).toBeEnabled();const home=page.url();
+    const posts:string[]=[];page.on('request',r=>{if(r.method()==='POST'&&r.url().includes('/explore/search/interpret'))posts.push(r.url());});
+    for(const path of ['~/Movies/private.mkv','./Movies/private.mkv','/private.mkv','../Movies/private.mkv','.\\Movies\\private.mkv','\\private.mkv']){
+      const question='Japanese films featuring '+path;await input(page,locale).fill(question);await input(page,locale).press('Enter');
+      await expect(page.getByRole('alert').filter({hasText:copy.Discovery.reasons.ask_private_input})).toBeVisible();
+      await expect(input(page,locale)).toHaveValue(question);await expect(page).toHaveURL(home);
+      await expect(page.locator('#explore-results-title')).toHaveCount(0);
+      const response=await request.post(backend+'/explore/search/interpret',{data:{question,allow_ai:true,locale}});
+      expect(response.status()).toBe(422);expect((await response.json()).detail.code).toBe('ask_private_input');
+    }
+    expect(posts).toEqual([]);expect((await control(request,'discovery_ai_stats')).calls).toBe(0);
+  });
+}
+
 test('AI is called once on submission; reload, condition edits, Back and errors never retry inference',async({page,request})=>{
   await control(request,'discovery_ai',{enabled:true,reply:{status:'ready',plan:{...plan,person:'Director 4'},confidence:.99,unhandled:[]}});
   await page.goto('/en/explore');await submit(page,'Japanese films featuring Director 4');

@@ -1,7 +1,7 @@
 import { getTranslations } from "next-intl/server";
 import { normalizeFilmPage, FILM_PAGE_SIZE } from "@/lib/film-pagination";
 import { parseExploreQuery } from "@/lib/explore";
-import { discoveryFailure, discoveryReason, normalizeDiscoverySearch, parseDiscoveryPlan, type DiscoveryResolution, type DiscoveryState } from "@/lib/discovery-search";
+import { discoveryFailure, discoveryKeywords, discoveryReason, normalizeDiscoverySearch, parseDiscoveryPlan, type DiscoveryResolution, type DiscoveryState } from "@/lib/discovery-search";
 import { getCollectionCatalog, getDiscoveryResolution, getLibraryFilmPage, getLocalPeople } from "@/lib/server-api";
 import DiscoverySearch from "./DiscoverySearch";
 
@@ -35,9 +35,10 @@ export default async function ExploreSearchPage({ params, searchParams }: {
   let snapshot = null;
   if (query && (explicitKeyword || resolution?.status === "keyword")) {
     try {
+      const keywords = discoveryKeywords(query);
       const [films, people, collections] = await Promise.all([
-        getLibraryFilmPage(new URLSearchParams({ q: query, limit: String(FILM_PAGE_SIZE), offset: String((page - 1) * FILM_PAGE_SIZE) })),
-        getLocalPeople(query, peopleOffset), getCollectionCatalog({ query, offset: collectionOffset, limit: 12 }),
+        getLibraryFilmPage(new URLSearchParams({ q: keywords, limit: String(FILM_PAGE_SIZE), offset: String((page - 1) * FILM_PAGE_SIZE) })),
+        getLocalPeople(keywords, peopleOffset), getCollectionCatalog({ query: keywords, offset: collectionOffset, limit: 12 }),
       ]);
       snapshot = { films, people, collections }; resolution = null;
     } catch { resolution = discoveryFailure("unavailable"); }

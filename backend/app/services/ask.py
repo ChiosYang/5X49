@@ -26,7 +26,7 @@ _PRIVATE_INPUT = re.compile(
     r"(?:\bsk-[A-Za-z0-9_-]{8,}|\bgh[pousr]_[A-Za-z0-9]{10,}|"
     r"\b(?:api[_ -]?key|authorization|password|secret|token)\s*[:=]|"
     r"\bbearer\s+\S+|[A-Za-z]:[\\/]|\\\\[^\s\\]+\\|file://|"
-    r"(?:^|[\s\"'])/(?:[^\s/]+/)+)", re.IGNORECASE,
+    r"(?:^|[\s\"'(\[{=，。！？；：])(?:~[^\\/\s]*[\\/]|\.{1,2}[\\/]|[\\/])[^\s\"'<>)}\]]+)", re.IGNORECASE,
 )
 
 
@@ -160,7 +160,7 @@ class AskService:
                     "plan": None, "person_id": None, "constraints": [], "issues": []}
         return self.resolve(AskResolveRequest(plan=interpretation.plan))
 
-    def resolve(self, request: AskResolveRequest, *, allow_unique_person=False) -> dict:
+    def resolve(self, request: AskResolveRequest) -> dict:
         plan = request.plan
         constraints, issues = [], []
         selected_person = None
@@ -186,7 +186,7 @@ class AskService:
             if plan.person:
                 candidates, exact = self._people(session, plan.person)
                 chosen = next((item for item in candidates if item["key"] == request.person_id), None)
-                if request.person_id is None and (exact or allow_unique_person) and len(candidates) == 1:
+                if request.person_id is None and exact and len(candidates) == 1:
                     chosen = candidates[0]
                 if chosen is None:
                     issues.append({"field": "person", "code": "choose_person" if candidates else "unknown_value",
@@ -227,8 +227,8 @@ class AskService:
                            "films": [{"title": row.payload.get("title", ""), "year": row.release_year} for row in samples]})
         return result, bool(exact_rows)
 
-    def query(self, request, *, limit=20, allow_unique_person=False) -> dict:
-        resolution = self.resolve(request, allow_unique_person=allow_unique_person)
+    def query(self, request, *, limit=20) -> dict:
+        resolution = self.resolve(request)
         if resolution["status"] != "ready":
             return {**resolution, "results": None}
         filters = {dimension: [] for dimension in EXPLORE_DIMENSIONS}

@@ -4,7 +4,7 @@ import { createContext, useCallback, useContext, useEffect, useLayoutEffect, use
 import { useSearchParams } from "next/navigation";
 import { usePathname, useRouter } from "@/i18n/routing";
 import { API } from "@/lib/api";
-import { discoveryHref, discoveryReason, normalizeDiscoverySearch, resolutionHref, type DiscoveryResolution } from "@/lib/discovery-search";
+import { discoveryHref, discoveryReason, hasPrivateDiscoveryInput, normalizeDiscoverySearch, resolutionHref, type DiscoveryResolution } from "@/lib/discovery-search";
 
 interface Session {
   draft: string | null; error: string; pending: boolean;
@@ -63,6 +63,7 @@ export default function DiscoverySearchSession({ children }: { children: ReactNo
     cancel(false, true);
     const question = normalizeDiscoverySearch(value); setDraft(question);
     if (!question) { navigate("/explore"); return; }
+    if (hasPrivateDiscoveryInput(question)) { setError("ask_private_input"); return; }
     const requestTicket = ++ticket.current;
     const request = new AbortController(); controller.current = request; setRequesting(true);
     try {

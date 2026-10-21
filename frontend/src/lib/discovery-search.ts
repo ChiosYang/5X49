@@ -21,8 +21,15 @@ export interface DiscoveryState {
 export function normalizeDiscoverySearch(value?: string | string[] | null) {
   return (Array.isArray(value) ? value[0] : value)?.trim().slice(0, 600) ?? "";
 }
+export function discoveryKeywords(query: string) {
+  // Mirror discovery_search.keyword_text, keeping the original query in the URL
+  // and input. Only leading find/找 commands affect the local lookup term.
+  const match = /^(?:please\s+)?find\s+(.+)$/i.exec(query) ?? /^(?:请)?(?:帮我)?找(?:一下)?\s*(.+)$/.exec(query);
+  return match ? match[1].trim() : query;
+}
 export function hasPrivateDiscoveryInput(value: string) {
-  return /(?:\bsk-[A-Za-z0-9_-]{8,}|\bgh[pousr]_[A-Za-z0-9]{10,}|\b(?:api[_ -]?key|authorization|password|secret|token)\s*[:=]|\bbearer\s+\S+|[A-Za-z]:[\\/]|\\\\[^\s\\]+\\|file:\/\/|(?:^|[\s"'])\/(?:[^\s/]+\/)+)/i.test(value);
+  // Keep path roots aligned with the provider-boundary guard in services/ask.py.
+  return /(?:\bsk-[A-Za-z0-9_-]{8,}|\bgh[pousr]_[A-Za-z0-9]{10,}|\b(?:api[_ -]?key|authorization|password|secret|token)\s*[:=]|\bbearer\s+\S+|[A-Za-z]:[\\/]|\\\\[^\s\\]+\\|file:\/\/|(?:^|[\s"'(\[{=，。！？；：])(?:~[^\\/\s]*[\\/]|\.{1,2}[\\/]|[\\/])[^\s"'<>)}\]]+)/i.test(value);
 }
 export function discoveryHref(query: string, state: DiscoveryState = {}) {
   const q = normalizeDiscoverySearch(query);

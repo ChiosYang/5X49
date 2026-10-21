@@ -21,13 +21,24 @@ _WATCHED = r"\bwatched\b|\bseen\b|已看(?:过)?|看过"
 _REQUEST = r"\b(?:find|show|want|looking|movies?|films?|cinema|unwatched|watched|directed|starring|recommend|similar|something|shorter|longer)\b|找|想看|电影|影片|未看|已看|导演|执导|主演|推荐|相似|类似|治愈|烧脑"
 _FILLERS = (r"\b(?:please|find|show|me|us|i|have|want|would|like|to|watch|see|looking|for|"
             r"movies?|films?|cinema|features?|that|which|are|were|was|is|the|a|an|some|all|only|"
-            r"local|library|collection|from|in|of|during|released|made|produced|and|my|featuring)\b|"
+            r"local|library|collection|from|in|of|during|released|made|and|my|featuring)\b|\bproduced in\b|"
             r"我想看|我想找|想看|想找|找一些|给我|请|找|有哪些|有没有|片库里|库里|片库|本地|"
-            r"电影|影片|片子|作品|一部|一些|全部|所有|上映|发行|出品|来自|以及|的|和")
+            r"电影|影片|片子|作品|一部|一些|全部|所有|上映|发行|来自|以及|的|和")
+_LANGUAGES = r"French|Japanese|English|Korean|Chinese|German|Italian|Spanish|Hindi|Arabic|Russian|Portuguese|Cantonese|Mandarin"
+_CHINESE_PERSON_PREFIX = (r"^(?:(?:我想看|我想找|想看|想找|请给我|给我|找一些|请|找|有哪些|有没有)|"
+                          r"(?:未看(?:过)?|没看(?:过)?|已看(?:过)?)(?:的)?)\s*")
 
 
 def _replace(text, pattern, value=" "):
     return re.sub(pattern, value, text, flags=re.IGNORECASE)
+
+
+def keyword_text(question):
+    # Only an explicit leading search command is removed. Never strip title
+    # words such as The/In or occurrences of 找/find inside the title.
+    match = (re.match(r"^(?:please\s+)?find\s+(.+)$", question, re.IGNORECASE)
+             or re.match(r"^(?:请)?(?:帮我)?找(?:一下)?\s*(.+)$", question))
+    return match.group(1).strip() if match else question
 
 
 def _term_pattern(term):
@@ -59,6 +70,8 @@ def unsupported_reason(text):
         ("recommendation", r"\b(?:recommend|taste|preferences|best|classics?)\b|推荐|口味|偏好|最好|经典"),
         ("negation", r"\b(?:exclude|excluding|except|without|not|isn['’]t)\b|不要|排除|不包含|不包括|不是|非日本"),
         ("multiple_values", r"\bor\b|或者|或是|合作|共同出演|共同主演|co.starring"),
+        ("unsupported_filter", r"\b(?:produced|producing)\b(?!\s+in\b)|\b(?:producers?|written|writers?|screenwriters?|screenplay|cinematography|cinematographers?|composed|composers?|edited|editors?)\b|制片|监制|编剧|出品|摄影|配乐|作曲|剪辑"),
+        ("unsupported_filter", rf"\bin\s+(?:{_LANGUAGES})\b|\b(?:{_LANGUAGES})[- ](?:language|speaking)\b|\b(?:languages?|dubbed|dubbing|audio)\b|日语|法语|英语|韩语|中文|汉语|国语|德语|意大利语|西班牙语|粤语|配音"),
         ("unsupported_filter", r"\b(?:IMDb|TMDB|Douban|rating|rated|stars?|minutes?|hours?|runtime|duration|favorites?|notes?|subtitles?|resolution)\b|豆瓣|评分|星级|时长|分钟|小时|收藏|笔记|字幕|分辨率"),
     )
     for reason, pattern in rules:
@@ -69,9 +82,38 @@ def unsupported_reason(text):
     return None
 
 
+def _chinese_person(text):
+    # Explicit 由 is the name boundary even when other filters precede it.
+    # Without it, remove only an anchored request prefix, never filler/facet
+    # words inside the literal name (是枝裕和, 和田诚, 日本太郎, 喜剧人...).
+    explicit = list(re.finditer(r"由\s*([^，。！？]{1,100}?)(执导|导演|主演|出演)(?:的)?", text))
+    masked = text
+    for match in reversed(explicit):
+        masked = masked[:match.start()] + " " * (match.end() - match.start()) + masked[match.end():]
+    implicit = list(re.finditer(r"(?:^|[，。！？])\s*([^，。！？]{1,100}?)(执导|导演|主演|出演)(?:的)?", masked))
+    if len(explicit) + len(implicit) > 1:
+        return text, {}, "multiple_values"
+    if not explicit and not implicit:
+        return text, {}, None
+    match = (explicit or implicit)[0]
+    start, name = match.start(), match.group(1)
+    if not explicit:
+        start = match.start(1)
+        while prefix := re.match(_CHINESE_PERSON_PREFIX, name):
+            start += prefix.end()
+            name = name[prefix.end():]
+    name = name.strip()
+    if not name:
+        return text, {}, "ambiguous_request"
+    role = "director" if match.group(2) in ("执导", "导演") else "actor"
+    return text[:start] + " " + text[match.end():], {"person": name, "person_role": role}, None
+
+
 def local_plan(question):
     """Return exact fields plus unconsumed text; never silently discard it."""
-    text, values = question, {}
+    text, values, issue = _chinese_person(question)
+    if issue:
+        return values, text, issue
     if re.search(_UNWATCHED, text, re.IGNORECASE):
         values["view"] = "unwatched"
         text = _replace(text, _UNWATCHED)
@@ -103,7 +145,7 @@ def local_plan(question):
         return values, text, "ambiguous_request"
     # Protect literal English names (e.g. Jordan Peele) from country/genre words.
     english_people = list(re.finditer(r"\b(directed by|starring|by|with)\s+(.+?)(?=\s+(?:from|in|released|sorted|sort|and)\b|[,.!?]|$)", text, re.IGNORECASE))
-    if len(english_people) > 1:
+    if len(english_people) > 1 or english_people and "person" in values:
         return values, text, "multiple_values"
     if english_people:
         match = english_people[0]
@@ -125,17 +167,6 @@ def local_plan(question):
         return values, text, "multiple_values"
     if found:
         values["genre"] = next(iter(found))
-    people = [] if english_people else list(re.finditer(r"(?:由)?([^，。！？]{1,100}?)(执导|导演|主演|出演)(?:的)?", text))
-    if len(people) > 1:
-        return values, text, "multiple_values"
-    if people:
-        match = people[0]
-        english = match.group(1).lower() in ("directed by", "starring", "by", "with")
-        role, name = (match.group(1).lower(), match.group(2).strip()) if english else (match.group(2), _replace(match.group(1), _FILLERS).strip())
-        if not name or len(name) > 100:
-            return values, text, "ambiguous_request"
-        values.update(person=name, person_role="director" if role in ("directed by", "by", "执导", "导演") else "actor" if role in ("starring", "主演", "出演") else "any")
-        text = text[:match.start()] + " " + text[match.end():]
     return values, text, None
 
 
@@ -187,7 +218,7 @@ class DiscoverySearchService:
         if has_private_input(question):
             raise AskError("ask_private_input", 422)
         values, text, issue = local_plan(question)
-        conditional = bool(re.search(_REQUEST, question, re.IGNORECASE) or "view" in values or "person" in values)
+        conditional = bool(re.search(_REQUEST, keyword_text(question), re.IGNORECASE) or "view" in values or "person" in values)
         if not conditional:
             return self.state("keyword") if len(question) <= 200 else self.state("clarify", "long_keywords")
         reason = unsupported_reason(question) or issue
@@ -216,7 +247,7 @@ class DiscoverySearchService:
         return self._resolve(interpreted.plan, source="ai")
 
     def _resolve(self, plan, *, source, person_id=None):
-        resolved = self.ask.resolve(AskResolveRequest(plan=plan, person_id=person_id), allow_unique_person=True)
+        resolved = self.ask.resolve(AskResolveRequest(plan=plan, person_id=person_id))
         return {**self.state(resolved["status"], source=source), **resolved, "version": "discovery.v1"}
 
     def query(self, request: DiscoveryQuery):
@@ -226,7 +257,7 @@ class DiscoverySearchService:
         if reason or not grounded(request.plan, request.question, edited=request.edited):
             return self.state("unsupported", reason or "incomplete_request")
         result = self.ask.query(AskQueryRequest(plan=request.plan, person_id=request.person_id,
-            confirmed=True, offset=request.offset), limit=40, allow_unique_person=True)
+            confirmed=True, offset=request.offset), limit=40)
         return {**self.state(result["status"]), **result, "version": "discovery.v1"}
 
 

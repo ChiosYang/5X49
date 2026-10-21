@@ -18,7 +18,7 @@ import app.services.ask as ask_module
 from app.api.ask import router
 from app.canonical_models import Person, ProjectionState
 from app.contracts.ask import AskInterpretation, AskPlan, AskQuestion, AskQueryRequest, AskResolveRequest
-from app.services.ask import AskError, AskInterpreter, AskService
+from app.services.ask import AskError, AskInterpreter, AskService, has_private_input
 from app.services.projections import ProjectionUnavailable
 
 
@@ -194,10 +194,24 @@ class AskTests(unittest.TestCase):
 
     def test_private_question_is_blocked_before_provider_call(self):
         interpreter, factory, _ = self._interpreter()
-        for question in (r"Find films under C:\Movies\private", "find /mnt/private/films", "my api_key=private", "use sk-abcdefgh12345678"):
-            with self.subTest(question=question), self.assertRaisesRegex(AskError, "ask_private_input"):
-                interpreter.interpret(AskQuestion(question=question))
+        for path in (r"C:\Movies\private", r"\\server\Movies\private.mkv", "file:///private.mkv",
+                     "/mnt/private/films", "/private.mkv", "~/Movies/private.mkv", "~user/Movies/private.mkv",
+                     "./Movies/private.mkv", "../Movies/private.mkv", "../../private.mkv",
+                     r".\Movies\private.mkv", r"..\Movies\private.mkv", r"\private.mkv",
+                     "'/private.mkv'", "(~/Movies/private.mkv)", "路径：./私密/片单.txt",
+                     "my api_key=private", "use sk-abcdefgh12345678"):
+            question = "Japanese films featuring " + path
+            for method in (interpreter.interpret, interpreter.interpret_search):
+                with self.subTest(path=path, method=method.__name__), self.assertRaisesRegex(AskError, "ask_private_input"):
+                    method(AskQuestion(question=question))
         factory.assert_not_called()
+
+    def test_ordinary_titles_are_not_private_paths(self):
+        for title in ("Face/Off", "V/H/S", "9/11", "Fate/stay night", "D: The Movie",
+                      "The Secret Life of Walter Mitty", "In the Mood for Love", "日与夜", "1/2"):
+            with self.subTest(title=title):
+                self.assertFalse(has_private_input(title))
+                self.assertFalse(has_private_input("find " + title))
 
     def test_unsupported_or_vague_intents_never_run_local_queries(self):
         for state in ("unsupported", "clarify"):

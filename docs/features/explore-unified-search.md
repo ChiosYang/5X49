@@ -20,13 +20,19 @@ manual fallback form, mode selection or routine confirmation precedes results.
   old standalone/manual UI are not imported or enabled. Strict duplicate-key JSON
   validation and conservative intent guards are adapted and independently retested.
 - Local rules must consume the complete request. Unsupported similarity, mood,
-  themes, negation, multiple values and advanced filters never become partial results.
+  themes, negation, multiple values, unsupported roles/languages and advanced
+  filters never become partial results. Production country and language stay
+  distinct. Literal Person spans precede filler/facet parsing; non-exact name
+  matches require a candidate choice even when only one substring matches.
   AI is submission-only, at most once, without retries, with schema/confidence,
   literal grounding and local vocabulary/entity validation. Models receive only the
   submitted text and a static schema; no library, paths or personal viewing data.
 - Store original input and validated conditions in bounded local URLs. Refresh,
   Back, filtering, pagination and mutation refresh only query local data. Preserve
   legacy Explore queries, stable collections, global Library search and Return.
+  Explicit leading find/找 commands affect only the effective keyword term; all
+  other title words and the original input remain. Absolute, home-relative and
+  dot-relative paths are rejected in the UI and again before model transport.
 - Jev is deferred: official Choice is a finite routing primitive, with separate
   credentials/calibration. No new supplier dependency or live call is introduced.
   [Choice](https://docs.typesafe.ai/primitives/choice),
@@ -82,6 +88,15 @@ manual fallback form, mode selection or routine confirmation precedes results.
   and the complete 26-case replay passed without matching code/test changes. This is
   not claimed as a fixed matching defect. Final full CI remains the merge gate.
   No real AI call or evaluation-ledger operation has run.
+- Independent review found five scoped issues: unsupported roles, language/country
+  confusion, Chinese literal-name loss, incomplete path guards, and search commands
+  used as literal keywords. The revision preserves complete names, requires choices
+  for non-exact identities, distinguishes supported production-country clauses,
+  blocks paths before transport, and derives keyword terms without changing raw
+  input/history. Revised Ask/discovery tests: 34 passed; frontend: 132 unit tests,
+  lint and typecheck passed; production-build unified browser group: 28 passed.
+  Both locales cover title/person commands, unsupported roles/languages and zero
+  provider calls for private paths. Full revised CI and incremental review are pending.
 
 ## Remaining risks
 

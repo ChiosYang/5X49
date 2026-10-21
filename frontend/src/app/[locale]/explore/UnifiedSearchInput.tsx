@@ -8,7 +8,7 @@ import { Button, IconButton } from "@/components/ui/Button";
 import { TextInput } from "@/components/ui/FormControls";
 import { API } from "@/lib/api";
 import { collectionHref } from "@/lib/collections";
-import { discoveryHref, hasPrivateDiscoveryInput, normalizeDiscoverySearch } from "@/lib/discovery-search";
+import { discoveryHref, discoveryKeywords, hasPrivateDiscoveryInput, normalizeDiscoverySearch } from "@/lib/discovery-search";
 import { rememberFilmReturn } from "@/lib/navigation-context";
 import type { CollectionCatalog, ExploreFacetPage, LibraryFilmPage } from "@/types/movie";
 import { useDiscoverySearchSession } from "./DiscoverySearchSession";
@@ -36,10 +36,11 @@ export default function UnifiedSearchInput({ query = "" }: { query?: string }) {
     const abort = new AbortController();
     const timer = setTimeout(async () => {
       try {
-        const params = new URLSearchParams({ q, limit: "3" });
+        const keywords = discoveryKeywords(q);
+        const params = new URLSearchParams({ q: keywords, limit: "3" });
         const responses = await Promise.all([
           fetch(API.libraryFilmPage(params), { signal: abort.signal }),
-          fetch(API.exploreFacets("person", { q, limit: 3 }), { signal: abort.signal }),
+          fetch(API.exploreFacets("person", { q: keywords, limit: 3 }), { signal: abort.signal }),
           fetch(`${API.baseUrl}/explore/catalog?${params}`, { signal: abort.signal }),
         ]);
         if (responses.some(response => !response.ok)) throw new Error("suggestions");

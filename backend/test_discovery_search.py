@@ -14,9 +14,10 @@ import app.services.discovery_search as discovery_module
 from app.api.explore import router
 from app.canonical_models import Person
 from app.contracts.ask import AskPlan, AskQuestion
+from app.contracts.structured_metadata import normalize_metadata_text
 from app.contracts.discovery_search import DiscoveryInterpretation, DiscoveryQuestion, DiscoveryQuery
 from app.services.ask import AskError, AskInterpreter, AskService
-from app.services.discovery_search import DiscoverySearchService, grounded, local_plan
+from app.services.discovery_search import DiscoverySearchService, grounded, keyword_text, local_plan
 
 
 class DiscoverySearchTests(unittest.TestCase):
@@ -48,7 +49,9 @@ class DiscoverySearchTests(unittest.TestCase):
         return self.service.interpret(DiscoveryQuestion(question=text, **extra))
 
     def test_plain_bilingual_keywords_never_call_model(self):
-        for text in ("Alpha", "Shared Person", "Japan", "日本", "1990s", "In the Mood for Love", "No Country for Old Men"):
+        for text in ("Alpha", "Shared Person", "Japan", "日本", "1990s", "In the Mood for Love", "No Country for Old Men",
+                     "find Alpha", "找Alpha", "find Shared Person", "找Shared Person",
+                     "find In the Mood for Love", "找The Producers"):
             with self.subTest(text=text):
                 self.assertEqual(self.interpret(text, allow_ai=True)["status"], "keyword")
         self.interpreter.interpret_search.assert_not_called()
@@ -92,8 +95,116 @@ class DiscoverySearchTests(unittest.TestCase):
         missing = self.interpret("films directed by Nobody", allow_ai=True)
         self.assertEqual(missing["status"], "needs_clarification")
         self.assertEqual(missing["issues"][0]["code"], "unknown_value")
-        ready = self.interpret("films directed by Shared", allow_ai=True)
-        self.assertEqual(ready["status"], "ready")  # One local identity, no redundant confirmation.
+        partial = self.interpret("films directed by Shared", allow_ai=True)
+        self.assertEqual(partial["status"], "needs_clarification")
+        self.assertEqual(partial["issues"][0]["code"], "choose_person")
+        self.assertIsNone(partial["person_id"])  # A unique substring is still not an exact identity.
+
+    def test_search_commands_only_strip_an_explicit_prefix_for_keyword_lookup(self):
+        for question, expected in (
+            ("find Alpha", "Alpha"), ("Please find The Alpha", "The Alpha"),
+            ("找Alpha", "Alpha"), ("请帮我找一下是枝裕和", "是枝裕和"),
+            ("The Alpha", "The Alpha"), ("In the Mood for Love", "In the Mood for Love"),
+            ("Finding Nemo", "Finding Nemo"), ("A place to find Alpha", "A place to find Alpha"),
+        ):
+            with self.subTest(question=question):
+                self.assertEqual(keyword_text(question), expected)
+        self.assertEqual(self.interpret("find unwatched Japanese films")["plan"]["view"], "unwatched")
+
+    def test_unsupported_roles_and_mixed_roles_never_execute_a_partial_plan(self):
+        questions = (
+            "films produced by Shared Person", "films produced and directed by Shared Person",
+            "Japanese films executive produced by Shared Person", "films written by Shared Person",
+            "films written and directed by Shared Person", "films edited by Shared Person",
+            "films with cinematography by Shared Person", "films with music composed by Shared Person",
+            "由Shared Person制片的日本电影", "由Shared Person监制并执导的日本电影",
+            "由Shared Person编剧和执导的日本电影", "由Shared Person配乐的日本电影",
+            "由Shared Person摄影的日本电影", "由Shared Person出品的日本电影",
+        )
+        with patch.object(self.ask, "resolve", side_effect=AssertionError("must not resolve a partial role")), \
+             patch.object(self.ask, "query", side_effect=AssertionError("must not execute a partial role")):
+            for question in questions:
+                with self.subTest(question=question):
+                    result = self.interpret(question, allow_ai=True)
+                    self.assertEqual(result["status"], "unsupported")
+                    self.assertIsNone(result["plan"])
+                    for edited in (False, True):
+                        restored = self.service.query(DiscoveryQuery(question=question,
+                            plan=AskPlan(person="Shared Person", person_role="director"), edited=edited))
+                        self.assertEqual(restored["status"], "unsupported")
+                        self.assertIsNone(restored["results"])
+        self.interpreter.interpret_search.assert_not_called()
+
+    def test_language_requests_are_not_production_countries(self):
+        questions = ("films in French", "movies in Japanese", "films in Korean",
+                     "French-language films", "films dubbed in English",
+                     "日语电影", "法语电影", "韩语电影", "中文电影", "日本电影，法语配音")
+        with patch.object(self.ask, "resolve", side_effect=AssertionError("must not resolve language as country")), \
+             patch.object(self.ask, "query", side_effect=AssertionError("must not execute language as country")):
+            for question in questions:
+                with self.subTest(question=question):
+                    result = self.interpret(question, allow_ai=True)
+                    self.assertEqual(result["status"], "unsupported")
+                    self.assertIsNone(result["plan"])
+                    restored = self.service.query(DiscoveryQuery(question=question, plan=AskPlan(country="FR"), edited=True))
+                    self.assertEqual(restored["status"], "unsupported")
+                    self.assertIsNone(restored["results"])
+        self.interpreter.interpret_search.assert_not_called()
+
+    def test_production_country_phrases_remain_supported_without_a_model(self):
+        for question, country in (
+            ("films produced in France", "FR"), ("films from France", "FR"), ("French films", "FR"),
+            ("films produced in Japan", "JP"), ("Japanese films", "JP"), ("法国电影", "FR"),
+        ):
+            with self.subTest(question=question):
+                result = self.interpret(question, allow_ai=True)
+                self.assertEqual(result["status"], "ready")
+                self.assertEqual(result["plan"], AskPlan(country=country).model_dump())
+        self.interpreter.interpret_search.assert_not_called()
+
+    def test_chinese_literal_names_are_protected_before_fillers_and_facets(self):
+        for name, question, expected in (
+            ("是枝裕和", "由是枝裕和执导的电影", {}),
+            ("和田诚", "和田诚导演的电影", {}),
+            ("和田诚", "我想看和田诚导演的电影", {}),
+            ("和田诚", "未看过的和田诚导演的电影", {"view": "unwatched"}),
+            ("王和", "由王和执导的电影", {}),
+            ("日本太郎", "由日本太郎执导的电影", {}),
+            ("喜剧人", "喜剧人导演的电影", {}),
+            ("日本太郎", "由日本太郎执导的日本动作电影", {"country": "JP", "genre": "Action"}),
+        ):
+            with self.subTest(name=name, question=question):
+                with Session(self.engine) as session:
+                    person = session.get(Person, self.people["shared"])
+                    person.canonical_name, person.normalized_name = name, normalize_metadata_text(name)
+                    session.add(person); session.commit()
+                result = self.interpret(question, allow_ai=True)
+                self.assertEqual(result["status"], "ready")
+                self.assertEqual(result["plan"], AskPlan(person=name, person_role="director", **expected).model_dump())
+                self.assertEqual(result["person_id"], self.people["shared"])
+                queried = self.service.query(DiscoveryQuery(question=question, plan=result["plan"]))
+                self.assertEqual(queried["results"]["total"], 1)
+                self.assertEqual(queried["results"]["items"][0]["film"]["id"], self.films["Alpha"])
+        self.interpreter.interpret_search.assert_not_called()
+
+    def test_unknown_full_name_and_unique_substring_never_silently_choose_someone_else(self):
+        with Session(self.engine) as session:
+            person = session.get(Person, self.people["shared"])
+            person.canonical_name, person.normalized_name = "王家卫", "王家卫"
+            session.add(person); session.commit()
+        with patch.object(ask_module.explore_query_service, "list_films", side_effect=AssertionError("wrong person query")):
+            for name, code in (("王和", "unknown_value"), ("王", "choose_person")):
+                question = "由" + name + "执导的电影"
+                result = self.interpret(question, allow_ai=True)
+                self.assertEqual(result["status"], "needs_clarification")
+                self.assertEqual(result["plan"]["person"], name)
+                self.assertEqual(result["issues"][0]["code"], code)
+                self.assertIsNone(result["person_id"])
+                restored = self.service.query(DiscoveryQuery(question=question, plan=result["plan"]))
+                self.assertEqual(restored["status"], "needs_clarification")
+                self.assertIsNone(restored["results"])
+            self.assertFalse(grounded(AskPlan(person="王", person_role="director"), "由王和执导的电影"))
+        self.interpreter.interpret_search.assert_not_called()
 
     def test_same_name_requires_choice_and_role_stays_exact(self):
         with Session(self.engine) as session:
@@ -146,7 +257,10 @@ class DiscoverySearchTests(unittest.TestCase):
         self.assertEqual(plan, {"person": "Jordan Peele", "person_role": "director"})
 
     def test_private_input_and_bad_contracts_fail_before_model(self):
-        for text in (r"C:\Movies\private", "my api_key=private", "find /mnt/private/films"):
+        for text in (r"C:\Movies\private", "my api_key=private", "find /mnt/private/films",
+                     "Japanese films featuring ~/Movies/private.mkv", "Japanese films featuring ./Movies/private.mkv",
+                     "Japanese films featuring /private.mkv", "日本电影：../私人/片单.txt",
+                     r"films featuring .\Movies\private.mkv", r"films featuring \private.mkv"):
             response = self.client.post("/explore/search/interpret", json={"question": text, "allow_ai": True})
             self.assertEqual(response.status_code, 422)
             self.assertEqual(response.json()["detail"]["code"], "ask_private_input")
