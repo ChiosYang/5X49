@@ -7,23 +7,24 @@ import {
   SettingRow,
   SettingsPanel,
 } from "@/components/settings/SettingsPrimitives";
-import { Button, IconButton } from "@/components/ui/Button";
+import { IconButton } from "@/components/ui/Button";
 import { InlineFeedback } from "@/components/ui/Feedback";
 import { InputButton, TextInput } from "@/components/ui/FormControls";
 import BaseUrlSetting from "@/components/settings/BaseUrlSetting";
+import TmdbConnectionSetting from "@/components/settings/TmdbConnectionSetting";
+import { ConnectionTestResult } from "@/components/settings/ConnectionTestResult";
+import { useConnectionTest } from "@/hooks/useConnectionTest";
+import { useBaseUrlAutosave } from "@/hooks/useBaseUrlAutosave";
 import {
   useModelSettings,
   useTestApiKey,
-  useTestTmdbKey,
-  useTmdbSettings,
   useUpdateModel,
-  useUpdateTmdbKey,
 } from "@/hooks/useSettings";
 
 export default function IntegrationSettings() {
   const t = useTranslations("Settings");
   const { data: modelData, mutate: refreshModels } = useModelSettings();
-  const { data: tmdbData } = useTmdbSettings();
+  const baseUrl = useBaseUrlAutosave();
 
   const {
     trigger: updateModel,
@@ -32,32 +33,11 @@ export default function IntegrationSettings() {
     error: modelSaveError,
     reset: resetModelSave,
   } = useUpdateModel();
-  const {
-    trigger: updateTmdbKey,
-    isMutating: tmdbSaving,
-    data: tmdbSaveResult,
-    error: tmdbSaveError,
-    reset: resetTmdbSave,
-  } = useUpdateTmdbKey();
-  const {
-    trigger: testTmdbKey,
-    data: tmdbTestResult,
-    isMutating: tmdbTesting,
-    error: tmdbTestError,
-    reset: resetTmdbTest,
-  } = useTestTmdbKey();
-  const {
-    trigger: testApi,
-    data: apiTestResult,
-    isMutating: apiTesting,
-    error: apiTestError,
-    reset: resetApiTest,
-  } = useTestApiKey();
+  const { trigger: testApi } = useTestApiKey();
+  const apiTest = useConnectionTest(() => testApi());
 
   const [modelMenuOpen, setModelMenuOpen] = useState(false);
   const [modelSearch, setModelSearch] = useState("");
-  const [tmdbKeyDraft, setTmdbKeyDraft] = useState("");
-  const [tmdbKeyTouched, setTmdbKeyTouched] = useState(false);
 
   useEffect(() => {
     if (!modelSaveResult) return;
@@ -65,11 +45,6 @@ export default function IntegrationSettings() {
     return () => window.clearTimeout(timer);
   }, [modelSaveResult, resetModelSave]);
 
-  useEffect(() => {
-    if (!tmdbSaveResult) return;
-    const timer = window.setTimeout(() => resetTmdbSave(), 3000);
-    return () => window.clearTimeout(timer);
-  }, [tmdbSaveResult, resetTmdbSave]);
 
   const currentModel = modelData?.current_model ?? "";
   const availableModels = useMemo(
@@ -82,19 +57,11 @@ export default function IntegrationSettings() {
     return availableModels.filter((model) => model.toLowerCase().includes(query));
   }, [availableModels, modelSearch]);
 
-  const tmdbStatus = tmdbSaveResult ?? tmdbData;
-  const tmdbCanSave = tmdbStatus?.source !== "environment";
-  const tmdbSourceLabel =
-    tmdbStatus?.source === "environment"
-      ? t("tmdbSourceEnvironment")
-      : tmdbStatus?.source === "settings"
-        ? t("tmdbSourceSettings")
-        : t("tmdbSourceMissing");
-
   const handleModelChange = async (model: string) => {
     setModelMenuOpen(false);
     setModelSearch("");
     if (model === currentModel) return;
+    apiTest.invalidate();
     try {
       await updateModel(model);
       await refreshModels();
@@ -103,32 +70,10 @@ export default function IntegrationSettings() {
     }
   };
 
-  const handleTmdbSave = async () => {
-    try {
-      await updateTmdbKey(tmdbKeyDraft.trim());
-      setTmdbKeyDraft("");
-      setTmdbKeyTouched(false);
-    } catch {
-      // Mutation state renders the localized error in the row.
-    }
-  };
-
-  const handleApiTest = async () => {
-    resetApiTest();
-    try {
-      await testApi();
-    } catch {
-      // Mutation state renders the localized error in the row.
-    }
-  };
-
-  const handleTmdbTest = async () => {
-    resetTmdbTest();
-    try {
-      await testTmdbKey();
-    } catch {
-      // Mutation state renders the localized error in the row.
-    }
+  const handleApiTest = () => {
+    const current = baseUrl.autosave.getSnapshot();
+    if (current.saving || current.draft !== null || modelSaving || !modelData) return;
+    void apiTest.run();
   };
 
   return (
@@ -201,81 +146,19 @@ export default function IntegrationSettings() {
             )}
           </div>
           <span className="group/api-test relative inline-flex shrink-0">
-            <IconButton variant="ghost" aria-label={t("testConnection")} aria-describedby="api-test-tooltip" busy={apiTesting} onClick={() => void handleApiTest()} icon={<PlugZap aria-hidden className="h-4 w-4" />} />
+            <IconButton variant="ghost" aria-label={t("testConnection")} aria-describedby="api-test-tooltip" busy={apiTest.busy} disabled={modelSaving || !modelData || !baseUrl.data || baseUrl.state.saving || baseUrl.state.draft !== null} onClick={handleApiTest} icon={<PlugZap aria-hidden className="h-4 w-4" />} />
             <span id="api-test-tooltip" role="tooltip" className="pointer-events-none invisible absolute right-0 top-full z-20 mt-2 w-max max-w-56 border border-line-strong bg-surface-raised px-3 py-2 text-xs group-hover/api-test:visible group-focus-within/api-test:visible">{t("testConnection")}</span>
           </span>
+          <ConnectionTestResult outcome={apiTest.outcome} />
           </div>
-          {apiTesting || apiTestError || apiTestResult ? <div className="mt-3" role={apiTestError || apiTestResult?.status === "error" ? "alert" : "status"} aria-live="polite">
-            <InlineFeedback tone={apiTestError || apiTestResult?.status === "error" ? "error" : apiTestResult ? "success" : "neutral"}>
-              {apiTesting ? t("testingBtn") : apiTestError ? t("apiTestFailed") : apiTestResult?.message}
-            </InlineFeedback>
-          </div> : null}
+
         </SettingRow>
 
-        <BaseUrlSetting />
+        <BaseUrlSetting onEdit={apiTest.invalidate} />
       </SettingsPanel>
 
       <SettingsPanel title={t("tmdbIntegration")}>
-        <SettingRow
-          title={t("tmdbApiKey")}
-          description={t("tmdbApiKeyDesc")}
-          feedback={
-            tmdbSaveError ? (
-              <InlineFeedback tone="error">
-                {tmdbSaveError instanceof Error ? tmdbSaveError.message : t("tmdbSaveFailed")}
-              </InlineFeedback>
-            ) : tmdbTestError ? (
-              <InlineFeedback tone="error">
-                {tmdbTestError instanceof Error ? tmdbTestError.message : t("tmdbTestFailed")}
-              </InlineFeedback>
-            ) : tmdbSaveResult ? (
-              <InlineFeedback tone="success">{t("saved")}</InlineFeedback>
-            ) : tmdbTestResult ? (
-              <InlineFeedback tone={tmdbTestResult.status === "success" ? "success" : "error"}>
-                {tmdbTestResult.message}
-              </InlineFeedback>
-            ) : null
-          }
-        >
-          <div className="flex flex-col gap-3 lg:flex-row">
-            <div className="relative min-w-0 flex-1">
-              <TextInput
-                type="password"
-                value={tmdbKeyDraft}
-                onChange={(event) => {
-                  setTmdbKeyDraft(event.target.value);
-                  setTmdbKeyTouched(true);
-                }}
-                disabled={!tmdbCanSave}
-                aria-label={t("tmdbApiKey")}
-                placeholder={tmdbCanSave ? t("tmdbApiKeyPlaceholder") : t("tmdbApiKeyEnvironment")}
-                className="pr-28"
-              />
-              <span
-                className={`pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 text-[10px] font-bold tracking-widest uppercase ${
-                  tmdbStatus?.configured ? "text-success" : "text-ink-disabled"
-                }`}
-              >
-                {tmdbSourceLabel}
-              </span>
-            </div>
-            <Button
-              onClick={handleTmdbSave}
-              disabled={!tmdbCanSave || !tmdbKeyTouched || tmdbSaving}
-              busy={tmdbSaving}
-              variant="primary"
-            >
-              {tmdbSaving ? t("saving") : t("save")}
-            </Button>
-            <Button
-              onClick={handleTmdbTest}
-              disabled={tmdbTesting || !tmdbStatus?.configured}
-              busy={tmdbTesting}
-            >
-              {tmdbTesting ? t("testingBtn") : t("tmdbTestBtn")}
-            </Button>
-          </div>
-        </SettingRow>
+        <TmdbConnectionSetting />
       </SettingsPanel>
 
 

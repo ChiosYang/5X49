@@ -1,6 +1,7 @@
-import { test, expect, type APIRequestContext } from '@playwright/test';
+import { test, expect, type APIRequestContext, type Page } from '@playwright/test';
 import en from '../messages/en.json';
 import zh from '../messages/zh.json';
+import path from 'node:path';
 import type { HealthConfig } from '../src/lib/video-health';
 
 const backend = process.env.E2E_BACKEND!;
@@ -14,6 +15,13 @@ async function read(request: APIRequestContext, url: string) {
 }
 async function put(request: APIRequestContext, url: string, data: object) {
   expect((await request.put(url, { data })).ok()).toBeTruthy();
+}
+async function selectOtherRoot(page: Page, copy: typeof en, target: string) {
+  const dialog = page.getByRole('dialog', { name: copy.FileBrowser.title, exact: true });
+  await dialog.getByRole('button', { name: copy.FileBrowser.up }).click();
+  await dialog.getByText(path.basename(target), { exact: true }).click();
+  await expect(dialog.getByText(target, { exact: true })).toBeVisible();
+  await dialog.getByRole('button', { name: copy.FileBrowser.selectCurrent, exact: true }).click();
 }
 test.beforeAll(async ({ request }) => {
   originalRoots = (await read(request, `${backend}/settings/media-dirs`)).media_dirs;
@@ -72,14 +80,16 @@ for (const locale of ['en', 'zh'] as const) {
       const add = panel.getByRole('button', { name: copy.MediaRoots.addDirectory, exact: true });
       await add.focus(); await expect(page.locator('#add-directory-tooltip')).toBeVisible();
       await page.keyboard.press('Space');
-      await expect(page.locator('#media-root-1')).toBeFocused();
-      await expect(page.locator('#media-root-1')).toHaveValue('');
+      const picker = page.getByRole('dialog', { name: copy.FileBrowser.title, exact: true });
+      await expect(picker).toBeVisible(); await expect(page.locator('#media-root-1')).toHaveCount(0);
       await expect(panel.getByRole('button', { name: copy.MediaRoots.save, exact: true })).toHaveCount(0);
       await expect(panel.getByRole('button', { name: copy.MediaRoots.add, exact: true })).toHaveCount(0);
-      await page.locator('#media-root-1').fill(roots[1]);
-      await expect(panel.getByRole('img', { name: copy.MediaRoots.unsaved, exact: true })).toHaveCount(2);
+      await picker.getByRole('button', { name: copy.FileBrowser.cancel, exact: true }).click();
+      await expect(add).toBeFocused();
+      await page.locator('#media-root-0').fill('  '); await page.locator('#media-root-0').press('Tab');
+      await expect(page.locator('#media-root-0')).toHaveValue(roots[0]);
       expect((await read(request, `${backend}/settings/media-dirs`)).media_dirs).toEqual([roots[0]]);
-      await panel.getByRole('button', { name: copy.MediaRoots.discard, exact: true }).click();
+      await expect(panel.getByRole('button', { name: copy.MediaRoots.discard, exact: true })).toHaveCount(0);
 
       const video = page.locator('section[aria-labelledby="video-health-settings"]');
       await expect(video.locator('input[type="time"], input[type="number"], input[type="checkbox"], dl')).toHaveCount(0);
@@ -108,15 +118,14 @@ for (const locale of ['en', 'zh'] as const) {
     });
   }
 
-  test(`${locale} roots autosave completed input, retain failed drafts and retry removal/reorder`, async ({ page, request }) => {
+  test(`${locale} roots picker autosaves, retains failed drafts, preserves append order and retries removal`, async ({ page, request }) => {
     await page.goto(`/${locale}/settings?section=library`);
     const panel = page.getByLabel(copy.MediaRoots.title, { exact: true });
-    await panel.getByRole('button', { name: copy.MediaRoots.addDirectory, exact: true }).click();
-    await page.locator('#media-root-1').fill(roots[1]);
     let reject = true;
     await page.route('**/api/settings/media-dirs', route => route.request().method() === 'PUT' && reject
       ? route.fulfill({ status: 503, json: { detail: 'E2E unavailable' } }) : route.continue());
-    await page.locator('#media-root-1').press('Tab');
+    await panel.getByRole('button', { name: copy.MediaRoots.addDirectory, exact: true }).click();
+    await selectOtherRoot(page, copy, roots[1]);
     await expect(panel.getByRole('alert')).toHaveText(copy.MediaRoots.saveFailed);
     await expect(page.locator('#media-root-1')).toHaveValue(roots[1]);
     await expect(panel.getByRole('button', { name: copy.MediaRoots.retry, exact: true })).toBeEnabled();
@@ -128,7 +137,11 @@ for (const locale of ['en', 'zh'] as const) {
     await page.reload();
     await expect(page.locator('#media-root-1')).toHaveValue(roots[1]);
     await expect(panel.getByRole('img', { name: copy.MediaRoots.accessible, exact: true })).toHaveCount(2);
-    await panel.getByRole('button', { name: copy.MediaRoots.makePrimary, exact: true }).click();
+    await expect(panel.getByRole('button', { name: copy.MediaRoots.makePrimary, exact: true })).toHaveCount(0);
+    await panel.getByRole('button', { name: copy.MediaRoots.removeDirectory.replace('{number}', '1'), exact: true }).click();
+    await expect.poll(async () => (await read(request, `${backend}/settings/media-dirs`)).media_dirs).toEqual([roots[1]]);
+    await panel.getByRole('button', { name: copy.MediaRoots.addDirectory, exact: true }).click();
+    await selectOtherRoot(page, copy, roots[0]);
     await expect(page.locator('#media-root-0')).toHaveValue(roots[1]);
     await expect.poll(async () => (await read(request, `${backend}/settings/media-dirs`)).media_dirs).toEqual([...roots].reverse());
     const remove = panel.getByRole('button', { name: copy.MediaRoots.removeDirectory.replace('{number}', '2'), exact: true });

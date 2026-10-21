@@ -86,8 +86,10 @@ for (const locale of ['en', 'zh'] as const) {
     page.on('request', request => { if (request.method() !== 'GET' && request.url().includes('/api/')) writes.push(new URL(request.url()).pathname); });
     await page.setViewportSize({ width, height: 1000 }); await page.goto(`/${locale}/settings?section=general`);
     const language = page.getByRole('group', { name: copy.Settings.languagePref, exact: true });
-    await language.getByRole('button', { name: locale, exact: true }).focus(); await page.keyboard.press('Enter');
-    await expect(language.getByRole('button', { name: locale, exact: true })).toHaveAttribute('aria-pressed', 'true');
+    await expect(language.getByRole('switch')).toBeEnabled();
+    await language.getByRole('switch').focus(); await page.keyboard.press('Enter');
+    await expect(language.getByRole('switch')).toHaveAttribute('aria-checked', String(locale === 'en'));
+    await expect(page.getByText(copy.Settings.saved, { exact: true })).toHaveCount(0);
     const languageHeight = (await language.boundingBox())!.height;
     await capture(page, `autosave-${locale}-${width}-general.png`);
     await choose(page, locale, width, 'library');
@@ -101,10 +103,14 @@ for (const locale of ['en', 'zh'] as const) {
     const header = await panel.getByRole('heading', { name: copy.MediaRoots.title, exact: true }).boundingBox();
     const icon = await add.boundingBox(); expect(header && icon && icon.x >= header.x + header.width).toBeTruthy();
     await add.focus(); await expect(page.locator('#add-directory-tooltip')).toBeVisible(); await page.keyboard.press('Space');
-    await expect(page.locator('#media-root-1')).toBeFocused(); await expect(page.locator('#media-root-1')).toHaveValue('');
-    await page.locator('#media-root-1').fill('C:'); await page.locator('#media-root-1').press('Enter');
-    await expect(panel.getByRole('alert')).toHaveText(copy.MediaRoots.absolute);
-    await panel.getByRole('button', { name: copy.MediaRoots.discard, exact: true }).click();
+    const dialog = page.getByRole('dialog', { name: copy.FileBrowser.title, exact: true });
+    await expect(dialog).toBeVisible(); await expect(page.locator('#media-root-1')).toHaveCount(0);
+    await dialog.getByRole('button', { name: copy.FileBrowser.cancel, exact: true }).click();
+    await expect(add).toBeFocused();
+    await page.locator('#media-root-0').fill(''); await page.locator('#media-root-0').press('Tab');
+    await expect(page.locator('#media-root-0')).toHaveValue(roots[0]);
+    await expect(panel.getByRole('button', { name: copy.MediaRoots.discard, exact: true })).toHaveCount(0);
+    await expect(panel.getByRole('button', { name: copy.MediaRoots.makePrimary, exact: true })).toHaveCount(0);
     await expect(panel.getByRole('button', { name: copy.MediaRoots.add, exact: true })).toHaveCount(0);
     await expect(panel.getByRole('button', { name: copy.MediaRoots.save, exact: true })).toHaveCount(0);
     await capture(page, `autosave-${locale}-${width}-library.png`);
@@ -216,7 +222,6 @@ for (const locale of ['en', 'zh'] as const) {
       await page.setViewportSize({ width: 320, height: 1000 }); await page.goto(`/${locale}/settings?section=connections`);
       const input = page.getByRole('textbox', { name: copy.Settings.baseUrl, exact: true }); await expect(input).toHaveValue(originalUrl);
       const keyDraft = page.getByLabel(copy.Settings.tmdbApiKey, { exact: true });
-      await keyDraft.fill('synthetic-unsent-draft');
       await input.fill('https://'); await input.press('Enter'); await expect(page.getByText(copy.Settings.invalidBaseUrl, { exact: true })).toBeVisible(); expect(urls).toEqual([]);
       await input.fill('https://first.invalid/v1'); await input.press('Enter'); await expect.poll(() => count).toBe(1);
       await input.fill('https://latest.invalid/v1');
@@ -235,11 +240,11 @@ for (const locale of ['en', 'zh'] as const) {
       expect(urls).toEqual(['https://first.invalid/v1', 'https://latest.invalid/v1']); expect(modelReads.length).toBe(readsBefore); expect(providerCalls).toEqual([]);
       expect((await read(request, '/settings/model')).current_model).toBe(originalModel);
       expect((await read(request, '/settings/base-url')).base_url).toBe('https://latest.invalid/v1');
-      await expect(keyDraft).toHaveValue('synthetic-unsent-draft');
+      await expect(keyDraft).toHaveValue('');
       await input.fill('https://blur.invalid/v1'); await input.press('Tab');
       await expect.poll(async () => (await read(request, '/settings/base-url')).base_url).toBe('https://blur.invalid/v1');
       expect(urls).toEqual(['https://first.invalid/v1', 'https://latest.invalid/v1', 'https://blur.invalid/v1']);
-      await expect(keyDraft).toHaveValue('synthetic-unsent-draft'); expect(otherWrites).toEqual([]); expect(providerCalls).toEqual([]);
+      await expect(keyDraft).toHaveValue(''); expect(otherWrites).toEqual([]); expect(providerCalls).toEqual([]);
       await page.reload(); await expect(input).toHaveValue('https://blur.invalid/v1');
     } finally { held.release(); }
   });
@@ -253,9 +258,12 @@ for (const locale of ['en', 'zh'] as const) {
     try {
       await page.setViewportSize({ width: 320, height: 1000 }); await page.goto(`/${locale}/settings?section=connections`);
       const button = page.getByRole('button', { name: copy.Settings.testConnection, exact: true });
-      await button.focus(); await page.keyboard.press('Enter'); await expect(button).toBeDisabled(); await expect(button).toHaveAttribute('aria-busy', 'true');
-      expect(calls).toBe(1); held.release(); await expect(page.getByText(copy.Settings.apiTestFailed, { exact: true })).toBeVisible(); await expect(button).toBeEnabled();
-      await button.focus(); await page.keyboard.press('Space'); await expect(page.getByText('E2E connection passed', { exact: true })).toBeVisible(); expect(calls).toBe(2);
+      await expect(button).toBeEnabled(); await button.focus(); await page.keyboard.press('Enter'); await expect(button).toBeDisabled(); await expect(button).toHaveAttribute('aria-busy', 'true');
+      expect(calls).toBe(1); held.release();
+      await expect(page.getByRole('img', { name: copy.Settings.connectionTestFailed, exact: true })).toBeVisible(); await expect(button).toBeEnabled();
+      await button.focus(); await page.keyboard.press('Space');
+      await expect(page.getByRole('img', { name: copy.Settings.connectionTestPassed, exact: true })).toBeVisible();
+      await expect(page.getByText('E2E connection passed', { exact: true })).toHaveCount(0); expect(calls).toBe(2);
     } finally { held.release(); }
   });
 }

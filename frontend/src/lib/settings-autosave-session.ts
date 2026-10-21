@@ -5,6 +5,7 @@ interface Controller<T> {
   commit: () => Promise<void>;
   discard: () => void;
   syncSaved: (value: T) => void;
+  baseline: () => T | null;
 }
 interface SessionOptions<T, N extends string, R> {
   initial: R | null;
@@ -13,6 +14,7 @@ interface SessionOptions<T, N extends string, R> {
   create: (options: { initial: T | null; write: (value: T) => Promise<T>; changed: (state: AutosaveState<T, N>) => void }) => Controller<T>;
   active?: (active: boolean) => void;
   changed?: (state: AutosaveState<T, N>) => void;
+  retainFailedDraft?: boolean;
 }
 
 // One bounded session per setting in this browser runtime. A component remount
@@ -30,7 +32,7 @@ export function createAutosaveSessionRegistry<T, N extends string, R>() {
       changed: next => { state = next; options.changed?.(next); emit(); },
     });
     return {
-      edit: controller.edit, commit: controller.commit, discard: controller.discard,
+      edit: controller.edit, commit: controller.commit, discard: controller.discard, baseline: controller.baseline,
       getSnapshot: () => snapshot,
       syncSaved: (saved: R) => {
         // A pending response/draft owns its displayed value. SWR's older read
@@ -46,7 +48,10 @@ export function createAutosaveSessionRegistry<T, N extends string, R>() {
           if (listeners.size) return;
           options.active?.(false);
           // React StrictMode can detach and reattach in the same turn.
-          queueMicrotask(() => { if (!listeners.size && !state.saving) controller.discard(); });
+          queueMicrotask(() => {
+            const keepFailure = options.retainFailedDraft && state.notice !== null && state.notice !== "saved";
+            if (!listeners.size && !state.saving && !keepFailure) controller.discard();
+          });
         };
       },
     };

@@ -3,14 +3,17 @@
 import { useEffect, useState, useSyncExternalStore } from "react";
 import useSWR, { mutate as updateCache } from "swr";
 import { useTranslations } from "next-intl";
+import { useSearchParams } from "next/navigation";
 import { AlertTriangle, CheckCircle2, Pencil, Plus, Unplug, X } from "lucide-react";
 import { API } from "@/lib/api";
 import { fetcher, responseError } from "@/lib/fetcher";
 import { Button, IconButton } from "@/components/ui/Button";
 import { TextInput } from "@/components/ui/FormControls";
-import { createMediaRootsAutosave, type RootsNotice } from "@/lib/settings-autosave";
+import { createMediaRootsAutosave, restoreBlankRootEdits, type RootsNotice } from "@/lib/settings-autosave";
+import FileBrowser from "@/components/FileBrowser";
 import { createAutosaveSessionRegistry } from "@/lib/settings-autosave-session";
 import { createSettingsScanGuard } from "@/lib/settings-scan-guard";
+import { resolveSettingsLocation } from "@/lib/settings-navigation";
 
 export interface MediaRoots {
   media_dirs: string[];
@@ -20,6 +23,11 @@ const sessions = createAutosaveSessionRegistry<string[], Exclude<RootsNotice, "s
 
 export default function MediaRootsControl() {
   const t = useTranslations("MediaRoots");
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const section = resolveSettingsLocation(useSearchParams().get("section")).section;
+  // Settings retains visited sections. A hidden picker must release Dialog's
+  // background isolation when category/history navigation leaves Library.
+  if (pickerOpen && section !== "library") setPickerOpen(false);
   const { data, error } = useSWR<MediaRoots>(API.settingsMediaDirs(), fetcher, { refreshInterval: 5000 });
   const [autosave] = useState(() => sessions.get(() => {
     const guard = createSettingsScanGuard();
@@ -44,12 +52,21 @@ export default function MediaRootsControl() {
   const { draft, saving: busy, notice, result } = useSyncExternalStore(autosave.subscribe, autosave.getSnapshot, autosave.getSnapshot);
   useEffect(() => { if (data) autosave.syncSaved(data); }, [autosave, data]);
   const values = draft ?? result?.media_dirs ?? data?.media_dirs ?? [];
+  const restored = () => {
+    const current = autosave.getSnapshot();
+    return restoreBlankRootEdits(current.draft ?? current.result?.media_dirs ?? data?.media_dirs ?? [], autosave.baseline() ?? []);
+  };
+  const complete = () => {
+    const next = restored();
+    if (JSON.stringify(next) !== JSON.stringify(values)) autosave.edit(next);
+    void autosave.commit();
+  };
   const change = (next: string[]) => { autosave.edit(next); void autosave.commit(); };
   return <div className="min-w-0 space-y-4 border-b border-line pb-6" aria-label={t("title")}>
     <div className="flex items-center justify-between gap-4">
       <h3 className="text-sm font-medium tracking-widest uppercase">{t("title")}</h3>
       <span className="group/add relative inline-flex">
-        <IconButton data-roots-action variant="ghost" aria-label={t("addDirectory")} aria-describedby="add-directory-tooltip" disabled={!data || values.length >= 32} icon={<Plus aria-hidden className="h-4 w-4" />} onClick={() => { autosave.edit([...values, ""]); requestAnimationFrame(() => document.getElementById(`media-root-${values.length}`)?.focus()); }} />
+        <IconButton data-roots-action variant="ghost" aria-label={t("addDirectory")} aria-describedby="add-directory-tooltip" aria-expanded={pickerOpen} disabled={!data || values.length >= 32} icon={<Plus aria-hidden className="h-4 w-4" />} onClick={() => { complete(); setPickerOpen(true); }} />
         <span id="add-directory-tooltip" role="tooltip" className="pointer-events-none invisible absolute right-0 top-full z-20 mt-2 w-max max-w-56 border border-line-strong bg-surface-raised px-3 py-2 text-xs group-hover/add:visible group-focus-within/add:visible">{t("addDirectory")}</span>
       </span>
     </div>
@@ -62,8 +79,8 @@ export default function MediaRootsControl() {
         <label htmlFor={`media-root-${index}`} className="text-xs text-ink-muted">{t("directory", { number: index + 1 })}</label>
         <div className="relative">
           <TextInput id={`media-root-${index}`} className="pr-24" value={value} onChange={event => autosave.edit(values.map((old, i) => i === index ? event.target.value : old))}
-            onBlur={event => { if (!(event.relatedTarget instanceof Element && event.relatedTarget.closest('[data-roots-action]'))) void autosave.commit(); }}
-            onKeyDown={event => { if (event.key === "Enter" && !event.nativeEvent.isComposing) { event.preventDefault(); void autosave.commit(); } }} />
+            onBlur={event => { if (!(event.relatedTarget instanceof Element && event.relatedTarget.closest('[data-roots-action]'))) complete(); }}
+            onKeyDown={event => { if (event.key === "Enter" && !event.nativeEvent.isComposing) { event.preventDefault(); complete(); } }} />
           <div className="absolute inset-y-0 right-1 flex items-center gap-1">
             <span className="group/status relative inline-flex">
               <span role="img" tabIndex={0} aria-label={statusLabel} aria-describedby={`media-root-status-${index}`} className={`focus-ring inline-flex h-11 w-8 items-center justify-center ${state === "accessible" ? "text-success" : state === "unsaved" ? "text-ink-muted" : "text-warning"}`}>
@@ -71,17 +88,15 @@ export default function MediaRootsControl() {
               </span>
               <span id={`media-root-status-${index}`} role="tooltip" className="pointer-events-none invisible absolute right-0 top-full z-20 mt-2 w-max max-w-56 border border-line-strong bg-surface-raised px-3 py-2 text-xs text-ink group-hover/status:visible group-focus-within/status:visible">{statusLabel}</span>
             </span>
-            <IconButton data-roots-action variant="ghost" aria-label={t("removeDirectory", { number: index + 1 })} icon={<X aria-hidden="true" className="h-4 w-4" />} onClick={() => change(values.filter((_, i) => i !== index))} />
+            <IconButton data-roots-action variant="ghost" aria-label={t("removeDirectory", { number: index + 1 })} icon={<X aria-hidden="true" className="h-4 w-4" />} onClick={() => change(restored().filter((_, i) => i !== index))} />
           </div>
         </div>
-        {index > 0 ? <Button data-roots-action size="sm" variant="ghost" onClick={() => change([value, ...values.filter((_, i) => i !== index)])}>{t("makePrimary")}</Button> : null}
       </div>;
     })}
     {!values.length ? <p className="text-sm text-ink-muted">{t("noRoots")}</p> : null}
-    {notice === "saveFailed" || draft !== null ? <div className="flex flex-wrap gap-2">
-      {notice === "saveFailed" ? <Button data-roots-action size="sm" disabled={busy} onClick={() => void autosave.commit()}>{t("retry")}</Button> : null}
-      {draft !== null ? <Button data-roots-action variant="ghost" disabled={busy} onClick={() => autosave.discard()}>{t("discard")}</Button> : null}
-    </div> : null}
+    {notice === "saveFailed" ? <Button data-roots-action size="sm" disabled={busy} onClick={() => void autosave.commit()}>{t("retry")}</Button> : null}
     {busy ? <p role="status" className="text-sm text-ink-muted">{t("saving")}</p> : notice ? <p role={notice === "saved" ? "status" : "alert"} className={`text-sm ${notice === "saved" ? "text-success" : "text-danger"}`}>{t(notice)}</p> : null}
+    {pickerOpen ? <FileBrowser isOpen initialPath={(result ?? data)?.roots.find(root => root.state === "accessible")?.path}
+      onCancel={() => setPickerOpen(false)} onSelect={path => { setPickerOpen(false); if (values.length < 32) change([...restored(), path]); }} /> : null}
   </div>;
 }

@@ -14,6 +14,7 @@ export function useDirectories(path: string, enabled: boolean) {
   return useSWR<DirectoryData>(
     enabled
       ? `${API.systemListDirs()}?path=${encodeURIComponent(path)}`
-      : null
+      : null,
+    { revalidateOnMount: true, dedupingInterval: 0 },
   );
 }
