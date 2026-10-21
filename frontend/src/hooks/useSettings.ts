@@ -193,18 +193,16 @@ export function useUpdateModel() {
   );
 }
 
+export async function writeBaseUrl(baseUrl: string) {
+  const res = await fetch(`${API.settingsBaseUrl()}?base_url=${encodeURIComponent(baseUrl)}`, {
+    method: "PUT", signal: AbortSignal.timeout(15000),
+  });
+  if (!res.ok) throw new Error("Failed to update base URL");
+  return res.json();
+}
+
 export function useUpdateBaseUrl() {
-  return useSWRMutation(
-    API.settingsBaseUrl(),
-    async (url: string, { arg: baseUrl }: { arg: string }) => {
-      const res = await fetch(
-        `${url}?base_url=${encodeURIComponent(baseUrl)}`,
-        { method: "PUT", signal: AbortSignal.timeout(15000) }
-      );
-      if (!res.ok) throw new Error("Failed to update base URL");
-      return res.json();
-    }
-  );
+  return useSWRMutation(API.settingsBaseUrl(), async (_url: string, { arg }: { arg: string }) => writeBaseUrl(arg));
 }
 
 export function useUpdateMediaDir() {

@@ -19,6 +19,42 @@ async function choose(page: Page, locale: 'en' | 'zh', width: number, section: k
   } else await page.getByRole('navigation', { name: copy.Settings.settingsNavigation, exact: true }).getByRole('link', { name: copy.SettingsArea[section], exact: true }).click();
   await expect(page.locator(`#settings-title-${section}`)).toBeVisible();
 }
+
+for (const kind of ['roots', 'url'] as const) test(`${kind} pending save and queued completion survive leaving and remounting Settings`, async ({ page, request }) => {
+  const held = gate(), newerCommitted = gate(); const payloads: unknown[] = []; let active = 0, maximum = 0;
+  const values = kind === 'roots' ? [roots[1], path.join(process.env.E2E_ROOT!, 'normal/media'), roots[0]]
+    : ['https://old.invalid/v1', 'https://queued.invalid/v1', 'https://newest.invalid/v1'];
+  const endpoint = kind === 'roots' ? '/settings/media-dirs' : '/settings/base-url';
+  await page.route(kind === 'roots' ? '**/api/settings/media-dirs' : /\/api\/settings\/base-url\?/, async route => {
+    if (route.request().method() !== 'PUT') return route.continue();
+    const value = kind === 'roots' ? route.request().postDataJSON().media_dirs[0] : new URL(route.request().url()).searchParams.get('base_url');
+    payloads.push(value); active += 1; maximum = Math.max(maximum, active);
+    if (payloads.length === 1) await held.promise;
+    try { await route.fulfill({ response: await route.fetch() }); if (value === values[2]) newerCommitted.release(); }
+    finally { active -= 1; }
+  });
+  try {
+    await page.setViewportSize({ width: 320, height: 1000 });
+    await page.goto(`/en/settings?section=${kind === 'roots' ? 'library' : 'connections'}`);
+    const input = kind === 'roots' ? page.locator('#media-root-0') : page.getByRole('textbox', { name: en.Settings.baseUrl, exact: true });
+    await expect(input).toHaveValue(kind === 'roots' ? roots[0] : originalUrl);
+    await input.fill(values[0]); await input.press('Enter'); await expect.poll(() => payloads.length).toBe(1);
+    await input.fill(values[1]); await input.press('Enter');
+    await choose(page, 'en', 320, 'library-maintenance');
+    await page.getByRole('link', { name: en.LibraryManagement.constellation.actions['review-metadata'].label, exact: true }).click();
+    await expect(page).toHaveURL(/\/library\?.*view=metadata/); await expect(page.locator('#settings-title-library-maintenance')).toHaveCount(0);
+    await page.goBack(); await expect(page.locator('#settings-title-library-maintenance')).toBeVisible();
+    await choose(page, 'en', 320, kind === 'roots' ? 'library' : 'connections');
+    await expect(input).toBeVisible(); await input.fill(values[2]); await input.press('Enter');
+    // Give a wrongly independent remount writer a bounded chance to commit B before A.
+    await Promise.race([newerCommitted.promise, new Promise(resolve => setTimeout(resolve, 300))]);
+    held.release();
+    await expect.poll(() => payloads.length).toBeGreaterThanOrEqual(2);
+    expect(maximum).toBe(1); expect(payloads).toEqual([values[0], values[2]]);
+    await expect.poll(async () => { const result = await read(request, endpoint); return kind === 'roots' ? result.media_dirs[0] : result.base_url; }).toBe(values[2]);
+    await expect(input).toHaveValue(values[2]); await page.reload(); await expect(input).toHaveValue(values[2]);
+  } finally { held.release(); }
+});
 async function capture(page: Page, filename: string) {
   await page.evaluate(async () => { await document.fonts.ready; window.scrollTo(0, 0); });
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);

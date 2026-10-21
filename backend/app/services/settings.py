@@ -164,12 +164,12 @@ def get_available_models(force_refresh=False):
     
     return models
 
-def get_default_settings():
+def get_default_settings(*, include_models=True):
     """Get default system settings"""
     return {
         "model_name": os.getenv("MODEL_NAME", "openrouter/pony-alpha"),
         "base_url": os.getenv("API_BASE_URL", "https://openrouter.ai/api/v1"),
-        "available_models": get_available_models(),
+        "available_models": get_available_models() if include_models else [],
         "watch_library": os.getenv("WATCH_LIBRARY", "false").lower() == "true",
         "watch_mode": os.getenv("WATCH_MODE", "events"),
         "watch_debounce_seconds": _bounded_environment_number("WATCH_DEBOUNCE_SECONDS", 5, 0, 86400, int),
@@ -183,7 +183,7 @@ def get_default_settings():
         "missing_policy": os.getenv("MISSING_POLICY", "mark_missing"),
     }
 
-def load_settings():
+def load_settings(*, include_models=True):
     """Load persisted preferences from the fresh Canonical database."""
     try:
         with Session(database.engine) as session:
@@ -191,8 +191,8 @@ def load_settings():
     except Exception as exc:
         logger.warning("Settings database is unavailable; using defaults: %s", type(exc).__name__)
         saved = {}
-    defaults = get_default_settings()
-    return {**defaults, **saved, "available_models": get_available_models()}
+    defaults = get_default_settings(include_models=False)
+    return {**defaults, **saved, "available_models": get_available_models() if include_models else []}
 
 def save_settings(settings: dict):
     """Atomically persist preferences without storing the derived model list."""
@@ -217,6 +217,26 @@ def save_settings(settings: dict):
         return True
     except Exception as exc:
         logger.error("Settings could not be saved: %s", type(exc).__name__)
+        return False
+
+
+def _update_settings_fields(changes: dict, *, remove=()):
+    """Update only owned rows; never replay a stale whole-settings snapshot."""
+    try:
+        now = canonical_utc_now_iso()
+        with Session(database.engine) as session:
+            for key, value in changes.items():
+                row = session.get(Setting, key) or Setting(key=key, value=value, updated_at=now)
+                row.value, row.updated_at = value, now
+                session.add(row)
+            for key in remove:
+                row = session.get(Setting, key)
+                if row is not None:
+                    session.delete(row)
+            session.commit()
+        return True
+    except Exception as exc:
+        logger.error("Settings fields could not be saved: %s", type(exc).__name__)
         return False
 
 def _get_saved_tmdb_api_key():
@@ -252,35 +272,26 @@ def set_tmdb_api_key(api_key: str):
     if os.getenv("TMDB_API_KEY"):
         return False
 
-    settings = load_settings()
     key = api_key.strip()
-    if key:
-        settings["tmdb_api_key"] = key
-    else:
-        settings.pop("tmdb_api_key", None)
-    return save_settings(settings)
+    return _update_settings_fields({"tmdb_api_key": key}) if key else _update_settings_fields({}, remove=("tmdb_api_key",))
 
 def get_current_model():
     """Get currently selected model"""
-    settings = load_settings()
+    settings = load_settings(include_models=False)
     return settings.get("model_name", os.getenv("MODEL_NAME", "openrouter/pony-alpha"))
 
 def set_current_model(model_name: str):
     """Set current model"""
-    settings = load_settings()
-    settings["model_name"] = model_name
-    return save_settings(settings)
+    return _update_settings_fields({"model_name": model_name})
 
 def get_base_url():
     """Get current API base URL"""
-    settings = load_settings()
+    settings = load_settings(include_models=False)
     return settings.get("base_url", os.getenv("API_BASE_URL", "https://openrouter.ai/api/v1"))
 
 def set_base_url(base_url: str):
     """Set API base URL"""
-    settings = load_settings()
-    settings["base_url"] = base_url
-    return save_settings(settings)
+    return _update_settings_fields({"base_url": base_url})
 
 def refresh_models_cache():
     """Force refresh the models cache"""
@@ -309,10 +320,7 @@ def get_media_dir():
 def set_media_dirs(media_dirs: list[str]):
     from app.services.media_roots import normalize_roots
     roots = normalize_roots(media_dirs)
-    settings = load_settings()
-    settings["media_dirs"] = roots
-    settings["media_dir"] = roots[0] if roots else ""
-    return save_settings(settings)
+    return _update_settings_fields({"media_dirs": roots, "media_dir": roots[0] if roots else ""})
 
 
 def set_media_dir(media_dir: str):
@@ -322,84 +330,74 @@ def set_media_dir(media_dir: str):
 
 def get_language():
     """Get language preference, 'zh' or 'en'"""
-    settings = load_settings()
+    settings = load_settings(include_models=False)
     return settings.get("language", "zh")
 
 def set_language(language: str):
     """Set language preference"""
     if language not in ["zh", "en"]:
         language = "zh"
-    settings = load_settings()
-    settings["language"] = language
-    return save_settings(settings)
+    return _update_settings_fields({"language": language})
 
 def get_watch_library():
     """Return whether automatic library watching is enabled."""
-    settings = load_settings()
+    settings = load_settings(include_models=False)
     return bool(settings.get("watch_library", False))
 
 def set_watch_library(enabled: bool):
-    settings = load_settings()
-    settings["watch_library"] = bool(enabled)
-    return save_settings(settings)
+    return _update_settings_fields({"watch_library": bool(enabled)})
 
 def get_watch_debounce_seconds():
-    settings = load_settings()
+    settings = load_settings(include_models=False)
     return int(settings.get("watch_debounce_seconds", 5))
 
 def get_watch_interval_seconds():
-    settings = load_settings()
+    settings = load_settings(include_models=False)
     return int(settings.get("watch_interval_seconds", 5))
 
 def get_watch_mode():
-    settings = load_settings()
+    settings = load_settings(include_models=False)
     mode = str(settings.get("watch_mode", "events")).lower()
     return mode if mode in {"events", "polling"} else "events"
 
 def get_media_file_stable_seconds():
-    settings = load_settings()
+    settings = load_settings(include_models=False)
     return int(settings.get("media_file_stable_seconds", 15))
 
 def get_auto_organize_root_videos():
-    settings = load_settings()
+    settings = load_settings(include_models=False)
     return bool(settings.get("auto_organize_root_videos", False))
 
 def set_auto_organize_root_videos(enabled: bool):
-    settings = load_settings()
-    settings["auto_organize_root_videos"] = bool(enabled)
-    return save_settings(settings)
+    return _update_settings_fields({"auto_organize_root_videos": bool(enabled)})
 
 def get_scrape_require_confirmation():
-    settings = load_settings()
+    settings = load_settings(include_models=False)
     return bool(settings.get("scrape_require_confirmation", False))
 
 def set_scrape_require_confirmation(enabled: bool):
-    settings = load_settings()
-    settings["scrape_require_confirmation"] = bool(enabled)
-    return save_settings(settings)
+    return _update_settings_fields({"scrape_require_confirmation": bool(enabled)})
 
 def get_artwork_language():
-    settings = load_settings()
+    settings = load_settings(include_models=False)
     return _normalize_artwork_language(settings.get("artwork_language", "metadata"))
 
 def set_artwork_language(language: str):
-    settings = load_settings()
-    settings["artwork_language"] = _normalize_artwork_language(language)
-    return save_settings(settings)
+    return _update_settings_fields({"artwork_language": _normalize_artwork_language(language)})
 
 def _normalize_artwork_language(language) -> str:
     language = str(language)
     return language if language in ARTWORK_LANGUAGES else "metadata"
 
 def get_organize_min_confidence():
-    settings = load_settings()
+    settings = load_settings(include_models=False)
     return float(settings.get("organize_min_confidence", 85))
 
 def get_organize_rename_style():
-    settings = load_settings()
+    settings = load_settings(include_models=False)
     style = str(settings.get("organize_rename_style", "preserve_stem"))
     return style if style in {"preserve_stem", "title_year"} else "preserve_stem"
 
 def get_missing_policy():
-    settings = load_settings()
+    settings = load_settings(include_models=False)
     return settings.get("missing_policy", "mark_missing")

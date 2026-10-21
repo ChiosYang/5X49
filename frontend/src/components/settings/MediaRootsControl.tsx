@@ -1,30 +1,32 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import useSWR, { useSWRConfig } from "swr";
+import { useEffect, useState, useSyncExternalStore } from "react";
+import useSWR, { mutate as updateCache } from "swr";
 import { useTranslations } from "next-intl";
 import { AlertTriangle, CheckCircle2, Pencil, Plus, Unplug, X } from "lucide-react";
 import { API } from "@/lib/api";
 import { fetcher, responseError } from "@/lib/fetcher";
 import { Button, IconButton } from "@/components/ui/Button";
 import { TextInput } from "@/components/ui/FormControls";
-import { useSettingsSession } from "./SettingsSession";
 import { createMediaRootsAutosave, type RootsNotice } from "@/lib/settings-autosave";
+import { createAutosaveSessionRegistry } from "@/lib/settings-autosave-session";
+import { createSettingsScanGuard } from "@/lib/settings-scan-guard";
 
 export interface MediaRoots {
   media_dirs: string[];
   roots: { id: string; path: string; state: string }[];
 }
+const sessions = createAutosaveSessionRegistry<string[], Exclude<RootsNotice, "saved" | null>, MediaRoots>();
 
 export default function MediaRootsControl() {
   const t = useTranslations("MediaRoots");
-  const { data, error, mutate } = useSWR<MediaRoots>(API.settingsMediaDirs(), fetcher, { refreshInterval: 5000 });
-  const { mutate: refresh } = useSWRConfig();
-  const { rootsDraft: draft, setRootsDraft: setDraft, rootsSaving: busy, setRootsSaving: setBusy } = useSettingsSession();
-  const [notice, setNotice] = useState<RootsNotice>(null);
-  const [autosave] = useState(() => createMediaRootsAutosave({
-    initial: data?.media_dirs ?? null,
-    changed: state => { setDraft(state.draft); setBusy(state.saving); setNotice(state.notice); },
+  const { data, error } = useSWR<MediaRoots>(API.settingsMediaDirs(), fetcher, { refreshInterval: 5000 });
+  const [autosave] = useState(() => sessions.get(() => {
+    const guard = createSettingsScanGuard();
+    return {
+    initial: data ?? null, value: result => result.media_dirs, create: createMediaRootsAutosave,
+    active: active => { if (active) guard.acquire(); else guard.release(); },
+    changed: state => { guard.setDraft(state.draft !== null); guard.setSaving(state.saving); },
     write: async paths => {
       const response = await fetch(API.settingsMediaDirs(), { method: "PUT", signal: AbortSignal.timeout(15000), headers: { "Content-Type": "application/json" }, body: JSON.stringify({ media_dirs: paths }) });
       if (!response.ok) {
@@ -32,13 +34,16 @@ export default function MediaRootsControl() {
         throw new Error(message.includes("overlap") ? "overlap" : message.includes("absolute") ? "absolute" : "saveFailed");
       }
       const result = await response.json() as MediaRoots;
-      await mutate(result, false);
-      void refresh(API.settingsMediaDir());
-      return result.media_dirs;
+      // The app uses SWR's default cache. Publish before completing this shared
+      // write, independent of mounted components, to discard older in-flight GETs.
+      await updateCache(API.settingsMediaDirs(), result, false);
+      void updateCache(API.settingsMediaDir());
+      return result;
     },
-  }));
-  useEffect(() => { if (data) autosave.syncSaved(data.media_dirs); }, [autosave, data]);
-  const values = draft ?? data?.media_dirs ?? [];
+  }; }, typeof window !== "undefined"));
+  const { draft, saving: busy, notice, result } = useSyncExternalStore(autosave.subscribe, autosave.getSnapshot, autosave.getSnapshot);
+  useEffect(() => { if (data) autosave.syncSaved(data); }, [autosave, data]);
+  const values = draft ?? result?.media_dirs ?? data?.media_dirs ?? [];
   const change = (next: string[]) => { autosave.edit(next); void autosave.commit(); };
   return <div className="min-w-0 space-y-4 border-b border-line pb-6" aria-label={t("title")}>
     <div className="flex items-center justify-between gap-4">
@@ -50,7 +55,7 @@ export default function MediaRootsControl() {
     </div>
     {error ? <p role="alert" className="text-sm text-danger">{t("loadFailed")}</p> : null}
     {values.map((value, index) => {
-      const state = draft ? "unsaved" : data?.roots[index]?.state ?? "unavailable";
+      const state = draft ? "unsaved" : (result ?? data)?.roots[index]?.state ?? "unavailable";
       const StatusIcon = state === "unsaved" ? Pencil : state === "accessible" ? CheckCircle2 : state === "offline" ? Unplug : AlertTriangle;
       const statusLabel = t(state);
       return <div key={index} className="min-w-0 space-y-2">
