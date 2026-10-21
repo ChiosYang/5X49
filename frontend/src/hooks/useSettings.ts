@@ -2,6 +2,8 @@ import useSWR, { useSWRConfig } from "swr";
 import useSWRMutation from "swr/mutation";
 import { API } from "@/lib/api";
 import { responseError } from "@/lib/fetcher";
+import { settingsScanBlocked } from "@/lib/settings-scan-guard";
+import { useTranslations } from "next-intl";
 
 // =====================
 // Queries
@@ -197,7 +199,7 @@ export function useUpdateBaseUrl() {
     async (url: string, { arg: baseUrl }: { arg: string }) => {
       const res = await fetch(
         `${url}?base_url=${encodeURIComponent(baseUrl)}`,
-        { method: "PUT" }
+        { method: "PUT", signal: AbortSignal.timeout(15000) }
       );
       if (!res.ok) throw new Error("Failed to update base URL");
       return res.json();
@@ -352,9 +354,11 @@ export function useTestApiKey() {
 }
 
 export function useScanLibrary() {
+  const t = useTranslations("SettingsArea");
   return useSWRMutation(
     API.libraryScan(),
     async (url: string, { arg: mediaDir }: { arg?: string }) => {
+      if (settingsScanBlocked()) throw new Error(t("pendingDirectories"));
       const target = mediaDir ? `${url}?media_dir=${encodeURIComponent(mediaDir)}` : url;
       const res = await fetch(target, { method: "POST" });
       if (!res.ok) throw await responseError(res, "Failed to start scan");
@@ -364,9 +368,11 @@ export function useScanLibrary() {
 }
 
 export function useReconcileLibrary() {
+  const t = useTranslations("SettingsArea");
   return useSWRMutation(
     API.libraryReconcile(),
     async (url: string) => {
+      if (settingsScanBlocked()) throw new Error(t("pendingDirectories"));
       const res = await fetch(url, { method: "POST" });
       if (!res.ok) throw new Error("Failed to reconcile library");
       return res.json();

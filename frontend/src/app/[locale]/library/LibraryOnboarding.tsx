@@ -27,6 +27,8 @@ import {
 } from "@/hooks/useSettings";
 import { getWorkflowScanState, isMediaDirectoryReady, saveDirectoryAndScan } from "@/lib/library-onboarding";
 import FirstRunIntro from "./FirstRunIntro";
+import { useSettingsScanGuard } from "@/hooks/useSettingsScanGuard";
+import { settingsScanBlocked } from "@/lib/settings-scan-guard";
 
 export default function LibraryOnboarding({ rootVideoCount }: { rootVideoCount: number }) {
   const t = useTranslations("Onboarding");
@@ -44,6 +46,7 @@ export default function LibraryOnboarding({ rootVideoCount }: { rootVideoCount: 
   const submitting = useRef(false);
   const { trigger: updateMediaDir } = useUpdateMediaDir();
   const { trigger: scanLibrary } = useScanLibrary();
+  const scanBlocked = useSettingsScanGuard();
   const { data: scanWorkflow, error: workflowError } = useSWR<WorkflowRunView | null>(
     scanWorkflowId ? API.workflow(scanWorkflowId) : null,
     async (url: string) => {
@@ -69,7 +72,7 @@ export default function LibraryOnboarding({ rootVideoCount }: { rootVideoCount: 
   }, [router, scanState, scanWorkflow?.finished_at]);
 
   const handleScan = async () => {
-    if (submitting.current || scanActive || scanWorkflowId === undefined) return;
+    if (submitting.current || scanActive || scanWorkflowId === undefined || settingsScanBlocked()) return;
     submitting.current = true;
     setPreparing(true);
     setScanError(null);
@@ -130,7 +133,7 @@ export default function LibraryOnboarding({ rootVideoCount }: { rootVideoCount: 
                   <h3 className="mt-1 text-lg font-medium text-ink">{t("directoryTitle")}</h3>
                 </div>
               </div>
-              <MediaDirectoryControl inlineStatus managedValue={directoryValue} onValueChange={setDirectoryDraft} disabled={scanActive} />
+              <MediaDirectoryControl inlineStatus managedValue={directoryValue} onValueChange={setDirectoryDraft} disabled={scanActive || scanBlocked} />
             </article>
 
             <article className="flex items-start gap-4">
@@ -153,7 +156,7 @@ export default function LibraryOnboarding({ rootVideoCount }: { rootVideoCount: 
                     variant="primary"
                     responsiveWidth
                     busy={scanActive}
-                    disabled={!directoryValue.trim() || scanActive || scanWorkflowId === undefined}
+                    disabled={!directoryValue.trim() || scanActive || scanWorkflowId === undefined || scanBlocked}
                     type="submit"
                   >
                     {scanActive ? t("scanning") : scanState === "error" || scanState === "empty" ? t("scanAgain") : t("scanNow")}

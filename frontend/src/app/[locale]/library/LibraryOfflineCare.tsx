@@ -15,6 +15,8 @@ import { useWorkflowCache } from "@/hooks/useWorkflows";
 import { Link, useRouter } from "@/i18n/routing";
 import { API } from "@/lib/api";
 import type { MissingLibraryItemsResponse, WorkflowAccepted } from "@/types/movie";
+import { useSettingsScanGuard } from "@/hooks/useSettingsScanGuard";
+import { settingsScanBlocked } from "@/lib/settings-scan-guard";
 
 export default function LibraryOfflineCare({ initialData, filmsHref, embedded = false, scanDisabled = false }: { initialData?: MissingLibraryItemsResponse; filmsHref: string; embedded?: boolean; scanDisabled?: boolean }) {
   const t = useTranslations("LibraryCare");
@@ -25,6 +27,7 @@ export default function LibraryOfflineCare({ initialData, filmsHref, embedded = 
   const missing = useSWR<MissingLibraryItemsResponse>(API.libraryCleanupMissing(), { fallbackData: initialData });
   const cleanup = useCleanupMissingMovies();
   const scan = useScanLibrary();
+  const sharedScanBlocked = useSettingsScanGuard();
   const { upsertWorkflow, refreshWorkflows } = useWorkflowCache();
   const [query, setQuery] = useState("");
   const [visibleCount, setVisibleCount] = useState(50);
@@ -44,6 +47,7 @@ export default function LibraryOfflineCare({ initialData, filmsHref, embedded = 
   }, [items, locale, query]);
 
   const startScan = async () => {
+    if (scanDisabled || scan.isMutating || settingsScanBlocked()) return;
     setFeedback(null);
     try {
       const result = await scan.trigger() as Partial<WorkflowAccepted>;
@@ -100,7 +104,7 @@ export default function LibraryOfflineCare({ initialData, filmsHref, embedded = 
           <p className="mt-2 max-w-2xl text-sm leading-6 text-ink-subtle">{t("offlineDesc")}</p>
         </div>
         <div className="flex flex-col gap-3 sm:flex-row">
-          <Button disabled={scanDisabled} busy={scan.isMutating} onClick={() => void startScan()}>{t("scanAgain")}</Button>
+          <Button disabled={scanDisabled || sharedScanBlocked} busy={scan.isMutating} onClick={() => void startScan()}>{t("scanAgain")}</Button>
           <Button variant="danger" icon={<Trash2 className="h-4 w-4" />} onClick={() => setConfirmOpen(true)}>
             {t("cleanAllOffline", { count: items.length })}
           </Button>

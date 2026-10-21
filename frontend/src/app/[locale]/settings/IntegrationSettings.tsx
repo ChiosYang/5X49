@@ -1,39 +1,28 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Search } from "lucide-react";
+import { PlugZap, Search } from "lucide-react";
 import { useTranslations } from "next-intl";
 import {
   SettingRow,
   SettingsPanel,
 } from "@/components/settings/SettingsPrimitives";
-import { Button } from "@/components/ui/Button";
+import { Button, IconButton } from "@/components/ui/Button";
 import { InlineFeedback } from "@/components/ui/Feedback";
 import { InputButton, TextInput } from "@/components/ui/FormControls";
+import BaseUrlSetting from "@/components/settings/BaseUrlSetting";
 import {
-  useBaseUrl,
   useModelSettings,
   useTestApiKey,
   useTestTmdbKey,
   useTmdbSettings,
-  useUpdateBaseUrl,
   useUpdateModel,
   useUpdateTmdbKey,
 } from "@/hooks/useSettings";
 
-function isValidHttpUrl(value: string) {
-  try {
-    const url = new URL(value);
-    return url.protocol === "http:" || url.protocol === "https:";
-  } catch {
-    return false;
-  }
-}
-
 export default function IntegrationSettings() {
   const t = useTranslations("Settings");
   const { data: modelData, mutate: refreshModels } = useModelSettings();
-  const { data: baseUrlData, mutate: refreshBaseUrl } = useBaseUrl();
   const { data: tmdbData } = useTmdbSettings();
 
   const {
@@ -43,13 +32,6 @@ export default function IntegrationSettings() {
     error: modelSaveError,
     reset: resetModelSave,
   } = useUpdateModel();
-  const {
-    trigger: updateBaseUrl,
-    isMutating: baseUrlSaving,
-    data: baseUrlSaveResult,
-    error: baseUrlSaveError,
-    reset: resetBaseUrlSave,
-  } = useUpdateBaseUrl();
   const {
     trigger: updateTmdbKey,
     isMutating: tmdbSaving,
@@ -74,7 +56,6 @@ export default function IntegrationSettings() {
 
   const [modelMenuOpen, setModelMenuOpen] = useState(false);
   const [modelSearch, setModelSearch] = useState("");
-  const [baseUrlDraft, setBaseUrlDraft] = useState<string>();
   const [tmdbKeyDraft, setTmdbKeyDraft] = useState("");
   const [tmdbKeyTouched, setTmdbKeyTouched] = useState(false);
 
@@ -83,12 +64,6 @@ export default function IntegrationSettings() {
     const timer = window.setTimeout(() => resetModelSave(), 3000);
     return () => window.clearTimeout(timer);
   }, [modelSaveResult, resetModelSave]);
-
-  useEffect(() => {
-    if (!baseUrlSaveResult) return;
-    const timer = window.setTimeout(() => resetBaseUrlSave(), 3000);
-    return () => window.clearTimeout(timer);
-  }, [baseUrlSaveResult, resetBaseUrlSave]);
 
   useEffect(() => {
     if (!tmdbSaveResult) return;
@@ -107,10 +82,6 @@ export default function IntegrationSettings() {
     return availableModels.filter((model) => model.toLowerCase().includes(query));
   }, [availableModels, modelSearch]);
 
-  const baseUrlValue = baseUrlDraft ?? baseUrlData?.base_url ?? "";
-  const baseUrlDirty =
-    baseUrlDraft !== undefined && baseUrlDraft.trim() !== (baseUrlData?.base_url ?? "");
-  const baseUrlValid = isValidHttpUrl(baseUrlValue.trim());
   const tmdbStatus = tmdbSaveResult ?? tmdbData;
   const tmdbCanSave = tmdbStatus?.source !== "environment";
   const tmdbSourceLabel =
@@ -127,16 +98,6 @@ export default function IntegrationSettings() {
     try {
       await updateModel(model);
       await refreshModels();
-    } catch {
-      // Mutation state renders the localized error in the row.
-    }
-  };
-
-  const handleBaseUrlSave = async () => {
-    try {
-      await updateBaseUrl(baseUrlValue.trim());
-      await refreshBaseUrl();
-      setBaseUrlDraft(undefined);
     } catch {
       // Mutation state renders the localized error in the row.
     }
@@ -185,7 +146,8 @@ export default function IntegrationSettings() {
             ) : null
           }
         >
-          <div className="relative max-w-xl">
+          <div role="group" aria-label={t("model")} className="flex min-w-0 max-w-xl items-start gap-2">
+          <div className="relative min-w-0 flex-1">
             <InputButton
               aria-expanded={modelMenuOpen}
               onClick={() => setModelMenuOpen((open) => !open)}
@@ -223,7 +185,7 @@ export default function IntegrationSettings() {
                           key={model}
                           type="button"
                           onClick={() => handleModelChange(model)}
-                          className={`focus-ring duration-standard w-full px-4 py-3 text-left text-sm transition-colors hover:bg-surface-hover ${
+                          className={`focus-ring duration-standard w-full break-words px-4 py-3 text-left text-sm transition-colors hover:bg-surface-hover ${
                             currentModel === model ? "bg-inverse font-medium text-inverse-ink" : "text-ink"
                           }`}
                         >
@@ -238,77 +200,19 @@ export default function IntegrationSettings() {
               </>
             )}
           </div>
+          <span className="group/api-test relative inline-flex shrink-0">
+            <IconButton variant="ghost" aria-label={t("testConnection")} aria-describedby="api-test-tooltip" busy={apiTesting} onClick={() => void handleApiTest()} icon={<PlugZap aria-hidden className="h-4 w-4" />} />
+            <span id="api-test-tooltip" role="tooltip" className="pointer-events-none invisible absolute right-0 top-full z-20 mt-2 w-max max-w-56 border border-line-strong bg-surface-raised px-3 py-2 text-xs group-hover/api-test:visible group-focus-within/api-test:visible">{t("testConnection")}</span>
+          </span>
+          </div>
+          {apiTesting || apiTestError || apiTestResult ? <div className="mt-3" role={apiTestError || apiTestResult?.status === "error" ? "alert" : "status"} aria-live="polite">
+            <InlineFeedback tone={apiTestError || apiTestResult?.status === "error" ? "error" : apiTestResult ? "success" : "neutral"}>
+              {apiTesting ? t("testingBtn") : apiTestError ? t("apiTestFailed") : apiTestResult?.message}
+            </InlineFeedback>
+          </div> : null}
         </SettingRow>
 
-        <SettingRow
-          title={t("apiKey")}
-          control={
-            <Button
-              onClick={handleApiTest}
-              busy={apiTesting}
-            >
-              {apiTesting ? t("testingBtn") : t("testBtn")}
-            </Button>
-          }
-          feedback={
-            apiTesting ? (
-              <InlineFeedback>{t("testingBtn")}</InlineFeedback>
-            ) : apiTestError ? (
-              <InlineFeedback tone="error">{t("apiTestFailed")}</InlineFeedback>
-            ) : apiTestResult ? (
-              <InlineFeedback tone={apiTestResult.status === "success" ? "success" : "error"}>
-                {apiTestResult.message}
-              </InlineFeedback>
-            ) : null
-          }
-        />
-        <SettingRow
-          title={t("baseUrl")}
-          feedback={
-            baseUrlSaveError ? (
-              <InlineFeedback tone="error">{t("baseUrlSaveFailed")}</InlineFeedback>
-            ) : baseUrlDraft !== undefined && !baseUrlValid ? (
-              <InlineFeedback tone="warning">{t("invalidBaseUrl")}</InlineFeedback>
-            ) : baseUrlSaveResult ? (
-              <InlineFeedback tone="success">{t("saved")}</InlineFeedback>
-            ) : null
-          }
-        >
-          <div className="flex flex-col gap-3 sm:flex-row">
-            <TextInput
-              type="url"
-              value={baseUrlValue}
-              onChange={(event) => setBaseUrlDraft(event.target.value)}
-              aria-label={t("baseUrl")}
-              placeholder="https://openrouter.ai/api/v1"
-            />
-            <Button
-              onClick={handleBaseUrlSave}
-              disabled={!baseUrlDirty || !baseUrlValid || baseUrlSaving}
-              busy={baseUrlSaving}
-              variant="primary"
-            >
-              {baseUrlSaving ? t("saving") : t("save")}
-            </Button>
-          </div>
-          <div className="mt-4 flex flex-wrap gap-2">
-            {[
-              ["OpenRouter", "https://openrouter.ai/api/v1"],
-              ["OpenAI", "https://api.openai.com/v1"],
-              ["Anthropic", "https://api.anthropic.com/v1"],
-            ].map(([label, value]) => (
-              <Button
-                key={label}
-                onClick={() => setBaseUrlDraft(value)}
-                size="sm"
-                variant="ghost"
-                className="border border-line text-ink-subtle hover:border-line-strong"
-              >
-                {label}
-              </Button>
-            ))}
-          </div>
-        </SettingRow>
+        <BaseUrlSetting />
       </SettingsPanel>
 
       <SettingsPanel title={t("tmdbIntegration")}>

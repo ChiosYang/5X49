@@ -10,6 +10,9 @@ import {
   useWorkflows,
 } from "@/hooks/useWorkflows";
 import type { WorkflowRunView } from "@/types/movie";
+import { useSettingsScanGuard } from "@/hooks/useSettingsScanGuard";
+import { settingsScanBlocked } from "@/lib/settings-scan-guard";
+import { isLibraryScanWorkflow } from "@/lib/workflow-status";
 
 const TERMINAL_STATUSES = new Set(["succeeded", "failed", "cancelled"]);
 const WORKFLOW_EVENTS = [
@@ -72,6 +75,7 @@ function progressPercent(workflow: WorkflowRunView) {
 
 export default function WorkflowRuntimeStatus() {
   const t = useTranslations("WorkflowStatus");
+  const scanBlocked = useSettingsScanGuard();
   const { data: workflows = [], error: loadError } = useWorkflows();
   const { upsertWorkflow, refreshWorkflows } = useWorkflowCache();
   const { trigger: cancelWorkflow, isMutating: isCancelling } = useCancelWorkflow();
@@ -137,7 +141,8 @@ export default function WorkflowRuntimeStatus() {
   }, [open]);
 
   const handleAction = async (workflow: WorkflowRunView, action: "cancel" | "retry") => {
-    if (actionLock.current || (action === "cancel" && workflow.cancel_requested)) return;
+    if (actionLock.current || (action === "cancel" && workflow.cancel_requested)
+      || (action === "retry" && settingsScanBlocked() && isLibraryScanWorkflow(workflow.type))) return;
     actionLock.current = true;
     setActionErrors((current) => ({ ...current, [workflow.id]: "" }));
     if (action === "cancel") setPendingCancel(workflow.id);
@@ -237,7 +242,7 @@ export default function WorkflowRuntimeStatus() {
                       <button
                         type="button"
                         onClick={() => void handleAction(workflow, "retry")}
-                        aria-disabled={isRetrying || isCancelling}
+                        aria-disabled={isRetrying || isCancelling || (scanBlocked && isLibraryScanWorkflow(workflow.type))}
                         className="focus-ring duration-standard flex h-11 w-11 items-center justify-center text-ink-subtle transition-colors hover:text-ink aria-disabled:opacity-50"
                         aria-label={t("retry")}
                         title={t("retry")}

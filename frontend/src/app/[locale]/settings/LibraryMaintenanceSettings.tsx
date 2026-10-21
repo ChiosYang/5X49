@@ -7,6 +7,7 @@ import { InlineFeedback } from "@/components/ui/Feedback";
 import MediaScanResults from "@/components/settings/MediaScanResults";
 import MaintenanceWorkflows from "@/components/settings/MaintenanceWorkflows";
 import { useSettingsSession } from "@/components/settings/SettingsSession";
+import { useSettingsScanGuard } from "@/hooks/useSettingsScanGuard";
 import { useLibraryExternalScoresStatus, useLibraryOrganizeStatus, useLibraryScrapeStatus, useRefreshLibraryExternalScores, useScrapeLibrary, useTmdbSettings } from "@/hooks/useSettings";
 import { useWorkflowCache, useWorkflows } from "@/hooks/useWorkflows";
 import { Link } from "@/i18n/routing";
@@ -22,9 +23,10 @@ export default function LibraryMaintenanceSettings() {
   const workflows = useWorkflows();
   const { upsertWorkflow, refreshWorkflows } = useWorkflowCache();
   const { rootsDraft, rootsSaving } = useSettingsSession();
+  const sharedScanBlocked = useSettingsScanGuard();
   const [notice, setNotice] = useState<{ text: string; failed: boolean } | null>(null);
   const locks = useRef(new Set<string>());
-  const scanBlocked = rootsDraft !== null || rootsSaving;
+  const scanBlocked = rootsDraft !== null || rootsSaving || sharedScanBlocked;
   const running = (prefix: string) => workflows.data?.some(workflow => workflow.type.startsWith(prefix) && ["queued", "running"].includes(workflow.status));
   async function run(kind: "metadata" | "scores") {
     if (locks.current.has(kind)) return;
