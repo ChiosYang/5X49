@@ -19,13 +19,14 @@ from dotenv import dotenv_values
 
 from app.evaluation.semantic_search import SemanticCase, canonical_fixture_id, evaluate, load_fixture
 from app.services.openrouter_embeddings import (BudgetLedger, DIMENSIONS, MODEL, PROVIDER,
-    QUERY_PREFIX, OpenRouterPilotProvider, fetch_quote, http_session)
+    NVIDIA_MODEL, NVIDIA_PROVIDER, OpenRouterPilotProvider, fetch_quote, free_quota_preflight, http_session)
 from app.services.semantic_search import SemanticCache, SemanticError, SemanticSearch
 
 BACKEND = Path(__file__).resolve().parents[2]
 FIXTURE = BACKEND / "fixtures/semantic_search/quality-v1.json"
 FIXTURE_SHA = "2a1309d20b4c745fa453f23fb738effed39d6c6415b2964658c42e5004e123a9"
 RUN_ROOT = BACKEND.parent / ".mcp-artifacts/openrouter-embedding-smoke-v1"
+NVIDIA_RUN_ROOT = RUN_ROOT / "nvidia-free-v1"
 
 
 def approved_fixture():
@@ -54,6 +55,24 @@ def existing_credential(path=None):
             or any(c.isspace() for c in key)):
         raise SemanticError("credential_unavailable")
     return key
+
+
+def related_qwen_run():
+    """Read/link the old halted receipt. Never rewrite it or clear its hold."""
+    try:
+        raw = (RUN_ROOT / "budget.json").read_bytes()
+        data = json.loads(raw)
+        entries = data["entries"]
+        if (data["model"] != MODEL or data["provider"] != PROVIDER
+                or not data["halted"] or len(entries) != 1
+                or entries[0]["status"] != "uncertain"
+                or entries[0]["reserved_usd"] != "0.01"):
+            raise ValueError
+        return {"model": MODEL, "receipt_sha256": sha256(raw).hexdigest(),
+                "requests": 1, "actual_cost_usd": None, "reservation_usd": "0.01",
+                "status": "halted_unreconciled", "retried": False}
+    except (OSError, KeyError, TypeError, ValueError):
+        raise SemanticError("prior_qwen_receipt_unavailable") from None
 
 
 def evaluate_fixture(fixture, provider):
@@ -92,33 +111,51 @@ def evaluate_fixture(fixture, provider):
         return metrics
 
 
-def run(*, execute=False, credential_env=None):
+def run(*, execute=False, credential_env=None, nvidia_free=False, accept_nvidia_logging=False):
     fixture = approved_fixture()
     session = http_session()
     provider = ledger = None
     started = perf_counter()
+    target = NVIDIA_RUN_ROOT if nvidia_free else RUN_ROOT
+    model, route = (NVIDIA_MODEL, NVIDIA_PROVIDER) if nvidia_free else (MODEL, PROVIDER)
     report = {"version": "openrouter-semantic-smoke.v1", "dataset": "fictional-eight-films-24-en-zh",
-              "fixture_sha256": FIXTURE_SHA, "model": MODEL, "requested_provider": PROVIDER,
+              "fixture_sha256": FIXTURE_SHA, "model": model, "requested_provider": route,
               "real_model": False, "real_library_quality_verified": False,
               "natural_language_router_evaluated": False, "production_enabled": False,
               "rerank_requests": 0, "chat_requests": 0}
+    report["implementation_sha256"] = {
+        "runner": sha256(Path(__file__).read_text(encoding="utf-8").encode()).hexdigest(),
+        "provider": sha256((BACKEND / "app/services/openrouter_embeddings.py").read_text(encoding="utf-8").encode()).hexdigest()}
     try:
-        if execute and RUN_ROOT.exists():
+        if execute and target.exists():
             raise SemanticError("existing_run_requires_reconciliation")
-        quote = fetch_quote(session)  # Anonymous, non-billable metadata only.
+        if execute and not nvidia_free:
+            raise SemanticError("qwen_trial_stopped")
+        if execute and accept_nvidia_logging is not True:
+            raise SemanticError("nvidia_logging_confirmation_required")
+        related = related_qwen_run() if execute else None
+        quote = fetch_quote(session, nvidia_free=nvidia_free)  # Public metadata.
         report["quote"] = {"prompt_usd_per_token": str(quote.prompt_usd_per_token),
                            "model_created": quote.model_created}
-        report["limits"] = {"usd": "1", "posts": 32, "encoded_texts": 64,
+        report["limits"] = {"usd": "0" if nvidia_free else "1", "posts": 32, "encoded_texts": 64,
                             "reserved_tokens": 20000, "questions": 24, "films": 8}
         if not execute:
             report["status"] = "preflight_only_no_inference"
             return report
         key = existing_credential(credential_env)
-        ledger = BudgetLedger(RUN_ROOT, quote)
-        provider = OpenRouterPilotProvider(key, quote, ledger, approved_inputs(fixture), session=session)
+        report["free_quota"] = free_quota_preflight(session, key)
+        ledger = BudgetLedger(target, quote)
+        ledger.data["related_prior_run"] = related
+        ledger.data["nvidia_logging_trial_terms_accepted"] = True
+        ledger._write()
+        report["related_prior_run"] = related
+        report["data_policy"] = {"nvidia_input_logging_accepted": True, "zdr": False,
+                                 "scope": "fixed fictional fixture only"}
+        provider = OpenRouterPilotProvider(key, quote, ledger, approved_inputs(fixture),
+            session=session, accept_nvidia_logging=accept_nvidia_logging)
         report["provider_fingerprint"] = provider.spec.fingerprint
         report["dimensions"] = DIMENSIONS
-        report["query_policy"] = QUERY_PREFIX
+        report["query_policy"] = provider.query_policy
         report["methods"] = evaluate_fixture(fixture, provider)
         report["real_model"] = True
         report["status"] = "completed_synthetic_smoke"
@@ -133,7 +170,7 @@ def run(*, execute=False, credential_env=None):
             report["billing"] = billing
             times = [e["elapsed_ms"] for e in billing["entries"]]
             report["remote_request_median_ms"] = median(times) if times else None
-            (RUN_ROOT / "report.json").write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
+            (target / "report.json").write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
         if provider is not None:
             provider.close()
         else:
@@ -147,8 +184,13 @@ def main():
                         help="Perform only the separately authorized fictional embedding smoke.")
     parser.add_argument("--credential-env", type=Path,
                         help="Existing deployment .env/.env.local; never copied or displayed.")
+    parser.add_argument("--nvidia-free", action="store_true",
+                        help="Use only the explicitly authorized zero-price NVIDIA variant.")
+    parser.add_argument("--accept-nvidia-logging", action="store_true",
+                        help="Explicit consent to NVIDIA input logging/API Trial Terms for fictional data only.")
     args = parser.parse_args()
-    report = run(execute=args.execute, credential_env=args.credential_env)
+    report = run(execute=args.execute, credential_env=args.credential_env,
+                 nvidia_free=args.nvidia_free, accept_nvidia_logging=args.accept_nvidia_logging)
     # Do not print vectors, inputs, credential locations or provider bodies.
     summary = {k: v for k, v in report.items() if k not in {"methods", "query_policy"}}
     if "methods" in report:

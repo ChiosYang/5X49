@@ -14,7 +14,8 @@ import requests
 
 from app.evaluation import openrouter_pilot as pilot
 from app.services.openrouter_embeddings import (BudgetLedger, DIMENSIONS, MODEL, PROVIDER,
-    ORIGIN, QUERY_PREFIX, OpenRouterPilotProvider, Quote, fetch_quote)
+    ORIGIN, QUERY_PREFIX, NVIDIA_MODEL, NVIDIA_PROVIDER, NvidiaFreeQuote,
+    OpenRouterPilotProvider, Quote, fetch_quote, free_quota_preflight)
 from app.services.semantic_search import SemanticError
 
 
@@ -22,6 +23,11 @@ def metadata():
     return {"data": {"id": MODEL, "created": 1761609600, "endpoints": [{
         "provider_name": "DeepInfra", "tag": PROVIDER, "status": 0, "context_length": 32768,
         "pricing": {"prompt": "0.00000001", "completion": "0", "discount": 0}}]}}
+
+def nvidia_metadata():
+    return {"data": {"id": NVIDIA_MODEL, "created": 1792591666, "endpoints": [{
+        "provider_name": "Nvidia", "tag": NVIDIA_PROVIDER, "status": 0, "context_length": 32768,
+        "pricing": {"prompt": "0", "completion": "0", "discount": 0}}]}}
 
 
 class Response:
@@ -36,13 +42,17 @@ class Response:
 
 
 class Transport:
-    def __init__(self):
+    def __init__(self, *, nvidia=False):
         self.calls, self.modify, self.fail = [], None, False
+        self.nvidia = nvidia
 
     def get(self, url, **kwargs):
-        assert url == f"{ORIGIN}/models/{MODEL}/endpoints"
         assert kwargs["allow_redirects"] is False
-        return Response(metadata())
+        if url == ORIGIN + "/key":
+            return Response({"data": {"free_model_daily_requests": {"remaining": 50}}})
+        model = NVIDIA_MODEL if self.nvidia else MODEL
+        assert url == f"{ORIGIN}/models/{model}/endpoints"
+        return Response(nvidia_metadata() if self.nvidia else metadata())
 
     def post(self, url, **kwargs):
         self.calls.append((url, kwargs))
@@ -53,9 +63,10 @@ class Transport:
             vector = [0.] * DIMENSIONS
             vector[0 if any(w in text.lower() for w in ("space", "宇宙", "太空")) else 1] = 1.
             rows.append({"index": i, "embedding": vector})
-        payload = {"id": "gen-synthetic-123", "model": MODEL, "provider": "DeepInfra",
+        payload = {"id": "gen-synthetic-123", "model": NVIDIA_MODEL if self.nvidia else MODEL,
+                   "provider": "Nvidia" if self.nvidia else "DeepInfra",
                    "data": list(reversed(rows)),
-                   "usage": {"prompt_tokens": 10, "total_tokens": 10, "cost": 0.0000001}}
+                   "usage": {"prompt_tokens": 10, "total_tokens": 10, "cost": 0 if self.nvidia else 0.0000001}}
         if self.modify:
             self.modify(payload)
         return Response(payload)
@@ -233,6 +244,9 @@ class OpenRouterPilotTests(unittest.TestCase):
                     self.assertEqual(persisted["response_model"], MODEL)
                     self.assertEqual(persisted["response_provider"], "DeepInfra")
                     self.assertIn("response_received_utc", persisted)
+                    self.assertIn("usage_shape", persisted)
+                    if isinstance(args[1].get("usage"), dict):
+                        self.assertIn("usage_evidence", persisted)
                     return settle(*args)
                 text = self.fixture.cases[0].content_query
                 with patch.object(ledger, "settle", side_effect=check_before_billing), \
@@ -329,3 +343,115 @@ class OpenRouterPilotTests(unittest.TestCase):
             "assert 'app.database' not in sys.modules; assert 'app.services.historian' not in sys.modules"],
             capture_output=True, text=True, timeout=20)
         self.assertEqual(result.returncode, 0, result.stderr)
+
+
+class NvidiaFreePilotTests(unittest.TestCase):
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp.cleanup)
+        self.quote = NvidiaFreeQuote.from_metadata(nvidia_metadata())
+        self.ledger = BudgetLedger(Path(self.temp.name) / "free", self.quote)
+        self.transport = Transport(nvidia=True)
+        self.fixture = pilot.approved_fixture()
+        self.provider = OpenRouterPilotProvider("synthetic", self.quote, self.ledger,
+            pilot.approved_inputs(self.fixture), session=self.transport, accept_nvidia_logging=True)
+
+    def test_exact_zero_price_only_with_no_paid_endpoint_substitution(self):
+        self.assertEqual(fetch_quote(self.transport, nvidia_free=True), self.quote)
+        for component in ("prompt", "completion", "request"):
+            with self.subTest(component=component):
+                data = nvidia_metadata()
+                data["data"]["endpoints"][0]["pricing"][component] = "0.00000001"
+                with self.assertRaises(SemanticError):
+                    NvidiaFreeQuote.from_metadata(data)
+        wrong = nvidia_metadata()
+        wrong["data"]["endpoints"][0]["tag"] = "nvidia/paid"
+        with self.assertRaisesRegex(SemanticError, "invalid_model_quote"):
+            NvidiaFreeQuote.from_metadata(wrong)
+
+    def test_logging_consent_is_required_and_does_not_change_paid_profile_privacy(self):
+        with self.assertRaisesRegex(SemanticError, "nvidia_logging_confirmation_required"):
+            OpenRouterPilotProvider("synthetic", self.quote, self.ledger,
+                pilot.approved_inputs(self.fixture), session=self.transport)
+        with patch.object(pilot, "NVIDIA_RUN_ROOT", Path(self.temp.name) / "absent"), \
+             patch.object(pilot, "http_session", return_value=self.transport), \
+             patch.object(pilot, "fetch_quote") as quote, \
+             patch.object(pilot, "existing_credential") as credential:
+            report = pilot.run(execute=True, nvidia_free=True)
+        self.assertEqual(report["error"], "nvidia_logging_confirmation_required")
+        quote.assert_not_called()
+        credential.assert_not_called()
+        self.assertEqual(self.transport.calls, [])
+
+    def test_query_passage_modes_no_qwen_prefix_and_zero_price_routing(self):
+        # Observed OpenRouter response uses the base slug without :free.
+        self.transport.modify = lambda p: p.update(model="nvidia/nemotron-3.5-embed-8b")
+        with patch("app.services.openrouter_embeddings.sleep") as pacing:
+            self.provider.embed([self.fixture.films[0].overview], query=False)
+            self.provider.embed([self.fixture.cases[0].content_query], query=True)
+        self.assertTrue(pacing.called)
+        for index, expected in enumerate(("passage", "query")):
+            body = self.transport.calls[index][1]["json"]
+            self.assertEqual(body["input_type"], expected)
+            self.assertEqual(body["model"], NVIDIA_MODEL)
+            self.assertFalse(body["input"][0].startswith("Instruct:"))
+            self.assertEqual(body["provider"]["only"], [NVIDIA_PROVIDER])
+            self.assertFalse(body["provider"]["allow_fallbacks"])
+            self.assertEqual(body["provider"]["data_collection"], "allow")
+            self.assertFalse(body["provider"]["zdr"])
+            self.assertEqual(set(body["provider"]["max_price"].values()), {0})
+        self.assertEqual(self.ledger.summary()["reported_cost_usd"], "0")
+        self.assertEqual(self.ledger.summary()["total_cost_upper_bound_usd"], "0")
+        receipt = json.loads(self.ledger.path.read_text())["entries"][0]
+        self.assertEqual(receipt["response_model"], "nvidia/nemotron-3.5-embed-8b")
+        self.assertEqual(receipt["usage_evidence"]["cost"], 0)
+
+    def test_even_one_nonzero_charge_halts_and_is_retained(self):
+        self.transport.modify = lambda p: p["usage"].update(cost=0.0000001)
+        with self.assertRaisesRegex(SemanticError, "cost_exceeds_reservation"):
+            self.provider.embed([self.fixture.cases[0].content_query], query=True)
+        self.assertEqual(self.ledger.summary()["reported_cost_usd"], "1E-7")
+        self.assertEqual(self.ledger.data["entries"][0]["request_id"], "gen-synthetic-123")
+        with self.assertRaisesRegex(SemanticError, "pilot_budget_blocked"):
+            self.provider.embed([self.fixture.cases[1].content_query], query=True)
+        self.assertEqual(len(self.transport.calls), 1)
+
+    def test_quota_preflight_is_read_only_and_low_quota_stops(self):
+        self.assertEqual(free_quota_preflight(self.transport, "synthetic")["remaining"], 50)
+        with patch.object(self.transport, "get", return_value=Response(
+                {"data": {"free_model_daily_requests": {"remaining": 1}}})):
+            with self.assertRaisesRegex(SemanticError, "insufficient_free_quota"):
+                free_quota_preflight(self.transport, "synthetic")
+        self.assertEqual(self.transport.calls, [])
+
+    def test_related_qwen_receipt_is_read_only_and_required_for_new_authorization(self):
+        parent = Path(self.temp.name) / "old"
+        old = BudgetLedger(parent, Quote.from_metadata(metadata()))
+        entry = old.reserve(["synthetic"], False)
+        old.halt(entry, "invalid_provider_model", 0)
+        before = old.path.read_bytes()
+        with patch.object(pilot, "RUN_ROOT", parent):
+            related = pilot.related_qwen_run()
+        self.assertEqual(old.path.read_bytes(), before)
+        self.assertEqual(related["reservation_usd"], "0.01")
+        self.assertIsNone(related["actual_cost_usd"])
+        self.assertFalse(related["retried"])
+
+    def test_new_model_uses_distinct_vector_fingerprint_and_mock_retrieval_only(self):
+        paid_quote = Quote.from_metadata(metadata())
+        paid_ledger = BudgetLedger(Path(self.temp.name) / "paid", paid_quote)
+        paid = OpenRouterPilotProvider("synthetic", paid_quote, paid_ledger,
+            pilot.approved_inputs(self.fixture), session=Transport())
+        self.assertNotEqual(paid.spec.fingerprint, self.provider.spec.fingerprint)
+        with patch("app.services.openrouter_embeddings.sleep"):
+            methods = pilot.evaluate_fixture(self.fixture, self.provider)
+        self.assertLessEqual(len(self.transport.calls), 30)
+        self.assertTrue(all(m["hard_condition_violations"] == 0 for m in methods.values()))
+        self.assertEqual(self.ledger.summary()["known_or_estimated_cost_usd"], "0")
+        self.assertEqual(self.ledger.data["entries"][0]["response_model"], NVIDIA_MODEL)
+
+    def test_free_ledger_cannot_authorize_a_paid_profile(self):
+        with self.assertRaisesRegex(SemanticError, "budget_profile_mismatch"):
+            OpenRouterPilotProvider("synthetic", Quote.from_metadata(metadata()), self.ledger,
+                pilot.approved_inputs(self.fixture), session=Transport())
+        self.assertEqual(self.transport.calls, [])

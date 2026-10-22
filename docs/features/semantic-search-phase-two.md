@@ -2,7 +2,7 @@
 
 Status: In Progress
 Last updated: 2026-10-22
-Related: enhanced-search-phase-one.md; PR45; PR46
+Related: enhanced-search-phase-one.md; PR45; PR46; PR47
 
 ## Goal
 
@@ -37,7 +37,7 @@ provider, quality and UI integration gates below have passed.
 
 - The user cancelled the local CPU model proposal on 2026-10-22. Do not download
   local weights or trial runtimes. No vector server or new dependency is needed.
-- A separate, explicit authorization now permits only this OpenRouter embedding
+- The historical paid authorization permitted only this OpenRouter embedding
   smoke: qwen/qwen3-embedding-8b, eight fictional films, at most 24 EN/ZH questions,
   cumulative cost at most USD 1, no recharge. It does not permit chat/rerank calls,
   real-library export/indexing, production enablement or expansion of PR28's
@@ -45,7 +45,8 @@ provider, quality and UI integration gates below have passed.
 - Reuse the existing deployment credential source in memory only. No secret in
   arguments, logs, reports or new persistent settings; chat configuration stays
   unchanged. Missing credentials block execution instead of creating a key.
-- Pin deepinfra/us, disable retries, redirects and provider fallbacks, require
+- The stopped paid profile pins deepinfra/us, disables retries, redirects and
+  provider fallbacks, and requires
   data_collection=deny and ZDR. Preflight public endpoint metadata before dispatch:
   the checked input quote is USD 0.01/M tokens, output charge zero; reject unknown
   nonzero price components and input price above USD 0.04/M.
@@ -54,7 +55,8 @@ provider, quality and UI integration gates below have passed.
   input, encoding_format=float and provider preferences. Query instructions are
   versioned; documents have no instruction prefix. No IDs, titles, hard-plan
   answers, year/duration/viewing fields, paths or notes are sent.
-- One owned durable run directory prevents an automatic replay. Reserve USD 0.01
+- Each authorized model run has an owned durable receipt and cannot replay
+  automatically. The paid profile reserves USD 0.01
   before each request and retain that reservation: at most 32 POSTs/64 texts,
   20,000 conservative input-token reservations, 20-second requests, serial calls.
   The maximum held reservation is USD 0.32, below the authorized USD 1. Price
@@ -71,9 +73,9 @@ provider, quality and UI integration gates below have passed.
   retrieval. This is synthetic feasibility, not a real-library or NLP-router gate.
 - No network on import/startup. The CLI defaults to anonymous metadata preflight:
   python -m app.evaluation.openrouter_pilot. Only the separately authorized
-  --execute invocation may infer, optionally using --credential-env for an
-  existing deployment .env/.env.local. Receipts go to the task-owned ignored
-  .mcp-artifacts/openrouter-embedding-smoke-v1 directory.
+  --execute invocation now refuses Qwen execution. The new free trial requires
+  --nvidia-free and --accept-nvidia-logging, optionally using --credential-env
+  for an existing deployment .env/.env.local.
 - The first authorized request at 2026-10-22 07:28:11 UTC returned HTTP 200 but
   failed the initial strict model-string check. One fictional plot was sent;
   zero content queries, chat or rerank requests followed. Actual billed usage
@@ -91,9 +93,23 @@ provider, quality and UI integration gates below have passed.
   be retried; its original receipt and reservation remain unchanged. Public
   metadata reports nvidia/bf16, 4096 output dimensions and zero input/output
   price. NVIDIA records inputs for security/product improvement and requires
-  acceptance of its API Trial Terms. Explicit user confirmation of that change
-  is pending: only public metadata and offline preparation are permitted. Do not
-  invoke the free endpoint or silently relax the existing ZDR/deny policy.
+  acceptance of its API Trial Terms. The user explicitly accepted this logging
+  policy for the fixed synthetic fixture. This is a trial-only exception; the
+  existing paid-provider/production privacy defaults are unchanged.
+- The free profile pins nvidia/bf16 and requires every advertised pricing
+  component to be zero. Request price ceilings are all zero, provider fallback
+  is disabled, and any reported nonzero charge halts execution. NVIDIA uses
+  input_type=query/passage and raw text, not the Qwen query prefix. Every returned
+  vector must have 4096 finite components. Model/profile/ledger fingerprints
+  cannot be mixed; a free ledger cannot authorize a paid profile.
+- Free quota is checked before dispatch; calls are serial and paced at least
+  3.1 seconds apart. Rate limits/errors stop the run rather than retrying.
+  Safe response IDs, models, providers and whitelisted usage evidence are saved
+  atomically before billing/model/vector checks, including malformed usage.
+- The explicitly authorized free trial has an independent linked record at
+  .mcp-artifacts/openrouter-embedding-smoke-v1/nvidia-free-v1. It stores the hash
+  of the unchanged old Qwen receipt, its unknown actual charge and USD 0.01 hold.
+  This does not settle/retry the old paid run or reset its budget.
 
 ## Decisions
 
@@ -124,7 +140,7 @@ provider, quality and UI integration gates below have passed.
 
 ### Offline foundation
 
-Status: In Progress
+Status: Done (PR46)
 
 - Provider-independent cache/ranking and source selection.
 - Explicit dense/lexical/hybrid experiment modes; snapshots bind the mode and
@@ -136,7 +152,8 @@ Status: In Progress
 
 Status: Pending real quality and production integration
 
-- Complete the separately authorized OpenRouter synthetic smoke within its limits.
+- The separately authorized NVIDIA synthetic smoke is complete; real-library
+  acceptance, production routing and any broader outward data scope remain pending.
 - Measure real multilingual retrieval quality, hard-condition violations,
   latency and memory; separate embedding and reranker effects.
 - Wire the validated provider into the existing Explore submission/results state
@@ -146,7 +163,36 @@ Status: Pending real quality and production integration
 
 ## Verification evidence
 
-- OpenRouter pilot adapter: 42 mock tests passed (17 new transport/budget/
+- Authorized real NVIDIA smoke (2026-10-22): 8 fictional plots, 24 oracle cases
+  (12 EN/12 ZH), 30 actual embedding requests (8 documents/22 queries; reference
+  cases reuse cached content), 547 reported tokens. Every usage.cost is reported
+  as zero, total USD 0, no estimated costs, chat/rerank or provider fallback.
+  Actual response model is nvidia/nemotron-3.5-embed-8b, provider Nvidia, all
+  vectors 4096D. The old Qwen receipt hash remains unchanged:
+  8b5219ef6a0a61e0f03f8c9e7a8d3dd5fe1879a85dbb63e1d487ee7fe8611637.
+- Wall time 93.167s includes deliberate pacing. Remote request median 1.337s,
+  P95 1.992s; warm local retrieval median about 8–9ms is measured separately.
+  First/last saved response times: 07:57:12.959347Z / 07:58:42.958362Z.
+
+| Method | Top-1 hit | Recall@3 | NDCG@10 | Oracle hard violations |
+| --- | ---: | ---: | ---: | ---: |
+| Lexical | 58.3% | 45.8% | 0.487 | 0 |
+| Dense | 87.5% | 79.2% | 0.811 | 0 |
+| Hybrid | 79.2% | 85.4% | 0.816 | 0 |
+
+- These small synthetic labels favor neither a production strategy nor a
+  general language-accuracy claim. Dense ranks the first relevant film better
+  here; hybrid covers more labeled matches but has lower Top-1. Hard eligibility
+  is supplied by independent fixture oracles, not a live NLP parser or SQL
+  integration test. No real library was indexed or transmitted.
+- The real run records its fixture and implementation hashes in its ignored
+  report. A later guard-only change rejects mismatched free/paid ledgers; its
+  mock regression adds no model calls or changes to the measured retrieval policy.
+- Current targeted suite: 89 tests passed, including 25 adapter/budget/receipt/
+  credential/NVIDIA tests, 25 semantic core regressions and hard-filter/
+  provenance/Explore regressions. Full new-head verification and independent
+  review are still pending.
+- Before the NVIDIA increment, the OpenRouter pilot adapter passed 42 mock tests (17 new transport/budget/
   credential/receipt tests plus 25 semantic core regressions). The independent
   receipt review found that ID persistence still followed usage validation.
   Safe request ID/model/provider metadata is now atomically saved before any
@@ -207,7 +253,8 @@ Status: Pending real quality and production integration
 
 ## Remaining risks
 
-- No real embedding or reranker quality, speed, resource use or model-server
-  interoperability has been validated. Production semantic behavior is not enabled.
+- NVIDIA interoperability and limited synthetic quality/latency were measured.
+  Real-library quality, production routing, other providers and reranking remain
+  unvalidated. Production semantic behavior is not enabled.
 - Exact scan is a bounded baseline, not a large-library ANN performance claim.
 - Mixed-language content coverage and human relevance labels need real evaluation.
