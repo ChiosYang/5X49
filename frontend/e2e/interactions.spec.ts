@@ -440,8 +440,8 @@ test('film More can close during a pending operation and consumes a repeated cli
 test('Explore local collections can be opened with the keyboard on narrow screens', async ({ page }) => {
   for (const locale of ['en','zh']) {
     await page.setViewportSize({width:390,height:844});await page.goto(`/${locale}/explore`);
-    const entries=page.locator('section[aria-labelledby^="collection-"] h2 a');
-    expect(await entries.count()).toBeGreaterThan(0);
+    const entries=page.locator('a[href*="/explore/collections/"]');
+    await expect(entries).not.toHaveCount(0);
     await entries.first().focus();await page.keyboard.press('Enter');
     await expect(page).toHaveURL(/\/explore\/collections\/(director|country|decade)\//);
     await expect(page.locator('#query-ribbon-title')).toHaveCount(0);

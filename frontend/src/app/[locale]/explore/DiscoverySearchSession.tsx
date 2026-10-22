@@ -36,14 +36,22 @@ export default function DiscoverySearchSession({ children }: { children: ReactNo
   if (pathname === "/explore" && browseHref !== href) setBrowseHref(href);
   const ticket = useRef(0), controller = useRef<AbortController | null>(null);
   const [draft, setDraft] = useState<string | null>(null), [error, setError] = useState("");
+  const [previousHref, setPreviousHref] = useState(href), [submittedHref, setSubmittedHref] = useState<string | null>(null);
   const [requesting, setRequesting] = useState(false), [navigating, startNavigation] = useTransition();
+  if (previousHref !== href) {
+    setPreviousHref(href);
+    // Once our submitted result commits, its URL owns the input. Keeping that
+    // completed draft would mask an older query when Next restores cached Back.
+    // A newer edit cancels submittedHref and remains visible during stale RSC.
+    if (submittedHref === href) { setDraft(null); setSubmittedHref(null); }
+  }
   useLayoutEffect(() => {
     current.current = href;
     if (navigation.current === href) navigation.current = null;
   }, [href, pathname]);
   const abort = useCallback(() => { ticket.current++; controller.current?.abort(); controller.current = null; }, []);
   const cancel = useCallback((reset = false, cancelNavigation = false) => {
-    abort(); setRequesting(false); setError("");
+    abort(); setRequesting(false); setError(""); setSubmittedHref(null);
     if (reset) setDraft(null);
     const queued = navigation.current; navigation.current = null;
     if (cancelNavigation && queued && queued !== current.current) {
@@ -52,6 +60,8 @@ export default function DiscoverySearchSession({ children }: { children: ReactNo
   }, [abort, router]);
   const navigate = useCallback((target: string) => {
     navigation.current = target;
+    if (target === current.current) { setDraft(null); setSubmittedHref(null); }
+    else setSubmittedHref(target);
     startNavigation(() => router.push(target, { scroll: false }));
   }, [router]);
   useEffect(() => {

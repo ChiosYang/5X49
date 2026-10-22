@@ -114,6 +114,15 @@ test('search clear returns to its catalog category, scroll and history entry',as
   await page.goBack();await expect(page).toHaveURL(search);await expect(input).toHaveValue('Orbit');
 });
 
+test('Back and Forward restore each submitted keyword and its results',async({page})=>{
+  await page.goto('/en/explore');
+  const input=page.getByRole('searchbox',{name:en.Discovery.label,exact:true});
+  await input.fill('Orbit');await input.press('Enter');await expect(cards(page)).toHaveCount(5);const first=page.url();
+  await input.fill('Shelf');await input.press('Enter');await expect(cards(page)).toHaveCount(40);const second=page.url();
+  await page.goBack();await expect(page).toHaveURL(first);await expect(input).toHaveValue('Orbit');await expect(cards(page)).toHaveCount(5);
+  await page.goForward();await expect(page).toHaveURL(second);await expect(input).toHaveValue('Shelf');await expect(cards(page)).toHaveCount(40);
+});
+
 test('a late invalid collection page cannot replace newer viewing navigation',async({page,request})=>{
   const all:ExploreFilmPage=await read(request,'/explore/films?decade=1980&sort=year&dir=asc&limit=100');expect(all.total).toBe(42);
   for(const {film} of all.items)expect((await request.put(`${backend}/films/${film.id}/profile-state`,{data:{watched:false}})).ok()).toBeTruthy();

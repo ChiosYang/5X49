@@ -24,6 +24,9 @@ filters workspace.
   strict factual query services remain. The backend/model contract is unchanged.
 - Existing graph links lead into unified search rather than generate retired
   manual-filter URLs. Clearing a search returns to the last catalog category/page.
+- A completed submitted draft is released when its result URL commits, so
+  cached Back/Forward restores each query. A newer edit or submission retains
+  ownership while an older response is pending.
 - No new worktree is created. The existing authorized clean isolated checkout is
   reused, with one branch based on freshly fetched main 800d5329d78486675d351a46088c5cfaf3922b78.
 - PR28, Jev, real-model quality acceptance and budget holds remain untouched.
@@ -59,12 +62,13 @@ backend/app/contracts/ask.py and frontend/src/app/[locale]/explore.
 
 ## Verification
 
-- Frontend unit: 132 passed. Lint, typecheck and production build passed.
+- Frontend unit: 132 passed. Lint, typecheck and production build passed before
+  the final submitted-query history regression; final-head checks run again.
 - Targeted browser runs: Collection hierarchy 31 passed; simplified directory and
   unified search 39 passed. Manual-form-only tests are retired; mutation, stale
   response, pagination, history and Return regressions now exercise the retained
   Collection/search workflows. Extra full-suite coverage includes empty submit
-  followed by Back, alongside the clear-button regression.
+  followed by Back, alongside the clear-button and consecutive-query regressions.
 - Generated nine owned local test films with 30 distinct two-film director sets
   to verify the complete catalog across its 24-entry page boundary, preserving
   production duplicate-set suppression.
@@ -73,5 +77,7 @@ backend/app/contracts/ask.py and frontend/src/app/[locale]/explore.
   Automated responsive checks also cover 1024/768. No screenshot upload is needed.
 - A restricted-process backend test run stalled and was stopped by its verified
   task process identity; the byte-verified short-path snapshot is being rerun with
-  local test-process support. Full backend/browser CI and independent review remain
+  local test-process support. Local Compose tooling tests require a Docker CLI
+  that is unavailable on this Windows host; CI verifies those safe defaults.
+  Full backend/browser CI and independent review remain
   required before merge. No real provider, user media or credentials are used.
