@@ -87,6 +87,13 @@ provider, quality and UI integration gates below have passed.
 - Save only query hashes and ranked Film IDs in bounded, expiring snapshots.
   Restore/repage/reapply factual conditions locally without provider calls.
   Content changes invalidate snapshots; viewing-state changes reapply hard SQL.
+- An initially empty hard selection is stored as unevaluated. If later
+  eligibility grows, restore returns snapshot_unevaluated without provider calls;
+  an explicit new submission computes relevance instead of silently preserving 0.
+- Cache policy v2 validates full normalized text, safe bounded chunk boundaries
+  and complete assembled transport strings before commit/use. Provenance labels
+  remain metadata; no repeated field-label boilerplate is embedded. Old
+  experimental v1 caches fail closed and need explicit rebuild.
 - Provider text is bounded plot/theme content, screened before truncation.
   Provider output must have the expected count/dimensions, finite values and
   local candidate identities. Never interpret document text as instructions.
@@ -140,6 +147,14 @@ Status: Pending resource/provider authorization
   (20 semantic tests). Restored fragments are screened as complete transport
   strings before embedding/reranking; the private-path reconstruction regression
   proves zero provider calls. Fresh full CI and independent review still pending.
+- Independent review found two P2s in the earlier prototype: unevaluated empty
+  snapshots remained empty after eligibility grew; arbitrary cuts could turn
+  Face/Off into a false private-path chunk and poison cache readability. Both are
+  corrected with persisted evaluation state and validated, context-safe cuts.
+- Review-fix suite: 96 tests passed, including 23 semantic tests. Covers exact
+  slash-title boundaries and mixed indexes, ordinary short text, true private
+  paths, explicit resubmission after empty eligibility and a real temporary-DB
+  year mutation through the same hard SQL bridge. Full fresh CI/re-review pending.
 - Phase one is merged at fb745f2cb3173d062aca170b3450ceb474d8a1f1, tree equal to
   reviewed d12a5319dbf4f5fb142d4bb77b295c1eaa5cfa52. CI39721297391: backend
   468/1 skip, tooling 15, frontend 138, audit/lint/types/build, E2E 272.

@@ -308,6 +308,39 @@ class SemanticCoreTests(unittest.TestCase):
         with self.assertRaisesRegex(SemanticError, "invalid_strategy"):
             SemanticSearch(self.cache, SPEC, strategy="unmeasured")
 
+    def test_empty_hard_selection_snapshot_requires_explicit_recompute_after_mutation(self):
+        count = len(self.provider.calls)
+        page = self.engine.submit("space", eligible_ids=[], expected_revision=self.revision)
+        self.assertEqual(page["total"], 0)
+        self.assertEqual(self.engine.resume(page["snapshot_id"], "space", eligible_ids=[],
+            expected_revision=self.revision)["total"], 0)
+        with self.assertRaisesRegex(SemanticError, "snapshot_unevaluated"):
+            self.engine.resume(page["snapshot_id"], "space", eligible_ids=[self.ids[0]],
+                               expected_revision=self.revision)
+        self.assertEqual(len(self.provider.calls), count)
+        fresh = self.engine.submit("space", eligible_ids=[self.ids[0]], expected_revision=self.revision)
+        self.assertEqual(fresh["total"], 1)
+        self.assertEqual(len(self.provider.calls), count + 1)
+
+    def test_safe_slash_titles_across_chunk_boundaries_cannot_poison_mixed_cache(self):
+        self.assertEqual(len(document(8, "a word " * 50).chunks), 1)
+        for length in (498, 508, 1018, 1530):
+            with self.subTest(length=length):
+                text = "a" * length + "Face/Off"
+                doc = document(7, text)
+                chunks = doc.chunks
+                self.assertEqual("".join(chunks), text)
+                self.assertTrue(all(len(c) <= 512 for c in chunks))
+                self.assertFalse(any(c.startswith("/") for c in chunks))
+                revision = self.cache.replace((self.docs[0], doc), self.provider)
+                self.assertEqual(set(self.cache.documents(SPEC)), {self.ids[0], doc.film_id})
+                self.assertEqual(self.engine.submit("space", eligible_ids=[self.ids[0], doc.film_id],
+                    expected_revision=revision)["total"], 1)
+        count = len(self.provider.calls)
+        with self.assertRaisesRegex(SemanticError, "private_input"):
+            document(8, "a" * 498 + " Movies/private.mkv")
+        self.assertEqual(len(self.provider.calls), count)
+
 
 class SemanticLibraryBridgeTests(unittest.TestCase):
     _seed_library = fixture.ExploreQueryTests._seed_library
@@ -346,6 +379,32 @@ class SemanticLibraryBridgeTests(unittest.TestCase):
         self.assertNotIn("eligible_ids", unknown)
         with self.assertRaisesRegex(AskError, "search_candidate_limit"):
             search_plan_executor.eligible_ids(SearchPlan(version="search-plan.v2"), maximum=1)
+
+    def test_database_mutation_expanding_empty_hard_result_never_reuses_an_unevaluated_zero(self):
+        corpus = collect_content(self.engine)
+        provider = SyntheticProvider()
+        plan = SearchPlan(version="search-plan.v2", year_min=2100)
+        with closing(sqlite3.connect(":memory:")) as connection:
+            cache = SemanticCache(connection)
+            revision = cache.replace(corpus.documents, provider)
+            engine = SemanticSearch(cache, SPEC, provider=provider)
+            before = search_plan_executor.eligible_ids(plan)["eligible_ids"]
+            self.assertEqual(before, [])
+            page = engine.submit("space", eligible_ids=before, expected_revision=revision)
+            count = len(provider.calls)
+            with Session(self.engine) as session:
+                film = session.get(Film, self.films["Alpha"])
+                film.release_year = 2100
+                session.add(film)
+                session.commit()
+            after = search_plan_executor.eligible_ids(plan)["eligible_ids"]
+            self.assertEqual(after, [self.films["Alpha"]])
+            self.assertEqual(collect_content(self.engine).revision, corpus.revision)
+            with self.assertRaisesRegex(SemanticError, "snapshot_unevaluated"):
+                engine.resume(page["snapshot_id"], "space", eligible_ids=after, expected_revision=revision)
+            self.assertEqual(len(provider.calls), count)
+            self.assertEqual(engine.submit("space", eligible_ids=after, expected_revision=revision)["total"], 1)
+            self.assertEqual(len(provider.calls), count + 1)
 
     def test_corpus_labels_actual_overview_source_manual_overrides_and_missing_content(self):
         corpus = collect_content(self.engine)

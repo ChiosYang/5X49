@@ -20,7 +20,7 @@ from uuid import uuid4
 from app.contracts.structured_metadata import normalize_metadata_text
 from app.services.search_privacy import has_private_input
 
-POLICY = "semantic-cache.offline.v1"
+POLICY = "semantic-cache.offline.v2"
 MAX_DOCUMENTS = 5000
 MAX_SNAPSHOTS = 100
 CHUNK_CHARS = 512
@@ -117,11 +117,36 @@ class ContentDocument:
 
     @property
     def chunks(self):
-        # Titles alone never become similarity vectors. Each included component
-        # keeps its source label; reviewed themes remain interpretations.
-        text = "\n".join(f"{s.kind}: {s.text}" for s in self.sources)
-        return tuple(text[i:i + CHUNK_CHARS] for i in range(0, min(len(text),
-                     CHUNK_CHARS * MAX_CHUNKS), CHUNK_CHARS))
+        # Provenance stays in metadata, not boilerplate embedded with every plot.
+        text = re.sub(r"\s+", " ", " ".join(s.text for s in self.sources)).strip()
+        _safe(text, 20030)  # Screen the complete normalized text before clipping.
+        chunks, start = [], 0
+        while start < len(text) and len(chunks) < MAX_CHUNKS:
+            end = min(start + CHUNK_CHARS, len(text))
+            # Prefer word/sentence boundaries. For a long token, adjust the cut
+            # rather than turning its continuation (e.g. /Off) into a root path.
+            natural = [start + m.end() for m in re.finditer(r"[\s。！？；，、]",
+                text[start:end]) if m.end() >= CHUNK_CHARS // 2] if end < len(text) else []
+            candidates = list(reversed(natural)) + list(range(end, start, -1))
+            seen = set()
+            for cut in candidates:
+                if cut in seen:
+                    continue
+                seen.add(cut)
+                piece, rest = text[start:cut], text[cut:]
+                try:
+                    _safe(piece, CHUNK_CHARS)
+                    if rest:
+                        _safe(rest, 20030)
+                    _safe(" ".join([*chunks, piece]), CHUNK_CHARS * MAX_CHUNKS + MAX_CHUNKS)
+                except SemanticError:
+                    continue
+                chunks.append(piece)
+                start = cut
+                break
+            else:
+                raise SemanticError("content_boundary")
+        return tuple(chunks)
 
     @property
     def digest(self):
@@ -170,7 +195,6 @@ def _embed(provider, texts, *, query):
 
 
 def _tokens(text):
-    text = re.sub(r"(?m)^(?:overview|reviewed_theme):\s*", "", text)
     text = normalize_metadata_text(text)
     words = re.findall(r"[a-z0-9]+", text)
     for run in re.findall(r"[\u3400-\u9fff\u3040-\u30ff]+", text):
@@ -269,8 +293,10 @@ class SemanticCache:
             result[film_id] = (payload, vector)
         return result
 
-    def snapshot(self, query_hash, ranked, *, revision, fingerprint, now, ttl):
-        if not 60 <= ttl <= 86400 or len(ranked) > MAX_DOCUMENTS:
+    def snapshot(self, query_hash, ranked, *, revision, fingerprint, now, ttl, evaluated=True):
+        if (not 60 <= ttl <= 86400 or not isinstance(ranked, (list, tuple))
+                or len(ranked) > MAX_DOCUMENTS or type(evaluated) is not bool
+                or not evaluated and ranked):
             raise SemanticError("snapshot_limit")
         token = "ss_" + uuid4().hex
         with self.db:
@@ -281,7 +307,7 @@ class SemanticCache:
                 (SELECT id FROM semantic_snapshots ORDER BY created DESC,id LIMIT -1 OFFSET ?)""", (MAX_SNAPSHOTS - 1,))
             self.db.execute("INSERT INTO semantic_snapshots VALUES (?,?,?,?,?,?,?)",
                 (token, query_hash, revision, fingerprint,
-                 now, now + ttl, json.dumps(ranked)))
+                 now, now + ttl, json.dumps({"ranked": ranked, "evaluated": evaluated})))
         return token
 
 
@@ -317,7 +343,7 @@ class SemanticSearch:
         query_hash = self._intent_hash(text, reference_id)
         if not eligible:
             token = self.cache.snapshot(query_hash, [], revision=expected_revision,
-                fingerprint=self.spec.fingerprint, now=self.clock(), ttl=86400)
+                fingerprint=self.spec.fingerprint, now=self.clock(), ttl=86400, evaluated=False)
             return self.resume(token, text, eligible_ids=eligible,
                 expected_revision=expected_revision, reference_id=reference_id)
         if not documents:
@@ -396,13 +422,22 @@ class SemanticSearch:
         documents = self.cache.documents(self.spec)
         eligible = _eligible(eligible_ids)
         try:
-            saved = json.loads(row[4])
+            envelope = json.loads(row[4])
+            if (not isinstance(envelope, dict) or set(envelope) != {"ranked", "evaluated"}
+                    or type(envelope["evaluated"]) is not bool):
+                raise ValueError("Invalid snapshot metadata")
+            saved = envelope["ranked"]
             if (not isinstance(saved, list) or len(saved) > MAX_DOCUMENTS
                     or len(saved) != len(set(saved))
-                    or any(not isinstance(i, str) or not FILM_ID.fullmatch(i) for i in saved)):
+                    or any(not isinstance(i, str) or not FILM_ID.fullmatch(i) for i in saved)
+                    or not envelope["evaluated"] and saved):
                 raise ValueError("Invalid cached identities")
         except (ValueError, TypeError):
             raise SemanticError("snapshot_invalid") from None
+        if not envelope["evaluated"] and eligible:
+            # Initial hard eligibility was empty, so no semantic ranking exists.
+            # A changed view must request an explicit submission, not a fake 0.
+            raise SemanticError("snapshot_unevaluated")
         ranked = [i for i in saved if i in eligible and i in documents and i != reference_id]
         total, limit = len(ranked), 40
         offset = min(offset, max(0, (total - 1) // limit * limit))
