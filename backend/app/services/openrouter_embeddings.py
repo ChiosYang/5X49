@@ -162,9 +162,26 @@ class BudgetLedger:
         self._write()  # Commit the reservation BEFORE dispatch.
         return entry
 
+    def capture_response(self, entry, payload):
+        """Durably retain reconciliation identity before any usage validation."""
+        request_id = payload.get("id")
+        if (isinstance(request_id, str)
+                and re.fullmatch(r"(?:gen|emb|embd)-[A-Za-z0-9_-]{1,150}", request_id)
+                and not has_private_input(request_id)):
+            entry["request_id"] = request_id
+        for field in ("model", "provider"):
+            value = payload.get(field)
+            if (isinstance(value, str) and re.fullmatch(r"[A-Za-z0-9._/-]{1,160}", value)
+                    and not has_private_input(value)):
+                entry["response_" + field] = value
+        entry["response_received_utc"] = datetime.now(timezone.utc).isoformat()
+        self._write()
+
     def settle(self, entry, payload, quote, elapsed):
         try:
             usage = payload["usage"]
+            if not isinstance(usage, dict):
+                raise ValueError
             reported = usage.get("cost")
             if reported is not None:
                 # An unexpectedly large charge is still an observed charge.
@@ -185,9 +202,6 @@ class BudgetLedger:
                          prompt_tokens=prompt, total_tokens=total, cost_usd=str(cost),
                          cost_basis="usage.cost" if reported is not None else "usage.total_tokens * pinned endpoint quote",
                          elapsed_ms=round(elapsed * 1000, 3))
-            if isinstance(payload.get("id"), str) and re.fullmatch(r"(?:gen|emb|embd)-[A-Za-z0-9_-]{1,150}", payload["id"]):
-                # Request IDs only; never provider bodies, input text or secrets.
-                entry["request_id"] = payload["id"]
             self._write()
         except (KeyError, TypeError, ValueError):
             raise SemanticError("billing_uncertain") from None
@@ -264,10 +278,7 @@ class OpenRouterPilotProvider:
                 raise SemanticError("invalid_provider_response")
             # Preserve safe accounting/diagnostic metadata even if subsequent
             # model, route or vector validation fails. Never persist vectors.
-            for field in ("model", "provider"):
-                value = payload.get(field)
-                if isinstance(value, str) and re.fullmatch(r"[A-Za-z0-9._/-]{1,160}", value) and not has_private_input(value):
-                    entry["response_" + field] = value
+            self.ledger.capture_response(entry, payload)
             self.ledger.settle(entry, payload, self.quote, perf_counter() - started)
             if payload.get("model") not in RESPONSE_MODELS:
                 raise SemanticError("invalid_provider_model")

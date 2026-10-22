@@ -139,8 +139,13 @@ Status: Pending real quality and production integration
 
 ## Verification evidence
 
-- OpenRouter pilot adapter: 39 mock tests passed (14 new transport/budget/
-  credential/receipt tests plus 25 semantic core regressions). Earlier broader
+- OpenRouter pilot adapter: 41 mock tests passed (16 new transport/budget/
+  credential/receipt tests plus 25 semantic core regressions). The independent
+  receipt review found that ID persistence still followed usage validation.
+  Safe request ID/model/provider metadata is now atomically saved before any
+  billing check; missing/malformed usage and excess-cost regressions assert the
+  ID is already on disk at the billing boundary and survives the halted run.
+  Earlier broader
   hard-filter/provenance/Explore run passed 74 before the final receipt changes;
   fresh full verification is pending. Live smoke stopped after its first request
   as described above, so no 24-case real-model quality result is claimed.

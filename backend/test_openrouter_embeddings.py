@@ -184,6 +184,54 @@ class OpenRouterPilotTests(unittest.TestCase):
                         provider.embed([text], query=True)
                     self.assertEqual(len(transport.calls), 1)
 
+    def test_reconciliation_id_is_atomic_before_missing_malformed_or_excess_usage(self):
+        for mutate in (
+            lambda p: p.pop("usage"),
+            lambda p: p.update(usage=None),
+            lambda p: p.update(usage=[]),
+            lambda p: p.update(usage="malformed"),
+            lambda p: p["usage"].update(cost="not-a-cost"),
+            lambda p: p["usage"].update(cost=2),
+            lambda p: p["usage"].pop("prompt_tokens"),
+            lambda p: p["usage"].update(total_tokens=999999),
+        ):
+            with self.subTest(mutate=mutate), tempfile.TemporaryDirectory() as root:
+                transport = Transport()
+                transport.modify = mutate
+                ledger = BudgetLedger(Path(root) / "run", self.quote)
+                provider = OpenRouterPilotProvider("synthetic", self.quote, ledger,
+                    pilot.approved_inputs(self.fixture), session=transport)
+                settle = ledger.settle
+                def check_before_billing(*args):
+                    persisted = json.loads(ledger.path.read_text())["entries"][0]
+                    self.assertEqual(persisted["status"], "pending")
+                    self.assertEqual(persisted["request_id"], "gen-synthetic-123")
+                    self.assertEqual(persisted["response_model"], MODEL)
+                    self.assertEqual(persisted["response_provider"], "DeepInfra")
+                    self.assertIn("response_received_utc", persisted)
+                    return settle(*args)
+                text = self.fixture.cases[0].content_query
+                with patch.object(ledger, "settle", side_effect=check_before_billing), \
+                     self.assertRaises(SemanticError):
+                    provider.embed([text], query=True)
+                persisted = json.loads(ledger.path.read_text())
+                self.assertTrue(persisted["halted"])
+                self.assertEqual(persisted["entries"][0]["request_id"], "gen-synthetic-123")
+                if persisted["entries"][0].get("error") == "cost_exceeds_reservation":
+                    self.assertEqual(persisted["entries"][0]["cost_usd"], "2")
+                with self.assertRaisesRegex(SemanticError, "pilot_budget_blocked"):
+                    provider.embed([text], query=True)
+                self.assertEqual(len(transport.calls), 1)
+
+    def test_receipt_does_not_store_secret_like_identifier_or_model(self):
+        self.transport.modify = lambda p: p.update(
+            id="gen-sk-privatevalue123", model="sk-privatemodel123")
+        with self.assertRaisesRegex(SemanticError, "invalid_provider_model"):
+            self.provider.embed([self.fixture.cases[0].content_query], query=True)
+        persisted = self.ledger.path.read_text()
+        self.assertNotIn("sk-private", persisted)
+        self.assertEqual(self.ledger.data["entries"][0]["cost_usd"], "1E-7")
+
     def test_request_count_token_text_and_durable_pending_limits_precede_dispatch(self):
         for _ in range(32):
             entry = self.ledger.reserve(["short"], False)
