@@ -2,7 +2,7 @@
 
 Status: In Progress
 Last updated: 2026-10-22
-Related: enhanced-search-phase-one.md; PR45
+Related: enhanced-search-phase-one.md; PR45; PR46
 
 ## Goal
 
@@ -12,11 +12,12 @@ Preserve the Explore input, cards and navigation. Do not recreate Ask or forms.
 
 ## Current delivery boundary
 
-This branch first builds an **offline foundation**: source selection, a disposable
+The merged **offline foundation** provides source selection, a disposable
 SQLite vector cache, replaceable embedding/reranker protocols, hybrid ranking,
 local hard-filter integration, resumable snapshots and repeatable evaluation.
-It does not yet activate a production semantic route, download a model, install
-an inference runtime or call a paid provider. Mock pipeline tests establish
+Production semantic routing remains disabled. The separate explicit pilot below
+may call only the authorized hosted embedding fixture; no local model/runtime
+is downloaded or installed. Mock pipeline tests establish
 contracts, not real semantic quality. Phase two is not complete until the real
 provider, quality and UI integration gates below have passed.
 
@@ -34,44 +35,58 @@ provider, quality and UI integration gates below have passed.
 
 ## Resources and provider gate
 
-- Repository currently has no embedding runtime. Keep dependencies unchanged;
-  use Python standard library plus existing SQLModel. No vector server.
-- Read-only Windows inventory on 2026-10-22: 15.8 GiB system RAM, NVIDIA RTX 3050
-  (WMI reports 4 GiB VRAM; usable memory is unverified), C: about 25 GiB free,
-  D: about 667 GiB free.
-- Candidate: Qwen3-Embedding-0.6B, official max 1024 dimensions and multilingual
-  training; these are vendor specifications, not measured 5X49 results.
-  [Official model card](https://huggingface.co/Qwen/Qwen3-Embedding-0.6B).
-- A 0.6B FP16 model is roughly 1.2 GB of weight data by parameter arithmetic.
-  Download manifests, revision, inference dependencies, peak RAM/VRAM and actual
-  CPU/GPU latency must be checked before approval. No download has happened.
-- Prefer a separately managed on-device provider. Proposed first evaluation:
-  fixed model revision, short content chunks, batch 1 initially, synthetic or
-  separately approved public plot fixtures; no user library sent externally.
-  Report exact download/dependency sizes and target D: cache path before action.
-- Do not initially download Qwen3-Reranker-0.6B. First compare keyword, dense and
-  hybrid recall/ranking; request a second model only if a bounded rerank experiment
-  is justified. Keep the reranker optional and off by default.
-- Any hosted alternative requires separate endpoint, credential, data-field and
-  request/token budget approval. Do not reuse configured chat credentials.
-- PR28/live-quality/budget hold remains unchanged. No real calls are authorized.
-- Concrete first-pilot proposal: fixed model revision
-  97b0c614be4d77ee51c0cef4e5f07c00f9eb65b3 (official file listing about 1.21 GB).
-  Use D:\CodexModelTrials\5X49\qwen3-embedding-0.6b-97b0c61, currently absent,
-  with isolated venv/cache/temp. CPU-only PyTorch plus the official Transformers
-  last-token pooling path avoids CUDA, sentence-transformers and a second model.
-  Expected download 2–3 GB, proposed total download ceiling 3 GB and disk budget
-  6 GB; dependency manifest/versions must be locked before execution. Stop rather
-  than enlarge the budget. Four CPU threads, batch 1, max 512 tokens, RAM budget
-  6 GiB and a 30-minute trial limit. These are limits to implement, not measured
-  runtime needs or current resource consumption.
-- Pilot data is committed in fixtures/semantic_search/quality-v1.json: eight
-  fictional plot records, 12 EN + 12 ZH cases, explicit hard-condition oracles
-  and two reference-Film cases. No application DB or user library is read.
-  At most 64 text encodings including repetitions/warmup; all inference local,
-  no API charge. This is a feasibility pilot, not production quality acceptance.
-  The manifest supplies oracle content queries/hard plans and does not test a
-  natural-language router. User authorization is still pending.
+- The user cancelled the local CPU model proposal on 2026-10-22. Do not download
+  local weights or trial runtimes. No vector server or new dependency is needed.
+- A separate, explicit authorization now permits only this OpenRouter embedding
+  smoke: qwen/qwen3-embedding-8b, eight fictional films, at most 24 EN/ZH questions,
+  cumulative cost at most USD 1, no recharge. It does not permit chat/rerank calls,
+  real-library export/indexing, production enablement or expansion of PR28's
+  earlier live-quality/budget hold.
+- Reuse the existing deployment credential source in memory only. No secret in
+  arguments, logs, reports or new persistent settings; chat configuration stays
+  unchanged. Missing credentials block execution instead of creating a key.
+- Pin deepinfra/us, disable retries, redirects and provider fallbacks, require
+  data_collection=deny and ZDR. Preflight public endpoint metadata before dispatch:
+  the checked input quote is USD 0.01/M tokens, output charge zero; reject unknown
+  nonzero price components and input price above USD 0.04/M.
+- app/services/openrouter_embeddings.py implements the existing embedding
+  protocol with an exact synthetic-text allowlist. Outgoing fields are model,
+  input, encoding_format=float and provider preferences. Query instructions are
+  versioned; documents have no instruction prefix. No IDs, titles, hard-plan
+  answers, year/duration/viewing fields, paths or notes are sent.
+- One owned durable run directory prevents an automatic replay. Reserve USD 0.01
+  before each request and retain that reservation: at most 32 POSTs/64 texts,
+  20,000 conservative input-token reservations, 20-second requests, serial calls.
+  The maximum held reservation is USD 0.32, below the authorized USD 1. Price
+  filters constrain endpoint rates; they are not an account-wide spend setting.
+- Record usage.cost when present, otherwise label the pinned-quote/token estimate
+  explicitly. Failure, uncertain billing, excess price/usage or malformed output
+  halts subsequent dispatch. Reconcile the existing receipt before any further
+  action; never delete it or change directories to retry.
+- The fixed fixture SHA is
+  2a1309d20b4c745fa453f23fb738effed39d6c6415b2964658c42e5004e123a9.
+  It contains eight fictional plots, 12 EN + 12 ZH cases, independent hard-plan
+  oracles and two reference cases. Prefetch each query once, share vectors across
+  lexical/dense/hybrid, and measure remote encoding separately from warm local
+  retrieval. This is synthetic feasibility, not a real-library or NLP-router gate.
+- No network on import/startup. The CLI defaults to anonymous metadata preflight:
+  python -m app.evaluation.openrouter_pilot. Only the separately authorized
+  --execute invocation may infer, optionally using --credential-env for an
+  existing deployment .env/.env.local. Receipts go to the task-owned ignored
+  .mcp-artifacts/openrouter-embedding-smoke-v1 directory.
+- The first authorized request at 2026-10-22 07:28:11 UTC returned HTTP 200 but
+  failed the initial strict model-string check. One fictional plot was sent;
+  zero content queries, chat or rerank requests followed. Actual billed usage
+  is unknown; the USD 0.01 reservation remains held, never reported as zero cost.
+  That version rejected before retaining the response ID/usage, so the receipt
+  cannot recover them. New code saves safe billing/model metadata first and
+  recognizes only the canonical slug and exact official Qwen upstream identity.
+  These changes have mock coverage; live compatibility is not yet established.
+  The existing run stays halted; there is no reset or automatic continuation.
+  Authenticated key metadata was accessible (HTTP 200), but the activity API
+  requires management access (HTTP 403); no new credential/connection was created.
+  Request-level reconciliation needs the original request ID or account-side
+  billing confirmation. Do not make another paid request while this is unresolved.
 
 ## Decisions
 
@@ -112,9 +127,9 @@ Status: In Progress
 
 ### Production integration and real quality
 
-Status: Pending resource/provider authorization
+Status: Pending real quality and production integration
 
-- Decide and authorize a fixed provider/model/runtime/download/data budget.
+- Complete the separately authorized OpenRouter synthetic smoke within its limits.
 - Measure real multilingual retrieval quality, hard-condition violations,
   latency and memory; separate embedding and reranker effects.
 - Wire the validated provider into the existing Explore submission/results state
@@ -124,6 +139,11 @@ Status: Pending resource/provider authorization
 
 ## Verification evidence
 
+- OpenRouter pilot adapter: 39 mock tests passed (14 new transport/budget/
+  credential/receipt tests plus 25 semantic core regressions). Earlier broader
+  hard-filter/provenance/Explore run passed 74 before the final receipt changes;
+  fresh full verification is pending. Live smoke stopped after its first request
+  as described above, so no 24-case real-model quality result is claimed.
 - Initial targeted run: semantic foundation + enhanced search + provenance
   selection, 32 tests passed. Final targeted run including limits/metrics and
   Explore query regressions: 55 tests passed (16 new semantic contract tests).
