@@ -251,6 +251,7 @@ class SemanticCoreTests(unittest.TestCase):
         self.assertEqual(report["methods"]["hybrid-fixture"]["hard_condition_violations"], 0)
         bad = evaluate([cases[-1]], {"broken": lambda case: [self.ids[0]]})
         self.assertEqual(bad["methods"]["broken"]["hard_condition_violations"], 1)
+        self.assertEqual(bad["methods"]["broken"]["precision_at_10"], 0)
 
 
 class SemanticLibraryBridgeTests(unittest.TestCase):

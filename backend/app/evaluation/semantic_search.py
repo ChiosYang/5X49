@@ -17,7 +17,7 @@ class SemanticCase:
 def evaluate(cases: list[SemanticCase], methods: dict[str, Callable[[SemanticCase], list[str]]]):
     """Callers own fixtures/transports. This module never downloads or calls APIs.
 
-    Expected IDs are graded by order for NDCG and membership for recall. Hard
+    Expected IDs define binary relevance for ranked NDCG and recall. Hard
     eligibility is independent ground truth, not inferred from returned results.
     Real evaluation needs separately authorized providers and human relevance
     labels; do not relabel this synthetic report as production model accuracy.
@@ -39,12 +39,14 @@ def evaluate(cases: list[SemanticCase], methods: dict[str, Callable[[SemanticCas
             ideal = sum(1 / log2(rank + 2) for rank in range(min(10, len(expected))))
             rows.append({"name": case.name, "actual_ids": actual,
                 "recall_at_40": len(set(actual[:40]) & expected) / len(expected) if expected else int(not actual),
+                "precision_at_10": len(set(actual[:10]) & expected) / len(actual[:10]) if actual else int(not expected),
                 "ndcg_at_10": dcg / ideal if ideal else int(not actual),
                 "hard_condition_violations": sorted(set(actual) - allowed),
                 "elapsed_ms": round(elapsed, 3)})
         times = sorted(row["elapsed_ms"] for row in rows)
         reports[name] = {"cases": len(rows),
             "recall_at_40": sum(row["recall_at_40"] for row in rows) / len(rows) if rows else 0,
+            "precision_at_10": sum(row["precision_at_10"] for row in rows) / len(rows) if rows else 0,
             "ndcg_at_10": sum(row["ndcg_at_10"] for row in rows) / len(rows) if rows else 0,
             "hard_condition_violations": sum(len(row["hard_condition_violations"]) for row in rows),
             "median_ms": median(times) if times else 0,
