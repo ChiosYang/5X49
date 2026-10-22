@@ -253,7 +253,7 @@ class CinemaDnaMigrationTests(unittest.TestCase):
                 run_migrations(engine, path, migrations=MIGRATIONS[:4], backup_required=False)
                 self.assertNotIn("cinema_dna_film_read_model", inspect(engine).get_table_names())
                 result = run_migrations(engine, path, backup_dir=root / "backups")
-                self.assertEqual(result.applied_versions, (5, 6, 7, 8, 9, 10))
+                self.assertEqual(result.applied_versions, (5, 6, 7, 8, 9, 10, 11))
                 self.assertTrue(result.backup.manifest_path.exists())
                 projection_coordinator.bootstrap(engine)
                 self.assertEqual(run_migrations(engine, path).applied_versions, ())

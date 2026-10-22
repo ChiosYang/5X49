@@ -95,6 +95,8 @@ Status: In Progress
 - Backend focused alias/projection/Ask regression: 25 passed. Extended contract,
   migration and source suite: 67 passed. Final core regression after Unicode
   privacy/range corrections: 45 passed.
+- Existing v4/v6/v8 migration, Cinema DNA and Viewing upgrade regressions: 20
+  passed with v11 migration expectations. Full-suite rerun is still pending.
 - Frontend lint/typecheck passed; 138 unit tests passed. Production build passed
   through the isolated E2E runner.
 - Related EN/ZH Explore, Collection and enhanced-search E2E: 79 passed, including
