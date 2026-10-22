@@ -139,6 +139,30 @@ class OpenRouterPilotTests(unittest.TestCase):
         self.assertFalse(summary["all_costs_reported"])
         self.assertEqual(summary["entries"][0]["status"], "estimated")
         self.assertIn("pinned endpoint quote", summary["entries"][0]["cost_basis"])
+        self.assertEqual(summary["unknown_cost_upper_bound_usd"], "0.01")
+        self.assertEqual(summary["total_cost_upper_bound_usd"], "0.01")
+
+    def test_missing_cost_estimate_never_becomes_price_ceiling_upper_bound(self):
+        for price in ("0.00000001", "0.00000004"):
+            with self.subTest(quoted_price=price), tempfile.TemporaryDirectory() as root:
+                data = metadata()
+                data["data"]["endpoints"][0]["pricing"]["prompt"] = price
+                quote = Quote.from_metadata(data)
+                ledger = BudgetLedger(Path(root) / "run", quote)
+                transport = Transport()
+                transport.modify = lambda p: p["usage"].pop("cost")
+                provider = OpenRouterPilotProvider("synthetic", quote, ledger,
+                    pilot.approved_inputs(self.fixture), session=transport)
+                provider.embed([self.fixture.cases[0].content_query], query=True)
+                summary = ledger.summary()
+                self.assertEqual(Decimal(summary["estimated_cost_usd"]), Decimal(price) * 10)
+                self.assertEqual(summary["reported_cost_usd"], "0")
+                self.assertEqual(summary["total_cost_upper_bound_usd"], "0.01")
+                # The request can legally reach $.04/M even if preflight saw
+                # $.01/M; its unreported cost keeps the full conservative hold.
+                self.assertGreaterEqual(Decimal(summary["total_cost_upper_bound_usd"]),
+                                        Decimal("0.00000004") * 10)
+                self.assertFalse(summary["all_costs_reported"])
 
     def test_exact_upstream_model_identity_preserves_usage_and_model_receipt(self):
         self.transport.modify = lambda p: p.update(model="Qwen/Qwen3-Embedding-8B", id="embd-synthetic-123")

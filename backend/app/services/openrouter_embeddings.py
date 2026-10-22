@@ -217,13 +217,17 @@ class BudgetLedger:
         entries = self.data["entries"]
         complete = all(e["status"] in {"reported", "estimated"} for e in entries)
         unknown = sum((_decimal(e.get("cost_upper_bound_usd", e["reserved_usd"])) for e in entries
-                       if e["status"] in {"uncertain", "pending", "reserved_unknown"}), Decimal(0))
+                       if e["status"] in {"uncertain", "pending", "estimated"}), Decimal(0))
+        reported = sum((_decimal(e["cost_usd"]) for e in entries if e["status"] == "reported"), Decimal(0))
+        estimated = sum((_decimal(e["cost_usd"]) for e in entries if e["status"] == "estimated"), Decimal(0))
         known = sum((_decimal(e["cost_usd"]) for e in entries if "cost_usd" in e), Decimal(0))
         return {"requests": len(entries), "encoded_texts": sum(e["texts"] for e in entries),
                 "total_tokens": sum(e.get("total_tokens", 0) for e in entries),
                 "known_or_estimated_cost_usd": str(known),
+                "reported_cost_usd": str(reported), "estimated_cost_usd": str(estimated),
                 "unknown_cost_upper_bound_usd": str(unknown),
-                "total_cost_upper_bound_usd": str(known + unknown),
+                "total_cost_upper_bound_usd": str(reported + unknown),
+                "upper_bound_basis": "reported charges plus retained reservations for every unreported charge",
                 "cost_complete": complete,
                 "all_costs_reported": complete and all(e["status"] == "reported" for e in entries),
                 "reserved_usd": str(RESERVATION * len(entries)), "halted": self.data["halted"],

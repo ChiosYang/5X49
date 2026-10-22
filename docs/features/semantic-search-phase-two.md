@@ -87,6 +87,13 @@ provider, quality and UI integration gates below have passed.
   requires management access (HTTP 403); no new credential/connection was created.
   Request-level reconciliation needs the original request ID or account-side
   billing confirmation. Do not make another paid request while this is unresolved.
+- The user subsequently selected nvidia/nemotron-3.5-embed-8b:free. Qwen will not
+  be retried; its original receipt and reservation remain unchanged. Public
+  metadata reports nvidia/bf16, 4096 output dimensions and zero input/output
+  price. NVIDIA records inputs for security/product improvement and requires
+  acceptance of its API Trial Terms. Explicit user confirmation of that change
+  is pending: only public metadata and offline preparation are permitted. Do not
+  invoke the free endpoint or silently relax the existing ZDR/deny policy.
 
 ## Decisions
 
@@ -139,12 +146,16 @@ Status: Pending real quality and production integration
 
 ## Verification evidence
 
-- OpenRouter pilot adapter: 41 mock tests passed (16 new transport/budget/
+- OpenRouter pilot adapter: 42 mock tests passed (17 new transport/budget/
   credential/receipt tests plus 25 semantic core regressions). The independent
   receipt review found that ID persistence still followed usage validation.
   Safe request ID/model/provider metadata is now atomically saved before any
   billing check; missing/malformed usage and excess-cost regressions assert the
   ID is already on disk at the billing boundary and survives the halted run.
+  A second accounting review corrected the total-cost upper bound: a
+  missing-cost estimate stays separate, and its entire reservation remains in
+  the unreported-cost upper bound even if the sampled quote is cheaper than the
+  request's price ceiling. Both sampled-rate variants have regression coverage.
   Earlier broader
   hard-filter/provenance/Explore run passed 74 before the final receipt changes;
   fresh full verification is pending. Live smoke stopped after its first request
