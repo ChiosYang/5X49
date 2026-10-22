@@ -270,14 +270,26 @@ for (const locale of ['en','zh']) for (const width of [1440,390]) for (const mod
 }
 
 test('empty and sparse libraries offer honest collection fallbacks and working film search',async ({page,request})=>{
-  await control(request,'identity_cleanup'); await page.goto('/en/explore');
-  await expect(page.getByText(en.Collections.emptyDescription,{exact:true})).toBeVisible();
-  await expect(cards(page)).toHaveCount(0); await page.goto('/en/explore/collections');
-  await expect(page.getByRole('link',{name:en.Collections.openLibrary,exact:true})).toBeVisible();
-  await control(request,'explore_sparse_fixture'); await page.goto('/en/explore');
-  await expect(page.getByText(en.Collections.sparseDescription,{exact:true})).toBeVisible(); await expect(cards(page)).toHaveCount(0);
-  await page.getByRole('searchbox',{name:en.Discovery.label,exact:true}).fill('Explore Unknown');
-  await page.getByRole('searchbox',{name:en.Discovery.label,exact:true}).press('Enter');
-  await expect(cards(page)).toHaveCount(1); await expect(page.getByText(en.Collections.noCollections,{exact:true})).toBeVisible();
-  await expect(page.getByText(en.Collections.noPeople,{exact:true})).toBeVisible();
+  await control(request,'identity_cleanup');
+  for(const [locale,copy] of [['en',en],['zh',zh]] as const){
+    await page.goto(`/${locale}/explore`);await expect(page.getByText(copy.Collections.emptyDescription,{exact:true})).toBeVisible();
+    await expect(cards(page)).toHaveCount(0);await page.goto(`/${locale}/explore/collections`);
+    await expect(page.getByRole('link',{name:copy.Collections.openLibrary,exact:true})).toBeVisible();
+  }
+  await control(request,'explore_sparse_fixture');
+  for(const [locale,copy] of [['en',en],['zh',zh]] as const){
+    await page.setViewportSize({width:320,height:844});await page.goto(`/${locale}/explore`);
+    const guidance=page.getByText(copy.Collections.sparseDescription,{exact:true});
+    await expect(guidance).toBeVisible();await expect(guidance).not.toContainText(/combined filters|组合筛选/i);
+    await expect(page.locator('a[href*="/explore/filter"]')).toHaveCount(0);await expect(cards(page)).toHaveCount(0);
+    await noOverflow(page);
+    await capture(page,`collection-sparse-${locale}-320.png`);
+    await page.getByRole('link',{name:copy.Collections.openLibrary,exact:true}).click();
+    await expect(page).toHaveURL(/\/(?:en\/|zh\/)?library$/);await expect(cards(page)).toHaveCount(1);
+    await page.goBack();await expect(guidance).toBeVisible();
+    const input=page.getByRole('searchbox',{name:copy.Discovery.label,exact:true});
+    await input.fill('Explore Unknown');await input.press('Enter');
+    await expect(cards(page)).toHaveCount(1);await expect(page.getByText(copy.Collections.noCollections,{exact:true})).toBeVisible();
+    await expect(page.getByText(copy.Collections.noPeople,{exact:true})).toBeVisible();
+  }
 });

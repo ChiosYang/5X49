@@ -99,6 +99,26 @@ for(const locale of ['en','zh'])for(const width of [1440,320]){
 }
 
 for(const locale of ['en','zh']){
+  test(locale+' multiple values explain available recovery without retired Explore filters',async({page,request})=>{
+    const copy=locale==='zh'?zh:en;
+    const question=locale==='zh'?'日本或法国电影':'Japanese or French films';
+    await page.setViewportSize({width:320,height:844});await page.goto('/'+locale+'/explore');
+    await submit(page,question,locale);
+    await expect(page.getByRole('heading',{name:copy.Discovery.states.unsupported,exact:true})).toBeVisible();
+    const guidance=page.getByText(copy.Discovery.reasons.multiple_values,{exact:true});
+    await expect(guidance).toBeVisible();await expect(guidance).not.toContainText(/combined filters|组合筛选/i);
+    await expect(input(page,locale)).toHaveValue(question);await expect(page.locator('#explore-results-title')).toHaveCount(0);
+    await expect(page.locator('a[href*="/explore/filter"]')).toHaveCount(0);
+    const fallback=page.getByRole('link',{name:copy.Discovery.keywordFallback,exact:true});await expect(fallback).toBeVisible();
+    expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+    await capture(page,`discovery-multiple-values-${locale}-320.png`);
+    await fallback.click();await expect.poll(()=>new URL(page.url()).searchParams.get('mode')).toBe('keyword');
+    await expect(page.getByText(copy.Discovery.keywordOnly,{exact:true})).toBeVisible();await expect(input(page,locale)).toHaveValue(question);
+    await submit(page,locale==='zh'?'日本电影':'Japanese films',locale);
+    await expect(cards(page)).toHaveCount(2);
+    expect((await control(request,'discovery_ai_stats')).calls).toBe(0);
+  });
+
   test(locale+' explicit find commands hit titles and people while retaining original text without inference',async({page,request})=>{
     await control(request,'discovery_ai',{enabled:true});await page.goto('/'+locale+'/explore');
     const title=locale==='zh'?'找Orbit':'find Orbit';await submit(page,title,locale);
