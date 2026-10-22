@@ -110,7 +110,7 @@ class LibraryFilterTests(unittest.TestCase):
                               "duration_min=1.5", "year_min=1869", "year_max=2101", "favorite=bad",
                               "duration_min=100&duration_max=90", "year_min=2001&year_max=1999",
                               "rating_min=0", "rating_max=6", "rating_min=1.5", "rating_max=NaN",
-                              "rating_min=5&rating_max=4"):
+                              "rating_min=5&rating_max=4", "rank_exact=bad"):
                     self.assertEqual(client.get("/library/films/page?" + query).status_code, 422, query)
                 page.assert_not_called()
                 page.return_value = {"items": [], "total": 0}
@@ -120,6 +120,6 @@ class LibraryFilterTests(unittest.TestCase):
                 page.assert_called_once_with(query="Range", filter="watched", favorite=True,
                     duration_min=90, duration_max=120, year_min=1999, year_max=2001,
                     rating_min=3, rating_max=5,
-                    sort="added", direction="desc", metadata_status="all", limit=40, offset=0)
+                    sort="added", direction="desc", metadata_status="all", limit=40, offset=0, rank_exact=False)
         finally:
             client.close()

@@ -17,8 +17,9 @@ from app.services.structured_metadata_vocab import STRUCTURED_METADATA_VOCABULAR
 _EXCLUDE = r"(?:excluding|exclude|except|without|not|不要|排除|不包括|不包含|不是|非)"
 _PEOPLE = r"directed by|co-starring|starring|featuring|with|(?<!sorted )(?<!sort )by"
 _YEAR = r"(?:(?:18|19|20)\d{2}|2100)"
-_STOP = (rf"\s+(?:(?:and\s+)?(?:{_PEOPLE})\b|from\b|released\b|in\b|between\b|"
-         rf"under\b|over\b|at least\b|at most\b|shorter\b|longer\b|sorted\b|sort\b|"
+_STOP = (rf"\s+(?:and\s+)?(?:(?:{_PEOPLE})\b|from\b|released\b|in\b|between\b|"
+         rf"before\b|after\b|since\b|through\b|under\b|over\b|at least\b|at most\b|"
+         rf"less than(?=\s|\d)|more than(?=\s|\d)|shorter\b|longer\b|sorted\b|sort\b|"
          rf"newest\b|oldest\b|{_EXCLUDE}\b)|[,;.!?，。；！？]|$")
 
 
@@ -27,7 +28,7 @@ def is_extended_request(question: str) -> bool:
     from app.services.discovery_search import _UNWATCHED
     text = re.sub(_UNWATCHED, " ", text, flags=re.I)
     text = re.sub(r"(?<!\d)\d{4}\s*年代", " ", text)
-    return bool(re.search(rf"\b(?:minutes?|hours?|runtime|duration|between|excluding|exclude|except|without|or|co-starring)\b|"
+    return bool(re.search(rf"\b(?:minutes?|hours?|runtime|duration|between|excluding|exclude|except|without|or|co-starring)\b|\d\s*(?:minutes?|hours?)\b|"
         rf"\bnot\b|不要|排除|不包括|不包含|不是|非日本|或(?:者|是)?|分钟|小时|\b{_YEAR}\b(?!s)|{_YEAR}年", text)
         or len(re.findall(rf"\b(?:{_PEOPLE})\b|执导|导演|主演|出演", text)) > 1
         or re.search(rf"\b(?:{_PEOPLE})\s+.+?\s+and\s+", text))
@@ -50,6 +51,16 @@ def accepted_interpretation(interpretation, question: str) -> bool:
     return (interpretation.status == "ready" and interpretation.plan is not None
         and interpretation.confidence >= .9 and not interpretation.unhandled
         and grounded_extended(interpretation.plan, question))
+
+
+def _intersect_year(values, lower=None, upper=None):
+    """Every year clause is an AND requirement, independent of parse order."""
+    if lower is not None:
+        values["year_min"] = max(values.get("year_min", lower), lower)
+    if upper is not None:
+        values["year_max"] = min(values.get("year_max", upper), upper)
+    return not (values.get("year_min") is not None and values.get("year_max") is not None
+                and values["year_min"] > values["year_max"])
 
 
 def _parse_extended(question: str):
@@ -141,11 +152,15 @@ def _parse_extended(question: str):
             return None, text, "ambiguous_request"
         for match in matches:
             lower, upper = [int(part) for part in match.groups() if part is not None]
-            values[field + "_min"], values[field + "_max"] = lower, upper
+            if field == "year":
+                if not _intersect_year(values, lower, upper):
+                    return None, text, "ambiguous_request"
+            else:
+                values[field + "_min"], values[field + "_max"] = lower, upper
             text = text[:match.start()] + " " + text[match.end():]
 
     # Runtime inequalities are stored in seconds via exclusive flags below.
-    durations = list(re.finditer(r"(?:\b(at least|at most|under|over|shorter than|longer than|less than|more than)\s+(\d{1,5})\s*(minutes?|hours?)\b)|(?:(不少于|不超过|少于|超过|短于|长于)\s*(\d{1,5})\s*(分钟|小时))", text, re.I))
+    durations = list(re.finditer(r"(?:\b(at least|at most|under|over|shorter than|longer than|less than|more than)\s*(\d{1,5})\s*(minutes?|hours?)\b)|(?:(不少于|不超过|少于|超过|短于|长于)\s*(\d{1,5})\s*(分钟|小时))", text, re.I))
     for match in reversed(durations):
         op, number, unit = [part for part in match.groups() if part is not None]
         op, unit = op.casefold(), unit.casefold()
@@ -174,25 +189,24 @@ def _parse_extended(question: str):
         op = (match.group(1) or match.group(4)).casefold()
         value = int(match.group(2) or match.group(3))
         lower = op in ("after", "since", "之后", "以后", "起", "及以后")
-        field = "year_min" if lower else "year_max"
-        if field in values:
+        bound = value + (1 if lower else -1) if op in ("before", "after", "之前", "以前", "之后", "以后") else value
+        if not _intersect_year(values, lower=bound if lower else None, upper=None if lower else bound):
             return None, text, "ambiguous_request"
-        values[field] = value + (1 if lower else -1) if op in ("before", "after", "之前", "以前", "之后", "以后") else value
         text = text[:match.start()] + " " + text[match.end():]
 
     # Exact year and decade become closed year ranges in v2.
     decades = list(re.finditer(rf"(?<!\d)({_YEAR})(?:s\b|\s*年代)", text, re.I))
     for match in reversed(decades):
         value = int(match.group(1))
-        if value % 10 or "year_min" in values or value > 2090:
+        if value % 10 or value > 2090:
             return None, text, "unsupported_filter"
-        values.update(year_min=value, year_max=value + 9)
+        if not _intersect_year(values, value, value + 9):
+            return None, text, "ambiguous_request"
         text = text[:match.start()] + " " + text[match.end():]
     years = list(re.finditer(rf"(?<!\d)({_YEAR})(?:年)?(?!\d|s)", text, re.I))
     for match in reversed(years):
-        if "year_min" in values:
+        if not _intersect_year(values, int(match.group(1)), int(match.group(1))):
             return None, text, "ambiguous_request"
-        values.update(year_min=int(match.group(1)), year_max=int(match.group(1)))
         text = text[:match.start()] + " " + text[match.end():]
 
     countries = {**vocabulary.country_aliases, **_COUNTRY_WORDS}

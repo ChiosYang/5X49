@@ -25,6 +25,7 @@ type ResultStageProps = {
   onClear: () => void;
   showMatchedFacts?: boolean;
   hasConditions?: boolean;
+  controlsDisabled?: boolean;
 };
 
 export function ResultStage({
@@ -42,6 +43,7 @@ export function ResultStage({
   onClear,
   showMatchedFacts = true,
   hasConditions,
+  controlsDisabled = false,
 }: ResultStageProps) {
   const t = useTranslations("Explore");
   const total = results?.total ?? 0;
@@ -73,6 +75,7 @@ export function ResultStage({
               <Button
                 key={view}
                 type="button"
+                disabled={controlsDisabled}
                 aria-pressed={query.view === view}
                 onClick={() => onView(view)}
                 size="sm"
@@ -87,6 +90,7 @@ export function ResultStage({
               <Button
                 key={sort}
                 type="button"
+                disabled={controlsDisabled}
                 aria-pressed={query.sort === sort}
                 onClick={() => onSort(sort)}
                 size="sm"
@@ -97,6 +101,7 @@ export function ResultStage({
             ))}
             <IconButton
               variant="ghost"
+              disabled={controlsDisabled}
               onClick={onDirection}
               aria-label={query.dir === "asc" ? t("ascending") : t("descending")}
               icon={query.dir === "asc" ? <ArrowUp className="h-3.5 w-3.5" /> : <ArrowDown className="h-3.5 w-3.5" />}
@@ -153,7 +158,7 @@ export function ResultStage({
             <Compass className="h-8 w-8 text-ink/25" />
             <h3 className="mt-4 font-serif text-2xl text-ink">{t(filtered ? "zeroTitle" : "emptyViewTitle")}</h3>
             <p className="mt-2 max-w-lg text-sm leading-6 text-ink-muted">{t(filtered ? "zeroDetail" : "emptyViewDetail")}</p>
-            {filtered ? <Button className="mt-5" variant="secondary" onClick={onClear}>{t("clearAll")}</Button> : null}
+            {filtered ? <Button className="mt-5" variant="secondary" disabled={controlsDisabled} onClick={onClear}>{t("clearAll")}</Button> : null}
           </div>
         )}
       </div>

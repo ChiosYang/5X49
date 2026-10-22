@@ -555,7 +555,7 @@ class PersonAlias(SQLModel, table=True):
     """A literal observed name linked by a stable provider identity, never a guess."""
     __tablename__ = "person_alias"
     __table_args__ = (
-        UniqueConstraint("person_id", "film_id", "normalized_name", "origin_kind", "origin_ref",
+        UniqueConstraint("person_id", "film_id", "normalized_name", "origin_kind", "origin_ref", "locale",
                          name="uq_person_alias_source_value"),
         Index("ix_person_alias_name_active", "normalized_name", "superseded_at"),
     )
@@ -563,6 +563,7 @@ class PersonAlias(SQLModel, table=True):
     person_id: str = Field(foreign_key="person.id", ondelete="CASCADE", index=True)
     film_id: str = Field(foreign_key="film.id", ondelete="CASCADE", index=True)
     identity_id: str = Field(foreign_key="external_identity.id", ondelete="CASCADE")
+    locale: str = Field(default="und", sa_column=Column(String, nullable=False, server_default=text("'und'")))
     name: str
     normalized_name: str
     origin_kind: str

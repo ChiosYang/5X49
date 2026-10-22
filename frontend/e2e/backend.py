@@ -333,7 +333,8 @@ def control(payload: dict, x_e2e_token: str = Header(default='')):
         from sqlmodel import Session
         entries = [('Search Alpha', 2098, 89, 'JP', 'Action', '990002'),
                    ('Search Beta', 2098, 90, 'FR', 'Drama', '990003'),
-                   ('Search Gamma', 2097, 95, 'US', 'Horror', '990004')]
+                   ('Search Gamma', 2097, 95, 'US', 'Horror', '990004'),
+                   ('Search Delta', 2096, 95, 'US', 'Horror', '990005')]
         observations = []
         for title, year, minutes, *_rest in entries:
             video = root / (title + '.mkv')
@@ -359,8 +360,10 @@ def control(payload: dict, x_e2e_token: str = Header(default='')):
                         source_instance_id='e2e.search', observed_at='2026-10-22T00:00:00Z', titles=names,
                         countries=(CountryObservation(country),), genres=(GenreObservation(genre),),
                         credits=(CreditObservation('Search Director', 'Directing', 'Director', provider='tmdb.person',
-                            external_id='990001', aliases=('本地导演甲',)),
-                            CreditObservation('Search Actor' if actor_id != '990003' else 'Other Search Actor', 'Acting', 'Actor',
+                            external_id='990006' if title == 'Search Delta' else '990001',
+                            aliases=() if title == 'Search Delta' else ('本地导演甲', 'Local Director A')),
+                            CreditObservation('Search Actor' if actor_id in ('990002', '990004') else
+                                'Other Search Actor' if actor_id == '990003' else 'Delta Actor', 'Acting', 'Actor',
                                 provider='tmdb.person', external_id=actor_id))))
             session.commit()
         return {title: films[title] for title in films if title.startswith('Search ')}

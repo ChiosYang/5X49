@@ -81,6 +81,7 @@ def tmdb_structured_metadata_observation(
     return StructuredMetadataObservation(
         origin_kind="tmdb",
         origin_ref=f"tmdb.movie:{int(tmdb_id)}",
+        locale=locale,
         source_instance_id="tmdb.api",
         observed_at=observed_at or datetime.now(timezone.utc).isoformat(),
         titles=tuple(titles),
@@ -111,8 +112,8 @@ def _tmdb_credit(
         billing_order=billing_order,
         provider="tmdb.person" if provider_id is not None else None,
         external_id=str(provider_id) if provider_id is not None else None,
-        aliases=tuple(dict.fromkeys(value for field in ("name", "original_name")
-            if (value := _text(item.get(field))) and value != name and len(value) <= 100))
+        aliases=tuple(value for field in ("name",)
+            if (value := _text(item.get(field))) and len(value) <= 100)
             if provider_id is not None else (),
     )
 

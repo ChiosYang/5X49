@@ -245,6 +245,12 @@ class StructuredMetadataSynchronizer:
         ).all()
         for existing in existing_titles:
             key = (existing.locale, existing.title_type, existing.normalized_title)
+            # Canonical/original retain their existing current-source selection.
+            # A localized response cannot retract another language's reliable
+            # localized/alternative search names. An und/NFO snapshot is complete.
+            if (observation.locale != "und" and existing.title_type in {"localized", "alternative"}
+                    and existing.locale.casefold() != observation.locale.casefold()):
+                continue
             if key not in desired:
                 existing.superseded_at = now
                 session.add(existing)
@@ -328,7 +334,9 @@ class StructuredMetadataSynchronizer:
         current_review_keys: set[str],
     ) -> None:
         desired_keys: set[str] = set()
-        desired_aliases: set[tuple[str, str]] = set()
+        desired_aliases: set[tuple[str, str, str]] = set()
+        observed_people: set[str] = set()
+        alias_locale = observation.locale.casefold()
         for item in observation.credits:
             person = self._resolve_person(
                 session,
@@ -340,21 +348,23 @@ class StructuredMetadataSynchronizer:
             )
             if person is None:
                 continue
+            observed_people.add(person.id)
             identity = session.exec(select(ExternalIdentity).where(ExternalIdentity.entity_id == person.id,
                 ExternalIdentity.provider == item.provider, ExternalIdentity.external_id == item.external_id,
                 ExternalIdentity.identity_status == "active")).first() if item.provider and item.external_id else None
             if identity is not None:
-                for name in (item.name, *item.aliases):
+                for name, locale in ((item.name, "und"), *((alias, alias_locale) for alias in item.aliases)):
                     normalized = normalize_metadata_text(name)
-                    desired_aliases.add((person.id, normalized))
+                    desired_aliases.add((person.id, normalized, locale))
                     alias = session.exec(select(PersonAlias).where(
                         PersonAlias.person_id == person.id, PersonAlias.film_id == film_id,
                         PersonAlias.normalized_name == normalized,
+                        PersonAlias.locale == locale,
                         PersonAlias.origin_kind == observation.origin_kind,
                         PersonAlias.origin_ref == observation.origin_ref)).first()
                     if alias is None:
                         alias = PersonAlias(id=self._new_id("person_alias"), person_id=person.id,
-                            film_id=film_id, identity_id=identity.id, name=name.strip(), normalized_name=normalized,
+                            film_id=film_id, identity_id=identity.id, locale=locale, name=name.strip(), normalized_name=normalized,
                             origin_kind=observation.origin_kind, origin_ref=observation.origin_ref,
                             observed_at=observation.observed_at)
                         session.add(alias)
@@ -417,7 +427,11 @@ class StructuredMetadataSynchronizer:
                 PersonAlias.origin_kind == observation.origin_kind,
                 PersonAlias.origin_ref == observation.origin_ref,
                 PersonAlias.superseded_at.is_(None))).all():
-            if (alias.person_id, alias.normalized_name) not in desired_aliases:
+            # A language refresh retracts only its own literal names. Removing
+            # or changing the credited identity retracts every language from
+            # this source, so old names cannot migrate to a different person.
+            if (alias.person_id not in observed_people or alias.locale in {"und", alias_locale}
+                    and (alias.person_id, alias.normalized_name, alias.locale) not in desired_aliases):
                 alias.superseded_at = now
                 session.add(alias)
         provenance_rows = session.exec(

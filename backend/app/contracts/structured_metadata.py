@@ -120,6 +120,7 @@ class StructuredMetadataObservation:
     credits: tuple[CreditObservation, ...] = ()
     genres: tuple[GenreObservation, ...] = ()
     issues: tuple[ObservationIssue, ...] = ()
+    locale: str = "und"
 
     def __post_init__(self) -> None:
         if self.origin_kind not in STRUCTURED_METADATA_ORIGINS:
@@ -130,6 +131,8 @@ class StructuredMetadataObservation:
             raise ValueError("structured metadata observed_at must not be empty")
         if not self.complete_fields.issubset(STRUCTURED_METADATA_FIELDS):
             raise ValueError("structured metadata complete_fields contains an unknown field")
+        if not isinstance(self.locale, str) or not re.fullmatch(r"[A-Za-z]{2,8}(?:-[A-Za-z0-9]{1,8})*", self.locale) or len(self.locale) > 35:
+            raise ValueError("structured metadata locale is invalid")
 
 
 @dataclass(frozen=True)
@@ -143,6 +146,7 @@ class StructuredMetadataObservationDraft:
     credits: tuple[CreditObservation, ...] = ()
     genres: tuple[GenreObservation, ...] = ()
     issues: tuple[ObservationIssue, ...] = ()
+    locale: str = "und"
 
     def __post_init__(self) -> None:
         if self.origin_kind not in STRUCTURED_METADATA_ORIGINS:
@@ -159,6 +163,7 @@ class StructuredMetadataObservationDraft:
             origin_ref=origin_ref,
             source_instance_id=self.source_instance_id,
             observed_at=self.observed_at,
+            locale=self.locale,
             complete_fields=self.complete_fields,
             titles=self.titles,
             countries=self.countries,

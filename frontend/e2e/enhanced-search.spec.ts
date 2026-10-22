@@ -39,7 +39,7 @@ for(const locale of ['en','zh'])for(const width of [1440,320]){
   test(`${locale} complete extended conditions, removable bounds and Return at ${width}px`,async({page,request})=>{
     const copy=locale==='zh'?zh:en;await page.setViewportSize({width,height:900});await page.goto(`/${locale}/explore`);
     const question=locale==='zh'?'未看日本或法国动作或剧情电影，2098年，由本地导演甲执导，少于90分钟'
-      :'unwatched Japanese or French action or drama films in 2098 directed by Search Director under 90 minutes';
+      :'unwatched Japanese or French action or drama films in 2098 directed by Local Director A under 90 minutes';
     const result=await submit(page,question,locale);expect(result.version).toBe('discovery.v2');
     await expect(cards(page)).toHaveCount(1);await expect(page.locator('#film-link-'+ids['Search Alpha'])).toBeVisible();
     await expect(page.getByText(copy.Discovery.extendedConditions,{exact:true})).toBeVisible();
@@ -72,7 +72,7 @@ for(const locale of ['en','zh'])for(const width of [1440,320]){
     expect((await control(request,'discovery_ai_stats')).calls).toBe(0);
   });
 }
-for(const locale of ['en','zh'])test(locale+' multiple-person identity clarification survives reload and Back',async({page,request})=>{
+for(const locale of ['en','zh'])test(locale+' person identity clarification survives reload and Back',async({page,request})=>{
   const copy=locale==='zh'?zh:en;await page.goto(`/${locale}/explore`);
   await submit(page,'films starring Search Actor in 2098',locale);
   await expect(page.getByRole('heading',{name:copy.Discovery.states.needs_clarification,exact:true})).toBeVisible();
@@ -84,6 +84,57 @@ for(const locale of ['en','zh'])test(locale+' multiple-person identity clarifica
   await chip.click();await expect(cards(page)).toHaveCount(2);
   await page.goBack();await expect(page).toHaveURL(href);await expect(cards(page)).toHaveCount(1);
   expect((await control(request,'discovery_ai_stats')).calls).toBe(0);
+});
+
+test('two ambiguous people serialize selections while the first RSC is delayed',async({page,request})=>{
+  const question='films directed by Search Director and starring Search Actor in 2098';
+  await page.goto('/en/explore');await submit(page,question);
+  const directors=page.getByRole('button',{name:/^Search Director/});
+  const actors=page.getByRole('button',{name:/^Search Actor/});
+  await expect(directors).toHaveCount(2);await expect(actors).toHaveCount(2);
+  let release!:()=>void,seen!:()=>void,firstIds:Record<string,string>={};
+  const held=new Promise<void>(r=>{release=r;}),received=new Promise<void>(r=>{seen=r;});
+  await page.route('**/en/explore/search?**',async route=>{
+    const url=new URL(route.request().url()),people=JSON.parse(url.searchParams.get('people_ids')??'{}');
+    if(route.request().headers().rsc!=='1'||url.searchParams.get('q')!==question||!people['0']||people['1']){await route.continue();return;}
+    firstIds=people;const response=await route.fetch();seen();await held;await route.fulfill({response}).catch(()=>{});
+  });
+  try{
+    const selecting=directors.filter({hasText:'Search Alpha'}).click();await received;
+    await expect(actors.first()).toBeDisabled();await expect(directors.first()).toBeDisabled();
+    await actors.filter({hasText:'Search Alpha'}).dispatchEvent('click');
+    release();await selecting;await expect(actors.filter({hasText:'Search Alpha'})).toBeEnabled();
+    await actors.filter({hasText:'Search Alpha'}).focus();await page.keyboard.press('Enter');
+    await expect(cards(page)).toHaveCount(1);await expect(page.locator('#film-link-'+ids['Search Alpha'])).toBeVisible();
+    const finalIds=JSON.parse(new URL(page.url()).searchParams.get('people_ids')!);
+    expect(Object.keys(finalIds)).toEqual(['0','1']);expect(finalIds['0']).toBe(firstIds['0']);
+    await page.reload();await expect(cards(page)).toHaveCount(1);
+    expect((await control(request,'discovery_ai_stats')).calls).toBe(0);
+  }finally{release();}
+});
+
+test('rapid chip removals cannot revive a condition during delayed navigation',async({page,request})=>{
+  const question='Japanese or French films in 2098';
+  await page.goto('/en/explore');await submit(page,question);await expect(cards(page)).toHaveCount(2);
+  let release!:()=>void,seen!:()=>void;
+  const held=new Promise<void>(r=>{release=r;}),received=new Promise<void>(r=>{seen=r;});
+  await page.route('**/en/explore/search?**',async route=>{
+    const url=new URL(route.request().url()),plan=JSON.parse(url.searchParams.get('p')??'null');
+    if(route.request().headers().rsc!=='1'||url.searchParams.get('q')!==question||plan?.countries?.join()!=='FR'){await route.continue();return;}
+    const response=await route.fetch();seen();await held;await route.fulfill({response}).catch(()=>{});
+  });
+  try{
+    const history=await page.evaluate(()=>window.history.length);
+    const removing=page.getByRole('button',{name:'Remove Any of: Japan',exact:true}).click();await received;
+    const france=page.getByRole('button',{name:'Remove Any of: France',exact:true});await expect(france).toBeDisabled();
+    await france.dispatchEvent('click');release();await removing;
+    await expect(cards(page)).toHaveCount(1);
+    await page.getByRole('button',{name:'Remove France',exact:true}).click();await expect(cards(page)).toHaveCount(2);
+    expect(JSON.parse(new URL(page.url()).searchParams.get('p')!).countries).toEqual([]);
+    expect(await page.evaluate(()=>window.history.length)).toBe(history+2);
+    await page.reload();await expect(cards(page)).toHaveCount(2);
+    expect((await control(request,'discovery_ai_stats')).calls).toBe(0);
+  }finally{release();}
 });
 
 test('v2 unwatched 41 to 40 shrink uses replace and preserves the latest draft',async({page,request})=>{

@@ -170,6 +170,52 @@ class EnhancedSearchTests(unittest.TestCase):
         self.assertEqual((plan.countries, plan.year_min, plan.year_max, plan.view), (["FR", "JP"], 2098, 2098, "unwatched"))
         self.assertEqual(parse_extended("日本电影由是枝裕和执导，少于90分钟")[0].people[0].name, "是枝裕和")
 
+    def test_year_clauses_intersect_in_every_order_without_overwriting_bounds(self):
+        for question, lower, upper in (
+            ("films from the 1990s before 1995", 1990, 1994),
+            ("films before 1995 from the 1990s", 1990, 1994),
+            ("films from the 1990s through 1995", 1990, 1995),
+            ("films through 1995 from the 1990s", 1990, 1995),
+            ("1990年代1995年以前的电影", 1990, 1994),
+            ("1995年以前的1990年代电影", 1990, 1994),
+            ("films from the 1990s after 1995", 1996, 1999),
+            ("films after 1995 from the 1990s", 1996, 1999),
+            ("1995年以后1990年代电影", 1996, 1999),
+            ("films between 1990 and 2000 through 1995", 1990, 1995),
+            ("films through 1995 between 1990 and 2000", 1990, 1995),
+            ("films before 2000 in 1994", 1994, 1994),
+            ("films in 1994 before 2000", 1994, 1994),
+        ):
+            with self.subTest(question=question):
+                plan, leftover, issue = parse_extended(question)
+                self.assertFalse(issue or leftover)
+                self.assertEqual((plan.year_min, plan.year_max), (lower, upper))
+                result = self.search(question)
+                self.assertEqual(result["status"], "ready")
+                self.assertTrue(all(lower <= item["film"]["year"] <= upper for item in result["results"]["items"]))
+        for question in ("films in the 1990s before 1980", "films before 1980 in the 1990s",
+                "films before 1990 released in 2000", "films released in 2000 before 1990",
+                "1990年代1980年以前的电影", "1980年以前的1990年代电影", "1990年以前2000年上映的电影"):
+            with self.subTest(question=question):
+                result = self.search(question)
+                self.assertNotEqual(result["status"], "ready")
+                self.assertIsNone(result["results"])
+        self.interpreter.interpret_search.assert_not_called()
+
+    def test_person_boundaries_preserve_supported_year_duration_and_negative_role_clauses(self):
+        for suffix, expected in (("after 1999", []), ("before 1999", ["Alpha"]),
+                ("since 1994", ["Alpha"]), ("through 1994", ["Alpha"]),
+                ("less than 90 minutes", ["Alpha"]), ("more than 90 minutes", []),
+                ("less than90minutes", ["Alpha"]), ("more than90minutes", []),
+                ("and not starring Other Person", []), ("and not directed by Other Person", ["Alpha"])):
+            question = "films directed by Shared Person " + suffix
+            with self.subTest(question=question):
+                result = self.search(question)
+                self.assertEqual(result["status"], "ready", result)
+                self.assertEqual(result["plan"]["people"][0]["name"], "Shared Person")
+                self.assertEqual(self.ids(result), [self.films[title] for title in expected])
+        self.interpreter.interpret_search.assert_not_called()
+
     def test_alias_identity_dedup_normalization_exact_priority_and_supersession(self):
         with Session(self.engine) as session:
             session.add(ExternalIdentity(id="identity_alias", entity_id=self.people["shared"], provider="tmdb.person",

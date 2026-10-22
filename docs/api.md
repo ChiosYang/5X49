@@ -46,6 +46,10 @@ Schema v11 adds source-backed `PersonAlias` records, linked to a stable active
 ExternalIdentity, source Film, provenance and supersession. Existing TMDB credit
 `name`/`original_name` are retained during the existing metadata flow, with no new
 request. Name-only provisional people are never merged or assigned guessed aliases.
+Localized Person names carry a normalized response-locale scope. Refreshing one
+language withdraws only names removed in that language, preserving other languages;
+removing/changing the credited stable identity withdraws all its names from that
+Film/source. Original names have the shared `und` scope.
 An explicit existing single-Film metadata refresh/scrape can replenish available
 names; this change never starts bulk fetching or invents missing translations.
 Existing active FilmTitle canonical/original/localized/alternative names are indexed
@@ -53,6 +57,9 @@ along with effective title/original_title and credited people. NFKC, case and
 whitespace normalization apply; there is no automatic translation, transliteration
 or fuzzy identity merge. A known exact Film or Person literal takes precedence over
 words that resemble filter syntax. All results deduplicate by canonical ID.
+Localized/alternative Film names from another response language survive refresh;
+same-language withdrawals retract their old names. Current canonical/original
+title selection retains its existing behavior.
 
 `GET /library/films/page` adds optional `rank_exact=false`. Explore sets it true
 to prioritize exact title/alias matches before broad literal matches. Existing
@@ -78,6 +85,11 @@ Discovery v2 plans require `version:"search-plan.v2"` and expose:
 - `view`, `sort`, `direction` retain all/watched/unwatched, title/year and asc/desc.
   Reversed/empty ranges, duplicate values, extra keys and invalid types fail 422.
 
+Multiple supported year clauses intersect regardless of order; contradictory
+intersections clarify without execution. For example, `1990s before 1995` means
+1990–1994, and never silently becomes the whole decade. Clause boundaries preserve
+the literal person separately from supported year/runtime/negative-role clauses.
+
 V2 responses add `people_ids:{"0":"person_..."}`. The keys identify the index
 of each person clause. `/explore/search/query` accepts that bounded map instead
 of v1's `person_id`. Selections must be local candidates for that literal name;
@@ -101,6 +113,8 @@ the existing guarded v1 AI fallback is unchanged. No real-model quality, accurac
 cost or latency has been validated for the extension. Enabling that model path
 requires a separately authorized live-quality evaluation; the PR28 hold is intact.
 Restored v1/v2 plans, corrections, paging, refresh and Back/Return never infer.
+Condition edits and identity choices serialize while their navigation is pending;
+typing and explicit page navigation remain available, without stale plan overwrites.
 See `docs/features/enhanced-search-phase-one.md` for exact verification evidence.
 
 ## Multiple media roots and scan coverage

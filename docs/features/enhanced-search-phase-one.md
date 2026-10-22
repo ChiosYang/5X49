@@ -107,6 +107,19 @@ Status: In Progress
   These timings do not establish large-library or real-model performance.
 - SQL materialization remains 40/page; a 200-Film fixture checks <=12 SELECTs,
   count-before-page and last-page clamping.
+- Pre-review full local baseline: 465 backend tests (3 Windows host skips), full
+  E2E 270 passed. These precede the four P2 corrections and are not the final gate.
+- Review fixes: intersect every year clause; protect supported clause boundaries;
+  serialize pending condition/identity edits; retain aliases by response locale
+  while retracting same-locale withdrawals and changed source identities.
+- The same locale-scoped retention applies to localized/alternative Film titles;
+  current canonical/original title selection keeps its existing behavior.
+- The old component was reproduced in a real browser: rapid two-person choices
+  lost clause 0, and rapid JP/FR removals revived JP. A task-only old-component
+  test was removed and the fixed source restored with a byte-hash check.
+- Fixed-component enhanced E2E: 16 passed, including two real ambiguities and
+  delayed chip navigation. Parser/alias/schema/Library review regression: 40 passed;
+  fresh full verification and exact-head independent re-review remain pending.
 - Full suites/CI and independent exact-head review pending. No real model calls.
 
 ## Remaining risks

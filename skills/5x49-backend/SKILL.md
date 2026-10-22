@@ -50,6 +50,13 @@ description: 5X49 Fresh Canonical FastAPI 的 Film、LibraryItem、Factual Explo
 - Existing TMDB name/original_name may populate aliases only through stable
   active external identities and existing metadata requests. No bulk enrichment,
   guessed aliases, AI identity rewriting or new credential dependency.
+- Person alias supersession is scoped to the response locale (case-insensitive);
+  another language's names survive. Removed/changed source identities retract all
+  their locales. Original names use und. Year clauses intersect, never overwrite
+  each other; contradictory years clarify without partial execution.
+- Localized/alternative Film titles retain other response languages on refresh;
+  same-language withdrawals retract their old search names. Canonical/original
+  display-title selection is unchanged.
 - Expanded provider schema is offline/mock only until a separately authorized
   real-model quality gate. Production v2 is local rules; existing guarded v1 AI
   fallback remains. No real model call, download or quality claim is authorized.
