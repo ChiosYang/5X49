@@ -146,7 +146,9 @@ def fetch_quote(session, *, nvidia_free=False):
         raise SemanticError("quote_unavailable") from None
 
 
-def free_quota_preflight(session, key):
+def free_quota_preflight(session, key, *, minimum_posts=30):
+    if type(minimum_posts) is not int or not 1 <= minimum_posts <= 42:
+        raise SemanticError("invalid_free_quota_requirement")
     try:
         response = session.get(f"{ORIGIN}/key", headers={"Authorization": "Bearer " + key},
                                timeout=20, allow_redirects=False, stream=True)
@@ -157,7 +159,7 @@ def free_quota_preflight(session, key):
         remaining = quota.get("remaining")
         if type(remaining) is not int or remaining < 0:
             raise SemanticError("invalid_free_quota")
-        if remaining < 30:
+        if remaining < minimum_posts:
             raise SemanticError("insufficient_free_quota")
         return {"remaining": remaining, "status": "reported"}
     except SemanticError:
@@ -168,7 +170,13 @@ def free_quota_preflight(session, key):
 
 class BudgetLedger:
     """One durable authorization ledger; any interrupted attempt fails closed."""
-    def __init__(self, root: Path, quote: Quote):
+    def __init__(self, root: Path, quote: Quote, *, scope="synthetic.v1"):
+        if scope not in ("synthetic.v1", "public-movies.v1"):
+            raise SemanticError("invalid_pilot_scope")
+        if scope == "public-movies.v1" and (not isinstance(quote, NvidiaFreeQuote) or quote.prompt_usd_per_token != 0):
+            raise SemanticError("public_trial_requires_free_model")
+        self.max_posts = 42 if scope == "public-movies.v1" else MAX_POSTS
+        self.max_texts = 42 if scope == "public-movies.v1" else MAX_TEXTS
         self.root = root
         self.root.mkdir(parents=True, exist_ok=False)
         self.path = root / "budget.json"
@@ -178,6 +186,8 @@ class BudgetLedger:
                      "free_only": quote.free_only,
                      "quoted_prompt_usd_per_token": str(quote.prompt_usd_per_token),
                      "created": datetime.now(timezone.utc).isoformat(),
+                     "authorization_scope": scope,
+                     "limits": {"posts": self.max_posts, "texts": self.max_texts, "tokens": MAX_TOKENS},
                      "halted": False, "entries": []}
         self._write()
 
@@ -193,8 +203,8 @@ class BudgetLedger:
         entries = self.data["entries"]
         token_bound = sum(len(t.encode("utf-8")) + 256 for t in texts)
         if (self.data["halted"] or any(e["status"] == "pending" for e in entries)
-                or len(entries) >= MAX_POSTS
-                or sum(e["texts"] for e in entries) + len(texts) > MAX_TEXTS
+                or len(entries) >= self.max_posts
+                or sum(e["texts"] for e in entries) + len(texts) > self.max_texts
                 or sum(e["reserved_tokens"] for e in entries) + token_bound > MAX_TOKENS
                 or self.reservation * (len(entries) + 1) > Decimal(self.data["limit_usd"])):
             raise SemanticError("pilot_budget_blocked")

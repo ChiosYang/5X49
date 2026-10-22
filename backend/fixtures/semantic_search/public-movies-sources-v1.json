@@ -1,0 +1,5495 @@
+{
+  "version": "public-movie-facts-evidence.v1",
+  "license": "CC0-1.0",
+  "retrieved": "2026-10-22",
+  "films": {
+    "Q26060": {
+      "id": "Q26060",
+      "lastrevid": 2556518541,
+      "source_url": "https://www.wikidata.org/wiki/Q26060",
+      "retrieved": "2026-10-22",
+      "labels": {
+        "zh": "東京物語",
+        "ko": "동경 이야기",
+        "en": "Tokyo Story",
+        "ja": "東京物語",
+        "zh-hans": "东京物语"
+      },
+      "aliases": {
+        "ko": [
+          "도쿄 이야기",
+          "도쿄이야기",
+          "동경이야기"
+        ],
+        "en": [
+          "Tokyo monogatari"
+        ],
+        "ja": [
+          "とうきょうものがたり"
+        ]
+      },
+      "statements": {
+        "P31": [
+          {
+            "value": {
+              "entity-type": "item",
+              "numeric-id": 11424,
+              "id": "Q11424"
+            },
+            "rank": "normal",
+            "statement_id": "q26060$EEF4F3E9-E857-4B1B-A42F-27CCB45DDDCE",
+            "places": []
+          }
+        ],
+        "P57": [
+          {
+            "value": {
+              "entity-type": "item",
+              "numeric-id": 55402,
+              "id": "Q55402"
+            },
+            "rank": "normal",
+            "statement_id": "q26060$FC4B2AF5-88BF-46A4-A408-39C1949569F8",
+            "places": []
+          }
+        ],
+        "P495": [
+          {
+            "value": {
+              "entity-type": "item",
+              "numeric-id": 17,
+              "id": "Q17"
+            },
+            "rank": "normal",
+            "statement_id": "Q26060$C65E779E-5425-4FED-8925-D4E591A91EE3",
+            "places": []
+          }
+        ],
+        "P577": [
+          {
+            "value": {
+              "time": "+1953-11-03T00:00:00Z",
+              "timezone": 0,
+              "before": 0,
+              "after": 0,
+              "precision": 11,
+              "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+            },
+            "rank": "normal",
+            "statement_id": "Q26060$42F3CDCF-A429-4D43-8A20-845FA53B421F",
+            "places": [
+              {
+                "entity-type": "item",
+                "numeric-id": 17,
+                "id": "Q17"
+              }
+            ]
+          },
+          {
+            "value": {
+              "time": "+1972-03-13T00:00:00Z",
+              "timezone": 0,
+              "before": 0,
+              "after": 0,
+              "precision": 11,
+              "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+            },
+            "rank": "normal",
+            "statement_id": "Q26060$7e5ea686-44b9-cfbe-4bd6-400095d9be8a",
+            "places": [
+              {
+                "entity-type": "item",
+                "numeric-id": 30,
+                "id": "Q30"
+              }
+            ]
+          }
+        ],
+        "P2047": [
+          {
+            "value": {
+              "amount": "+136",
+              "unit": "http://www.wikidata.org/entity/Q7727"
+            },
+            "rank": "normal",
+            "statement_id": "Q26060$304D81AC-3744-41D4-9F20-B89E4F7FB721",
+            "places": []
+          }
+        ],
+        "P136": [
+          {
+            "value": {
+              "entity-type": "item",
+              "numeric-id": 130232,
+              "id": "Q130232"
+            },
+            "rank": "normal",
+            "statement_id": "Q26060$13B70578-9898-4C67-88F4-6E4B18EF9B49",
+            "places": []
+          }
+        ],
+        "P1476": [
+          {
+            "value": {
+              "text": "東京物語",
+              "language": "ja"
+            },
+            "rank": "normal",
+            "statement_id": "Q26060$8F757F81-9028-4ABD-AC9F-BB446E87A4CC",
+            "places": []
+          }
+        ]
+      }
+    },
+    "Q704513": {
+      "id": "Q704513",
+      "lastrevid": 2538548852,
+      "source_url": "https://www.wikidata.org/wiki/Q704513",
+      "retrieved": "2026-10-22",
+      "labels": {
+        "zh-hans": "一一",
+        "zh-hant": "一一",
+        "ja": "ヤンヤン 夏の想い出",
+        "en": "Yi Yi",
+        "zh": "一一",
+        "ko": "하나 그리고 둘"
+      },
+      "aliases": {
+        "en": [
+          "A One and a Two",
+          "A One and a Two..."
+        ]
+      },
+      "statements": {
+        "P31": [
+          {
+            "value": {
+              "entity-type": "item",
+              "numeric-id": 11424,
+              "id": "Q11424"
+            },
+            "rank": "normal",
+            "statement_id": "q704513$292AED71-B823-44A1-BDF5-B5F88EB29DAE",
+            "places": []
+          }
+        ],
+        "P57": [
+          {
+            "value": {
+              "entity-type": "item",
+              "numeric-id": 716700,
+              "id": "Q716700"
+            },
+            "rank": "normal",
+            "statement_id": "q704513$1FDED5B5-704C-4170-BD49-84B665087859",
+            "places": []
+          }
+        ],
+        "P495": [
+          {
+            "value": {
+              "entity-type": "item",
+              "numeric-id": 865,
+              "id": "Q865"
+            },
+            "rank": "normal",
+            "statement_id": "Q704513$0670cc06-400a-f208-6eb3-189d25325049",
+            "places": []
+          },
+          {
+            "value": {
+              "entity-type": "item",
+              "numeric-id": 17,
+              "id": "Q17"
+            },
+            "rank": "normal",
+            "statement_id": "Q704513$446829ac-49ec-a946-43c3-047f3e5a8e68",
+            "places": []
+          }
+        ],
+        "P577": [
+          {
+            "value": {
+              "time": "+2000-05-14T00:00:00Z",
+              "timezone": 0,
+              "before": 0,
+              "after": 0,
+              "precision": 11,
+              "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+            },
+            "rank": "normal",
+            "statement_id": "Q704513$DE0434DD-BB3B-4ADC-B5C0-F84FA69F49E8",
+            "places": []
+          },
+          {
+            "value": {
+              "time": "+2000-05-15T00:00:00Z",
+              "timezone": 0,
+              "before": 0,
+              "after": 0,
+              "precision": 11,
+              "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+            },
+            "rank": "normal",
+            "statement_id": "Q704513$8181178c-42b5-883d-eda6-719a2428ae75",
+            "places": [
+              {
+                "entity-type": "item",
+                "numeric-id": 42369,
+                "id": "Q42369"
+              }
+            ]
+          },
+          {
+            "value": {
+              "time": "+2000-09-20T00:00:00Z",
+              "timezone": 0,
+              "before": 0,
+              "after": 0,
+              "precision": 11,
+              "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+            },
+            "rank": "normal",
+            "statement_id": "Q704513$31d8fee5-4586-fe18-9dc8-9ed35f2f265d",
+            "places": [
+              {
+                "entity-type": "item",
+                "numeric-id": 142,
+                "id": "Q142"
+              }
+            ]
+          },
+          {
+            "value": {
+              "time": "+2000-12-16T00:00:00Z",
+              "timezone": 0,
+              "before": 0,
+              "after": 0,
+              "precision": 11,
+              "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+            },
+            "rank": "normal",
+            "statement_id": "Q704513$93826d65-4961-6a68-e2ec-0e2e5173aa66",
+            "places": [
+              {
+                "entity-type": "item",
+                "numeric-id": 17,
+                "id": "Q17"
+              }
+            ]
+          },
+          {
+            "value": {
+              "time": "+2017-07-28T00:00:00Z",
+              "timezone": 0,
+              "before": 0,
+              "after": 0,
+              "precision": 11,
+              "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+            },
+            "rank": "normal",
+            "statement_id": "Q704513$AF312D70-6BA2-4CD3-9349-A33DAC233ADB",
+            "places": [
+              {
+                "entity-type": "item",
+                "numeric-id": 865,
+                "id": "Q865"
+              }
+            ]
+          }
+        ],
+        "P2047": [
+          {
+            "value": {
+              "amount": "+173",
+              "unit": "http://www.wikidata.org/entity/Q7727"
+            },
+            "rank": "normal",
+            "statement_id": "Q704513$2AC35BE7-B841-4C3E-9CAE-4B903F6C1BAC",
+            "places": []
+          }
+        ],
+        "P136": [
+          {
+            "value": {
+              "entity-type": "item",
+              "numeric-id": 130232,
+              "id": "Q130232"
+            },
+            "rank": "normal",
+            "statement_id": "Q704513$080c0bf8-4648-96eb-4bb6-78ea93ecce26",
+            "places": []
+          },
+          {
+            "value": {
+              "entity-type": "item",
+              "numeric-id": 2561438,
+              "id": "Q2561438"
+            },
+            "rank": "normal",
+            "statement_id": "Q704513$c7004dbd-40f6-60ef-f2c1-66f4dd009e73",
+            "places": []
+          }
+        ],
+        "P1476": [
+          {
+            "value": {
+              "text": "一一",
+              "language": "zh"
+            },
+            "rank": "normal",
+            "statement_id": "Q704513$d195d6df-419b-ef6a-e793-33448a8ca778",
+            "places": []
+          }
+        ]
+      }
+    },
+    "Q60611804": {
+      "id": "Q60611804",
+      "lastrevid": 2552373511,
+      "source_url": "https://www.wikidata.org/wiki/Q60611804",
+      "retrieved": "2026-10-22",
+      "labels": {
+        "en": "The Farewell",
+        "zh": "别告诉她",
+        "ko": "페어웰",
+        "ja": "ザ・フェアウェル"
+      },
+      "aliases": {
+        "ko": [
+          "더 페어웰"
+        ]
+      },
+      "statements": {
+        "P31": [
+          {
+            "value": {
+              "entity-type": "item",
+              "numeric-id": 11424,
+              "id": "Q11424"
+            },
+            "rank": "normal",
+            "statement_id": "Q60611804$2e15c925-4a5c-b8fb-64cf-25f3ff50bbd4",
+            "places": []
+          }
+        ],
+        "P57": [
+          {
+            "value": {
+              "entity-type": "item",
+              "numeric-id": 25190449,
+              "id": "Q25190449"
+            },
+            "rank": "normal",
+            "statement_id": "Q60611804$9ba5a147-4b83-7010-b1c3-c7beab0d6363",
+            "places": []
+          }
+        ],
+        "P495": [
+          {
+            "value": {
+              "entity-type": "item",
+              "numeric-id": 30,
+              "id": "Q30"
+            },
+            "rank": "normal",
+            "statement_id": "Q60611804$146d65d8-481f-9b9d-ba01-141a6516b177",
+            "places": []
+          }
+        ],
+        "P577": [
+          {
+            "value": {
+              "time": "+2019-07-12T00:00:00Z",
+              "timezone": 0,
+              "before": 0,
+              "after": 0,
+              "precision": 11,
+              "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+            },
+            "rank": "normal",
+            "statement_id": "Q60611804$14dc6206-433e-e857-b0a6-adb4e98266c1",
+            "places": [
+              {
+                "entity-type": "item",
+                "numeric-id": 30,
+                "id": "Q30"
+              }
+            ]
+          },
+          {
+            "value": {
+              "time": "+2019-09-20T00:00:00Z",
+              "timezone": 0,
+              "before": 0,
+              "after": 0,
+              "precision": 11,
+              "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+            },
+            "rank": "normal",
+            "statement_id": "Q60611804$c1b35079-4ad4-9cf7-7e0b-88bbaa55745c",
+            "places": [
+              {
+                "entity-type": "item",
+                "numeric-id": 145,
+                "id": "Q145"
+              }
+            ]
+          },
+          {
+            "value": {
+              "time": "+2019-12-19T00:00:00Z",
+              "timezone": 0,
+              "before": 0,
+              "after": 0,
+              "precision": 11,
+              "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+            },
+            "rank": "normal",
+            "statement_id": "Q60611804$7956e3c2-438b-87fd-03b7-c1f6557d1abf",
+            "places": [
+              {
+                "entity-type": "item",
+                "numeric-id": 183,
+                "id": "Q183"
+              }
+            ]
+          },
+          {
+            "value": {
+              "time": "+2020-01-24T00:00:00Z",
+              "timezone": 0,
+              "before": 0,
+              "after": 0,
+              "precision": 11,
+              "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+            },
+            "rank": "normal",
+            "statement_id": "Q60611804$a3d8ae4b-4957-aa06-ee4b-446a39b3fa00",
+            "places": [
+              {
+                "entity-type": "item",
+                "numeric-id": 43,
+                "id": "Q43"
+              }
+            ]
+          },
+          {
+            "value": {
+              "time": "+2020-02-07T00:00:00Z",
+              "timezone": 0,
+              "before": 0,
+              "after": 0,
+              "precision": 11,
+              "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+            },
+            "rank": "normal",
+            "statement_id": "Q60611804$92207602-4480-5550-963b-cd5b7e33c817",
+            "places": [
+              {
+                "entity-type": "item",
+                "numeric-id": 36,
+                "id": "Q36"
+              }
+            ]
+          },
+          {
+            "value": {
+              "time": "+2020-02-06T00:00:00Z",
+              "timezone": 0,
+              "before": 0,
+              "after": 0,
+              "precision": 11,
+              "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+            },
+            "rank": "normal",
+            "statement_id": "Q60611804$98E60F90-C9DA-48AA-9AB7-755773F34CFA",
+            "places": [
+              {
+                "entity-type": "item",
+                "numeric-id": 28,
+                "id": "Q28"
+              }
+            ]
+          }
+        ],
+        "P2047": [
+          {
+            "value": {
+              "amount": "+98",
+              "unit": "http://www.wikidata.org/entity/Q7727"
+            },
+            "rank": "normal",
+            "statement_id": "Q60611804$c0ee98dc-4c28-bca9-c191-5e8b9614a92e",
+            "places": []
+          }
+        ],
+        "P136": [
+          {
+            "value": {
+              "entity-type": "item",
+              "numeric-id": 130232,
+              "id": "Q130232"
+            },
+            "rank": "normal",
+            "statement_id": "Q60611804$6c465f50-43ef-9d26-c90c-afad68d891c5",
+            "places": []
+          },
+          {
+            "value": {
+              "entity-type": "item",
+              "numeric-id": 859369,
+              "id": "Q859369"
+            },
+            "rank": "normal",
+            "statement_id": "Q60611804$04220e1d-4c28-fabc-fd78-a0343b185907",
+            "places": []
+          }
+        ],
+        "P1476": [
+          {
+            "value": {
+              "text": "The Farewell",
+              "language": "en"
+            },
+            "rank": "normal",
+            "statement_id": "Q60611804$c533f743-4267-1062-f289-a3495803f74c",
+            "places": []
+          }
+        ]
+      }
+    },
+    "Q1056853": {
+      "id": "Q1056853",
+      "lastrevid": 2547881830,
+      "source_url": "https://www.wikidata.org/wiki/Q1056853",
+      "retrieved": "2026-10-22",
+      "labels": {
+        "zh-hans": "花样年华",
+        "zh-hant": "花樣年華",
+        "ko": "화양연화",
+        "en": "In the Mood for Love",
+        "ja": "花様年華",
+        "zh": "花樣年華"
+      },
+      "aliases": {
+        "zh": [
+          "花样年华"
+        ],
+        "ja": [
+          "花樣年華"
+        ]
+      },
+      "statements": {
+        "P31": [
+          {
+            "value": {
+              "entity-type": "item",
+              "numeric-id": 11424,
+              "id": "Q11424"
+            },
+            "rank": "normal",
+            "statement_id": "q1056853$B1F97E98-E2E2-49DF-BC1B-64A996C67A81",
+            "places": []
+          }
+        ],
+        "P57": [
+          {
+            "value": {
+              "entity-type": "item",
+              "numeric-id": 55431,
+              "id": "Q55431"
+            },
+            "rank": "normal",
+            "statement_id": "q1056853$8D255D65-F5DA-46C2-847A-FFA9263F5F1B",
+            "places": []
+          }
+        ],
+        "P495": [
+          {
+            "value": {
+              "entity-type": "item",
+              "numeric-id": 8646,
+              "id": "Q8646"
+            },
+            "rank": "normal",
+            "statement_id": "Q1056853$e44d2f74-4b3b-6336-aab3-9b3d4111d957",
+            "places": []
+          },
+          {
+            "value": {
+              "entity-type": "item",
+              "numeric-id": 142,
+              "id": "Q142"
+            },
+            "rank": "normal",
+            "statement_id": "Q1056853$42cb533f-4cc6-53d1-5174-4e57d7da7bc2",
+            "places": []
+          },
+          {
+            "value": {
+              "entity-type": "item",
+              "numeric-id": 869,
+              "id": "Q869"
+            },
+            "rank": "normal",
+            "statement_id": "Q1056853$a11a3fa6-4890-6c0d-a80c-aa553c97ed9b",
+            "places": []
+          }
+        ],
+        "P577": [
+          {
+            "value": {
+              "time": "+2000-05-20T00:00:00Z",
+              "timezone": 0,
+              "before": 0,
+              "after": 0,
+              "precision": 11,
+              "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+            },
+            "rank": "normal",
+            "statement_id": "Q1056853$577F1140-28E9-4A3C-BD2C-87C54015A945",
+            "places": [
+              {
+                "entity-type": "item",
+                "numeric-id": 42369,
+                "id": "Q42369"
+              }
+            ]
+          },
+          {
+            "value": {
+              "time": "+2000-11-30T00:00:00Z",
+              "timezone": 0,
+              "before": 0,
+              "after": 0,
+              "precision": 11,
+              "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+            },
+            "rank": "normal",
+            "statement_id": "Q1056853$f49ef622-4fb1-fcb4-8cb7-cec96ccb3f4d",
+            "places": [
+              {
+                "entity-type": "item",
+                "numeric-id": 183,
+                "id": "Q183"
+              }
+            ]
+          },
+          {
+            "value": {
+              "time": "+2000-09-29T00:00:00Z",
+              "timezone": 0,
+              "before": 0,
+              "after": 0,
+              "precision": 11,
+              "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+            },
+            "rank": "normal",
+            "statement_id": "Q1056853$223bdb9e-4e43-94a8-72dc-1d44451f883c",
+            "places": [
+              {
+                "entity-type": "item",
+                "numeric-id": 8646,
+                "id": "Q8646"
+              }
+            ]
+          },
+          {
+            "value": {
+              "time": "+2000-11-08T00:00:00Z",
+              "timezone": 0,
+              "before": 0,
+              "after": 0,
+              "precision": 11,
+              "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+            },
+            "rank": "normal",
+            "statement_id": "Q1056853$f59455f3-4407-ad8f-ab68-999c58265498",
+            "places": [
+              {
+                "entity-type": "item",
+                "numeric-id": 142,
+                "id": "Q142"
+              },
+              {
+                "entity-type": "item",
+                "numeric-id": 31,
+                "id": "Q31"
+              }
+            ]
+          },
+          {
+            "value": {
+              "time": "+2001-03-09T00:00:00Z",
+              "timezone": 0,
+              "before": 0,
+              "after": 0,
+              "precision": 11,
+              "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+            },
+            "rank": "normal",
+            "statement_id": "Q1056853$ab099925-489a-5ca4-c301-5cda0c05def1",
+            "places": [
+              {
+                "entity-type": "item",
+                "numeric-id": 30,
+                "id": "Q30"
+              }
+            ]
+          }
+        ],
+        "P2047": [
+          {
+            "value": {
+              "amount": "+98",
+              "unit": "http://www.wikidata.org/entity/Q7727"
+            },
+            "rank": "normal",
+            "statement_id": "Q1056853$9291B48E-F3AC-4286-A787-250C964DB0B8",
+            "places": []
+          }
+        ],
+        "P136": [
+          {
+            "value": {
+              "entity-type": "item",
+              "numeric-id": 1054574,
+              "id": "Q1054574"
+            },
+            "rank": "normal",
+            "statement_id": "Q1056853$42927381-41F6-48F8-BE32-7FF1DC1F923F",
+            "places": []
+          },
+          {
+            "value": {
+              "entity-type": "item",
+              "numeric-id": 130232,
+              "id": "Q130232"
+            },
+            "rank": "normal",
+            "statement_id": "Q1056853$C8845BDF-6055-4F65-8434-E32D06125FB3",
+            "places": []
+          }
+        ],
+        "P1476": [
+          {
+            "value": {
+              "text": "花樣年華",
+              "language": "yue"
+            },
+            "rank": "normal",
+            "statement_id": "Q1056853$06ea59d9-4872-789d-04f5-09e353c41264",
+            "places": []
+          }
+        ]
+      }
+    },
+    "Q766263": {
+      "id": "Q766263",
+      "lastrevid": 2542498146,
+      "source_url": "https://www.wikidata.org/wiki/Q766263",
+      "retrieved": "2026-10-22",
+      "labels": {
+        "en": "Chungking Express",
+        "ja": "恋する惑星",
+        "ko": "중경삼림 리마스터링",
+        "zh": "重慶森林",
+        "zh-cn": "重庆森林",
+        "zh-hans": "重庆森林",
+        "zh-hant": "重慶森林"
+      },
+      "aliases": {
+        "zh": [
+          "重庆森林"
+        ]
+      },
+      "statements": {
+        "P31": [
+          {
+            "value": {
+              "entity-type": "item",
+              "numeric-id": 11424,
+              "id": "Q11424"
+            },
+            "rank": "normal",
+            "statement_id": "q766263$8A8ED139-7993-4077-8368-1A35670B5211",
+            "places": []
+          }
+        ],
+        "P57": [
+          {
+            "value": {
+              "entity-type": "item",
+              "numeric-id": 55431,
+              "id": "Q55431"
+            },
+            "rank": "normal",
+            "statement_id": "q766263$1B0A7A23-9717-4DB2-9476-7566ECD356A2",
+            "places": []
+          }
+        ],
+        "P495": [
+          {
+            "value": {
+              "entity-type": "item",
+              "numeric-id": 8646,
+              "id": "Q8646"
+            },
+            "rank": "normal",
+            "statement_id": "Q766263$d8e2bea2-4f84-4594-e109-b80ea7e4a65d",
+            "places": []
+          }
+        ],
+        "P577": [
+          {
+            "value": {
+              "time": "+1994-07-14T00:00:00Z",
+              "timezone": 0,
+              "before": 0,
+              "after": 0,
+              "precision": 11,
+              "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+            },
+            "rank": "normal",
+            "statement_id": "Q766263$c6e805d7-4370-d02a-97a5-a513cba5511d",
+            "places": [
+              {
+                "entity-type": "item",
+                "numeric-id": 8646,
+                "id": "Q8646"
+              },
+              {
+                "entity-type": "item",
+                "numeric-id": 96,
+                "id": "Q96"
+              }
+            ]
+          },
+          {
+            "value": {
+              "time": "+1995-03-22T00:00:00Z",
+              "timezone": 0,
+              "before": 0,
+              "after": 0,
+              "precision": 11,
+              "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+            },
+            "rank": "normal",
+            "statement_id": "Q766263$a27e39a2-419d-a6e4-1e72-21074a8d0a3d",
+            "places": [
+              {
+                "entity-type": "item",
+                "numeric-id": 142,
+                "id": "Q142"
+              }
+            ]
+          },
+          {
+            "value": {
+              "time": "+1995-07-15T00:00:00Z",
+              "timezone": 0,
+              "before": 0,
+              "after": 0,
+              "precision": 11,
+              "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+            },
+            "rank": "normal",
+            "statement_id": "Q766263$547162be-4e43-65fb-7afd-436a96fc1495",
+            "places": [
+              {
+                "entity-type": "item",
+                "numeric-id": 17,
+                "id": "Q17"
+              }
+            ]
+          },
+          {
+            "value": {
+              "time": "+1995-09-02T00:00:00Z",
+              "timezone": 0,
+              "before": 0,
+              "after": 0,
+              "precision": 11,
+              "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+            },
+            "rank": "normal",
+            "statement_id": "Q766263$9489fe5e-4723-a203-2d9d-dd6560fccbc3",
+            "places": [
+              {
+                "entity-type": "item",
+                "numeric-id": 884,
+                "id": "Q884"
+              }
+            ]
+          },
+          {
+            "value": {
+              "time": "+1995-09-15T00:00:00Z",
+              "timezone": 0,
+              "before": 0,
+              "after": 0,
+              "precision": 11,
+              "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+            },
+            "rank": "normal",
+            "statement_id": "Q766263$8d4688e6-4cf9-3aaf-0209-a49cb81dc212",
+            "places": [
+              {
+                "entity-type": "item",
+                "numeric-id": 145,
+                "id": "Q145"
+              }
+            ]
+          },
+          {
+            "value": {
+              "time": "+1995-10-05T00:00:00Z",
+              "timezone": 0,
+              "before": 0,
+              "after": 0,
+              "precision": 11,
+              "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+            },
+            "rank": "normal",
+            "statement_id": "Q766263$a0f1fb29-4353-15e1-a804-56525746aa53",
+            "places": [
+              {
+                "entity-type": "item",
+                "numeric-id": 55,
+                "id": "Q55"
+              }
+            ]
+          },
+          {
+            "value": {
+              "time": "+1995-11-17T00:00:00Z",
+              "timezone": 0,
+              "before": 0,
+              "after": 0,
+              "precision": 11,
+              "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+            },
+            "rank": "normal",
+            "statement_id": "Q766263$ca6dff21-4034-87c2-128b-426e92f21b70",
+            "places": [
+              {
+                "entity-type": "item",
+                "numeric-id": 35,
+                "id": "Q35"
+              }
+            ]
+          },
+          {
+            "value": {
+              "time": "+1995-11-24T00:00:00Z",
+              "timezone": 0,
+              "before": 0,
+              "after": 0,
+              "precision": 11,
+              "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+            },
+            "rank": "normal",
+            "statement_id": "Q766263$bcb9c6df-4977-6cd6-2b0f-633bed002af6",
+            "places": [
+              {
+                "entity-type": "item",
+                "numeric-id": 38,
+                "id": "Q38"
+              }
+            ]
+          },
+          {
+            "value": {
+              "time": "+1995-12-07T00:00:00Z",
+              "timezone": 0,
+              "before": 0,
+              "after": 0,
+              "precision": 11,
+              "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+            },
+            "rank": "normal",
+            "statement_id": "Q766263$ccc72006-4582-74aa-0da0-7395fc8774ff",
+            "places": [
+              {
+                "entity-type": "item",
+                "numeric-id": 33,
+                "id": "Q33"
+              }
+            ]
+          },
+          {
+            "value": {
+              "time": "+1995-12-26T00:00:00Z",
+              "timezone": 0,
+              "before": 0,
+              "after": 0,
+              "precision": 11,
+              "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+            },
+            "rank": "normal",
+            "statement_id": "Q766263$d7f786ee-4572-6214-51bf-917a9920e5dc",
+            "places": [
+              {
+                "entity-type": "item",
+                "numeric-id": 408,
+                "id": "Q408"
+              }
+            ]
+          },
+          {
+            "value": {
+              "time": "+1996-01-19T00:00:00Z",
+              "timezone": 0,
+              "before": 0,
+              "after": 0,
+              "precision": 11,
+              "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+            },
+            "rank": "normal",
+            "statement_id": "Q766263$dc61d793-403f-2edb-9b11-aca1deac208a",
+            "places": [
+              {
+                "entity-type": "item",
+                "numeric-id": 155,
+                "id": "Q155"
+              }
+            ]
+          },
+          {
+            "value": {
+              "time": "+1996-03-08T00:00:00Z",
+              "timezone": 0,
+              "before": 0,
+              "after": 0,
+              "precision": 11,
+              "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+            },
+            "rank": "normal",
+            "statement_id": "Q766263$43e35057-4127-5128-7330-4de05ad8611f",
+            "places": [
+              {
+                "entity-type": "item",
+                "numeric-id": 30,
+                "id": "Q30"
+              }
+            ]
+          },
+          {
+            "value": {
+              "time": "+1996-03-15T00:00:00Z",
+              "timezone": 0,
+              "before": 0,
+              "after": 0,
+              "precision": 11,
+              "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+            },
+            "rank": "normal",
+            "statement_id": "Q766263$cd4092d7-4957-6e8c-0c9b-c9fe5eb9331e",
+            "places": [
+              {
+                "entity-type": "item",
+                "numeric-id": 16,
+                "id": "Q16"
+              }
+            ]
+          },
+          {
+            "value": {
+              "time": "+1996-03-28T00:00:00Z",
+              "timezone": 0,
+              "before": 0,
+              "after": 0,
+              "precision": 11,
+              "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+            },
+            "rank": "normal",
+            "statement_id": "Q766263$75937d9c-46e8-2a86-7213-5abc0e1d5f8b",
+            "places": [
+              {
+                "entity-type": "item",
+                "numeric-id": 183,
+                "id": "Q183"
+              }
+            ]
+          },
+          {
+            "value": {
+              "time": "+1996-03-29T00:00:00Z",
+              "timezone": 0,
+              "before": 0,
+              "after": 0,
+              "precision": 11,
+              "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+            },
+            "rank": "normal",
+            "statement_id": "Q766263$f9bf4949-485c-1b31-8901-72807411082a",
+            "places": [
+              {
+                "entity-type": "item",
+                "numeric-id": 20,
+                "id": "Q20"
+              }
+            ]
+          },
+          {
+            "value": {
+              "time": "+1996-04-12T00:00:00Z",
+              "timezone": 0,
+              "before": 0,
+              "after": 0,
+              "precision": 11,
+              "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+            },
+            "rank": "normal",
+            "statement_id": "Q766263$09f67095-4d2e-17a4-e141-b70b2ad1e5fe",
+            "places": [
+              {
+                "entity-type": "item",
+                "numeric-id": 45,
+                "id": "Q45"
+              }
+            ]
+          },
+          {
+            "value": {
+              "time": "+1996-04-26T00:00:00Z",
+              "timezone": 0,
+              "before": 0,
+              "after": 0,
+              "precision": 11,
+              "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+            },
+            "rank": "normal",
+            "statement_id": "Q766263$642501ac-41ed-53ae-22c7-c0ceb2cd49c2",
+            "places": [
+              {
+                "entity-type": "item",
+                "numeric-id": 41,
+                "id": "Q41"
+              }
+            ]
+          },
+          {
+            "value": {
+              "time": "+1996-05-17T00:00:00Z",
+              "timezone": 0,
+              "before": 0,
+              "after": 0,
+              "precision": 11,
+              "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+            },
+            "rank": "normal",
+            "statement_id": "Q766263$bf37231b-4f88-e170-6996-202f50a02eba",
+            "places": [
+              {
+                "entity-type": "item",
+                "numeric-id": 34,
+                "id": "Q34"
+              }
+            ]
+          },
+          {
+            "value": {
+              "time": "+1996-06-06T00:00:00Z",
+              "timezone": 0,
+              "before": 0,
+              "after": 0,
+              "precision": 11,
+              "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+            },
+            "rank": "normal",
+            "statement_id": "Q766263$4b7d6b82-4c09-df0d-f3e4-db3a4e35517f",
+            "places": [
+              {
+                "entity-type": "item",
+                "numeric-id": 28,
+                "id": "Q28"
+              }
+            ]
+          },
+          {
+            "value": {
+              "time": "+1996-06-27T00:00:00Z",
+              "timezone": 0,
+              "before": 0,
+              "after": 0,
+              "precision": 11,
+              "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+            },
+            "rank": "normal",
+            "statement_id": "Q766263$c27c4776-42ef-96f9-e275-685348f41757",
+            "places": [
+              {
+                "entity-type": "item",
+                "numeric-id": 29,
+                "id": "Q29"
+              }
+            ]
+          },
+          {
+            "value": {
+              "time": "+1999-05-07T00:00:00Z",
+              "timezone": 0,
+              "before": 0,
+              "after": 0,
+              "precision": 11,
+              "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+            },
+            "rank": "normal",
+            "statement_id": "Q766263$099081eb-4a8f-629e-e2ae-cf918f2b9650",
+            "places": [
+              {
+                "entity-type": "item",
+                "numeric-id": 36,
+                "id": "Q36"
+              }
+            ]
+          }
+        ],
+        "P2047": [
+          {
+            "value": {
+              "amount": "+102",
+              "unit": "http://www.wikidata.org/entity/Q7727"
+            },
+            "rank": "normal",
+            "statement_id": "Q766263$0C757630-B27D-45FB-AA5D-78852093FB85",
+            "places": []
+          },
+          {
+            "value": {
+              "amount": "+101",
+              "unit": "http://www.wikidata.org/entity/Q7727"
+            },
+            "rank": "normal",
+            "statement_id": "Q766263$B0A52086-4A0C-4946-B3A3-D15E7107D07C",
+            "places": []
+          }
+        ],
+        "P136": [
+          {
+            "value": {
+              "entity-type": "item",
+              "numeric-id": 859369,
+              "id": "Q859369"
+            },
+            "rank": "normal",
+            "statement_id": "Q766263$fff46b20-4cc0-0a6e-dc76-512ae8fda9cc",
+            "places": []
+          },
+          {
+            "value": {
+              "entity-type": "item",
+              "numeric-id": 1054574,
+              "id": "Q1054574"
+            },
+            "rank": "normal",
+            "statement_id": "Q766263$58805ad4-4975-9246-759a-b6798701ef32",
+            "places": []
+          },
+          {
+            "value": {
+              "entity-type": "item",
+              "numeric-id": 959790,
+              "id": "Q959790"
+            },
+            "rank": "normal",
+            "statement_id": "Q766263$a355e38a-4118-2c06-328f-b8340de438cc",
+            "places": []
+          }
+        ],
+        "P1476": [
+          {
+            "value": {
+              "text": "重慶森林",
+              "language": "zh"
+            },
+            "rank": "normal",
+            "statement_id": "Q766263$8ca440ce-4989-1a0d-bf57-ae4fbe109930",
+            "places": []
+          },
+          {
+            "value": {
+              "text": "Chungking Express",
+              "language": "en"
+            },
+            "rank": "preferred",
+            "statement_id": "Q766263$03b9617d-41fa-fdb1-c6d9-859bbab59e78",
+            "places": []
+          }
+        ]
+      }
+    },
+    "Q116025865": {
+      "id": "Q116025865",
+      "lastrevid": 2557080167,
+      "source_url": "https://www.wikidata.org/wiki/Q116025865",
+      "retrieved": "2026-10-22",
+      "labels": {
+        "en": "Past Lives",
+        "ko": "전생",
+        "zh": "之前的我們",
+        "ja": "パスト・ライブス"
+      },
+      "aliases": {
+        "zh": [
+          "過往人生",
+          "從前的我們",
+          "前度人生"
+        ],
+        "ko": [
+          "패스트 라이브즈",
+          "패스트 라이브스"
+        ]
+      },
+      "statements": {
+        "P31": [
+          {
+            "value": {
+              "entity-type": "item",
+              "numeric-id": 11424,
+              "id": "Q11424"
+            },
+            "rank": "normal",
+            "statement_id": "Q116025865$004E5EF4-0F3E-4125-8E32-FA80AD5C1D57",
+            "places": []
+          }
+        ],
+        "P57": [
+          {
+            "value": {
+              "entity-type": "item",
+              "numeric-id": 116286260,
+              "id": "Q116286260"
+            },
+            "rank": "normal",
+            "statement_id": "Q116025865$455565ac-41b4-4433-afd4-f510b39e5ef2",
+            "places": []
+          }
+        ],
+        "P495": [
+          {
+            "value": {
+              "entity-type": "item",
+              "numeric-id": 30,
+              "id": "Q30"
+            },
+            "rank": "normal",
+            "statement_id": "Q116025865$0a0323b7-4423-7ddb-64ec-d38855feb06a",
+            "places": []
+          }
+        ],
+        "P577": [
+          {
+            "value": {
+              "time": "+2023-01-21T00:00:00Z",
+              "timezone": 0,
+              "before": 0,
+              "after": 0,
+              "precision": 11,
+              "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+            },
+            "rank": "normal",
+            "statement_id": "Q116025865$ee38a8b7-4c69-ceb5-9f25-2e64a31c4769",
+            "places": [
+              {
+                "entity-type": "item",
+                "numeric-id": 111827709,
+                "id": "Q111827709"
+              }
+            ]
+          },
+          {
+            "value": {
+              "time": "+2023-06-02T00:00:00Z",
+              "timezone": 0,
+              "before": 0,
+              "after": 0,
+              "precision": 11,
+              "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+            },
+            "rank": "normal",
+            "statement_id": "Q116025865$0557d5dc-41e4-77bf-283e-48fe92dda6a8",
+            "places": [
+              {
+                "entity-type": "item",
+                "numeric-id": 96,
+                "id": "Q96"
+              },
+              {
+                "entity-type": "item",
+                "numeric-id": 30,
+                "id": "Q30"
+              }
+            ]
+          },
+          {
+            "value": {
+              "time": "+2023-06-09T00:00:00Z",
+              "timezone": 0,
+              "before": 0,
+              "after": 0,
+              "precision": 11,
+              "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+            },
+            "rank": "normal",
+            "statement_id": "Q116025865$4d31ed63-4b6a-1202-2486-f74daa0775a7",
+            "places": [
+              {
+                "entity-type": "item",
+                "numeric-id": 16,
+                "id": "Q16"
+              }
+            ]
+          },
+          {
+            "value": {
+              "time": "+2023-06-23T00:00:00Z",
+              "timezone": 0,
+              "before": 0,
+              "after": 0,
+              "precision": 11,
+              "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+            },
+            "rank": "normal",
+            "statement_id": "Q116025865$840aa91c-4617-1c9a-692f-4a103fab59dd",
+            "places": [
+              {
+                "entity-type": "item",
+                "numeric-id": 30,
+                "id": "Q30"
+              }
+            ]
+          },
+          {
+            "value": {
+              "time": "+2023-08-17T00:00:00Z",
+              "timezone": 0,
+              "before": 0,
+              "after": 0,
+              "precision": 11,
+              "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+            },
+            "rank": "normal",
+            "statement_id": "Q116025865$0c4908fc-4f0a-209c-4b16-0ebc57609117",
+            "places": [
+              {
+                "entity-type": "item",
+                "numeric-id": 183,
+                "id": "Q183"
+              }
+            ]
+          },
+          {
+            "value": {
+              "time": "+2024-01-11T00:00:00Z",
+              "timezone": 0,
+              "before": 0,
+              "after": 0,
+              "precision": 11,
+              "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+            },
+            "rank": "normal",
+            "statement_id": "Q116025865$E69586BA-22B7-412B-8E03-FB9307A5EBBD",
+            "places": [
+              {
+                "entity-type": "item",
+                "numeric-id": 28,
+                "id": "Q28"
+              }
+            ]
+          }
+        ],
+        "P2047": [
+          {
+            "value": {
+              "amount": "+106",
+              "unit": "http://www.wikidata.org/entity/Q7727"
+            },
+            "rank": "normal",
+            "statement_id": "Q116025865$195dcde3-49e7-66ec-5d7d-4bc618ae956d",
+            "places": []
+          }
+        ],
+        "P136": [
+          {
+            "value": {
+              "entity-type": "item",
+              "numeric-id": 130232,
+              "id": "Q130232"
+            },
+            "rank": "normal",
+            "statement_id": "Q116025865$1bba06b3-4bbe-948f-6a45-d3eb42fd64a3",
+            "places": []
+          }
+        ],
+        "P1476": [
+          {
+            "value": {
+              "text": "Past Lives",
+              "language": "en"
+            },
+            "rank": "normal",
+            "statement_id": "Q116025865$b8010673-4b36-ce33-01a6-4f3ca5592c68",
+            "places": []
+          }
+        ]
+      }
+    },
+    "Q208269": {
+      "id": "Q208269",
+      "lastrevid": 2558362247,
+      "source_url": "https://www.wikidata.org/wiki/Q208269",
+      "retrieved": "2026-10-22",
+      "labels": {
+        "zh-hans": "美丽心灵的永恒阳光",
+        "zh-hant": "王牌冤家",
+        "zh-cn": "美丽心灵的永恒阳光",
+        "ko": "이터널 선샤인",
+        "ja": "エターナル・サンシャイン",
+        "en": "Eternal Sunshine of the Spotless Mind",
+        "zh": "無痛失戀"
+      },
+      "aliases": {
+        "zh": [
+          "王牌冤家",
+          "美丽心灵的永恒阳光"
+        ]
+      },
+      "statements": {
+        "P31": [
+          {
+            "value": {
+              "entity-type": "item",
+              "numeric-id": 11424,
+              "id": "Q11424"
+            },
+            "rank": "normal",
+            "statement_id": "q208269$DEE30992-32FB-498D-A85A-D86174B8D63B",
+            "places": []
+          }
+        ],
+        "P57": [
+          {
+            "value": {
+              "entity-type": "item",
+              "numeric-id": 126098,
+              "id": "Q126098"
+            },
+            "rank": "normal",
+            "statement_id": "q208269$0F4A814D-D629-4CD6-A04D-E339C5FA2228",
+            "places": []
+          }
+        ],
+        "P495": [
+          {
+            "value": {
+              "entity-type": "item",
+              "numeric-id": 30,
+              "id": "Q30"
+            },
+            "rank": "normal",
+            "statement_id": "Q208269$12D7A45E-609F-4C0C-9CAD-BB4731C87459",
+            "places": []
+          }
+        ],
+        "P577": [
+          {
+            "value": {
+              "time": "+2004-03-19T00:00:00Z",
+              "timezone": 0,
+              "before": 0,
+              "after": 0,
+              "precision": 11,
+              "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+            },
+            "rank": "normal",
+            "statement_id": "Q208269$6D9DDE13-C447-4500-8B75-432AA875F2CF",
+            "places": [
+              {
+                "entity-type": "item",
+                "numeric-id": 30,
+                "id": "Q30"
+              }
+            ]
+          },
+          {
+            "value": {
+              "time": "+2004-05-20T00:00:00Z",
+              "timezone": 0,
+              "before": 0,
+              "after": 0,
+              "precision": 11,
+              "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+            },
+            "rank": "normal",
+            "statement_id": "Q208269$4f362d21-4780-c19e-5ce4-ac7ee00d9f7d",
+            "places": [
+              {
+                "entity-type": "item",
+                "numeric-id": 183,
+                "id": "Q183"
+              }
+            ]
+          },
+          {
+            "value": {
+              "time": "+2004-03-09T00:00:00Z",
+              "timezone": 0,
+              "before": 0,
+              "after": 0,
+              "precision": 11,
+              "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+            },
+            "rank": "normal",
+            "statement_id": "Q208269$9ac37804-4efb-27c7-536d-51bc49f13369",
+            "places": [
+              {
+                "entity-type": "item",
+                "numeric-id": 65,
+                "id": "Q65"
+              }
+            ]
+          }
+        ],
+        "P2047": [
+          {
+            "value": {
+              "amount": "+104",
+              "unit": "http://www.wikidata.org/entity/Q7727"
+            },
+            "rank": "normal",
+            "statement_id": "Q208269$DBF7A395-70CD-47CD-AE9E-6B23F5C42DDF",
+            "places": []
+          }
+        ],
+        "P136": [
+          {
+            "value": {
+              "entity-type": "item",
+              "numeric-id": 860626,
+              "id": "Q860626"
+            },
+            "rank": "normal",
+            "statement_id": "q208269$BABBAE1D-B9D1-479A-ADD5-A1F95C888280",
+            "places": []
+          },
+          {
+            "value": {
+              "entity-type": "item",
+              "numeric-id": 859369,
+              "id": "Q859369"
+            },
+            "rank": "normal",
+            "statement_id": "Q208269$BF303DFB-2632-4EDB-BF53-8D4558083EA8",
+            "places": []
+          },
+          {
+            "value": {
+              "entity-type": "item",
+              "numeric-id": 471839,
+              "id": "Q471839"
+            },
+            "rank": "normal",
+            "statement_id": "Q208269$957D6765-5D79-49F3-9D15-FEB97F9F9836",
+            "places": []
+          },
+          {
+            "value": {
+              "entity-type": "item",
+              "numeric-id": 1919632,
+              "id": "Q1919632"
+            },
+            "rank": "normal",
+            "statement_id": "Q208269$98ed05db-41db-b48a-b86d-a032728a49c5",
+            "places": []
+          },
+          {
+            "value": {
+              "entity-type": "item",
+              "numeric-id": 157394,
+              "id": "Q157394"
+            },
+            "rank": "normal",
+            "statement_id": "Q208269$f5ade214-47d8-7ae9-2593-e02afc6b58c2",
+            "places": []
+          }
+        ],
+        "P1476": [
+          {
+            "value": {
+              "text": "Eternal Sunshine of the Spotless Mind",
+              "language": "en"
+            },
+            "rank": "normal",
+            "statement_id": "Q208269$15B30005-AFD5-46D2-AAD3-B4FAD907BEF6",
+            "places": []
+          }
+        ]
+      }
+    },
+    "Q16635326": {
+      "id": "Q16635326",
+      "lastrevid": 2557088539,
+      "source_url": "https://www.wikidata.org/wiki/Q16635326",
+      "retrieved": "2026-10-22",
+      "labels": {
+        "en": "Ex Machina",
+        "ko": "엑스 마키나 (영화)",
+        "zh": "机械姬",
+        "ja": "エクス・マキナ"
+      },
+      "aliases": {
+        "en": [
+          "EX_MACHINA"
+        ]
+      },
+      "statements": {
+        "P31": [
+          {
+            "value": {
+              "entity-type": "item",
+              "numeric-id": 11424,
+              "id": "Q11424"
+            },
+            "rank": "normal",
+            "statement_id": "Q16635326$C60F819A-7BAF-4863-8465-E0359EF9D26E",
+            "places": []
+          }
+        ],
+        "P57": [
+          {
+            "value": {
+              "entity-type": "item",
+              "numeric-id": 542634,
+              "id": "Q542634"
+            },
+            "rank": "normal",
+            "statement_id": "Q16635326$037d552b-4bb6-fd69-6aad-f1d012bde9c9",
+            "places": []
+          }
+        ],
+        "P495": [
+          {
+            "value": {
+              "entity-type": "item",
+              "numeric-id": 145,
+              "id": "Q145"
+            },
+            "rank": "normal",
+            "statement_id": "Q16635326$c8d99193-4451-970a-a9ca-944abb90574b",
+            "places": []
+          }
+        ],
+        "P577": [
+          {
+            "value": {
+              "time": "+2015-04-23T00:00:00Z",
+              "timezone": 0,
+              "before": 0,
+              "after": 0,
+              "precision": 11,
+              "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+            },
+            "rank": "normal",
+            "statement_id": "Q16635326$DC33C1BA-D9A3-449D-96AD-DB75866652C0",
+            "places": [
+              {
+                "entity-type": "item",
+                "numeric-id": 183,
+                "id": "Q183"
+              }
+            ]
+          },
+          {
+            "value": {
+              "time": "+2015-01-21T00:00:00Z",
+              "timezone": 0,
+              "before": 0,
+              "after": 0,
+              "precision": 11,
+              "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+            },
+            "rank": "normal",
+            "statement_id": "Q16635326$569302d7-4d88-3769-0343-1c1eeb974e97",
+            "places": [
+              {
+                "entity-type": "item",
+                "numeric-id": 145,
+                "id": "Q145"
+              },
+              {
+                "entity-type": "item",
+                "numeric-id": 884,
+                "id": "Q884"
+              }
+            ]
+          },
+          {
+            "value": {
+              "time": "+2015-04-10T00:00:00Z",
+              "timezone": 0,
+              "before": 0,
+              "after": 0,
+              "precision": 11,
+              "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+            },
+            "rank": "normal",
+            "statement_id": "Q16635326$bc3b3436-46b8-a1e0-1351-54bb752b87fe",
+            "places": [
+              {
+                "entity-type": "item",
+                "numeric-id": 30,
+                "id": "Q30"
+              }
+            ]
+          },
+          {
+            "value": {
+              "time": "+2015-01-23T00:00:00Z",
+              "timezone": 0,
+              "before": 0,
+              "after": 0,
+              "precision": 11,
+              "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+            },
+            "rank": "normal",
+            "statement_id": "Q16635326$59ad5141-48d1-178f-d855-1ce4ae30f512",
+            "places": [
+              {
+                "entity-type": "item",
+                "numeric-id": 27,
+                "id": "Q27"
+              }
+            ]
+          },
+          {
+            "value": {
+              "time": "+2015-04-12T00:00:00Z",
+              "timezone": 0,
+              "before": 0,
+              "after": 0,
+              "precision": 11,
+              "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+            },
+            "rank": "normal",
+            "statement_id": "Q16635326$4E5D9724-CFB6-4433-BA5B-2EA2411BCAD4",
+            "places": [
+              {
+                "entity-type": "item",
+                "numeric-id": 28,
+                "id": "Q28"
+              }
+            ]
+          },
+          {
+            "value": {
+              "time": "+2014-12-16T00:00:00Z",
+              "timezone": 0,
+              "before": 0,
+              "after": 0,
+              "precision": 11,
+              "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+            },
+            "rank": "normal",
+            "statement_id": "Q16635326$cf733efa-40b8-da21-c850-f963224d4b99",
+            "places": [
+              {
+                "entity-type": "item",
+                "numeric-id": 683076,
+                "id": "Q683076"
+              }
+            ]
+          },
+          {
+            "value": {
+              "time": "+2015-06-03T00:00:00Z",
+              "timezone": 0,
+              "before": 0,
+              "after": 0,
+              "precision": 11,
+              "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+            },
+            "rank": "normal",
+            "statement_id": "Q16635326$5c0b16d6-4c8b-880f-2b3c-5cfa6b79c769",
+            "places": [
+              {
+                "entity-type": "item",
+                "numeric-id": 142,
+                "id": "Q142"
+              }
+            ]
+          }
+        ],
+        "P2047": [
+          {
+            "value": {
+              "amount": "+108",
+              "unit": "http://www.wikidata.org/entity/Q7727"
+            },
+            "rank": "preferred",
+            "statement_id": "Q16635326$8764ae48-4ea3-ea91-637e-b4bd1dd933fe",
+            "places": []
+          },
+          {
+            "value": {
+              "amount": "+6478",
+              "unit": "http://www.wikidata.org/entity/Q11574"
+            },
+            "rank": "normal",
+            "statement_id": "Q16635326$0726052B-C091-4268-BD0F-70DFB37C4042",
+            "places": []
+          }
+        ],
+        "P136": [
+          {
+            "value": {
+              "entity-type": "item",
+              "numeric-id": 471839,
+              "id": "Q471839"
+            },
+            "rank": "normal",
+            "statement_id": "Q16635326$5BA766CF-4B1F-48C8-A26D-245CBE5C283B",
+            "places": []
+          },
+          {
+            "value": {
+              "entity-type": "item",
+              "numeric-id": 109733304,
+              "id": "Q109733304"
+            },
+            "rank": "normal",
+            "statement_id": "Q16635326$da3af51c-4bc1-b906-9087-bfbe689ba77d",
+            "places": []
+          },
+          {
+            "value": {
+              "entity-type": "item",
+              "numeric-id": 130232,
+              "id": "Q130232"
+            },
+            "rank": "normal",
+            "statement_id": "Q16635326$3881D780-7140-4F50-BB40-F8152A3949CE",
+            "places": []
+          },
+          {
+            "value": {
+              "entity-type": "item",
+              "numeric-id": 108084492,
+              "id": "Q108084492"
+            },
+            "rank": "normal",
+            "statement_id": "Q16635326$dfe2be1d-4759-12b9-56af-9290605694bd",
+            "places": []
+          }
+        ],
+        "P1476": [
+          {
+            "value": {
+              "text": "Ex Machina",
+              "language": "en"
+            },
+            "rank": "normal",
+            "statement_id": "Q16635326$212815E2-2E16-4731-85AF-B30236598B4F",
+            "places": []
+          }
+        ]
+      }
+    },
+    "Q63398229": {
+      "id": "Q63398229",
+      "lastrevid": 2552210596,
+      "source_url": "https://www.wikidata.org/wiki/Q63398229",
+      "retrieved": "2026-10-22",
+      "labels": {
+        "en": "After Yang",
+        "ko": "애프터 양",
+        "zh": "杨之后",
+        "ja": "アフター・ヤン",
+        "zh-hant": "人造眷戀"
+      },
+      "aliases": {
+        "zh": [
+          "楊之後",
+          "人造眷戀"
+        ]
+      },
+      "statements": {
+        "P31": [
+          {
+            "value": {
+              "entity-type": "item",
+              "numeric-id": 11424,
+              "id": "Q11424"
+            },
+            "rank": "normal",
+            "statement_id": "Q63398229$B2EE80FF-D695-4258-8410-3233BE70582A",
+            "places": []
+          }
+        ],
+        "P57": [
+          {
+            "value": {
+              "entity-type": "item",
+              "numeric-id": 40039676,
+              "id": "Q40039676"
+            },
+            "rank": "normal",
+            "statement_id": "Q63398229$4ADB3AF1-FA3E-4711-BAD4-980CA6CA1B3B",
+            "places": []
+          }
+        ],
+        "P495": [
+          {
+            "value": {
+              "entity-type": "item",
+              "numeric-id": 30,
+              "id": "Q30"
+            },
+            "rank": "normal",
+            "statement_id": "Q63398229$3147F776-E165-4FE0-8092-493704EFA4C1",
+            "places": []
+          }
+        ],
+        "P577": [
+          {
+            "value": {
+              "time": "+2021-07-08T00:00:00Z",
+              "timezone": 0,
+              "before": 0,
+              "after": 0,
+              "precision": 11,
+              "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+            },
+            "rank": "normal",
+            "statement_id": "Q63398229$036bd10f-411e-b066-f695-37e94b2d006b",
+            "places": [
+              {
+                "entity-type": "item",
+                "numeric-id": 100231227,
+                "id": "Q100231227"
+              }
+            ]
+          },
+          {
+            "value": {
+              "time": "+2022-01-21T00:00:00Z",
+              "timezone": 0,
+              "before": 0,
+              "after": 0,
+              "precision": 11,
+              "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+            },
+            "rank": "normal",
+            "statement_id": "Q63398229$e3731d97-4ac2-9cf9-14ec-2bdb1b87ba4f",
+            "places": [
+              {
+                "entity-type": "item",
+                "numeric-id": 107006926,
+                "id": "Q107006926"
+              }
+            ]
+          },
+          {
+            "value": {
+              "time": "+2022-03-04T00:00:00Z",
+              "timezone": 0,
+              "before": 0,
+              "after": 0,
+              "precision": 11,
+              "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+            },
+            "rank": "normal",
+            "statement_id": "Q63398229$70b23e8b-47eb-c23c-026a-8a7c179a8ef0",
+            "places": [
+              {
+                "entity-type": "item",
+                "numeric-id": 30,
+                "id": "Q30"
+              }
+            ]
+          },
+          {
+            "value": {
+              "time": "+2022-03-11T00:00:00Z",
+              "timezone": 0,
+              "before": 0,
+              "after": 0,
+              "precision": 11,
+              "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+            },
+            "rank": "normal",
+            "statement_id": "Q63398229$347edd5d-4c32-e999-bd3f-f3df40f6ebf3",
+            "places": [
+              {
+                "entity-type": "item",
+                "numeric-id": 16,
+                "id": "Q16"
+              }
+            ]
+          },
+          {
+            "value": {
+              "time": "+2022-07-06T00:00:00Z",
+              "timezone": 0,
+              "before": 0,
+              "after": 0,
+              "precision": 11,
+              "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+            },
+            "rank": "normal",
+            "statement_id": "Q63398229$2A357AFF-7116-4371-B98F-66D63965EC9A",
+            "places": [
+              {
+                "entity-type": "item",
+                "numeric-id": 142,
+                "id": "Q142"
+              }
+            ]
+          }
+        ],
+        "P2047": [
+          {
+            "value": {
+              "amount": "+96",
+              "unit": "http://www.wikidata.org/entity/Q7727"
+            },
+            "rank": "normal",
+            "statement_id": "Q63398229$f8cdd04c-417c-d7e2-0f28-f8544b19e338",
+            "places": []
+          }
+        ],
+        "P136": [
+          {
+            "value": {
+              "entity-type": "item",
+              "numeric-id": 130232,
+              "id": "Q130232"
+            },
+            "rank": "normal",
+            "statement_id": "Q63398229$7a965b5d-c72d-468f-b5b8-ef5463aed1b8",
+            "places": []
+          },
+          {
+            "value": {
+              "entity-type": "item",
+              "numeric-id": 471839,
+              "id": "Q471839"
+            },
+            "rank": "normal",
+            "statement_id": "Q63398229$0357fca4-44b4-1f26-6bb2-2e20729cf32e",
+            "places": []
+          }
+        ],
+        "P1476": [
+          {
+            "value": {
+              "text": "After Yang",
+              "language": "en"
+            },
+            "rank": "normal",
+            "statement_id": "Q63398229$89ba296c-c5ce-4633-9537-a17fdffad508",
+            "places": []
+          }
+        ]
+      }
+    },
+    "Q20382729": {
+      "id": "Q20382729",
+      "lastrevid": 2558772418,
+      "source_url": "https://www.wikidata.org/wiki/Q20382729",
+      "retrieved": "2026-10-22",
+      "labels": {
+        "en": "Arrival",
+        "ko": "컨택트",
+        "ja": "メッセージ",
+        "zh": "降临"
+      },
+      "aliases": {
+        "ko": [
+          "어라이벌",
+          "네 인생의 이야기"
+        ],
+        "zh": [
+          "異星入境",
+          "天煞異降"
+        ]
+      },
+      "statements": {
+        "P31": [
+          {
+            "value": {
+              "entity-type": "item",
+              "numeric-id": 11424,
+              "id": "Q11424"
+            },
+            "rank": "normal",
+            "statement_id": "Q20382729$C3A3146D-C498-4783-AF91-D3B4A33C4215",
+            "places": []
+          }
+        ],
+        "P57": [
+          {
+            "value": {
+              "entity-type": "item",
+              "numeric-id": 548823,
+              "id": "Q548823"
+            },
+            "rank": "normal",
+            "statement_id": "Q20382729$93FD369A-82DC-4CCF-8DBC-63BF52640C59",
+            "places": []
+          }
+        ],
+        "P495": [
+          {
+            "value": {
+              "entity-type": "item",
+              "numeric-id": 30,
+              "id": "Q30"
+            },
+            "rank": "normal",
+            "statement_id": "Q20382729$170D6F6D-E39D-40AA-8AA9-96F2092CBF5A",
+            "places": []
+          }
+        ],
+        "P577": [
+          {
+            "value": {
+              "time": "+2016-11-11T00:00:00Z",
+              "timezone": 0,
+              "before": 0,
+              "after": 0,
+              "precision": 11,
+              "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+            },
+            "rank": "normal",
+            "statement_id": "Q20382729$88951eaa-4c5a-2a5d-7bdf-f94a93d9e03b",
+            "places": [
+              {
+                "entity-type": "item",
+                "numeric-id": 30,
+                "id": "Q30"
+              },
+              {
+                "entity-type": "item",
+                "numeric-id": 16,
+                "id": "Q16"
+              }
+            ]
+          },
+          {
+            "value": {
+              "time": "+2016-11-10T00:00:00Z",
+              "timezone": 0,
+              "before": 0,
+              "after": 0,
+              "precision": 11,
+              "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+            },
+            "rank": "normal",
+            "statement_id": "Q20382729$d0ff13ef-4a80-0bc0-f9c0-6c85e2daf854",
+            "places": [
+              {
+                "entity-type": "item",
+                "numeric-id": 408,
+                "id": "Q408"
+              },
+              {
+                "entity-type": "item",
+                "numeric-id": 145,
+                "id": "Q145"
+              },
+              {
+                "entity-type": "item",
+                "numeric-id": 213,
+                "id": "Q213"
+              },
+              {
+                "entity-type": "item",
+                "numeric-id": 28,
+                "id": "Q28"
+              }
+            ]
+          },
+          {
+            "value": {
+              "time": "+2016-11-24T00:00:00Z",
+              "timezone": 0,
+              "before": 0,
+              "after": 0,
+              "precision": 11,
+              "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+            },
+            "rank": "normal",
+            "statement_id": "Q20382729$7090e277-4a55-7eb6-3ee7-4293fcfe0f49",
+            "places": [
+              {
+                "entity-type": "item",
+                "numeric-id": 183,
+                "id": "Q183"
+              }
+            ]
+          }
+        ],
+        "P2047": [
+          {
+            "value": {
+              "amount": "+116",
+              "unit": "http://www.wikidata.org/entity/Q7727"
+            },
+            "rank": "normal",
+            "statement_id": "Q20382729$A024C25D-6800-4B0A-8F54-247DB255AEFE",
+            "places": []
+          }
+        ],
+        "P136": [
+          {
+            "value": {
+              "entity-type": "item",
+              "numeric-id": 130232,
+              "id": "Q130232"
+            },
+            "rank": "normal",
+            "statement_id": "Q20382729$DD4FE61F-B4CC-47F9-BBCA-3AA98ACAEE9A",
+            "places": []
+          },
+          {
+            "value": {
+              "entity-type": "item",
+              "numeric-id": 471839,
+              "id": "Q471839"
+            },
+            "rank": "normal",
+            "statement_id": "Q20382729$809FCEC9-ECE7-4852-B507-DDD19CA3E4E7",
+            "places": []
+          },
+          {
+            "value": {
+              "entity-type": "item",
+              "numeric-id": 2484376,
+              "id": "Q2484376"
+            },
+            "rank": "normal",
+            "statement_id": "Q20382729$8DAC54A5-6A3B-4E24-B235-D761B5295CDE",
+            "places": []
+          },
+          {
+            "value": {
+              "entity-type": "item",
+              "numeric-id": 1200678,
+              "id": "Q1200678"
+            },
+            "rank": "normal",
+            "statement_id": "Q20382729$4D6AF9A0-B346-4801-ADCE-36A7A89CB49A",
+            "places": []
+          }
+        ],
+        "P1476": [
+          {
+            "value": {
+              "text": "Arrival",
+              "language": "en"
+            },
+            "rank": "normal",
+            "statement_id": "Q20382729$F231BF86-D2B4-4C0A-A784-881B3C72985A",
+            "places": []
+          }
+        ]
+      }
+    },
+    "Q26751": {
+      "id": "Q26751",
+      "lastrevid": 2558546947,
+      "source_url": "https://www.wikidata.org/wiki/Q26751",
+      "retrieved": "2026-10-22",
+      "labels": {
+        "zh": "月球",
+        "ko": "더 문",
+        "en": "Moon",
+        "ja": "月に囚われた男"
+      },
+      "aliases": {
+        "zh": [
+          "寂寞月影",
+          "月劫余生"
+        ],
+        "ko": [
+          "더문"
+        ]
+      },
+      "statements": {
+        "P31": [
+          {
+            "value": {
+              "entity-type": "item",
+              "numeric-id": 11424,
+              "id": "Q11424"
+            },
+            "rank": "normal",
+            "statement_id": "q26751$3E9A3EB1-5794-4DD8-806D-45211E6F739B",
+            "places": []
+          }
+        ],
+        "P57": [
+          {
+            "value": {
+              "entity-type": "item",
+              "numeric-id": 552731,
+              "id": "Q552731"
+            },
+            "rank": "normal",
+            "statement_id": "q26751$70EB2E34-1181-461D-A35B-AD49B5E92F28",
+            "places": []
+          }
+        ],
+        "P495": [
+          {
+            "value": {
+              "entity-type": "item",
+              "numeric-id": 145,
+              "id": "Q145"
+            },
+            "rank": "normal",
+            "statement_id": "Q26751$0C255067-6EE7-48BE-87A7-1F2840A8A276",
+            "places": []
+          },
+          {
+            "value": {
+              "entity-type": "item",
+              "numeric-id": 30,
+              "id": "Q30"
+            },
+            "rank": "normal",
+            "statement_id": "Q26751$c7601566-4926-23bd-5759-a7708025df44",
+            "places": []
+          }
+        ],
+        "P577": [
+          {
+            "value": {
+              "time": "+2009-01-23T00:00:00Z",
+              "timezone": 0,
+              "before": 0,
+              "after": 0,
+              "precision": 11,
+              "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+            },
+            "rank": "normal",
+            "statement_id": "Q26751$720111CF-8B4E-4238-A4FA-093734C004F0",
+            "places": []
+          },
+          {
+            "value": {
+              "time": "+2009-12-31T00:00:00Z",
+              "timezone": 0,
+              "before": 0,
+              "after": 0,
+              "precision": 11,
+              "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+            },
+            "rank": "normal",
+            "statement_id": "Q26751$01FC8F97-9C1A-487C-A4C0-84D45F693D90",
+            "places": [
+              {
+                "entity-type": "item",
+                "numeric-id": 28,
+                "id": "Q28"
+              }
+            ]
+          },
+          {
+            "value": {
+              "time": "+2010-07-15T00:00:00Z",
+              "timezone": 0,
+              "before": 0,
+              "after": 0,
+              "precision": 11,
+              "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+            },
+            "rank": "normal",
+            "statement_id": "Q26751$98386f93-4e75-3b18-c847-7332fb191488",
+            "places": [
+              {
+                "entity-type": "item",
+                "numeric-id": 183,
+                "id": "Q183"
+              }
+            ]
+          },
+          {
+            "value": {
+              "time": "+2009-06-12T00:00:00Z",
+              "timezone": 0,
+              "before": 0,
+              "after": 0,
+              "precision": 11,
+              "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+            },
+            "rank": "normal",
+            "statement_id": "Q26751$79ef2c28-4e88-1511-6f42-5bd5092df4c8",
+            "places": [
+              {
+                "entity-type": "item",
+                "numeric-id": 30,
+                "id": "Q30"
+              }
+            ]
+          },
+          {
+            "value": {
+              "time": "+2009-07-17T00:00:00Z",
+              "timezone": 0,
+              "before": 0,
+              "after": 0,
+              "precision": 11,
+              "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+            },
+            "rank": "normal",
+            "statement_id": "Q26751$9cb16197-477e-7e13-c7c1-da5311ec008a",
+            "places": [
+              {
+                "entity-type": "item",
+                "numeric-id": 145,
+                "id": "Q145"
+              }
+            ]
+          }
+        ],
+        "P2047": [
+          {
+            "value": {
+              "amount": "+96",
+              "unit": "http://www.wikidata.org/entity/Q7727"
+            },
+            "rank": "normal",
+            "statement_id": "Q26751$6AE5D915-B577-4203-ABD5-580ED20E5E68",
+            "places": []
+          }
+        ],
+        "P136": [
+          {
+            "value": {
+              "entity-type": "item",
+              "numeric-id": 471839,
+              "id": "Q471839"
+            },
+            "rank": "normal",
+            "statement_id": "Q26751$D8D199BC-C30D-480D-B9DE-91C20C6953A2",
+            "places": []
+          },
+          {
+            "value": {
+              "entity-type": "item",
+              "numeric-id": 130232,
+              "id": "Q130232"
+            },
+            "rank": "normal",
+            "statement_id": "Q26751$C9986518-9ED2-4747-AD22-42F7F4BCDB95",
+            "places": []
+          },
+          {
+            "value": {
+              "entity-type": "item",
+              "numeric-id": 108084492,
+              "id": "Q108084492"
+            },
+            "rank": "normal",
+            "statement_id": "Q26751$12a58a84-4a20-a13e-ff1f-e5547dc9ee8b",
+            "places": []
+          },
+          {
+            "value": {
+              "entity-type": "item",
+              "numeric-id": 15898171,
+              "id": "Q15898171"
+            },
+            "rank": "normal",
+            "statement_id": "Q26751$47c9693d-4cbe-4bea-0e7a-102e3eadcb40",
+            "places": []
+          },
+          {
+            "value": {
+              "entity-type": "item",
+              "numeric-id": 319221,
+              "id": "Q319221"
+            },
+            "rank": "normal",
+            "statement_id": "Q26751$bcfaa193-4b87-f1c6-a046-09cfd79f1b05",
+            "places": []
+          },
+          {
+            "value": {
+              "entity-type": "item",
+              "numeric-id": 725757,
+              "id": "Q725757"
+            },
+            "rank": "normal",
+            "statement_id": "Q26751$fa5ef960-4372-a2e7-71f5-0aebde76a604",
+            "places": []
+          }
+        ],
+        "P1476": [
+          {
+            "value": {
+              "text": "Moon",
+              "language": "en"
+            },
+            "rank": "normal",
+            "statement_id": "Q26751$72C1A0E9-704E-4E52-A967-9B4AB25BE6CB",
+            "places": []
+          }
+        ]
+      }
+    },
+    "Q117663112": {
+      "id": "Q117663112",
+      "lastrevid": 2559118509,
+      "source_url": "https://www.wikidata.org/wiki/Q117663112",
+      "retrieved": "2026-10-22",
+      "labels": {
+        "en": "Perfect Days",
+        "ko": "퍼펙트 데이즈",
+        "ja": "PERFECT DAYS",
+        "zh": "我的完美日常"
+      },
+      "aliases": {
+        "zh": [
+          "完美的日子"
+        ],
+        "ja": [
+          "パーフェクトデイズ"
+        ]
+      },
+      "statements": {
+        "P31": [
+          {
+            "value": {
+              "entity-type": "item",
+              "numeric-id": 11424,
+              "id": "Q11424"
+            },
+            "rank": "normal",
+            "statement_id": "Q117663112$9BC3BB48-747C-4B3B-8F45-82F932FADB7B",
+            "places": []
+          }
+        ],
+        "P57": [
+          {
+            "value": {
+              "entity-type": "item",
+              "numeric-id": 55411,
+              "id": "Q55411"
+            },
+            "rank": "normal",
+            "statement_id": "Q117663112$5ab81356-49b1-c94c-193d-21cdc9979143",
+            "places": []
+          }
+        ],
+        "P495": [
+          {
+            "value": {
+              "entity-type": "item",
+              "numeric-id": 17,
+              "id": "Q17"
+            },
+            "rank": "normal",
+            "statement_id": "Q117663112$0659d42b-4298-afe0-6bae-ef8624eed848",
+            "places": []
+          },
+          {
+            "value": {
+              "entity-type": "item",
+              "numeric-id": 183,
+              "id": "Q183"
+            },
+            "rank": "normal",
+            "statement_id": "Q117663112$99474653-4200-0c3d-0c12-d8815f874a99",
+            "places": []
+          }
+        ],
+        "P577": [
+          {
+            "value": {
+              "time": "+2023-05-25T00:00:00Z",
+              "timezone": 0,
+              "before": 0,
+              "after": 0,
+              "precision": 11,
+              "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+            },
+            "rank": "normal",
+            "statement_id": "Q117663112$7a7e595f-41fe-24a1-0c93-ed661f9882fa",
+            "places": [
+              {
+                "entity-type": "item",
+                "numeric-id": 115484744,
+                "id": "Q115484744"
+              }
+            ]
+          },
+          {
+            "value": {
+              "time": "+2023-06-12T00:00:00Z",
+              "timezone": 0,
+              "before": 0,
+              "after": 0,
+              "precision": 11,
+              "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+            },
+            "rank": "normal",
+            "statement_id": "Q117663112$4e24a214-4f4b-50a4-4c2e-73d70ab74c85",
+            "places": [
+              {
+                "entity-type": "item",
+                "numeric-id": 124397676,
+                "id": "Q124397676"
+              }
+            ]
+          },
+          {
+            "value": {
+              "time": "+2023-07-20T00:00:00Z",
+              "timezone": 0,
+              "before": 0,
+              "after": 0,
+              "precision": 11,
+              "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+            },
+            "rank": "normal",
+            "statement_id": "Q117663112$090ac04d-42d0-b8d6-4ef1-760dbe7a998f",
+            "places": [
+              {
+                "entity-type": "item",
+                "numeric-id": 7015453,
+                "id": "Q7015453"
+              }
+            ]
+          },
+          {
+            "value": {
+              "time": "+2023-09-01T00:00:00Z",
+              "timezone": 0,
+              "before": 0,
+              "after": 0,
+              "precision": 11,
+              "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+            },
+            "rank": "normal",
+            "statement_id": "Q117663112$bac0b432-42d9-abe5-ac67-12f3829941a6",
+            "places": [
+              {
+                "entity-type": "item",
+                "numeric-id": 121406966,
+                "id": "Q121406966"
+              }
+            ]
+          },
+          {
+            "value": {
+              "time": "+2023-09-04T00:00:00Z",
+              "timezone": 0,
+              "before": 0,
+              "after": 0,
+              "precision": 11,
+              "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+            },
+            "rank": "normal",
+            "statement_id": "Q117663112$71ce7a38-4681-a1d1-eac4-87ab2c4f3b89",
+            "places": [
+              {
+                "entity-type": "item",
+                "numeric-id": 1099569,
+                "id": "Q1099569"
+              }
+            ]
+          },
+          {
+            "value": {
+              "time": "+2023-09-07T00:00:00Z",
+              "timezone": 0,
+              "before": 0,
+              "after": 0,
+              "precision": 11,
+              "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+            },
+            "rank": "normal",
+            "statement_id": "Q117663112$77e0ebb3-428f-d30d-7b3e-a667a0e59f62",
+            "places": [
+              {
+                "entity-type": "item",
+                "numeric-id": 117805242,
+                "id": "Q117805242"
+              }
+            ]
+          },
+          {
+            "value": {
+              "time": "+2023-11-29T00:00:00Z",
+              "timezone": 0,
+              "before": 0,
+              "after": 0,
+              "precision": 11,
+              "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+            },
+            "rank": "normal",
+            "statement_id": "Q117663112$d431ba2f-4fb4-5616-2f5b-bf8cc33dc2b4",
+            "places": [
+              {
+                "entity-type": "item",
+                "numeric-id": 142,
+                "id": "Q142"
+              }
+            ]
+          },
+          {
+            "value": {
+              "time": "+2023-12-14T00:00:00Z",
+              "timezone": 0,
+              "before": 0,
+              "after": 0,
+              "precision": 11,
+              "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+            },
+            "rank": "normal",
+            "statement_id": "Q117663112$04996747-4eb3-8b1d-21db-5f1f810f6bfb",
+            "places": [
+              {
+                "entity-type": "item",
+                "numeric-id": 55,
+                "id": "Q55"
+              }
+            ]
+          },
+          {
+            "value": {
+              "time": "+2023-12-14T00:00:00Z",
+              "timezone": 0,
+              "before": 0,
+              "after": 0,
+              "precision": 11,
+              "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+            },
+            "rank": "normal",
+            "statement_id": "Q117663112$89ea04f7-423b-ed02-8d0b-015145b2dafd",
+            "places": [
+              {
+                "entity-type": "item",
+                "numeric-id": 45,
+                "id": "Q45"
+              }
+            ]
+          },
+          {
+            "value": {
+              "time": "+2023-12-21T00:00:00Z",
+              "timezone": 0,
+              "before": 0,
+              "after": 0,
+              "precision": 11,
+              "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+            },
+            "rank": "normal",
+            "statement_id": "Q117663112$576f7a8c-4e90-ae25-8abb-e9394ea14407",
+            "places": [
+              {
+                "entity-type": "item",
+                "numeric-id": 183,
+                "id": "Q183"
+              }
+            ]
+          },
+          {
+            "value": {
+              "time": "+2023-12-22T00:00:00Z",
+              "timezone": 0,
+              "before": 0,
+              "after": 0,
+              "precision": 11,
+              "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+            },
+            "rank": "normal",
+            "statement_id": "Q117663112$4d8a3f36-4821-8ace-3235-2354f45cb7c6",
+            "places": [
+              {
+                "entity-type": "item",
+                "numeric-id": 40,
+                "id": "Q40"
+              },
+              {
+                "entity-type": "item",
+                "numeric-id": 191,
+                "id": "Q191"
+              },
+              {
+                "entity-type": "item",
+                "numeric-id": 17,
+                "id": "Q17"
+              }
+            ]
+          },
+          {
+            "value": {
+              "time": "+2024-02-22T00:00:00Z",
+              "timezone": 0,
+              "before": 0,
+              "after": 0,
+              "precision": 11,
+              "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+            },
+            "rank": "normal",
+            "statement_id": "Q117663112$07013d51-4e8f-a026-8116-45a2de09029c",
+            "places": [
+              {
+                "entity-type": "item",
+                "numeric-id": 28,
+                "id": "Q28"
+              }
+            ]
+          },
+          {
+            "value": {
+              "time": "+2024-02-07T00:00:00Z",
+              "timezone": 0,
+              "before": 0,
+              "after": 0,
+              "precision": 11,
+              "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+            },
+            "rank": "normal",
+            "statement_id": "Q117663112$bbd2b6cb-42a0-d1a9-cd6c-4a694bba3e57",
+            "places": [
+              {
+                "entity-type": "item",
+                "numeric-id": 30,
+                "id": "Q30"
+              }
+            ]
+          }
+        ],
+        "P2047": [
+          {
+            "value": {
+              "amount": "+123",
+              "unit": "http://www.wikidata.org/entity/Q7727"
+            },
+            "rank": "normal",
+            "statement_id": "Q117663112$7253d810-4b55-3d85-09e6-d8a6b3c8a7a1",
+            "places": []
+          }
+        ],
+        "P136": [
+          {
+            "value": {
+              "entity-type": "item",
+              "numeric-id": 130232,
+              "id": "Q130232"
+            },
+            "rank": "normal",
+            "statement_id": "Q117663112$6e6ed02f-421b-d499-5bdc-436a20490fad",
+            "places": []
+          },
+          {
+            "value": {
+              "entity-type": "item",
+              "numeric-id": 2561438,
+              "id": "Q2561438"
+            },
+            "rank": "normal",
+            "statement_id": "Q117663112$5c8856ff-46fb-1aa3-eaf5-d40e4a44c90b",
+            "places": []
+          }
+        ],
+        "P1476": [
+          {
+            "value": {
+              "text": "Perfect Days",
+              "language": "en"
+            },
+            "rank": "normal",
+            "statement_id": "Q117663112$6c3a1d33-43e4-3ce2-f4f1-8f38e970355a",
+            "places": []
+          }
+        ]
+      }
+    },
+    "Q23817035": {
+      "id": "Q23817035",
+      "lastrevid": 2558767185,
+      "source_url": "https://www.wikidata.org/wiki/Q23817035",
+      "retrieved": "2026-10-22",
+      "labels": {
+        "en": "Paterson",
+        "zh": "派特森",
+        "ja": "パターソン",
+        "ko": "패터슨"
+      },
+      "aliases": {
+        "zh": [
+          "帕特森的幸福詩篇"
+        ]
+      },
+      "statements": {
+        "P31": [
+          {
+            "value": {
+              "entity-type": "item",
+              "numeric-id": 11424,
+              "id": "Q11424"
+            },
+            "rank": "normal",
+            "statement_id": "Q23817035$6B3E63F1-B5A3-4388-8358-C5D0453C33B5",
+            "places": []
+          }
+        ],
+        "P57": [
+          {
+            "value": {
+              "entity-type": "item",
+              "numeric-id": 191755,
+              "id": "Q191755"
+            },
+            "rank": "normal",
+            "statement_id": "Q23817035$95c6ab5c-42bb-a647-ec22-5f6d4553b654",
+            "places": []
+          }
+        ],
+        "P495": [
+          {
+            "value": {
+              "entity-type": "item",
+              "numeric-id": 30,
+              "id": "Q30"
+            },
+            "rank": "normal",
+            "statement_id": "Q23817035$56751FEF-669A-4C7C-88D0-EAD1F33D2922",
+            "places": []
+          }
+        ],
+        "P577": [
+          {
+            "value": {
+              "time": "+2016-01-01T00:00:00Z",
+              "timezone": 0,
+              "before": 0,
+              "after": 0,
+              "precision": 9,
+              "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+            },
+            "rank": "normal",
+            "statement_id": "Q23817035$1B2ED19F-C9F7-4B40-A61B-DB642BAC3E80",
+            "places": []
+          },
+          {
+            "value": {
+              "time": "+2016-11-17T00:00:00Z",
+              "timezone": 0,
+              "before": 0,
+              "after": 0,
+              "precision": 11,
+              "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+            },
+            "rank": "normal",
+            "statement_id": "Q23817035$F8AF07B2-898B-40C7-95F8-7EC9CD61F33F",
+            "places": [
+              {
+                "entity-type": "item",
+                "numeric-id": 183,
+                "id": "Q183"
+              }
+            ]
+          },
+          {
+            "value": {
+              "time": "+2017-02-16T00:00:00Z",
+              "timezone": 0,
+              "before": 0,
+              "after": 0,
+              "precision": 11,
+              "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+            },
+            "rank": "normal",
+            "statement_id": "Q23817035$6C6F3D58-5AB7-4038-BCB4-C3E15ACAB1C5",
+            "places": [
+              {
+                "entity-type": "item",
+                "numeric-id": 28,
+                "id": "Q28"
+              }
+            ]
+          },
+          {
+            "value": {
+              "time": "+2016-05-16T00:00:00Z",
+              "timezone": 0,
+              "before": 0,
+              "after": 0,
+              "precision": 11,
+              "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+            },
+            "rank": "normal",
+            "statement_id": "Q23817035$9020c31a-4cf5-f6f1-71ae-25793ebd38fe",
+            "places": [
+              {
+                "entity-type": "item",
+                "numeric-id": 42369,
+                "id": "Q42369"
+              }
+            ]
+          },
+          {
+            "value": {
+              "time": "+2016-12-28T00:00:00Z",
+              "timezone": 0,
+              "before": 0,
+              "after": 0,
+              "precision": 11,
+              "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+            },
+            "rank": "normal",
+            "statement_id": "Q23817035$5748508d-4c49-e9af-4eb5-abf869823a0e",
+            "places": [
+              {
+                "entity-type": "item",
+                "numeric-id": 30,
+                "id": "Q30"
+              }
+            ]
+          },
+          {
+            "value": {
+              "time": "+2017-02-10T00:00:00Z",
+              "timezone": 0,
+              "before": 0,
+              "after": 0,
+              "precision": 11,
+              "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+            },
+            "rank": "normal",
+            "statement_id": "Q23817035$dbb09b46-4504-e9b3-6151-cf67537edbb8",
+            "places": [
+              {
+                "entity-type": "item",
+                "numeric-id": 16,
+                "id": "Q16"
+              }
+            ]
+          }
+        ],
+        "P2047": [
+          {
+            "value": {
+              "amount": "+113",
+              "unit": "http://www.wikidata.org/entity/Q7727",
+              "upperBound": "+114",
+              "lowerBound": "+112"
+            },
+            "rank": "normal",
+            "statement_id": "Q23817035$5326bef6-4844-a790-a4fd-b8a5eae0632d",
+            "places": []
+          }
+        ],
+        "P136": [
+          {
+            "value": {
+              "entity-type": "item",
+              "numeric-id": 130232,
+              "id": "Q130232"
+            },
+            "rank": "normal",
+            "statement_id": "Q23817035$1a6397b8-44c7-a361-eece-2c8f5023cf78",
+            "places": []
+          },
+          {
+            "value": {
+              "entity-type": "item",
+              "numeric-id": 157443,
+              "id": "Q157443"
+            },
+            "rank": "normal",
+            "statement_id": "Q23817035$6A611987-6540-4226-9F5C-69A5EB6323E4",
+            "places": []
+          },
+          {
+            "value": {
+              "entity-type": "item",
+              "numeric-id": 859369,
+              "id": "Q859369"
+            },
+            "rank": "normal",
+            "statement_id": "Q23817035$a1cec7a9-4ac3-3705-4ca1-da0c23f6f528",
+            "places": []
+          }
+        ],
+        "P1476": [
+          {
+            "value": {
+              "text": "Paterson",
+              "language": "en"
+            },
+            "rank": "normal",
+            "statement_id": "Q23817035$e3abc9e3-4265-66ec-cd49-e93575106cf2",
+            "places": []
+          }
+        ]
+      }
+    },
+    "Q152105": {
+      "id": "Q152105",
+      "lastrevid": 2549120917,
+      "source_url": "https://www.wikidata.org/wiki/Q152105",
+      "retrieved": "2026-10-22",
+      "labels": {
+        "zh-hans": "生之欲",
+        "zh-hant": "生之慾",
+        "zh-cn": "生之欲",
+        "ko": "이키루",
+        "en": "Ikiru",
+        "ja": "生きる",
+        "zh": "生之慾"
+      },
+      "aliases": {},
+      "statements": {
+        "P31": [
+          {
+            "value": {
+              "entity-type": "item",
+              "numeric-id": 11424,
+              "id": "Q11424"
+            },
+            "rank": "normal",
+            "statement_id": "q152105$3E4522DB-E6B7-4FC2-BA68-17C9BECE7396",
+            "places": []
+          }
+        ],
+        "P57": [
+          {
+            "value": {
+              "entity-type": "item",
+              "numeric-id": 8006,
+              "id": "Q8006"
+            },
+            "rank": "normal",
+            "statement_id": "q152105$5BE57CBB-9E43-4DF8-B579-E0358EEAF9DF",
+            "places": []
+          }
+        ],
+        "P495": [
+          {
+            "value": {
+              "entity-type": "item",
+              "numeric-id": 17,
+              "id": "Q17"
+            },
+            "rank": "normal",
+            "statement_id": "Q152105$8FDCEED9-647C-44B9-AE78-327C911E0B87",
+            "places": []
+          }
+        ],
+        "P577": [
+          {
+            "value": {
+              "time": "+1952-01-01T00:00:00Z",
+              "timezone": 0,
+              "before": 0,
+              "after": 0,
+              "precision": 9,
+              "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+            },
+            "rank": "normal",
+            "statement_id": "Q152105$27BCE4BE-0C4A-4A78-AF3B-958CBADA3C7D",
+            "places": []
+          },
+          {
+            "value": {
+              "time": "+1952-10-09T00:00:00Z",
+              "timezone": 0,
+              "before": 0,
+              "after": 0,
+              "precision": 11,
+              "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+            },
+            "rank": "normal",
+            "statement_id": "Q152105$0aac0b71-4c84-4cab-74df-2d5b8074f781",
+            "places": [
+              {
+                "entity-type": "item",
+                "numeric-id": 17,
+                "id": "Q17"
+              }
+            ]
+          },
+          {
+            "value": {
+              "time": "+1956-03-25T00:00:00Z",
+              "timezone": 0,
+              "before": 0,
+              "after": 0,
+              "precision": 11,
+              "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+            },
+            "rank": "normal",
+            "statement_id": "Q152105$9067bc00-45a9-c516-47d6-3c4c268d41cd",
+            "places": [
+              {
+                "entity-type": "item",
+                "numeric-id": 30,
+                "id": "Q30"
+              }
+            ]
+          }
+        ],
+        "P2047": [
+          {
+            "value": {
+              "amount": "+143",
+              "unit": "http://www.wikidata.org/entity/Q7727"
+            },
+            "rank": "normal",
+            "statement_id": "Q152105$0D7D1FE1-BA4F-4E00-A41D-62105F33FAD5",
+            "places": []
+          }
+        ],
+        "P136": [
+          {
+            "value": {
+              "entity-type": "item",
+              "numeric-id": 130232,
+              "id": "Q130232"
+            },
+            "rank": "normal",
+            "statement_id": "Q152105$F1F52AC8-1A7E-4550-8184-708F702A96D9",
+            "places": []
+          }
+        ],
+        "P1476": [
+          {
+            "value": {
+              "text": "生きる",
+              "language": "ja"
+            },
+            "rank": "normal",
+            "statement_id": "Q152105$60049386-3DC7-41F0-8844-530B27B81CEB",
+            "places": []
+          }
+        ]
+      }
+    },
+    "Q107304169": {
+      "id": "Q107304169",
+      "lastrevid": 2557106988,
+      "source_url": "https://www.wikidata.org/wiki/Q107304169",
+      "retrieved": "2026-10-22",
+      "labels": {
+        "en": "Living",
+        "ja": "生きる LIVING",
+        "ko": "리빙",
+        "zh": "倫敦生之慾"
+      },
+      "aliases": {
+        "zh": [
+          "生之欲（2022年電影）",
+          "伦敦生之欲"
+        ]
+      },
+      "statements": {
+        "P31": [
+          {
+            "value": {
+              "entity-type": "item",
+              "numeric-id": 11424,
+              "id": "Q11424"
+            },
+            "rank": "normal",
+            "statement_id": "Q107304169$b5378645-6bc8-4843-9992-fed8f8695d3d",
+            "places": []
+          }
+        ],
+        "P57": [
+          {
+            "value": {
+              "entity-type": "item",
+              "numeric-id": 13035667,
+              "id": "Q13035667"
+            },
+            "rank": "normal",
+            "statement_id": "Q107304169$F7B2CC6C-E60C-43C9-BA66-B01FB45466EE",
+            "places": []
+          }
+        ],
+        "P495": [
+          {
+            "value": {
+              "entity-type": "item",
+              "numeric-id": 145,
+              "id": "Q145"
+            },
+            "rank": "normal",
+            "statement_id": "Q107304169$E428AF09-0D7E-48C3-BF99-28CFA22A56D0",
+            "places": []
+          }
+        ],
+        "P577": [
+          {
+            "value": {
+              "time": "+2022-00-00T00:00:00Z",
+              "timezone": 0,
+              "before": 0,
+              "after": 0,
+              "precision": 9,
+              "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+            },
+            "rank": "normal",
+            "statement_id": "Q107304169$554bf7d6-4674-bee5-d8ac-05465c7498be",
+            "places": []
+          }
+        ],
+        "P2047": [
+          {
+            "value": {
+              "amount": "+102",
+              "unit": "http://www.wikidata.org/entity/Q7727"
+            },
+            "rank": "normal",
+            "statement_id": "Q107304169$d77d645d-4495-6fd9-c30f-a3fd05fd4af0",
+            "places": []
+          }
+        ],
+        "P136": [
+          {
+            "value": {
+              "entity-type": "item",
+              "numeric-id": 130232,
+              "id": "Q130232"
+            },
+            "rank": "normal",
+            "statement_id": "Q107304169$7c293739-4a21-f883-373d-a0924689caef",
+            "places": []
+          }
+        ],
+        "P1476": [
+          {
+            "value": {
+              "text": "Living",
+              "language": "en"
+            },
+            "rank": "normal",
+            "statement_id": "Q107304169$4dc455d9-4ba0-23ab-bb14-17249f961aaf",
+            "places": []
+          }
+        ]
+      }
+    },
+    "Q61448040": {
+      "id": "Q61448040",
+      "lastrevid": 2556031043,
+      "source_url": "https://www.wikidata.org/wiki/Q61448040",
+      "retrieved": "2026-10-22",
+      "labels": {
+        "en": "Parasite",
+        "ko": "기생충",
+        "zh": "寄生上流",
+        "ja": "パラサイト 半地下の家族",
+        "zh-hans": "寄生虫",
+        "zh-hant": "寄生上流",
+        "zh-cn": "寄生虫"
+      },
+      "aliases": {
+        "zh": [
+          "寄生虫",
+          "上流寄生族",
+          "寄生蟲",
+          "寄生魔種"
+        ],
+        "zh-hans": [
+          "寄生上流",
+          "上流寄生族"
+        ],
+        "en": [
+          "Gisaengchung"
+        ],
+        "zh-hant": [
+          "寄生蟲"
+        ],
+        "ja": [
+          "パラサイト"
+        ]
+      },
+      "statements": {
+        "P31": [
+          {
+            "value": {
+              "entity-type": "item",
+              "numeric-id": 11424,
+              "id": "Q11424"
+            },
+            "rank": "normal",
+            "statement_id": "Q61448040$924f5b4f-485a-31b0-66b9-5a578afe3a2d",
+            "places": []
+          }
+        ],
+        "P57": [
+          {
+            "value": {
+              "entity-type": "item",
+              "numeric-id": 495980,
+              "id": "Q495980"
+            },
+            "rank": "normal",
+            "statement_id": "Q61448040$23E00D55-7420-47D0-9F29-11F1E2C584DB",
+            "places": []
+          }
+        ],
+        "P495": [
+          {
+            "value": {
+              "entity-type": "item",
+              "numeric-id": 884,
+              "id": "Q884"
+            },
+            "rank": "normal",
+            "statement_id": "Q61448040$7A771244-2CAD-448E-A228-60C86B407674",
+            "places": []
+          }
+        ],
+        "P577": [
+          {
+            "value": {
+              "time": "+2019-05-30T00:00:00Z",
+              "timezone": 0,
+              "before": 0,
+              "after": 0,
+              "precision": 11,
+              "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+            },
+            "rank": "normal",
+            "statement_id": "Q61448040$E086BA74-D1BF-4723-B933-391E37E72821",
+            "places": [
+              {
+                "entity-type": "item",
+                "numeric-id": 884,
+                "id": "Q884"
+              }
+            ]
+          },
+          {
+            "value": {
+              "time": "+2019-10-17T00:00:00Z",
+              "timezone": 0,
+              "before": 0,
+              "after": 0,
+              "precision": 11,
+              "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+            },
+            "rank": "normal",
+            "statement_id": "Q61448040$aaae3fd9-4d9f-3a3c-7ba9-982a299c544c",
+            "places": [
+              {
+                "entity-type": "item",
+                "numeric-id": 183,
+                "id": "Q183"
+              }
+            ]
+          },
+          {
+            "value": {
+              "time": "+2019-05-21T00:00:00Z",
+              "timezone": 0,
+              "before": 0,
+              "after": 0,
+              "precision": 11,
+              "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+            },
+            "rank": "preferred",
+            "statement_id": "Q61448040$956fb710-4e19-355d-3588-f10389f36c06",
+            "places": [
+              {
+                "entity-type": "item",
+                "numeric-id": 55436055,
+                "id": "Q55436055"
+              }
+            ]
+          },
+          {
+            "value": {
+              "time": "+2019-10-11T00:00:00Z",
+              "timezone": 0,
+              "before": 0,
+              "after": 0,
+              "precision": 11,
+              "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+            },
+            "rank": "normal",
+            "statement_id": "Q61448040$df6a1d65-4d18-a7ba-7392-0140051af901",
+            "places": [
+              {
+                "entity-type": "item",
+                "numeric-id": 30,
+                "id": "Q30"
+              }
+            ]
+          },
+          {
+            "value": {
+              "time": "+2019-06-05T00:00:00Z",
+              "timezone": 0,
+              "before": 0,
+              "after": 0,
+              "precision": 11,
+              "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+            },
+            "rank": "normal",
+            "statement_id": "Q61448040$89962dc7-4639-0fd0-651d-41b2d72c7c2a",
+            "places": [
+              {
+                "entity-type": "item",
+                "numeric-id": 142,
+                "id": "Q142"
+              }
+            ]
+          },
+          {
+            "value": {
+              "time": "+2019-11-01T00:00:00Z",
+              "timezone": 0,
+              "before": 0,
+              "after": 0,
+              "precision": 11,
+              "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+            },
+            "rank": "normal",
+            "statement_id": "Q61448040$a8102d79-4047-f731-e85c-e668a99a634c",
+            "places": [
+              {
+                "entity-type": "item",
+                "numeric-id": 43,
+                "id": "Q43"
+              }
+            ]
+          },
+          {
+            "value": {
+              "time": "+2019-11-07T00:00:00Z",
+              "timezone": 0,
+              "before": 0,
+              "after": 0,
+              "precision": 11,
+              "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+            },
+            "rank": "normal",
+            "statement_id": "Q61448040$56952417-4690-c718-21cb-9194be028f91",
+            "places": [
+              {
+                "entity-type": "item",
+                "numeric-id": 155,
+                "id": "Q155"
+              }
+            ]
+          },
+          {
+            "value": {
+              "time": "+2020-02-07T00:00:00Z",
+              "timezone": 0,
+              "before": 0,
+              "after": 0,
+              "precision": 11,
+              "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+            },
+            "rank": "normal",
+            "statement_id": "Q61448040$054ad11f-4b85-de0f-9562-249bfbf78ece",
+            "places": [
+              {
+                "entity-type": "item",
+                "numeric-id": 145,
+                "id": "Q145"
+              }
+            ]
+          },
+          {
+            "value": {
+              "time": "+2019-12-05T00:00:00Z",
+              "timezone": 0,
+              "before": 0,
+              "after": 0,
+              "precision": 11,
+              "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+            },
+            "rank": "normal",
+            "statement_id": "Q61448040$C72460C1-3A1A-4B23-BA27-790B74173E85",
+            "places": [
+              {
+                "entity-type": "item",
+                "numeric-id": 28,
+                "id": "Q28"
+              }
+            ]
+          }
+        ],
+        "P2047": [
+          {
+            "value": {
+              "amount": "+132",
+              "unit": "http://www.wikidata.org/entity/Q7727"
+            },
+            "rank": "normal",
+            "statement_id": "Q61448040$b18fe115-46a0-a5c1-0933-97fff853146d",
+            "places": []
+          }
+        ],
+        "P136": [
+          {
+            "value": {
+              "entity-type": "item",
+              "numeric-id": 859369,
+              "id": "Q859369"
+            },
+            "rank": "normal",
+            "statement_id": "Q61448040$94d9c8c8-d087-4e9a-93ae-9f139d78553b",
+            "places": []
+          },
+          {
+            "value": {
+              "entity-type": "item",
+              "numeric-id": 53094,
+              "id": "Q53094"
+            },
+            "rank": "normal",
+            "statement_id": "Q61448040$db6db881-4ded-34b4-dfd7-130dc84f83b6",
+            "places": []
+          },
+          {
+            "value": {
+              "entity-type": "item",
+              "numeric-id": 2484376,
+              "id": "Q2484376"
+            },
+            "rank": "normal",
+            "statement_id": "Q61448040$a23a3119-4b93-68a6-60a8-b2f3aee35d23",
+            "places": []
+          }
+        ],
+        "P1476": [
+          {
+            "value": {
+              "text": "기생충",
+              "language": "ko"
+            },
+            "rank": "preferred",
+            "statement_id": "Q61448040$b94a8256-4ceb-9428-4a11-7883fc3d70bc",
+            "places": []
+          },
+          {
+            "value": {
+              "text": "寄生蟲",
+              "language": "ko-hani"
+            },
+            "rank": "normal",
+            "statement_id": "Q61448040$312a5e52-43f5-08aa-372c-3b0964ed2f6a",
+            "places": []
+          }
+        ]
+      }
+    },
+    "Q48765577": {
+      "id": "Q48765577",
+      "lastrevid": 2559117007,
+      "source_url": "https://www.wikidata.org/wiki/Q48765577",
+      "retrieved": "2026-10-22",
+      "labels": {
+        "ja": "万引き家族",
+        "en": "Shoplifters",
+        "zh": "小偷家族",
+        "ko": "어느 가족"
+      },
+      "aliases": {
+        "en": [
+          "Shoplifting Family",
+          "Manbiki Kazoku"
+        ],
+        "ko": [
+          "만비키 가족"
+        ]
+      },
+      "statements": {
+        "P31": [
+          {
+            "value": {
+              "entity-type": "item",
+              "numeric-id": 11424,
+              "id": "Q11424"
+            },
+            "rank": "normal",
+            "statement_id": "Q48765577$bde02aff-4105-0e2a-bc21-a6e185a3d972",
+            "places": []
+          }
+        ],
+        "P57": [
+          {
+            "value": {
+              "entity-type": "item",
+              "numeric-id": 740758,
+              "id": "Q740758"
+            },
+            "rank": "normal",
+            "statement_id": "Q48765577$037f2274-4e2a-0745-278f-14b2d244d970",
+            "places": []
+          }
+        ],
+        "P495": [
+          {
+            "value": {
+              "entity-type": "item",
+              "numeric-id": 17,
+              "id": "Q17"
+            },
+            "rank": "normal",
+            "statement_id": "Q48765577$51FE6831-9C3D-4DCE-9CF7-54CE795B2D8A",
+            "places": []
+          }
+        ],
+        "P577": [
+          {
+            "value": {
+              "time": "+2018-05-13T00:00:00Z",
+              "timezone": 0,
+              "before": 0,
+              "after": 0,
+              "precision": 11,
+              "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+            },
+            "rank": "normal",
+            "statement_id": "Q48765577$0d02183d-4c60-1a56-1f4c-55af5ebf59e1",
+            "places": [
+              {
+                "entity-type": "item",
+                "numeric-id": 43119724,
+                "id": "Q43119724"
+              }
+            ]
+          },
+          {
+            "value": {
+              "time": "+2018-06-08T00:00:00Z",
+              "timezone": 0,
+              "before": 0,
+              "after": 0,
+              "precision": 11,
+              "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+            },
+            "rank": "normal",
+            "statement_id": "Q48765577$23614f94-4c8d-ad08-c0f0-0d226ee1527e",
+            "places": [
+              {
+                "entity-type": "item",
+                "numeric-id": 17,
+                "id": "Q17"
+              }
+            ]
+          },
+          {
+            "value": {
+              "time": "+2018-08-03T00:00:00Z",
+              "timezone": 0,
+              "before": 0,
+              "after": 0,
+              "precision": 11,
+              "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+            },
+            "rank": "normal",
+            "statement_id": "Q48765577$960da43b-4eec-5a80-b34b-7f402ec22cee",
+            "places": [
+              {
+                "entity-type": "item",
+                "numeric-id": 148,
+                "id": "Q148"
+              }
+            ]
+          },
+          {
+            "value": {
+              "time": "+2018-11-23T00:00:00Z",
+              "timezone": 0,
+              "before": 0,
+              "after": 0,
+              "precision": 11,
+              "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+            },
+            "rank": "normal",
+            "statement_id": "Q48765577$020d3837-4cda-2f13-79e2-eeac4d70242e",
+            "places": [
+              {
+                "entity-type": "item",
+                "numeric-id": 30,
+                "id": "Q30"
+              },
+              {
+                "entity-type": "item",
+                "numeric-id": 145,
+                "id": "Q145"
+              }
+            ]
+          },
+          {
+            "value": {
+              "time": "+2018-12-27T00:00:00Z",
+              "timezone": 0,
+              "before": 0,
+              "after": 0,
+              "precision": 11,
+              "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+            },
+            "rank": "normal",
+            "statement_id": "Q48765577$5b0fdf42-4913-19f2-c263-5ccc86ba8b85",
+            "places": [
+              {
+                "entity-type": "item",
+                "numeric-id": 183,
+                "id": "Q183"
+              }
+            ]
+          },
+          {
+            "value": {
+              "time": "+2018-07-13T00:00:00Z",
+              "timezone": 0,
+              "before": 0,
+              "after": 0,
+              "precision": 11,
+              "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+            },
+            "rank": "normal",
+            "statement_id": "Q48765577$c7c65a4f-49b2-fce3-7b46-4a67c103907c",
+            "places": [
+              {
+                "entity-type": "item",
+                "numeric-id": 865,
+                "id": "Q865"
+              }
+            ]
+          },
+          {
+            "value": {
+              "time": "+2019-03-22T00:00:00Z",
+              "timezone": 0,
+              "before": 0,
+              "after": 0,
+              "precision": 11,
+              "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+            },
+            "rank": "normal",
+            "statement_id": "Q48765577$8fa64252-415d-4e4a-0276-71e584d4eb49",
+            "places": [
+              {
+                "entity-type": "item",
+                "numeric-id": 36,
+                "id": "Q36"
+              }
+            ]
+          },
+          {
+            "value": {
+              "time": "+2019-01-10T00:00:00Z",
+              "timezone": 0,
+              "before": 0,
+              "after": 0,
+              "precision": 11,
+              "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+            },
+            "rank": "normal",
+            "statement_id": "Q48765577$ABFC0025-2A8E-4295-B426-F391959501E1",
+            "places": [
+              {
+                "entity-type": "item",
+                "numeric-id": 28,
+                "id": "Q28"
+              }
+            ]
+          }
+        ],
+        "P2047": [
+          {
+            "value": {
+              "amount": "+121",
+              "unit": "http://www.wikidata.org/entity/Q7727"
+            },
+            "rank": "normal",
+            "statement_id": "Q48765577$057431cd-4b47-4673-a847-5e1c5989f42a",
+            "places": []
+          }
+        ],
+        "P136": [
+          {
+            "value": {
+              "entity-type": "item",
+              "numeric-id": 130232,
+              "id": "Q130232"
+            },
+            "rank": "normal",
+            "statement_id": "Q48765577$1a6afbd9-4756-0baf-8812-008e6742d640",
+            "places": []
+          }
+        ],
+        "P1476": [
+          {
+            "value": {
+              "text": "万引き家族",
+              "language": "ja"
+            },
+            "rank": "normal",
+            "statement_id": "Q48765577$45e109b8-405a-083b-09fa-c24ed5c9e27a",
+            "places": []
+          }
+        ]
+      }
+    },
+    "Q29514872": {
+      "id": "Q29514872",
+      "lastrevid": 2558780223,
+      "source_url": "https://www.wikidata.org/wiki/Q29514872",
+      "retrieved": "2026-10-22",
+      "labels": {
+        "en": "The Florida Project",
+        "ko": "플로리다 프로젝트",
+        "zh": "歡迎光臨奇幻城堡",
+        "ja": "ザ・フロリダ・プロジェクト"
+      },
+      "aliases": {
+        "en": [
+          "Florida Project"
+        ],
+        "ko": [
+          "더 플로리다 프로젝트"
+        ]
+      },
+      "statements": {
+        "P31": [
+          {
+            "value": {
+              "entity-type": "item",
+              "numeric-id": 11424,
+              "id": "Q11424"
+            },
+            "rank": "normal",
+            "statement_id": "Q29514872$CB3F0257-4BAA-4CCC-87EA-25DF911A0BBF",
+            "places": []
+          }
+        ],
+        "P57": [
+          {
+            "value": {
+              "entity-type": "item",
+              "numeric-id": 7441419,
+              "id": "Q7441419"
+            },
+            "rank": "normal",
+            "statement_id": "Q29514872$3018AD88-CAFC-49D4-8A34-CAE6410F46B8",
+            "places": []
+          }
+        ],
+        "P495": [
+          {
+            "value": {
+              "entity-type": "item",
+              "numeric-id": 30,
+              "id": "Q30"
+            },
+            "rank": "normal",
+            "statement_id": "Q29514872$33D72B11-913A-44D7-BD7D-90625138A877",
+            "places": []
+          }
+        ],
+        "P577": [
+          {
+            "value": {
+              "time": "+2017-05-22T00:00:00Z",
+              "timezone": 0,
+              "before": 0,
+              "after": 0,
+              "precision": 11,
+              "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+            },
+            "rank": "normal",
+            "statement_id": "Q29514872$0fa89c6a-4928-9170-0435-bedf340c3a12",
+            "places": [
+              {
+                "entity-type": "item",
+                "numeric-id": 838403,
+                "id": "Q838403"
+              }
+            ]
+          },
+          {
+            "value": {
+              "time": "+2017-10-06T00:00:00Z",
+              "timezone": 0,
+              "before": 0,
+              "after": 0,
+              "precision": 11,
+              "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+            },
+            "rank": "normal",
+            "statement_id": "Q29514872$423eb8b5-4b42-6b4d-b212-f7fd95bf8b14",
+            "places": [
+              {
+                "entity-type": "item",
+                "numeric-id": 30,
+                "id": "Q30"
+              }
+            ]
+          },
+          {
+            "value": {
+              "time": "+2018-03-15T00:00:00Z",
+              "timezone": 0,
+              "before": 0,
+              "after": 0,
+              "precision": 11,
+              "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+            },
+            "rank": "normal",
+            "statement_id": "Q29514872$ef8b3293-40be-b276-c30b-b1b45d7ca5e9",
+            "places": [
+              {
+                "entity-type": "item",
+                "numeric-id": 183,
+                "id": "Q183"
+              }
+            ]
+          },
+          {
+            "value": {
+              "time": "+2018-01-11T00:00:00Z",
+              "timezone": 0,
+              "before": 0,
+              "after": 0,
+              "precision": 11,
+              "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+            },
+            "rank": "normal",
+            "statement_id": "Q29514872$BB7BCFB6-6095-4522-9085-46CE196F9CF4",
+            "places": [
+              {
+                "entity-type": "item",
+                "numeric-id": 28,
+                "id": "Q28"
+              }
+            ]
+          }
+        ],
+        "P2047": [
+          {
+            "value": {
+              "amount": "+115",
+              "unit": "http://www.wikidata.org/entity/Q7727"
+            },
+            "rank": "normal",
+            "statement_id": "Q29514872$187c03e3-45fb-c16b-01fc-a9601de7d7aa",
+            "places": []
+          }
+        ],
+        "P136": [
+          {
+            "value": {
+              "entity-type": "item",
+              "numeric-id": 130232,
+              "id": "Q130232"
+            },
+            "rank": "normal",
+            "statement_id": "Q29514872$1f9ddb7f-48aa-f6d3-08a1-2bb557cf3537",
+            "places": []
+          }
+        ],
+        "P1476": [
+          {
+            "value": {
+              "text": "The Florida Project",
+              "language": "en"
+            },
+            "rank": "normal",
+            "statement_id": "Q29514872$9E26B00F-EDA7-4CA1-B750-D4C51465B046",
+            "places": []
+          }
+        ]
+      }
+    },
+    "Q65679599": {
+      "id": "Q65679599",
+      "lastrevid": 2557120615,
+      "source_url": "https://www.wikidata.org/wiki/Q65679599",
+      "retrieved": "2026-10-22",
+      "labels": {
+        "en": "Minari",
+        "ko": "미나리",
+        "zh": "夢想之地",
+        "ja": "ミナリ",
+        "zh-hant": "夢想之地"
+      },
+      "aliases": {},
+      "statements": {
+        "P31": [
+          {
+            "value": {
+              "entity-type": "item",
+              "numeric-id": 11424,
+              "id": "Q11424"
+            },
+            "rank": "normal",
+            "statement_id": "Q65679599$86E11E92-362D-4E3B-8D94-FD80237CD00A",
+            "places": []
+          }
+        ],
+        "P57": [
+          {
+            "value": {
+              "entity-type": "item",
+              "numeric-id": 6514075,
+              "id": "Q6514075"
+            },
+            "rank": "normal",
+            "statement_id": "Q65679599$6B037648-2C7A-4F3B-A09A-08B3692A8369",
+            "places": []
+          }
+        ],
+        "P495": [
+          {
+            "value": {
+              "entity-type": "item",
+              "numeric-id": 30,
+              "id": "Q30"
+            },
+            "rank": "normal",
+            "statement_id": "Q65679599$CC065CCE-AA38-4AAC-AC70-E274256A2F7D",
+            "places": []
+          }
+        ],
+        "P577": [
+          {
+            "value": {
+              "time": "+2020-01-26T00:00:00Z",
+              "timezone": 0,
+              "before": 0,
+              "after": 0,
+              "precision": 11,
+              "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+            },
+            "rank": "normal",
+            "statement_id": "Q65679599$90334194-a47b-4695-a4cb-bca3597af043",
+            "places": [
+              {
+                "entity-type": "item",
+                "numeric-id": 76412985,
+                "id": "Q76412985"
+              }
+            ]
+          },
+          {
+            "value": {
+              "time": "+2021-06-17T00:00:00Z",
+              "timezone": 0,
+              "before": 0,
+              "after": 0,
+              "precision": 11,
+              "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+            },
+            "rank": "normal",
+            "statement_id": "Q65679599$620FC13A-67EE-4488-BBF1-8DEBD1CDA16E",
+            "places": [
+              {
+                "entity-type": "item",
+                "numeric-id": 28,
+                "id": "Q28"
+              }
+            ]
+          },
+          {
+            "value": {
+              "time": "+2021-07-15T00:00:00Z",
+              "timezone": 0,
+              "before": 0,
+              "after": 0,
+              "precision": 11,
+              "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+            },
+            "rank": "normal",
+            "statement_id": "Q65679599$1e44298a-473e-6247-7aa6-1bb856fa2566",
+            "places": [
+              {
+                "entity-type": "item",
+                "numeric-id": 183,
+                "id": "Q183"
+              }
+            ]
+          },
+          {
+            "value": {
+              "time": "+2021-08-05T00:00:00Z",
+              "timezone": 0,
+              "before": 0,
+              "after": 0,
+              "precision": 11,
+              "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+            },
+            "rank": "normal",
+            "statement_id": "Q65679599$ba8e668d-4c6c-7728-de92-24e0ad196523",
+            "places": [
+              {
+                "entity-type": "item",
+                "numeric-id": 55,
+                "id": "Q55"
+              }
+            ]
+          }
+        ],
+        "P2047": [
+          {
+            "value": {
+              "amount": "+115",
+              "unit": "http://www.wikidata.org/entity/Q7727"
+            },
+            "rank": "normal",
+            "statement_id": "Q65679599$55a2280d-4c6a-09d2-2eb3-6eb4d6931fda",
+            "places": []
+          }
+        ],
+        "P136": [
+          {
+            "value": {
+              "entity-type": "item",
+              "numeric-id": 130232,
+              "id": "Q130232"
+            },
+            "rank": "normal",
+            "statement_id": "Q65679599$63176780-c9b0-41b0-8a82-bcbad7c10642",
+            "places": []
+          }
+        ],
+        "P1476": [
+          {
+            "value": {
+              "text": "Minari",
+              "language": "en"
+            },
+            "rank": "normal",
+            "statement_id": "Q65679599$0722763d-49c1-ec8a-5528-c37761823b42",
+            "places": []
+          }
+        ]
+      }
+    },
+    "Q1139458": {
+      "id": "Q1139458",
+      "lastrevid": 2552375036,
+      "source_url": "https://www.wikidata.org/wiki/Q1139458",
+      "retrieved": "2026-10-22",
+      "labels": {
+        "ja": "ワンダフルライフ",
+        "ko": "원더풀 라이프",
+        "en": "After Life",
+        "zh": "下一站，天國！"
+      },
+      "aliases": {
+        "zh": [
+          "下一站天國"
+        ]
+      },
+      "statements": {
+        "P31": [
+          {
+            "value": {
+              "entity-type": "item",
+              "numeric-id": 11424,
+              "id": "Q11424"
+            },
+            "rank": "normal",
+            "statement_id": "q1139458$A5B7E7A1-7500-4A6E-8170-54EF23D8A3CB",
+            "places": []
+          }
+        ],
+        "P57": [
+          {
+            "value": {
+              "entity-type": "item",
+              "numeric-id": 740758,
+              "id": "Q740758"
+            },
+            "rank": "normal",
+            "statement_id": "q1139458$FF2FFBBF-AD61-4430-93DC-82EDA04F8819",
+            "places": []
+          }
+        ],
+        "P495": [
+          {
+            "value": {
+              "entity-type": "item",
+              "numeric-id": 17,
+              "id": "Q17"
+            },
+            "rank": "normal",
+            "statement_id": "Q1139458$C9BD5B36-67BE-4DEA-98AD-5B7711890DD2",
+            "places": []
+          }
+        ],
+        "P577": [
+          {
+            "value": {
+              "time": "+1998-01-01T00:00:00Z",
+              "timezone": 0,
+              "before": 0,
+              "after": 0,
+              "precision": 9,
+              "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+            },
+            "rank": "normal",
+            "statement_id": "Q1139458$934040B5-5086-44D6-8906-B4C043C0ED01",
+            "places": []
+          },
+          {
+            "value": {
+              "time": "+1998-09-11T00:00:00Z",
+              "timezone": 0,
+              "before": 0,
+              "after": 0,
+              "precision": 11,
+              "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+            },
+            "rank": "normal",
+            "statement_id": "Q1139458$f72dcfce-4acc-4829-ed34-d932c175c19d",
+            "places": [
+              {
+                "entity-type": "item",
+                "numeric-id": 390018,
+                "id": "Q390018"
+              }
+            ]
+          },
+          {
+            "value": {
+              "time": "+1999-04-17T00:00:00Z",
+              "timezone": 0,
+              "before": 0,
+              "after": 0,
+              "precision": 11,
+              "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+            },
+            "rank": "normal",
+            "statement_id": "Q1139458$19dfd7af-4e89-81c3-2bc5-81883880827a",
+            "places": [
+              {
+                "entity-type": "item",
+                "numeric-id": 17,
+                "id": "Q17"
+              }
+            ]
+          }
+        ],
+        "P2047": [
+          {
+            "value": {
+              "amount": "+118",
+              "unit": "http://www.wikidata.org/entity/Q7727"
+            },
+            "rank": "normal",
+            "statement_id": "Q1139458$D7B38692-8A0A-4742-B337-B5180BEA3631",
+            "places": []
+          }
+        ],
+        "P136": [
+          {
+            "value": {
+              "entity-type": "item",
+              "numeric-id": 157394,
+              "id": "Q157394"
+            },
+            "rank": "normal",
+            "statement_id": "Q1139458$F77FE6C2-0ABC-4738-9DCB-91DA96E74789",
+            "places": []
+          },
+          {
+            "value": {
+              "entity-type": "item",
+              "numeric-id": 130232,
+              "id": "Q130232"
+            },
+            "rank": "normal",
+            "statement_id": "Q1139458$9BEF5E0B-93E2-4A7E-8F74-F9E5FBFBC9D1",
+            "places": []
+          }
+        ],
+        "P1476": [
+          {
+            "value": {
+              "text": "ワンダフルライフ",
+              "language": "ja"
+            },
+            "rank": "normal",
+            "statement_id": "Q1139458$CD1E249B-6A65-4A29-8EE4-BB1989FE5649",
+            "places": []
+          }
+        ]
+      }
+    },
+    "Q27964497": {
+      "id": "Q27964497",
+      "lastrevid": 2558810690,
+      "source_url": "https://www.wikidata.org/wiki/Q27964497",
+      "retrieved": "2026-10-22",
+      "labels": {
+        "en": "A Ghost Story",
+        "ko": "고스트 스토리",
+        "ja": "ア・ゴースト・ストーリー",
+        "zh": "鬼魅浮生",
+        "zh-hant": "鬼魅浮生"
+      },
+      "aliases": {
+        "en": [
+          "Ghost Story"
+        ],
+        "ko": [
+          "어 고스트 스토리"
+        ]
+      },
+      "statements": {
+        "P31": [
+          {
+            "value": {
+              "entity-type": "item",
+              "numeric-id": 11424,
+              "id": "Q11424"
+            },
+            "rank": "normal",
+            "statement_id": "Q27964497$8088EEC5-CD95-473B-91CA-5D607A481C9C",
+            "places": []
+          }
+        ],
+        "P57": [
+          {
+            "value": {
+              "entity-type": "item",
+              "numeric-id": 16935094,
+              "id": "Q16935094"
+            },
+            "rank": "normal",
+            "statement_id": "Q27964497$A60DC9F8-5A1C-4F25-AEFA-52C70CDEEED4",
+            "places": []
+          }
+        ],
+        "P495": [
+          {
+            "value": {
+              "entity-type": "item",
+              "numeric-id": 30,
+              "id": "Q30"
+            },
+            "rank": "normal",
+            "statement_id": "Q27964497$600DDB17-9A7A-4CE6-B1EA-7F76925E7537",
+            "places": []
+          }
+        ],
+        "P577": [
+          {
+            "value": {
+              "time": "+2017-12-07T00:00:00Z",
+              "timezone": 0,
+              "before": 0,
+              "after": 0,
+              "precision": 11,
+              "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+            },
+            "rank": "normal",
+            "statement_id": "Q27964497$13bf5ba0-4c48-9de8-ea9f-b9eff5761f6e",
+            "places": [
+              {
+                "entity-type": "item",
+                "numeric-id": 183,
+                "id": "Q183"
+              }
+            ]
+          },
+          {
+            "value": {
+              "time": "+2017-07-07T00:00:00Z",
+              "timezone": 0,
+              "before": 0,
+              "after": 0,
+              "precision": 11,
+              "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+            },
+            "rank": "normal",
+            "statement_id": "Q27964497$6E2F4A18-743E-4EF4-A423-3108E96D25EA",
+            "places": [
+              {
+                "entity-type": "item",
+                "numeric-id": 30,
+                "id": "Q30"
+              }
+            ]
+          },
+          {
+            "value": {
+              "time": "+2017-07-21T00:00:00Z",
+              "timezone": 0,
+              "before": 0,
+              "after": 0,
+              "precision": 11,
+              "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+            },
+            "rank": "normal",
+            "statement_id": "Q27964497$277ACAA3-9901-420E-B24C-B81E490DCC32",
+            "places": [
+              {
+                "entity-type": "item",
+                "numeric-id": 16,
+                "id": "Q16"
+              }
+            ]
+          },
+          {
+            "value": {
+              "time": "+2017-07-28T00:00:00Z",
+              "timezone": 0,
+              "before": 0,
+              "after": 0,
+              "precision": 11,
+              "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+            },
+            "rank": "normal",
+            "statement_id": "Q27964497$E22E168C-0B1C-4AD6-A6B4-A37507E4F551",
+            "places": [
+              {
+                "entity-type": "item",
+                "numeric-id": 30,
+                "id": "Q30"
+              }
+            ]
+          }
+        ],
+        "P2047": [
+          {
+            "value": {
+              "amount": "+92",
+              "unit": "http://www.wikidata.org/entity/Q7727"
+            },
+            "rank": "normal",
+            "statement_id": "Q27964497$e5f296e3-4622-c392-159f-c4401f265cd7",
+            "places": []
+          }
+        ],
+        "P136": [
+          {
+            "value": {
+              "entity-type": "item",
+              "numeric-id": 1919632,
+              "id": "Q1919632"
+            },
+            "rank": "normal",
+            "statement_id": "Q27964497$3AC54216-B286-42AB-8A0F-50FBED5995D9",
+            "places": []
+          },
+          {
+            "value": {
+              "entity-type": "item",
+              "numeric-id": 31888058,
+              "id": "Q31888058"
+            },
+            "rank": "normal",
+            "statement_id": "Q27964497$76e8e689-44db-2a59-ba22-105f59f1ee08",
+            "places": []
+          },
+          {
+            "value": {
+              "entity-type": "item",
+              "numeric-id": 157394,
+              "id": "Q157394"
+            },
+            "rank": "normal",
+            "statement_id": "Q27964497$20940478-4ace-3af9-be73-6e2e62d36fb8",
+            "places": []
+          },
+          {
+            "value": {
+              "entity-type": "item",
+              "numeric-id": 130232,
+              "id": "Q130232"
+            },
+            "rank": "normal",
+            "statement_id": "Q27964497$1e54f9b7-4f9e-af55-83ce-034b24f84150",
+            "places": []
+          },
+          {
+            "value": {
+              "entity-type": "item",
+              "numeric-id": 3634883,
+              "id": "Q3634883"
+            },
+            "rank": "normal",
+            "statement_id": "Q27964497$ff4d2662-4a67-64e4-9232-f3942a6d0740",
+            "places": []
+          }
+        ],
+        "P1476": [
+          {
+            "value": {
+              "text": "A Ghost Story",
+              "language": "en"
+            },
+            "rank": "normal",
+            "statement_id": "Q27964497$626E5E6A-4B58-4EA8-BAF8-AFF2C6129DB9",
+            "places": []
+          }
+        ]
+      }
+    },
+    "Q111668106": {
+      "id": "Q111668106",
+      "lastrevid": 2557085505,
+      "source_url": "https://www.wikidata.org/wiki/Q111668106",
+      "retrieved": "2026-10-22",
+      "labels": {
+        "en": "Aftersun",
+        "ko": "에프터선",
+        "zh": "晒后假日",
+        "ja": "aftersun／アフターサン",
+        "zh-hant": "日麗"
+      },
+      "aliases": {
+        "zh": [
+          "日麗",
+          "曬後夏日"
+        ],
+        "ja": [
+          "aftersun アフターサン",
+          "Aftersun/アフターサン"
+        ]
+      },
+      "statements": {
+        "P31": [
+          {
+            "value": {
+              "entity-type": "item",
+              "numeric-id": 11424,
+              "id": "Q11424"
+            },
+            "rank": "normal",
+            "statement_id": "Q111668106$7D274BA4-2C16-4707-BE3E-A7755F64B78C",
+            "places": []
+          }
+        ],
+        "P57": [
+          {
+            "value": {
+              "entity-type": "item",
+              "numeric-id": 115803783,
+              "id": "Q115803783"
+            },
+            "rank": "normal",
+            "statement_id": "Q111668106$0fe8337c-421c-95ca-b800-8db39d4f40e6",
+            "places": []
+          }
+        ],
+        "P495": [
+          {
+            "value": {
+              "entity-type": "item",
+              "numeric-id": 145,
+              "id": "Q145"
+            },
+            "rank": "normal",
+            "statement_id": "Q111668106$2fc03f91-483e-356a-073f-afe1287ef112",
+            "places": []
+          },
+          {
+            "value": {
+              "entity-type": "item",
+              "numeric-id": 30,
+              "id": "Q30"
+            },
+            "rank": "normal",
+            "statement_id": "Q111668106$dfea32ee-453a-1ec1-9874-6191d8ed7694",
+            "places": []
+          }
+        ],
+        "P577": [
+          {
+            "value": {
+              "time": "+2022-05-21T00:00:00Z",
+              "timezone": 0,
+              "before": 0,
+              "after": 0,
+              "precision": 11,
+              "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+            },
+            "rank": "normal",
+            "statement_id": "Q111668106$48da2a52-467a-c59b-a8cd-a9df7ade14ed",
+            "places": [
+              {
+                "entity-type": "item",
+                "numeric-id": 42369,
+                "id": "Q42369"
+              }
+            ]
+          },
+          {
+            "value": {
+              "time": "+2022-10-21T00:00:00Z",
+              "timezone": 0,
+              "before": 0,
+              "after": 0,
+              "precision": 11,
+              "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+            },
+            "rank": "normal",
+            "statement_id": "Q111668106$1f8551e7-4805-cf46-cdc8-81bd22d04c2a",
+            "places": [
+              {
+                "entity-type": "item",
+                "numeric-id": 30,
+                "id": "Q30"
+              }
+            ]
+          },
+          {
+            "value": {
+              "time": "+2022-11-18T00:00:00Z",
+              "timezone": 0,
+              "before": 0,
+              "after": 0,
+              "precision": 11,
+              "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+            },
+            "rank": "normal",
+            "statement_id": "Q111668106$0d389af3-4b9f-c968-bba5-ab87e36aea23",
+            "places": [
+              {
+                "entity-type": "item",
+                "numeric-id": 145,
+                "id": "Q145"
+              },
+              {
+                "entity-type": "item",
+                "numeric-id": 27,
+                "id": "Q27"
+              }
+            ]
+          },
+          {
+            "value": {
+              "time": "+2022-12-15T00:00:00Z",
+              "timezone": 0,
+              "before": 0,
+              "after": 0,
+              "precision": 11,
+              "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+            },
+            "rank": "normal",
+            "statement_id": "Q111668106$a88e25bf-4d01-6ad5-e60d-ec01a024dccb",
+            "places": [
+              {
+                "entity-type": "item",
+                "numeric-id": 183,
+                "id": "Q183"
+              }
+            ]
+          },
+          {
+            "value": {
+              "time": "+2023-03-09T00:00:00Z",
+              "timezone": 0,
+              "before": 0,
+              "after": 0,
+              "precision": 11,
+              "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+            },
+            "rank": "normal",
+            "statement_id": "Q111668106$9CB882C8-2877-429A-A6B2-DFCDF4E24337",
+            "places": [
+              {
+                "entity-type": "item",
+                "numeric-id": 28,
+                "id": "Q28"
+              }
+            ]
+          }
+        ],
+        "P2047": [
+          {
+            "value": {
+              "amount": "+101",
+              "unit": "http://www.wikidata.org/entity/Q7727"
+            },
+            "rank": "normal",
+            "statement_id": "Q111668106$f86e46fd-4f28-87e0-ec49-a0d9a8911a21",
+            "places": []
+          }
+        ],
+        "P136": [
+          {
+            "value": {
+              "entity-type": "item",
+              "numeric-id": 130232,
+              "id": "Q130232"
+            },
+            "rank": "normal",
+            "statement_id": "Q111668106$988F7FF0-E494-4F78-BC37-8C80FCFC5071",
+            "places": []
+          },
+          {
+            "value": {
+              "entity-type": "item",
+              "numeric-id": 127739154,
+              "id": "Q127739154"
+            },
+            "rank": "normal",
+            "statement_id": "Q111668106$89e4be9c-452b-b98d-9ef4-46a85582e968",
+            "places": []
+          }
+        ],
+        "P1476": [
+          {
+            "value": {
+              "text": "Aftersun",
+              "language": "en"
+            },
+            "rank": "normal",
+            "statement_id": "Q111668106$d0dd381a-4839-168f-ab90-e4749f903748",
+            "places": []
+          }
+        ]
+      }
+    },
+    "Q83808444": {
+      "id": "Q83808444",
+      "lastrevid": 2557107500,
+      "source_url": "https://www.wikidata.org/wiki/Q83808444",
+      "retrieved": "2026-10-22",
+      "labels": {
+        "en": "Everything Everywhere All at Once",
+        "zh": "天馬行空",
+        "ko": "에브리씽 에브리웨어 올 앤 원스",
+        "ja": "エブリシング・エブリホウェアー・オール・アット・ワンス",
+        "zh-cn": "瞬息全宇宙",
+        "zh-hans": "天马行空",
+        "zh-hant": "奇異女俠玩救宇宙"
+      },
+      "aliases": {
+        "zh": [
+          "一切隨處可見",
+          "媽的多重宇宙",
+          "瞬息全宇宙",
+          "奇異女俠玩救宇宙",
+          "天马行空"
+        ],
+        "en": [
+          "EEAAO"
+        ],
+        "zh-hant": [
+          "媽的多重宇宙",
+          "天馬行空"
+        ],
+        "ko": [
+          "양자경의 더 모든 날 모든 순간",
+          "천마행공"
+        ]
+      },
+      "statements": {
+        "P31": [
+          {
+            "value": {
+              "entity-type": "item",
+              "numeric-id": 11424,
+              "id": "Q11424"
+            },
+            "rank": "normal",
+            "statement_id": "Q83808444$D7D43833-B7E3-42CD-BE48-1A633FE48CD1",
+            "places": []
+          }
+        ],
+        "P57": [
+          {
+            "value": {
+              "entity-type": "item",
+              "numeric-id": 28746830,
+              "id": "Q28746830"
+            },
+            "rank": "normal",
+            "statement_id": "Q83808444$64c5b3bc-4c86-a98e-27b9-10363a76f484",
+            "places": []
+          },
+          {
+            "value": {
+              "entity-type": "item",
+              "numeric-id": 28746848,
+              "id": "Q28746848"
+            },
+            "rank": "normal",
+            "statement_id": "Q83808444$ec3923f1-4db7-d359-a420-fe752011b720",
+            "places": []
+          }
+        ],
+        "P495": [
+          {
+            "value": {
+              "entity-type": "item",
+              "numeric-id": 30,
+              "id": "Q30"
+            },
+            "rank": "normal",
+            "statement_id": "Q83808444$17123443-2D16-4800-A496-0D22FD7F1ADB",
+            "places": []
+          }
+        ],
+        "P577": [
+          {
+            "value": {
+              "time": "+2022-03-11T00:00:00Z",
+              "timezone": 0,
+              "before": 0,
+              "after": 0,
+              "precision": 11,
+              "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+            },
+            "rank": "normal",
+            "statement_id": "Q83808444$4F706052-27F0-4C3E-809E-7811A03DEF74",
+            "places": [
+              {
+                "entity-type": "item",
+                "numeric-id": 55122717,
+                "id": "Q55122717"
+              }
+            ]
+          },
+          {
+            "value": {
+              "time": "+2022-03-25T00:00:00Z",
+              "timezone": 0,
+              "before": 0,
+              "after": 0,
+              "precision": 11,
+              "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+            },
+            "rank": "normal",
+            "statement_id": "Q83808444$58eb046b-4cb4-40e8-0d13-33856bd3e877",
+            "places": [
+              {
+                "entity-type": "item",
+                "numeric-id": 30,
+                "id": "Q30"
+              }
+            ]
+          },
+          {
+            "value": {
+              "time": "+2022-04-07T00:00:00Z",
+              "timezone": 0,
+              "before": 0,
+              "after": 0,
+              "precision": 11,
+              "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+            },
+            "rank": "normal",
+            "statement_id": "Q83808444$D51A97A4-CF63-45FE-9849-75121089B95E",
+            "places": [
+              {
+                "entity-type": "item",
+                "numeric-id": 28,
+                "id": "Q28"
+              }
+            ]
+          },
+          {
+            "value": {
+              "time": "+2022-04-08T00:00:00Z",
+              "timezone": 0,
+              "before": 0,
+              "after": 0,
+              "precision": 11,
+              "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+            },
+            "rank": "normal",
+            "statement_id": "Q83808444$CE461C62-3EF1-4FD5-9035-1F4CB6266694",
+            "places": [
+              {
+                "entity-type": "item",
+                "numeric-id": 30,
+                "id": "Q30"
+              }
+            ]
+          },
+          {
+            "value": {
+              "time": "+2022-08-31T00:00:00Z",
+              "timezone": 0,
+              "before": 0,
+              "after": 0,
+              "precision": 11,
+              "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+            },
+            "rank": "normal",
+            "statement_id": "Q83808444$13523b5d-49b4-3eef-a2cf-73c30660d70e",
+            "places": [
+              {
+                "entity-type": "item",
+                "numeric-id": 142,
+                "id": "Q142"
+              }
+            ]
+          },
+          {
+            "value": {
+              "time": "+2022-10-06T00:00:00Z",
+              "timezone": 0,
+              "before": 0,
+              "after": 0,
+              "precision": 11,
+              "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+            },
+            "rank": "normal",
+            "statement_id": "Q83808444$658B8CD6-F2B8-47A3-86AD-2B197DDD3D80",
+            "places": [
+              {
+                "entity-type": "item",
+                "numeric-id": 38,
+                "id": "Q38"
+              }
+            ]
+          }
+        ],
+        "P2047": [
+          {
+            "value": {
+              "amount": "+140",
+              "unit": "http://www.wikidata.org/entity/Q7727"
+            },
+            "rank": "normal",
+            "statement_id": "Q83808444$50DB72BB-8AE0-4B7E-94D4-55A1D3378064",
+            "places": []
+          },
+          {
+            "value": {
+              "amount": "+139",
+              "unit": "http://www.wikidata.org/entity/Q7727"
+            },
+            "rank": "preferred",
+            "statement_id": "Q83808444$209A6E2E-ED56-43C9-AA49-D1CB7E8A5ABA",
+            "places": []
+          }
+        ],
+        "P136": [
+          {
+            "value": {
+              "entity-type": "item",
+              "numeric-id": 471839,
+              "id": "Q471839"
+            },
+            "rank": "normal",
+            "statement_id": "Q83808444$0a7956f9-f8f1-465f-a0a9-c9e7a07b5651",
+            "places": []
+          },
+          {
+            "value": {
+              "entity-type": "item",
+              "numeric-id": 188473,
+              "id": "Q188473"
+            },
+            "rank": "normal",
+            "statement_id": "Q83808444$57d01ce0-4ecb-374b-cd4f-df780db2fd96",
+            "places": []
+          },
+          {
+            "value": {
+              "entity-type": "item",
+              "numeric-id": 859369,
+              "id": "Q859369"
+            },
+            "rank": "normal",
+            "statement_id": "Q83808444$D7020E6D-562F-4C0B-B034-37EFC51D1664",
+            "places": []
+          },
+          {
+            "value": {
+              "entity-type": "item",
+              "numeric-id": 1770859,
+              "id": "Q1770859"
+            },
+            "rank": "normal",
+            "statement_id": "Q83808444$58476DAB-65EC-4DF8-97F1-1848CF88C507",
+            "places": []
+          },
+          {
+            "value": {
+              "entity-type": "item",
+              "numeric-id": 1033891,
+              "id": "Q1033891"
+            },
+            "rank": "normal",
+            "statement_id": "Q83808444$5d0dba30-479f-db44-27b6-0b2511facf9c",
+            "places": []
+          },
+          {
+            "value": {
+              "entity-type": "item",
+              "numeric-id": 21858363,
+              "id": "Q21858363"
+            },
+            "rank": "normal",
+            "statement_id": "Q83808444$50815AE4-ECDD-45DC-88CF-15588D52705A",
+            "places": []
+          }
+        ],
+        "P1476": [
+          {
+            "value": {
+              "text": "Everything Everywhere All at Once",
+              "language": "en"
+            },
+            "rank": "preferred",
+            "statement_id": "Q83808444$9d6a7b02-49a5-a967-0061-a7e77678ddcc",
+            "places": []
+          }
+        ]
+      }
+    },
+    "Q874074": {
+      "id": "Q874074",
+      "lastrevid": 2538548018,
+      "source_url": "https://www.wikidata.org/wiki/Q874074",
+      "retrieved": "2026-10-22",
+      "labels": {
+        "ja": "歩いても 歩いても",
+        "ko": "걸어도 걸어도",
+        "en": "Still Walking",
+        "zh": "横山家之味",
+        "zh-cn": "步履不停"
+      },
+      "aliases": {
+        "ja": [
+          "歩いても歩いても"
+        ]
+      },
+      "statements": {
+        "P31": [
+          {
+            "value": {
+              "entity-type": "item",
+              "numeric-id": 11424,
+              "id": "Q11424"
+            },
+            "rank": "normal",
+            "statement_id": "Q874074$B8AA4F42-67B4-4356-A5F2-A1E0C2932DB7",
+            "places": []
+          }
+        ],
+        "P57": [
+          {
+            "value": {
+              "entity-type": "item",
+              "numeric-id": 740758,
+              "id": "Q740758"
+            },
+            "rank": "normal",
+            "statement_id": "Q874074$6626D858-E938-48DF-9408-9067AB771B1E",
+            "places": []
+          }
+        ],
+        "P495": [
+          {
+            "value": {
+              "entity-type": "item",
+              "numeric-id": 17,
+              "id": "Q17"
+            },
+            "rank": "normal",
+            "statement_id": "Q874074$82206787-31D0-473A-8803-66EAB13968B7",
+            "places": []
+          }
+        ],
+        "P577": [
+          {
+            "value": {
+              "time": "+2008-06-28T00:00:00Z",
+              "timezone": 0,
+              "before": 0,
+              "after": 0,
+              "precision": 11,
+              "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+            },
+            "rank": "normal",
+            "statement_id": "Q874074$C0F8DD2E-2B6B-4E6A-80F7-784A0C43948E",
+            "places": [
+              {
+                "entity-type": "item",
+                "numeric-id": 17,
+                "id": "Q17"
+              }
+            ]
+          },
+          {
+            "value": {
+              "time": "+2010-11-18T00:00:00Z",
+              "timezone": 0,
+              "before": 0,
+              "after": 0,
+              "precision": 11,
+              "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+            },
+            "rank": "normal",
+            "statement_id": "Q874074$159da3c3-420b-c1c0-ab89-440886dda56e",
+            "places": [
+              {
+                "entity-type": "item",
+                "numeric-id": 183,
+                "id": "Q183"
+              }
+            ]
+          }
+        ],
+        "P2047": [
+          {
+            "value": {
+              "amount": "+114",
+              "unit": "http://www.wikidata.org/entity/Q7727"
+            },
+            "rank": "normal",
+            "statement_id": "Q874074$BA407906-27B5-4239-B759-DE608F36CE06",
+            "places": []
+          }
+        ],
+        "P136": [
+          {
+            "value": {
+              "entity-type": "item",
+              "numeric-id": 130232,
+              "id": "Q130232"
+            },
+            "rank": "normal",
+            "statement_id": "Q874074$9DFEFE8D-4FE7-4F72-AC1D-8D9789D07785",
+            "places": []
+          }
+        ],
+        "P1476": [
+          {
+            "value": {
+              "text": "歩いても 歩いても",
+              "language": "ja"
+            },
+            "rank": "normal",
+            "statement_id": "Q874074$9E528F29-5049-49F0-AC84-0E44F86B3C02",
+            "places": []
+          }
+        ]
+      }
+    }
+  },
+  "people": {
+    "Q740758": {
+      "id": "Q740758",
+      "lastrevid": 2558706589,
+      "source_url": "https://www.wikidata.org/wiki/Q740758",
+      "retrieved": "2026-10-22",
+      "labels": {
+        "zh-hans": "是枝裕和",
+        "zh-hant": "是枝裕和",
+        "ja": "是枝裕和",
+        "ko": "고레에다 히로카즈",
+        "en": "Hirokazu Koreeda",
+        "zh": "是枝裕和"
+      },
+      "aliases": {
+        "ko": [
+          "고레다 히로카즈",
+          "코레에다 히로카즈"
+        ],
+        "ja": [
+          "これえだひろかず"
+        ],
+        "en": [
+          "Hirokazu Kore-Eda",
+          "Kore-Eda",
+          "Koreeda"
+        ]
+      },
+      "statements": {
+        "P31": [
+          {
+            "value": {
+              "entity-type": "item",
+              "numeric-id": 5,
+              "id": "Q5"
+            },
+            "rank": "normal",
+            "statement_id": "q740758$72357ABE-F1B6-414B-81B8-4AA003219077",
+            "places": []
+          }
+        ],
+        "P57": [],
+        "P495": [],
+        "P577": [],
+        "P2047": [],
+        "P136": [],
+        "P1476": []
+      }
+    },
+    "Q55431": {
+      "id": "Q55431",
+      "lastrevid": 2558069505,
+      "source_url": "https://www.wikidata.org/wiki/Q55431",
+      "retrieved": "2026-10-22",
+      "labels": {
+        "en": "Wong Kar-wai",
+        "ja": "ウォン・カーウァイ",
+        "ko": "왕가위",
+        "zh": "王家衛",
+        "zh-hans": "王家卫",
+        "zh-hant": "王家衛",
+        "zh-cn": "王家卫"
+      },
+      "aliases": {
+        "zh": [
+          "王家衞",
+          "王佳伟"
+        ],
+        "zh-hant": [
+          "王家衞"
+        ],
+        "en": [
+          "Kar Wai Wong",
+          "Wong Kar-Wai",
+          "Jia Wei Wang",
+          "Kar-Wai Wong",
+          "Wang Gu Wei",
+          "Ga Wai Wong",
+          "Wong Kar Wai",
+          "Wohng Ga Waih",
+          "Chia-wei Wang",
+          "WKW"
+        ],
+        "ja": [
+          "王家衛"
+        ],
+        "ko": [
+          "웡가와이",
+          "왕자웨이"
+        ]
+      },
+      "statements": {
+        "P31": [
+          {
+            "value": {
+              "entity-type": "item",
+              "numeric-id": 5,
+              "id": "Q5"
+            },
+            "rank": "normal",
+            "statement_id": "Q55431$273D79D7-06F0-48D3-B1A3-D9BD3569A474",
+            "places": []
+          }
+        ],
+        "P57": [],
+        "P495": [],
+        "P577": [],
+        "P2047": [],
+        "P136": [],
+        "P1476": []
+      }
+    }
+  }
+}

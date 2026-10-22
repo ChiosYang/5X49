@@ -1,0 +1,64 @@
+{
+  "version": "public-movie-evaluation.freeze.v1",
+  "created": "2026-10-22",
+  "configuration": {
+    "model": "nvidia/nemotron-3.5-embed-8b:free",
+    "provider": "nvidia/bf16",
+    "dimensions": 4096,
+    "model_created": 1792591666,
+    "provider_fingerprint": "368d665ce45b20e515a3f00a79de6cb3b2d15465210d85a68c70aae794718044",
+    "input_type": {
+      "document": "passage",
+      "query": "query"
+    },
+    "minimum_similarity": 0.35,
+    "rrf_k": 60,
+    "hybrid_weights": {
+      "dense": 1,
+      "lexical": 1
+    },
+    "lexical_policy": "existing-semantic-search-NFKC-English-words-CJK-bigrams-v1",
+    "same_document_text_for_all_methods": true,
+    "maximum_requests": 42,
+    "maximum_encoded_texts": 42,
+    "expected_document_encodings": 24,
+    "expected_query_encodings": 14,
+    "maximum_reserved_tokens": 20000,
+    "cost_ceiling_usd": "0",
+    "fallbacks": false,
+    "automatic_retries": 0,
+    "chat_requests": 0,
+    "rerank_requests": 0,
+    "nvidia_input_logging_accepted": true,
+    "production_enabled": false,
+    "tuning_on_this_test_set": false,
+    "sent_fields": [
+      "films[].document_text",
+      "cases[].embedding_query (non-null only)"
+    ],
+    "local_only_fields": [
+      "source URLs/revisions",
+      "stable IDs",
+      "qrels/reasons",
+      "hard fact records",
+      "title aliases beyond document text",
+      "private library (never read)"
+    ]
+  },
+  "files": {
+    "app/evaluation/public_movies.py": "d2c22220a8b1175fb229a6f54445d9f8657777f4321842993f4d62c23a87071a",
+    "app/evaluation/public_movie_pilot.py": "d5b59b93ea04bf61c31fd196fd42cc3de4af0fe53987ed37e7f0382005204a4c",
+    "app/services/semantic_search.py": "44c704e2df2c1d87d550d8f63de91ec6d483e2ca116ea535add6858b9ad7dea0",
+    "app/services/openrouter_embeddings.py": "a1b212799644723ac095b023edf466968c19ca563d77b31abca5052685ae687b",
+    "app/services/search_privacy.py": "b43c14d4dfdc4468f09b364c0532c5770743717fcc3a90b0f55186e852f030f8",
+    "app/evaluation/openrouter_pilot.py": "20eef4e55e60c6b2365c644a4aa9feeff8a64f777857e982a34912183b2747a8",
+    "app/contracts/structured_metadata.py": "2cb51e3984da8d16b074dd5b26bddb365f4ee1ce24b6f94cb5828d2f7ed5e512",
+    "app/contracts/search_plan.py": "68086f96a1ab11033bc6e4a581754f0b4892c0b6e0b3bc394c5a36b57d5fdb52",
+    "test_public_movies.py": "676e5f92b1783386aac9961bf337745f94771e3c2a6a38b28a7c9739520b95a0",
+    "fixtures/semantic_search/public-movies-v1.json": "1e8e52f991866c2d8240c464b1b45d4720bc6b6a0002de4f2bcaaefe162884ad",
+    "fixtures/semantic_search/public-movies-sources-v1.json": "c0f9e3e9693d61c01c0ff0539b2110631e82b62bf5745d5a9bd66fd8f977c475"
+  },
+  "labels": "provisional-curated-not-human-gold; no claim of independent human annotation",
+  "model_requests_before_freeze": 0,
+  "private_library_read": false
+}
