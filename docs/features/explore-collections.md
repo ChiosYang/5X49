@@ -8,6 +8,9 @@ Merged in PR41 as `e27a96c5ea6fa690a51c9ca0db1ef2cda3ef7d17`, after independent
 review and CI 39580467533 (432 backend / 1 skip, RC15, frontend127, browser234).
 The next [unified search](explore-unified-search.md) revision places its input
 directly above the shelves; the original lightweight-entry decision is historical.
+The later [Explore simplification](explore-simplification.md) moves the full
+directory onto the homepage and removes manual combination editing. The separate
+directory and combined-filter presentation below is historical.
 
 ## Goal
 

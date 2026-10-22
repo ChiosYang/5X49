@@ -1,9 +1,8 @@
 import { getTranslations } from "next-intl/server";
 
 import { parseExploreQuery } from "@/lib/explore";
-import { hasLegacyExploreQuery } from "@/lib/collections";
-import { getCollectionCatalog, getExploreFilms } from "@/lib/server-api";
-import ExploreClient from "./ExploreClient";
+import { collectionCategory, hasLegacyExploreQuery } from "@/lib/collections";
+import { getCollectionCatalog } from "@/lib/server-api";
 import CollectionBrowse from "./CollectionBrowse";
 import { redirect } from "@/i18n/routing";
 import { discoveryHref, normalizeDiscoverySearch } from "@/lib/discovery-search";
@@ -17,26 +16,15 @@ interface ExplorePageProps {
 export default async function ExplorePage({ params, searchParams }: ExplorePageProps) {
   const { locale } = await params;
   const resolvedSearchParams = searchParams ? await searchParams : {};
-  if (!hasLegacyExploreQuery(resolvedSearchParams)) {
-    const search = normalizeDiscoverySearch(resolvedSearchParams.q);
-    if (search) redirect({ href: discoveryHref(search), locale });
-    return <CollectionBrowse catalog={await getCollectionCatalog({ featured: true, limit: 3 })} locale={locale} />;
-  }
-  const query = parseExploreQuery({
-    genre: resolvedSearchParams.genre,
-    person: resolvedSearchParams.person,
-    person_match: resolvedSearchParams.person_match,
-    country: resolvedSearchParams.country,
-    decade: resolvedSearchParams.decade,
-    view: resolvedSearchParams.view,
-    sort: resolvedSearchParams.sort,
-    dir: resolvedSearchParams.dir,
-    offset: resolvedSearchParams.offset,
-  });
-  return <ExploreClient locale={locale} query={query} results={await getExploreFilms(query)} />;
+  const search = normalizeDiscoverySearch(resolvedSearchParams.q);
+  if (search) redirect({ href: discoveryHref(search), locale });
+  if (hasLegacyExploreQuery(resolvedSearchParams)) redirect({ href: "/explore", locale });
+  const category = collectionCategory(resolvedSearchParams.category);
+  const { offset } = parseExploreQuery({ offset: resolvedSearchParams.offset });
+  return <CollectionBrowse catalog={await getCollectionCatalog({ category, offset })} locale={locale} category={category} offset={offset} />;
 }
 
 export async function generateMetadata() {
-  const t = await getTranslations("Explore");
-  return { title: `${t("title")} · 5X49` };
+  const t = await getTranslations("Collections");
+  return { title: `${t("homeTitle")} · 5X49` };
 }

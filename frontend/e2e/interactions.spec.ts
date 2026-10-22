@@ -440,8 +440,8 @@ test('film More can close during a pending operation and consumes a repeated cli
 test('Explore local collections can be opened with the keyboard on narrow screens', async ({ page }) => {
   for (const locale of ['en','zh']) {
     await page.setViewportSize({width:390,height:844});await page.goto(`/${locale}/explore`);
-    const entries=page.locator('section[aria-labelledby^="collection-"] h2 a');
-    expect(await entries.count()).toBeGreaterThan(0);
+    const entries=page.locator('a[href*="/explore/collections/"]');
+    await expect(entries).not.toHaveCount(0);
     await entries.first().focus();await page.keyboard.press('Enter');
     await expect(page).toHaveURL(/\/explore\/collections\/(director|country|decade)\//);
     await expect(page.locator('#query-ribbon-title')).toHaveCount(0);
@@ -520,14 +520,15 @@ test('cinematic controls preserve touch size, keyboard focus and collapsed maint
   await expect(page.getByText('Full database restore requires the application to be stopped',{exact:true})).toBeHidden();
 });
 
-test('Explore combined filters reuse the standard input and support keyboard search without a dialog', async ({ page }) => {
+test('Retired Explore filters redirect to the unified input and keyboard search remains available', async ({ page }) => {
   await page.goto('/en/explore/filter');
-  const input=page.getByRole('textbox',{name:'Search genres, people, countries or decades',exact:true});
-  await page.keyboard.press('/');await expect(input).toBeFocused();
+  await expect(page).toHaveURL(/\/en\/explore$/);
+  const input=page.getByRole('searchbox',{name:'Search Explore',exact:true});
+  await input.focus();await expect(input).toBeFocused();
   await expect(input).toHaveCSS('outline-style','solid');
   await expect.poll(()=>input.evaluate(node=>node.getBoundingClientRect().height)).toBeGreaterThanOrEqual(44);
   await input.fill('Japan');await page.keyboard.press('Escape');
-  await expect(input).toHaveValue('');await expect(input).toBeFocused();
+  await expect(input).toHaveValue('Japan');await expect(input).toBeFocused();
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
 });
 

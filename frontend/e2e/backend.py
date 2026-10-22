@@ -325,6 +325,40 @@ def control(payload: dict, x_e2e_token: str = Header(default='')):
         viewing_manager.create(films['Orbit Unknown'], '2026-10-12', rating=5,
             idempotency_key='filter-viewing-0001')
         return films
+    elif action == 'catalog_pagination_fixture':
+        from app.services.library_sync import library_sync_service
+        from itertools import combinations, islice
+        import shutil
+        media = (root / 'normal/media').resolve()
+        assert media.is_relative_to(root)
+        sample = next(media.rglob('*.mkv'), None) or next(media.rglob('*.mp4'))
+        # Distinct two-film sets survive the production catalog's exact-set dedup.
+        pairs = list(islice(combinations(range(9), 2), 30))
+        for index in range(9):
+            folder = media / f'Catalog pagination {index}'
+            assert folder.parent == media and not folder.exists()
+            folder.mkdir()
+            (folder / '.catalog-owned').write_text('generated E2E fixture', encoding='utf-8')
+            video = folder / 'movie.mkv'
+            shutil.copyfile(sample, video)
+            with video.open('ab') as handle:
+                handle.write(f'catalog-pagination-{index}'.encode())
+            directors = ''.join(f'<director>Catalog Topic {topic:02}</director>'
+                                for topic, pair in enumerate(pairs) if index in pair)
+            video.with_suffix('.nfo').write_text(
+                f'<movie><title>Catalog pagination {index}</title><year>1971</year>{directors}</movie>',
+                encoding='utf-8')
+            library_sync_service.scan_folder(folder, media_root=str(media))
+        return {'created': 9}
+    elif action == 'catalog_pagination_cleanup':
+        import shutil
+        media = (root / 'normal/media').resolve()
+        assert media.is_relative_to(root)
+        for index in range(9):
+            folder = (media / f'Catalog pagination {index}').resolve()
+            assert folder.parent == media and (folder / '.catalog-owned').is_file()
+            shutil.rmtree(folder)
+        return {'removed': 9}
     elif action == 'library_filter_care_fixture':
         from app.services.library import library_manager
         from app.services.user_state import film_profile_state_manager

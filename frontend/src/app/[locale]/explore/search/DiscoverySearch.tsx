@@ -52,12 +52,11 @@ export default function DiscoverySearch({ snapshot, resolution, state, explicitK
     });
   }, [activeHref, beginRead, collectionOffset, discoverySearchHref, href, page, pending, peopleOffset, query, router, setActiveHref, snapshot]);
   return <div className="page-x min-h-screen bg-canvas pb-24 pt-38 text-ink md:pt-44">
-    <nav aria-label={t("breadcrumb")} className="mb-5 text-sm text-ink-muted"><Link prefetch={false} href="/explore" scroll={false} className="focus-ring hover:text-ink">{t("homeTitle")}</Link></nav>
+    <nav aria-label={t("breadcrumb")} className="mb-5 text-sm text-ink-muted"><Link prefetch={false} href={searchSession.browseHref} scroll={false} className="focus-ring hover:text-ink">{t("homeTitle")}</Link></nav>
     <header className="border-b border-line pb-8">
       <h1 className="type-display-editorial">{t("searchTitle")}</h1>
       <p className="mt-4 max-w-2xl text-sm leading-6 text-ink-muted">{unifiedT("description")}</p>
       <UnifiedSearchInput query={query} />
-      <ButtonLink prefetch={false} href="/explore/filter" className="mt-4" variant="ghost" size="sm">{t("filterTitle")}</ButtonLink>
     </header>
     {resolution ? <div className="pt-8">
       {resolution.plan ? <ConditionSearchResults query={query} resolution={resolution} state={state} locale={locale}

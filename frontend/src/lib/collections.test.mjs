@@ -10,17 +10,18 @@ test("Collection identity is a stable validated path independent of viewing and 
   assert.equal(exploreHref(parseExploreQuery({view:"unwatched",sort:"year",offset:"40"}), "/explore/collections/country/JP"), "/explore/collections/country/JP?view=unwatched&sort=year&offset=40");
 });
 
-test("Legacy explicit Explore queries retain precise-filter mode including empty filters and view-only links", () => {
-  for (const params of [{person:"person_bad"},{country:"JP"},{genre:[]},{view:"all"},{sort:"title"},{offset:"0"}]) assert.equal(hasLegacyExploreQuery(params), true);
+test("Retired manual query markers are recognized for redirects while catalog pagination stays on Explore", () => {
+  for (const params of [{person:"person_bad"},{country:"JP"},{genre:[]},{view:"all"},{sort:"title"}]) assert.equal(hasLegacyExploreQuery(params), true);
   assert.equal(hasLegacyExploreQuery({}), false);
   assert.equal(hasLegacyExploreQuery({q:"Nolan"}), false);
+  assert.equal(hasLegacyExploreQuery({category:"country",offset:"24"}), false);
 });
 
 test("Directory categories and independent discovery pagination round-trip without query editing", () => {
   assert.equal(collectionCategory(["country","director"]), "country");
   assert.equal(collectionCategory("unknown"), "all");
-  assert.equal(catalogHref(), "/explore/collections");
-  assert.equal(catalogHref("director",24), "/explore/collections?category=director&offset=24");
+  assert.equal(catalogHref(), "/explore");
+  assert.equal(catalogHref("director",24), "/explore?category=director&offset=24");
   const url = new URL(discoverySearchHref("A & 日本",2,12,24), "http://local");
   assert.equal(url.searchParams.get("q"), "A & 日本");
   assert.equal(url.searchParams.get("page"), "2");

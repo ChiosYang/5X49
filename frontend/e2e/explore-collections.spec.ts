@@ -21,7 +21,7 @@ function collectionTitle(item: LocalCollection, locale: string) {
 }
 async function noOverflow(page: Page) { expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true); }
 async function capture(page: Page, name: string) {
-  await page.evaluate(async () => { await document.fonts.ready; await Promise.all([...document.images].map(image => image.decode().catch(() => {}))); });
+  await page.evaluate(async () => { await document.fonts.ready; await Promise.all([...document.images].filter(image => { const box=image.getBoundingClientRect();return box.bottom>0&&box.top<innerHeight; }).map(image => image.decode().catch(() => {}))); });
   await page.screenshot({ path: path.join('e2e-artifacts', name), animations:'disabled' });
 }
 test.beforeAll(async ({request}) => {
@@ -39,7 +39,7 @@ test.beforeEach(async ({context}) => {
 });
 
 for (const locale of ['en','zh']) for (const width of [1920,1024,768,390,320]) {
-  test(`${locale} collection shelves, directory and detail preserve the hierarchy at ${width}px`, async ({page,request}) => {
+  test(`${locale} Explore starts with the full catalog and preserves detail hierarchy at ${width}px`, async ({page,request}) => {
     const copy = locale === 'zh' ? zh.Collections : en.Collections;
     const explore = locale === 'zh' ? zh.Explore : en.Explore;
     const errors: string[] = [], ai: string[] = [];
@@ -47,19 +47,20 @@ for (const locale of ['en','zh']) for (const width of [1920,1024,768,390,320]) {
     page.on('request', request => { if (request.method() === 'POST' && /\/(ask|analysis)/.test(request.url())) ai.push(request.url()); });
     await page.setViewportSize({width,height:width === 1920 ? 1080 : 844});
     await page.goto(`/${locale}/explore`);
-    const catalog: CollectionCatalog = await read(request,'/explore/catalog?featured=true&limit=3');
+    const catalog: CollectionCatalog = await read(request,'/explore/catalog?limit=24');
     expect(catalog.items.length).toBeGreaterThan(0);
     await expect(page.locator('h1')).toHaveText(copy.homeTitle);
     await expect(page.locator('#explore-results-title')).toHaveCount(0);
     await expect(page.getByRole('textbox',{name:explore.searchAll,exact:true})).toHaveCount(0);
-    await expect(cards(page)).toHaveCount(catalog.items.reduce((sum,item) => sum+item.previews.length,0));
-    expect(await cards(page).evaluateAll(nodes => new Set(nodes.map(node => node.id)).size)).toBe(await cards(page).count());
+    await expect(page.locator('#collection-directory-title')).toHaveText(copy.directoryTitle);
+    await expect(cards(page)).toHaveCount(0);
+    await expect(page.locator('a[href*="/explore/collections/"]')).toHaveCount(catalog.items.length);
+    await expect(page.getByRole('link',{name:copy.directoryTitle,exact:true})).toHaveCount(0);
     await noOverflow(page);
-    if ([1920,390].includes(width)) await capture(page,`collection-home-${locale}-${width}.png`);
+    if ([1920,390,320].includes(width)) await capture(page,`collection-home-${locale}-${width}.png`);
     const item = catalog.items.at(-1)!;
     const title = collectionTitle(item,locale);
-    const shelf = page.getByRole('region',{name:title,exact:true});
-    const link = shelf.getByRole('link',{name:copy.viewCollection.replace('{title}',title),exact:true});
+    const link = page.locator(`a[href="/${locale}/explore/collections/${item.kind}/${item.key}"],a[href="/explore/collections/${item.kind}/${item.key}"]`);
     await link.scrollIntoViewIfNeeded(); await link.focus();
     const before = await page.evaluate(() => scrollY);
     await page.keyboard.press('Enter');
@@ -70,12 +71,11 @@ for (const locale of ['en','zh']) for (const width of [1920,1024,768,390,320]) {
     await expect(page.getByRole('region',{name:explore.activeFilters,exact:true})).toHaveCount(0);
     await expect(page.getByRole('textbox',{name:explore.searchAll,exact:true})).toHaveCount(0);
     await noOverflow(page);
-    if ([1920,390].includes(width)) await capture(page,`collection-detail-${locale}-${width}.png`);
+    if ([1920,390,320].includes(width)) await capture(page,`collection-detail-${locale}-${width}.png`);
     await page.getByRole('navigation',{name:copy.breadcrumb,exact:true}).getByRole('link',{name:copy.homeTitle,exact:true}).click();
     await expect(page).toHaveURL(locale === 'zh' ? /\/(?:zh\/)?explore$/ : /\/en\/explore$/);
     await expect.poll(() => page.evaluate(y => Math.abs(scrollY-Math.min(y,document.documentElement.scrollHeight-innerHeight)),before)).toBeLessThanOrEqual(2);
-    await page.getByRole('link',{name:copy.directoryTitle,exact:true}).first().click();
-    await expect(page.locator('h1')).toHaveText(copy.directoryTitle);
+    await expect(page.locator('#collection-directory-title')).toHaveText(copy.directoryTitle);
     await page.getByRole('navigation',{name:copy.categoryLabel,exact:true}).getByRole('link',{name:new RegExp(`^${copy.categories.country}`)}).click();
     await expect.poll(() => new URL(page.url()).searchParams.get('category')).toBe('country');
     await expect(cards(page)).toHaveCount(0);
@@ -134,26 +134,28 @@ for (const locale of ['en','zh']) test(`${locale} discovery search reuses Librar
   await expect(page.locator('#query-ribbon-title')).toHaveCount(0);
 });
 
-for (const width of [1440,390]) test(`home shelves refresh watched/favorite counters once and keep position at ${width}px`,async ({page,request}) => {
-  const first: CollectionCatalog = await read(request,'/explore/catalog?featured=true&limit=3');
-  const item=first.items[0], film=item.previews[0];
+for (const width of [1440,390]) test(`detail saves refresh once and catalog Back updates counts at ${width}px`,async ({page,request}) => {
+  const first: CollectionCatalog = await read(request,'/explore/catalog?limit=24');
+  const item=first.items[0], film=item.previews[0], path=`/en/explore/collections/${item.kind}/${item.key}`;
   expect((await request.put(`${backend}/films/${film.id}/profile-state`,{data:{watched:false,favorite:false}})).ok()).toBeTruthy();
   await page.setViewportSize({width,height:1000}); await page.goto('/en/explore');
-  const catalog: CollectionCatalog = await read(request,'/explore/catalog?featured=true&limit=3');
+  const catalog: CollectionCatalog = await read(request,'/explore/catalog?limit=24');
   const current=catalog.items.find(entry=>entry.id===item.id)!;
-  const title=collectionTitle(current,'en'); const shelf=page.getByRole('region',{name:title,exact:true});
-  await expect(shelf.getByText(`${current.unwatched_count} unwatched`,{exact:false})).toBeVisible();
+  const entry=page.locator(`a[href="${path}"]`);await expect(entry).toBeVisible();await entry.click();
+  await expect(page.locator('h1')).toHaveText(collectionTitle(current,'en'));
   const history=await page.evaluate(()=>window.history.length); let refreshes=0,writes=0;
-  page.on('request',request=>{const u=new URL(request.url()); if(u.pathname==='/en/explore'&&request.headers().rsc==='1')refreshes++; if(request.method()==='PUT'&&u.pathname===`/api/films/${film.id}/profile-state`)writes++;});
+  page.on('request',request=>{const u=new URL(request.url()); if(u.pathname===path&&request.headers().rsc==='1')refreshes++; if(request.method()==='PUT'&&u.pathname===`/api/films/${film.id}/profile-state`)writes++;});
   const trigger=page.locator(`#film-link-${film.id}`); await trigger.click();
-  const panel=shelf.locator('.library-card-media').filter({has:trigger}).locator('.library-card-inspector');
+  const panel=page.locator('.library-card-media').filter({has:trigger}).locator('.library-card-inspector');
   await panel.getByRole('button',{name:en.Library.favorite,exact:true}).click();
   await expect.poll(()=>refreshes).toBe(1); await expect(panel.getByRole('button',{name:en.Library.unfavorite,exact:true})).toBeVisible();
   const watched=panel.getByRole('button',{name:en.Library.markWatched,exact:true}); await watched.scrollIntoViewIfNeeded();
   const y=await page.evaluate(()=>scrollY); await watched.click();
-  await expect(shelf.getByText(`${current.unwatched_count-1} unwatched`,{exact:false})).toBeVisible();
+  await expect(trigger.getByLabel(en.Library.watched,{exact:true})).toHaveCount(1);
   expect(refreshes).toBe(2); expect(writes).toBe(2); expect(await page.evaluate(()=>window.history.length)).toBe(history);
   await expect.poll(()=>page.evaluate(before=>Math.abs(scrollY-Math.max(0,Math.min(before,document.documentElement.scrollHeight-innerHeight))),y)).toBeLessThanOrEqual(1);
+  await page.goBack();await expect(page).toHaveURL(/\/en\/explore$/);
+  await expect(entry.getByText(`${current.unwatched_count-1} unwatched`,{exact:false})).toBeVisible();
 });
 
 test('collection last page shrinks 41 to 40 using replace with identity, view and sort intact',async ({page,request})=>{
@@ -170,12 +172,12 @@ test('collection last page shrinks 41 to 40 using replace with identity, view an
   expect(await page.evaluate(()=>window.history.length)).toBe(history);
 });
 
-test('saving inside a collection updates the cached directory and home on Back',async ({page,request})=>{
-  await page.goto('/en/explore'); await page.getByRole('link',{name:en.Collections.directoryTitle,exact:true}).first().click();
-  await expect(page).toHaveURL(/\/en\/explore\/collections$/);
+test('saving inside a collection updates cached catalog categories and All on Back',async ({page,request})=>{
+  await page.goto('/en/explore'); await page.getByRole('navigation',{name:en.Collections.categoryLabel,exact:true}).getByRole('link',{name:new RegExp('^'+en.Collections.categories.country)}).click();
+  await expect.poll(()=>new URL(page.url()).searchParams.get('category')).toBe('country');
   await expect(page.getByRole('heading',{name:en.Collections.directoryTitle,exact:true})).toBeVisible();
   const href='/en/explore/collections/country/JP';
-  const directory: CollectionCatalog=await read(request,'/explore/catalog');
+  const directory: CollectionCatalog=await read(request,'/explore/catalog?category=country&limit=24');
   expect(directory.items.some(item=>item.kind==='country'&&item.key==='JP')).toBe(true);
   const before: LocalCollectionPage=await read(request,'/explore/collections/country/JP');
   const target=before.collection.previews[0];
@@ -192,52 +194,51 @@ test('saving inside a collection updates the cached directory and home on Back',
   const entry=page.locator(`a[href="${href}"]`);
   await expect(entry.getByText(`${after.collection.unwatched_count} unwatched`,{exact:false})).toBeVisible();
   await page.goBack(); await expect(page).toHaveURL(new RegExp('/en/explore$'));
-  const home: CollectionCatalog=await read(request,'/explore/catalog?featured=true&limit=3');
-  for(const item of home.items) await expect(page.getByRole('region',{name:collectionTitle(item,'en'),exact:true}).getByText(`${item.unwatched_count} unwatched`,{exact:false})).toBeVisible();
+  const home: CollectionCatalog=await read(request,'/explore/catalog?limit=24');
+  for(const item of home.items) await expect(page.locator(`a[href="/en/explore/collections/${item.kind}/${item.key}"]`).getByText(`${item.unwatched_count} unwatched`,{exact:false})).toBeVisible();
 });
 
-test('a delayed home save cannot cancel a pending collection Link and cached Back stays fresh',async ({page,request})=>{
-  const catalog: CollectionCatalog=await read(request,'/explore/catalog?featured=true&limit=3');
-  const item=catalog.items[0], target=item.previews[0];
-  expect((await request.put(`${backend}/films/${target.id}/profile-state`,{data:{watched:false}})).ok()).toBeTruthy();
-  await page.goto('/en/explore');
+test('a delayed collection save cannot cancel the pending catalog Link and cached Back stays fresh',async ({page,request})=>{
+  const initial: LocalCollectionPage=await read(request,'/explore/collections/country/JP');
+  for(const film of initial.collection.previews) expect((await request.put(`${backend}/films/${film.id}/profile-state`,{data:{watched:false}})).ok()).toBeTruthy();
+  const target=initial.collection.previews[0], path='/en/explore/collections/country/JP?view=unwatched';
+  await page.goto(path);await expect(cards(page)).toHaveCount(initial.collection.count);
   let releaseSave!:()=>void,releaseRead!:()=>void,captured!:()=>void;
   const saveHeld=new Promise<void>(resolve=>{releaseSave=resolve;});
   const readHeld=new Promise<void>(resolve=>{releaseRead=resolve;});
   const readCaptured=new Promise<void>(resolve=>{captured=resolve;});
-  const path=`/en/explore/collections/${item.kind}/${item.key}`;
-  let writes=0,homeRefreshes=0,hold=true,track=false;
+  let writes=0,detailRefreshes=0,hold=true,track=false;
   await page.route(`**/api/films/${target.id}/profile-state`,async route=>{if(route.request().method()==='PUT'){writes++;await saveHeld;}await route.continue();});
-  await page.route(`**${path}*`,async route=>{
-    if(hold&&route.request().headers().rsc==='1'&&route.request().headers()['next-router-prefetch']!=='1'){hold=false;const response=await route.fetch();captured();await readHeld;await route.fulfill({response}).catch(()=>{});}else await route.continue();
+  await page.route('**/en/explore?*',async route=>{
+    if(hold&&new URL(route.request().url()).pathname==='/en/explore'&&route.request().headers().rsc==='1'&&route.request().headers()['next-router-prefetch']!=='1'){hold=false;const response=await route.fetch();captured();await readHeld;await route.fulfill({response}).catch(()=>{});}else await route.continue();
   });
-  page.on('request',request=>{if(track&&new URL(request.url()).pathname==='/en/explore'&&request.headers().rsc==='1'&&request.headers()['next-router-prefetch']!=='1')homeRefreshes++;});
+  page.on('request',request=>{if(track&&new URL(request.url()).pathname==='/en/explore/collections/country/JP'&&request.headers().rsc==='1'&&request.headers()['next-router-prefetch']!=='1')detailRefreshes++;});
   try {
-    const shelf=page.getByRole('region',{name:collectionTitle(item,'en'),exact:true});
     const trigger=page.locator(`#film-link-${target.id}`);await trigger.click();
-    await shelf.locator('.library-card-media').filter({has:trigger}).getByRole('button',{name:en.Library.markWatched,exact:true}).click();
+    await page.locator('.library-card-media').filter({has:trigger}).getByRole('button',{name:en.Library.markWatched,exact:true}).click();
     await expect.poll(()=>writes).toBe(1);await page.keyboard.press('Escape');
-    await shelf.getByRole('link',{name:en.Collections.viewCollection.replace('{title}',collectionTitle(item,'en')),exact:true}).click();
+    await page.getByRole('navigation',{name:en.Collections.breadcrumb,exact:true}).getByRole('link',{name:en.Collections.homeTitle,exact:true}).click();
     await readCaptured;track=true;releaseSave();
     await expect.poll(async()=>(await read(request,`/films/${target.id}/profile-state`)).watched).toBe(true);
-    expect(homeRefreshes).toBe(0);releaseRead();
-    await expect(page).toHaveURL(new RegExp(`${path}$`));
-    await expect(page.locator(`#film-link-${target.id}`).getByLabel(en.Library.watched,{exact:true})).toHaveCount(1);
-    await page.goBack();await expect(page).toHaveURL(/\/en\/explore$/);
-    const current: CollectionCatalog=await read(request,'/explore/catalog?featured=true&limit=3');
-    const latest=current.items.find(entry=>entry.id===item.id)!;
-    await expect(shelf.getByText(`${latest.unwatched_count} unwatched`,{exact:false})).toBeVisible();
+    expect(detailRefreshes).toBe(0);releaseRead();
+    await expect(page).toHaveURL(/\/en\/explore$/);
+    const current: LocalCollectionPage=await read(request,'/explore/collections/country/JP');
+    await expect(page.locator('a[href="/en/explore/collections/country/JP"]').getByText(`${current.collection.unwatched_count} unwatched`,{exact:false})).toBeVisible();
+    await page.goBack();await expect(page).toHaveURL(new URL(path,page.url()).href);
+    await expect(cards(page)).toHaveCount(initial.collection.count-1);
+    await expect(page.locator(`#film-link-${target.id}`)).toHaveCount(0);
     expect(writes).toBe(1);
   }finally{releaseSave();releaseRead();}
 });
 
-for (const locale of ['en','zh']) for (const width of [1440,390]) for (const mode of ['collection','filter','search']) {
+for (const locale of ['en','zh']) for (const width of [1440,390]) for (const mode of ['collection','conditions','search']) {
   test(`${locale} ${mode} page Return restores query, history, focus and scroll at ${width}px`, async ({page,request})=>{
     const copy=locale==='en'?en:zh, prefix=`/${locale}`;
     const all: ExploreFilmPage=await read(request,'/explore/films?decade=1980&limit=100');
     for(const {film} of all.items) if(film.profile_state.watched) expect((await request.put(`${backend}/films/${film.id}/profile-state`,{data:{watched:false}})).ok()).toBeTruthy();
+    const structured=new URLSearchParams({q:'unwatched films from the 1980s oldest first',p:JSON.stringify({genre:null,person:null,person_role:'any',country:null,decade:1980,view:'unwatched',sort:'year',direction:'asc'}),offset:'40'});
     const list=mode==='collection'?'/explore/collections/decade/1980?view=unwatched&sort=year&dir=asc&offset=40'
-      :mode==='filter'?'/explore/filter?decade=1980&view=unwatched&sort=year&dir=asc&offset=40'
+      :mode==='conditions'?'/explore/search?'+structured
         :'/explore/search?q=Shelf&page=2';
     await page.setViewportSize({width,height:900});
     await page.goto(`${prefix}/explore`);const previous=page.url();
@@ -269,14 +270,26 @@ for (const locale of ['en','zh']) for (const width of [1440,390]) for (const mod
 }
 
 test('empty and sparse libraries offer honest collection fallbacks and working film search',async ({page,request})=>{
-  await control(request,'identity_cleanup'); await page.goto('/en/explore');
-  await expect(page.getByText(en.Collections.emptyDescription,{exact:true})).toBeVisible();
-  await expect(cards(page)).toHaveCount(0); await page.goto('/en/explore/collections');
-  await expect(page.getByRole('link',{name:en.Collections.openLibrary,exact:true})).toBeVisible();
-  await control(request,'explore_sparse_fixture'); await page.goto('/en/explore');
-  await expect(page.getByText(en.Collections.sparseDescription,{exact:true})).toBeVisible(); await expect(cards(page)).toHaveCount(0);
-  await page.getByRole('searchbox',{name:en.Discovery.label,exact:true}).fill('Explore Unknown');
-  await page.getByRole('searchbox',{name:en.Discovery.label,exact:true}).press('Enter');
-  await expect(cards(page)).toHaveCount(1); await expect(page.getByText(en.Collections.noCollections,{exact:true})).toBeVisible();
-  await expect(page.getByText(en.Collections.noPeople,{exact:true})).toBeVisible();
+  await control(request,'identity_cleanup');
+  for(const [locale,copy] of [['en',en],['zh',zh]] as const){
+    await page.goto(`/${locale}/explore`);await expect(page.getByText(copy.Collections.emptyDescription,{exact:true})).toBeVisible();
+    await expect(cards(page)).toHaveCount(0);await page.goto(`/${locale}/explore/collections`);
+    await expect(page.getByRole('link',{name:copy.Collections.openLibrary,exact:true})).toBeVisible();
+  }
+  await control(request,'explore_sparse_fixture');
+  for(const [locale,copy] of [['en',en],['zh',zh]] as const){
+    await page.setViewportSize({width:320,height:844});await page.goto(`/${locale}/explore`);
+    const guidance=page.getByText(copy.Collections.sparseDescription,{exact:true});
+    await expect(guidance).toBeVisible();await expect(guidance).not.toContainText(/combined filters|组合筛选/i);
+    await expect(page.locator('a[href*="/explore/filter"]')).toHaveCount(0);await expect(cards(page)).toHaveCount(0);
+    await noOverflow(page);
+    await capture(page,`collection-sparse-${locale}-320.png`);
+    await page.getByRole('link',{name:copy.Collections.openLibrary,exact:true}).click();
+    await expect(page).toHaveURL(/\/(?:en\/|zh\/)?library$/);await expect(cards(page)).toHaveCount(1);
+    await page.goBack();await expect(guidance).toBeVisible();
+    const input=page.getByRole('searchbox',{name:copy.Discovery.label,exact:true});
+    await input.fill('Explore Unknown');await input.press('Enter');
+    await expect(cards(page)).toHaveCount(1);await expect(page.getByText(copy.Collections.noCollections,{exact:true})).toBeVisible();
+    await expect(page.getByText(copy.Collections.noPeople,{exact:true})).toBeVisible();
+  }
 });

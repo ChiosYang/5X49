@@ -1,65 +1,14 @@
 "use client";
 
-import { Fragment, type RefObject } from "react";
+import type { RefObject } from "react";
 import { motion } from "framer-motion";
-import { ArrowDown, ArrowUp, ChevronLeft, ChevronRight, Compass, X } from "lucide-react";
+import { ArrowDown, ArrowUp, ChevronLeft, ChevronRight, Compass } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { EXPLORE_DIMENSIONS, formatExploreFacetLabel, hasExploreFilters, type ExploreQueryState } from "@/lib/explore";
-import type { ExploreDimension, ExploreFilmPage, ExploreView } from "@/types/movie";
+import { formatExploreFacetLabel, hasExploreFilters, type ExploreQueryState } from "@/lib/explore";
+import type { ExploreFilmPage, ExploreView } from "@/types/movie";
 import { Button, IconButton } from "@/components/ui/Button";
 import LibraryMovieCard from "@/app/[locale]/library/LibraryMovieCard";
 import { Spinner } from "@/components/ui/Feedback";
-
-export function QueryRibbon({ query, labels, unresolved, locale, localizeCountries, onRemove, onClear, onPersonMatch }: {
-  query: ExploreQueryState;
-  labels: Map<string, { label: string; roles?: string[] }>;
-  unresolved: Set<string>;
-  locale: string;
-  localizeCountries: boolean;
-  onRemove: (dimension: ExploreDimension, key: string) => void;
-  onClear: () => void;
-  onPersonMatch: (value: ExploreQueryState["personMatch"]) => void;
-}) {
-  const t = useTranslations("Explore");
-  if (!hasExploreFilters(query)) return null;
-  return (
-    <section aria-labelledby="query-ribbon-title" className="space-y-3 border-y border-line py-4">
-      <div className="flex items-center justify-between gap-3">
-        <h2 id="query-ribbon-title" className="text-sm font-medium text-ink">{t("activeFilters")}</h2>
-        <Button variant="ghost" size="sm" onClick={onClear}>{t("clearAll")}</Button>
-      </div>
-      {EXPLORE_DIMENSIONS.filter(dimension => query[dimension].length > 0).map(dimension => (
-        <div key={dimension} className="flex min-w-0 flex-wrap items-center gap-2">
-          <span className="text-xs text-ink-muted">{t(`dimensions.${dimension}`)}</span>
-          {query[dimension].map((key, index) => {
-            const label = formatExploreFacetLabel(dimension, key, labels.get(`${dimension}:${key}`)?.label ?? key, locale, localizeCountries);
-            const warning = unresolved.has(`${dimension}:${key}`);
-            return (
-              <Fragment key={key}>
-                {index > 0 ? <span className="text-xs text-ink-subtle">{t(dimension === "person" && query.personMatch === "all" ? "and" : "or")}</span> : null}
-                <button type="button" aria-label={t("removeFact", { fact: label })} onClick={() => onRemove(dimension, key)} title={warning ? t("unresolvedShort") : label} className={`focus-ring duration-standard inline-flex min-h-11 max-w-full items-center gap-2 rounded-pill border px-3 py-2 text-sm transition-colors ${warning ? "border-warning/40 bg-warning/10 text-warning" : "border-line-strong bg-surface-raised text-ink hover:bg-surface-hover"}`}>
-                  <span className="truncate">{label}</span>
-                  {warning ? <span className="text-xs">{t("unresolvedShort")}</span> : null}
-                  <X className="h-3.5 w-3.5 shrink-0" />
-                </button>
-              </Fragment>
-            );
-          })}
-        </div>
-      ))}
-      {query.person.length > 0 ? (
-        <div className="space-y-2">
-          <div role="group" aria-label={t("personMatchLabel")} className="flex flex-wrap items-center gap-1">
-            <span className="mr-2 text-xs text-ink-muted">{t("personMatchLabel")}</span>
-            {(["all", "any"] as const).map(mode => <Button key={mode} size="sm" variant={query.personMatch === mode ? "primary" : "ghost"} aria-pressed={query.personMatch === mode} onClick={() => onPersonMatch(mode)}>{t(`personMatch.${mode}`)}</Button>)}
-          </div>
-          <p className="text-xs leading-5 text-ink-subtle">{t("personMatchHint")}</p>
-        </div>
-      ) : null}
-      <p className="text-xs leading-5 text-ink-subtle">{t("booleanRule")}</p>
-    </section>
-  );
-}
 
 type ResultStageProps = {
   query: ExploreQueryState;

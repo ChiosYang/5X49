@@ -99,6 +99,26 @@ for(const locale of ['en','zh'])for(const width of [1440,320]){
 }
 
 for(const locale of ['en','zh']){
+  test(locale+' multiple values explain available recovery without retired Explore filters',async({page,request})=>{
+    const copy=locale==='zh'?zh:en;
+    const question=locale==='zh'?'日本或法国电影':'Japanese or French films';
+    await page.setViewportSize({width:320,height:844});await page.goto('/'+locale+'/explore');
+    await submit(page,question,locale);
+    await expect(page.getByRole('heading',{name:copy.Discovery.states.unsupported,exact:true})).toBeVisible();
+    const guidance=page.getByText(copy.Discovery.reasons.multiple_values,{exact:true});
+    await expect(guidance).toBeVisible();await expect(guidance).not.toContainText(/combined filters|组合筛选/i);
+    await expect(input(page,locale)).toHaveValue(question);await expect(page.locator('#explore-results-title')).toHaveCount(0);
+    await expect(page.locator('a[href*="/explore/filter"]')).toHaveCount(0);
+    const fallback=page.getByRole('link',{name:copy.Discovery.keywordFallback,exact:true});await expect(fallback).toBeVisible();
+    expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+    await capture(page,`discovery-multiple-values-${locale}-320.png`);
+    await fallback.click();await expect.poll(()=>new URL(page.url()).searchParams.get('mode')).toBe('keyword');
+    await expect(page.getByText(copy.Discovery.keywordOnly,{exact:true})).toBeVisible();await expect(input(page,locale)).toHaveValue(question);
+    await submit(page,locale==='zh'?'日本电影':'Japanese films',locale);
+    await expect(cards(page)).toHaveCount(2);
+    expect((await control(request,'discovery_ai_stats')).calls).toBe(0);
+  });
+
   test(locale+' explicit find commands hit titles and people while retaining original text without inference',async({page,request})=>{
     await control(request,'discovery_ai',{enabled:true});await page.goto('/'+locale+'/explore');
     const title=locale==='zh'?'找Orbit':'find Orbit';await submit(page,title,locale);
@@ -224,14 +244,14 @@ test('outgoing collection navigation wins over a delayed interpretation before n
   const aiGate=new Promise<void>(r=>{releaseAI=r;}),dirGate=new Promise<void>(r=>{releaseDirectory=r;});
   const aiSeen=new Promise<void>(r=>{seenAI=r;}),dirSeen=new Promise<void>(r=>{seenDirectory=r;}),aiDone=new Promise<void>(r=>{delivered=r;});
   await page.route('**/api/explore/search/interpret',async route=>{const response=await route.fetch();seenAI();await aiGate;await route.fulfill({response}).catch(()=>{});delivered();});
-  await page.route('**/en/explore/collections?**',async route=>{
-    if(route.request().headers().rsc!=='1'){await route.continue();return;}
+  await page.route('**/en/explore?**',async route=>{
+    if(route.request().headers().rsc!=='1'||new URL(route.request().url()).searchParams.get('category')!=='country'){await route.continue();return;}
     const response=await route.fetch();seenDirectory();await dirGate;await route.fulfill({response}).catch(()=>{});
   });
   await page.goto('/en/explore');await input(page).fill('Japanese films featuring Director 4');await input(page).press('Enter');await aiSeen;
-  const click=page.getByRole('link',{name:en.Collections.directoryTitle,exact:true}).first().click();await dirSeen;
+  const click=page.getByRole('navigation',{name:en.Collections.categoryLabel,exact:true}).getByRole('link',{name:new RegExp('^'+en.Collections.categories.country)}).click();await dirSeen;
   releaseAI();await aiDone;expect(new URL(page.url()).pathname).toBe('/en/explore');
-  releaseDirectory();await click;await expect(page.locator('h1')).toHaveText(en.Collections.directoryTitle);
+  releaseDirectory();await click;await expect.poll(()=>new URL(page.url()).searchParams.get('category')).toBe('country');await expect(page.locator('h1')).toHaveText(en.Collections.homeTitle);
   expect((await control(request,'discovery_ai_stats')).calls).toBe(1);
 });
 
