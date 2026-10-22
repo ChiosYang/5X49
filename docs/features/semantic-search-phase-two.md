@@ -155,6 +155,16 @@ Status: Pending resource/provider authorization
   slash-title boundaries and mixed indexes, ordinary short text, true private
   paths, explicit resubmission after empty eligibility and a real temporary-DB
   year mutation through the same hard SQL bridge. Full fresh CI/re-review pending.
+- That head, 82efbdb825b932aa16b07e67fb06d8f5ff4764f5, passed CI39727530954:
+  backend 491/1 skip + tooling 15, frontend 138/audit/lint/types/build, E2E 272.
+- A further independent privacy regression found repeated/mixed separators in
+  relative media paths bypassed the extracted guard. The shared guard and browser
+  mirror now reject separator runs without altering the original text or treating
+  ordinary Face/Off, V/H/S or 9/11 titles as paths. Regression coverage includes
+  whitespace filenames, quote boundaries, source ingestion, the final embedding
+  boundary and old/corrupt cache reads, with zero embedding/reranking calls.
+  Corrected targeted suite: 98 passed (25 semantic); frontend unit suite: 139.
+  New exact-head full verification and independent re-review remain required.
 - Phase one is merged at fb745f2cb3173d062aca170b3450ceb474d8a1f1, tree equal to
   reviewed d12a5319dbf4f5fb142d4bb77b295c1eaa5cfa52. CI39721297391: backend
   468/1 skip, tooling 15, frontend 138, audit/lint/types/build, E2E 272.

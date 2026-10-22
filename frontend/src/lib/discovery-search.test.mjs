@@ -31,6 +31,15 @@ test("private path roots are blocked without rejecting ordinary slash-containing
       assert.equal(hasPrivateDiscoveryInput(quote+title+quote),false,title);
   }
 });
+test("repeated and mixed path separators stay private with spaces and quote boundaries", () => {
+  for(const separator of ["//","///","\\".repeat(2),"\\".repeat(3),"/\\","\\/","//\\//","\\//\\\\"])
+    for(const [folder,filename] of [["Movies","My Private Film.mkv"],["My Movies","私人字幕.srt"]])
+      for(const quote of ["","'",'"',"\u0060"]){
+        const path=quote+folder+separator+filename+quote;
+        assert.equal(hasPrivateDiscoveryInput("Japanese films featuring "+path),true,path);
+      }
+});
+
 test("unified search preserves raw input, corrected conditions and independent page in a local URL", () => {
   const q = "未看日本电影 & Shared Person";
   const href = discoveryHref(q, {plan,personId:`person_${"a".repeat(32)}`,source:"ai",edited:true,offset:40});

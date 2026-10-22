@@ -147,7 +147,9 @@ for(const locale of ['en','zh']){
     const copy=locale==='zh'?zh:en;await control(request,'discovery_ai',{enabled:true});await page.goto('/'+locale+'/explore');
     await expect(input(page,locale)).toBeEnabled();const home=page.url();
     const posts:string[]=[];page.on('request',r=>{if(r.method()==='POST'&&r.url().includes('/explore/search/interpret'))posts.push(r.url());});
-    for(const path of ['~/Movies/private.mkv','./Movies/private.mkv','/private.mkv','../Movies/private.mkv','.\\Movies\\private.mkv','\\private.mkv','Movies/private.mkv','Movies\\private.mkv','Movies/private film.mkv','Movies\\private film.mkv',"'Movies/My Private Film.mkv'","\u0060/private.mkv\u0060","\u0060~/Movies/private.mkv\u0060","\u0060./Movies/private.mkv\u0060"]){
+    for(const path of ['~/Movies/private.mkv','./Movies/private.mkv','/private.mkv','../Movies/private.mkv','.\\Movies\\private.mkv','\\private.mkv','Movies/private.mkv','Movies\\private.mkv','Movies/private film.mkv','Movies\\private film.mkv',"'Movies/My Private Film.mkv'","\u0060/private.mkv\u0060","\u0060~/Movies/private.mkv\u0060","\u0060./Movies/private.mkv\u0060",
+      'Movies//My Private Film.mkv','Movies///My Private Film.mkv','Movies'+'\\'.repeat(2)+'My Private Film.mkv',
+      'Movies/\\My Private Film.mkv','Movies\\/My Private Film.mkv',"'My Movies//私人的电影.mkv'"]){
       const question='Japanese films featuring '+path;await input(page,locale).fill(question);await input(page,locale).press('Enter');
       await expect(page.getByRole('alert').filter({hasText:copy.Discovery.reasons.ask_private_input})).toBeVisible();
       await expect(input(page,locale)).toHaveValue(question);await expect(page).toHaveURL(home);

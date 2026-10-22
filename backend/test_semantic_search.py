@@ -17,6 +17,7 @@ from app.canonical_models import (Assertion, AssertionProvenance, Concept, Film,
 from app.contracts.analysis_persistence import assertion_qualifier_hash, assertion_semantic_key
 from app.contracts.search_plan import SearchPlan
 from app.services import ask as ask_module
+from app.services import semantic_search as semantic_module
 from app.services.ask import AskError
 from app.services.search_execution import search_plan_executor
 from app.services.semantic_content import collect_content
@@ -98,6 +99,55 @@ class SemanticCoreTests(unittest.TestCase):
         self.assertEqual(len(self.provider.calls), count)
         for title in ("Face/Off", "V/H/S", "9/11"):
             self.assertTrue(ContentDocument(film_id(8), title, (), self.docs[0].sources))
+
+    def test_repeated_and_mixed_relative_separators_never_reach_provider_or_restore(self):
+        original = self.db.execute("SELECT document FROM semantic_documents WHERE film_id=?",
+                                   (self.ids[0],)).fetchone()[0]
+        count = len(self.provider.calls)
+        ranker = Mock()
+        engine = SemanticSearch(self.cache, SPEC, provider=self.provider, reranker=ranker)
+        for separator in ("//", "///", "\\" * 2, "\\" * 3, "/\\", "\\/", "//\\//", "\\//\\\\"):
+            for folder, filename in (("Movies", "My Private Film.mkv"), ("My Movies", "私人字幕.srt")):
+                path = folder + separator + filename
+                for quote in ("", "'", '"', "\u0060"):
+                    text = quote + path + quote
+                    with self.subTest(text=text):
+                        with self.assertRaisesRegex(SemanticError, "private_input"):
+                            self.cache.replace((document(7, text),), self.provider)
+                        with self.assertRaisesRegex(SemanticError, "private_input"):
+                            self.submit("space journey featuring " + text)
+                        for query in (False, True):
+                            with self.assertRaisesRegex(SemanticError, "private_input"):
+                                semantic_module._embed(self.provider, (text,), query=query)
+                        # A cache created by an older guard is untrusted at read
+                        # time too; neither embedding nor reranking may run.
+                        payload = json.loads(original)
+                        payload["chunks"] = [text]
+                        self.db.execute("UPDATE semantic_documents SET document=? WHERE film_id=?",
+                                        (json.dumps(payload), self.ids[0]))
+                        try:
+                            with self.assertRaisesRegex(SemanticError, "private_input"):
+                                self.cache.documents(SPEC)
+                            with self.assertRaisesRegex(SemanticError, "private_input"):
+                                engine.submit("space", eligible_ids=self.ids, expected_revision=self.revision)
+                        finally:
+                            self.db.execute("UPDATE semantic_documents SET document=? WHERE film_id=?",
+                                            (original, self.ids[0]))
+                        self.assertEqual(len(self.provider.calls), count)
+                        ranker.rank.assert_not_called()
+        self.assertEqual(self.cache.value("revision"), self.revision)
+        self.assertEqual(set(self.cache.documents(SPEC)), set(self.ids))
+
+    def test_literal_slash_titles_remain_usable_in_content_cache_and_queries(self):
+        docs = tuple(document(i + 7, "A space story about " + title, title)
+                     for i, title in enumerate(("Face/Off", "V/H/S", "9/11")))
+        revision = self.cache.replace(docs, self.provider)
+        self.assertEqual({row[0]["title"] for row in self.cache.documents(SPEC).values()},
+                         {d.title for d in docs})
+        for doc in docs:
+            page = self.engine.submit(doc.title, eligible_ids=[d.film_id for d in docs],
+                                      expected_revision=revision)
+            self.assertEqual(page["items"][0]["film_id"], doc.film_id)
 
     def test_provider_shape_nan_zero_boolean_and_failure_preserve_old_index(self):
         for vector in ([1, 0], [float("nan"), 0, 1], [float("inf"), 0, 1],
