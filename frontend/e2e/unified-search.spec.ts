@@ -224,14 +224,14 @@ test('outgoing collection navigation wins over a delayed interpretation before n
   const aiGate=new Promise<void>(r=>{releaseAI=r;}),dirGate=new Promise<void>(r=>{releaseDirectory=r;});
   const aiSeen=new Promise<void>(r=>{seenAI=r;}),dirSeen=new Promise<void>(r=>{seenDirectory=r;}),aiDone=new Promise<void>(r=>{delivered=r;});
   await page.route('**/api/explore/search/interpret',async route=>{const response=await route.fetch();seenAI();await aiGate;await route.fulfill({response}).catch(()=>{});delivered();});
-  await page.route('**/en/explore/collections?**',async route=>{
-    if(route.request().headers().rsc!=='1'){await route.continue();return;}
+  await page.route('**/en/explore?**',async route=>{
+    if(route.request().headers().rsc!=='1'||new URL(route.request().url()).searchParams.get('category')!=='country'){await route.continue();return;}
     const response=await route.fetch();seenDirectory();await dirGate;await route.fulfill({response}).catch(()=>{});
   });
   await page.goto('/en/explore');await input(page).fill('Japanese films featuring Director 4');await input(page).press('Enter');await aiSeen;
-  const click=page.getByRole('link',{name:en.Collections.directoryTitle,exact:true}).first().click();await dirSeen;
+  const click=page.getByRole('navigation',{name:en.Collections.categoryLabel,exact:true}).getByRole('link',{name:new RegExp('^'+en.Collections.categories.country)}).click();await dirSeen;
   releaseAI();await aiDone;expect(new URL(page.url()).pathname).toBe('/en/explore');
-  releaseDirectory();await click;await expect(page.locator('h1')).toHaveText(en.Collections.directoryTitle);
+  releaseDirectory();await click;await expect.poll(()=>new URL(page.url()).searchParams.get('category')).toBe('country');await expect(page.locator('h1')).toHaveText(en.Collections.homeTitle);
   expect((await control(request,'discovery_ai_stats')).calls).toBe(1);
 });
 

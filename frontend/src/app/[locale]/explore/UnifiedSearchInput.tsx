@@ -72,7 +72,7 @@ export default function UnifiedSearchInput({ query = "" }: { query?: string }) {
         <div className="relative min-w-0 flex-1">
           <TextInput ref={input} id={id} name="q" type="search" value={draft} maxLength={600} disabled={!hydrated}
             placeholder={t("placeholder")} autoComplete="off" enterKeyHint="search" className="min-w-0 pr-10 [&::-webkit-search-cancel-button]:appearance-none"
-            aria-describedby={`${id}-hint${error ? ` ${id}-error` : ""}`} aria-controls={suggestionsOpen ? `${id}-suggestions` : undefined}
+            aria-describedby={error ? `${id}-error` : undefined} aria-controls={suggestionsOpen ? `${id}-suggestions` : undefined}
             onFocus={() => setSuggestionsOpen(true)}
             onChange={event => { session.change(event.target.value); setSuggestions([]); setSuggestionsOpen(true); setSuggestionsFailed(false); }}
             onCompositionStart={() => { composing.current = true; setImeActive(true); }} onCompositionEnd={() => { composing.current = false; setImeActive(false); session.change(input.current?.value ?? ""); }}
@@ -85,7 +85,6 @@ export default function UnifiedSearchInput({ query = "" }: { query?: string }) {
         </div>
         <Button type="submit" variant="primary" disabled={!hydrated}>{t(busy ? "searching" : "submit")}</Button>
       </div>
-      <p id={`${id}-hint`} className="mt-3 text-xs leading-5 text-ink-subtle">{t("privacy")}</p>
       {busy ? <Button variant="ghost" size="sm" className="mt-2" onClick={() => session.cancel(false, true)}>{t("cancel")}</Button> : null}
       {error ? <div id={`${id}-error`} role="alert" className="mt-3 text-sm text-warning"><p>{t(`reasons.${error}`)}</p>
         {error !== "ask_private_input" && draft.trim().length <= 200 ? <Link prefetch={false} href={`${discoveryHref(draft)}&mode=keyword`} className="focus-ring mt-2 inline-block underline">{t("keywordFallback")}</Link> : null}</div> : null}

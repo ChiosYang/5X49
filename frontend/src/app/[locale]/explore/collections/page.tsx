@@ -1,8 +1,7 @@
 import { getTranslations } from "next-intl/server";
-import { collectionCategory } from "@/lib/collections";
+import { catalogHref, collectionCategory } from "@/lib/collections";
 import { parseExploreQuery } from "@/lib/explore";
-import { getCollectionCatalog } from "@/lib/server-api";
-import CollectionBrowse from "../CollectionBrowse";
+import { redirect } from "@/i18n/routing";
 
 export default async function CollectionsPage({ params, searchParams }: {
   params: Promise<{ locale: string }>;
@@ -12,8 +11,7 @@ export default async function CollectionsPage({ params, searchParams }: {
   const search = await searchParams;
   const category = collectionCategory(search.category);
   const { offset } = parseExploreQuery(search);
-  const catalog = await getCollectionCatalog({ category, offset });
-  return <CollectionBrowse directory catalog={catalog} locale={locale} category={category} offset={offset} />;
+  redirect({ href: catalogHref(category, offset), locale });
 }
 
 export async function generateMetadata() {

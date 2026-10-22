@@ -21,11 +21,11 @@ export function catalogHref(category: CollectionCategory = "all", offset = 0) {
   const params = new URLSearchParams();
   if (category !== "all") params.set("category", category);
   if (offset > 0) params.set("offset", String(offset));
-  return `/explore/collections${params.size ? `?${params}` : ""}`;
+  return `/explore${params.size ? `?${params}` : ""}`;
 }
 
 export function hasLegacyExploreQuery(params: Record<string, unknown>) {
-  return ["genre", "person", "person_match", "country", "decade", "view", "sort", "dir", "offset"]
+  return ["genre", "person", "person_match", "country", "decade", "view", "sort", "dir"]
     .some(key => params[key] !== undefined);
 }
 

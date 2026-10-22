@@ -520,14 +520,15 @@ test('cinematic controls preserve touch size, keyboard focus and collapsed maint
   await expect(page.getByText('Full database restore requires the application to be stopped',{exact:true})).toBeHidden();
 });
 
-test('Explore combined filters reuse the standard input and support keyboard search without a dialog', async ({ page }) => {
+test('Retired Explore filters redirect to the unified input and keyboard search remains available', async ({ page }) => {
   await page.goto('/en/explore/filter');
-  const input=page.getByRole('textbox',{name:'Search genres, people, countries or decades',exact:true});
-  await page.keyboard.press('/');await expect(input).toBeFocused();
+  await expect(page).toHaveURL(/\/en\/explore$/);
+  const input=page.getByRole('searchbox',{name:'Search Explore',exact:true});
+  await input.focus();await expect(input).toBeFocused();
   await expect(input).toHaveCSS('outline-style','solid');
   await expect.poll(()=>input.evaluate(node=>node.getBoundingClientRect().height)).toBeGreaterThanOrEqual(44);
   await input.fill('Japan');await page.keyboard.press('Escape');
-  await expect(input).toHaveValue('');await expect(input).toBeFocused();
+  await expect(input).toHaveValue('Japan');await expect(input).toBeFocused();
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
 });
 

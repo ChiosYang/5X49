@@ -7,7 +7,10 @@ Related: Product Roadmap — Factual Explore
 PR #40 completed the browse/filter iteration, including independent review and
 CI, and merged as `86a8fd972a054982fce0b037d5fb685047bf7e9f`. The next presentation
 iteration is tracked in [Explore Collection Browsing](explore-collections.md).
-The precise query and state-refresh contracts below remain regression requirements.
+The backend precise-query and state-refresh contracts remain regression requirements.
+The later [Explore simplification](explore-simplification.md) retires the manual
+combination UI and redirects its historical frontend URLs; those UI and URL
+decisions below are historical.
 
 ## Goal
 

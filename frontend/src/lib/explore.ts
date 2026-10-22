@@ -158,15 +158,15 @@ export function formatExploreFacetLabel(
   return fallbackLabel;
 }
 
-export function graphNodeHref(node: Pick<GraphNode, "id" | "entity_type" | "concept_kind" | "in_library">, rootFilmId: string) {
+export function graphNodeHref(node: Pick<GraphNode, "id" | "entity_type" | "display_label" | "concept_kind" | "in_library">, rootFilmId: string) {
   if (node.entity_type === "film" && node.in_library && node.id !== rootFilmId) {
     return `/library/${node.id}`;
   }
   if (node.entity_type === "person") {
-    return `/explore?person=${encodeURIComponent(node.id)}`;
+    return `/explore/search?${new URLSearchParams({ q: node.display_label, mode: "keyword" })}`;
   }
   if (node.entity_type === "concept" && node.concept_kind === "genre") {
-    return `/explore?genre=${encodeURIComponent(node.id)}`;
+    return `/explore/search?${new URLSearchParams({ q: `${node.display_label} films` })}`;
   }
   return null;
 }

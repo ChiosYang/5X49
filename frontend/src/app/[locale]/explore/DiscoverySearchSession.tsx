@@ -14,7 +14,7 @@ interface Session {
   submit: (value: string, locale: string) => Promise<void>;
 }
 const Context = createContext<Session | null>(null);
-const NavigationContext = createContext<Pick<Session, "pending" | "cancel"> | null>(null);
+const NavigationContext = createContext<(Pick<Session, "pending" | "cancel"> & { browseHref: string }) | null>(null);
 export function useDiscoveryNavigation() {
   const navigation = useContext(NavigationContext);
   if (!navigation) throw new Error("Explore search navigation is missing");
@@ -32,10 +32,15 @@ export default function DiscoverySearchSession({ children }: { children: ReactNo
   const router = useRouter(), pathname = usePathname(), params = useSearchParams();
   const href = `${pathname}${params.size ? `?${params}` : ""}`;
   const current = useRef(href), navigation = useRef<string | null>(null);
+  const [browseHref, setBrowseHref] = useState("/explore");
+  if (pathname === "/explore" && browseHref !== href) setBrowseHref(href);
   const ticket = useRef(0), controller = useRef<AbortController | null>(null);
   const [draft, setDraft] = useState<string | null>(null), [error, setError] = useState("");
   const [requesting, setRequesting] = useState(false), [navigating, startNavigation] = useTransition();
-  useLayoutEffect(() => { current.current = href; if (navigation.current === href) navigation.current = null; }, [href]);
+  useLayoutEffect(() => {
+    current.current = href;
+    if (navigation.current === href) navigation.current = null;
+  }, [href, pathname]);
   const abort = useCallback(() => { ticket.current++; controller.current?.abort(); controller.current = null; }, []);
   const cancel = useCallback((reset = false, cancelNavigation = false) => {
     abort(); setRequesting(false); setError("");
@@ -62,7 +67,7 @@ export default function DiscoverySearchSession({ children }: { children: ReactNo
   async function submit(value: string, locale: string) {
     cancel(false, true);
     const question = normalizeDiscoverySearch(value); setDraft(question);
-    if (!question) { navigate("/explore"); return; }
+    if (!question) { setDraft(null); navigate(browseHref); return; }
     if (hasPrivateDiscoveryInput(question)) { setError("ask_private_input"); return; }
     const requestTicket = ++ticket.current;
     const request = new AbortController(); controller.current = request; setRequesting(true);
@@ -84,9 +89,9 @@ export default function DiscoverySearchSession({ children }: { children: ReactNo
     }
   }
   const pending = requesting || navigating;
-  const navigationValue = useMemo(() => ({ pending, cancel }), [pending, cancel]);
+  const navigationValue = useMemo(() => ({ pending, cancel, browseHref }), [pending, cancel, browseHref]);
   return <NavigationContext value={navigationValue}><Context value={{ draft, error, pending, cancel, submit,
     change: value => { cancel(false, true); setDraft(value); },
-    clear: () => { cancel(true, true); setDraft(""); navigate("/explore"); },
+    clear: () => { cancel(true, true); navigate(browseHref); },
   }}>{children}</Context></NavigationContext>;
 }

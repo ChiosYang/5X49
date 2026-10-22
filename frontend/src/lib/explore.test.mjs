@@ -76,10 +76,10 @@ test("Explore facet changes reset pagination and clear only factual constraints"
 
 test("Graph links route owned Films, people and Genres without exposing other Concepts", () => {
   const film = `film_${"c".repeat(32)}`;
-  assert.equal(graphNodeHref({ id: film, entity_type: "film", in_library: true }, "film_" + "d".repeat(32)), `/library/${film}`);
-  assert.equal(graphNodeHref({ id: person, entity_type: "person", in_library: false }, film), `/explore?person=${person}`);
-  assert.equal(graphNodeHref({ id: genre, entity_type: "concept", concept_kind: "genre", in_library: false }, film), `/explore?genre=${genre}`);
-  assert.equal(graphNodeHref({ id: genre, entity_type: "concept", concept_kind: "theme", in_library: false }, film), null);
+  assert.equal(graphNodeHref({ id: film, display_label:"Alpha", entity_type: "film", in_library: true }, "film_" + "d".repeat(32)), `/library/${film}`);
+  assert.equal(graphNodeHref({ id: person, display_label:"Shared Person", entity_type: "person", in_library: false }, film), "/explore/search?q=Shared+Person&mode=keyword");
+  assert.equal(graphNodeHref({ id: genre, display_label:"Drama", entity_type: "concept", concept_kind: "genre", in_library: false }, film), "/explore/search?q=Drama+films");
+  assert.equal(graphNodeHref({ id: genre, display_label:"Friendship", entity_type: "concept", concept_kind: "theme", in_library: false }, film), null);
 });
 
 test("Explore localizes country and decade labels without changing stable keys", () => {
