@@ -18,7 +18,7 @@ from typing import Protocol, Sequence
 from uuid import uuid4
 
 from app.contracts.structured_metadata import normalize_metadata_text
-from app.services.ask import has_private_input
+from app.services.search_privacy import has_private_input
 
 POLICY = "semantic-cache.offline.v1"
 MAX_DOCUMENTS = 5000

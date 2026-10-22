@@ -55,6 +55,23 @@ provider, quality and UI integration gates below have passed.
 - Any hosted alternative requires separate endpoint, credential, data-field and
   request/token budget approval. Do not reuse configured chat credentials.
 - PR28/live-quality/budget hold remains unchanged. No real calls are authorized.
+- Concrete first-pilot proposal: fixed model revision
+  97b0c614be4d77ee51c0cef4e5f07c00f9eb65b3 (official file listing about 1.21 GB).
+  Use D:\CodexModelTrials\5X49\qwen3-embedding-0.6b-97b0c61, currently absent,
+  with isolated venv/cache/temp. CPU-only PyTorch plus the official Transformers
+  last-token pooling path avoids CUDA, sentence-transformers and a second model.
+  Expected download 2–3 GB, proposed total download ceiling 3 GB and disk budget
+  6 GB; dependency manifest/versions must be locked before execution. Stop rather
+  than enlarge the budget. Four CPU threads, batch 1, max 512 tokens, RAM budget
+  6 GiB and a 30-minute trial limit. These are limits to implement, not measured
+  runtime needs or current resource consumption.
+- Pilot data is committed in fixtures/semantic_search/quality-v1.json: eight
+  fictional plot records, 12 EN + 12 ZH cases, explicit hard-condition oracles
+  and two reference-Film cases. No application DB or user library is read.
+  At most 64 text encodings including repetitions/warmup; all inference local,
+  no API charge. This is a feasibility pilot, not production quality acceptance.
+  The manifest supplies oracle content queries/hard plans and does not test a
+  natural-language router. User authorization is still pending.
 
 ## Decisions
 
@@ -105,6 +122,15 @@ Status: Pending resource/provider authorization
   hybrid mechanics and hard-filter invariants; they do not measure model language
   understanding. Snapshot persistence, 41-to-40 correction, privacy zero-call
   checks, malformed provider/cache data and metadata withdrawal are covered.
+- Initial foundation head 11c084d3cf49c7f414eb3ebecbde587b10825eb7 passed full
+  local backend 484/3 Windows skips and E2E 272; CI39723997992 succeeded. These
+  precede the pilot-manifest and import-isolation increment.
+- The increment passed 91 targeted tests (18 semantic tests, Ask, discovery,
+  enhanced search, provenance and Explore). Privacy regex literal is unchanged;
+  a fresh-process regression verifies the model core imports no application DB
+  or chat client. Manifest SHA256:
+  2a1309d20b4c745fa453f23fb738effed39d6c6415b2964658c42e5004e123a9.
+- Fresh full verification and independent review of the increment are pending.
 - Phase one is merged at fb745f2cb3173d062aca170b3450ceb474d8a1f1, tree equal to
   reviewed d12a5319dbf4f5fb142d4bb77b295c1eaa5cfa52. CI39721297391: backend
   468/1 skip, tooling 15, frontend 138, audit/lint/types/build, E2E 272.

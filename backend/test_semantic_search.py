@@ -2,6 +2,8 @@
 import json
 from contextlib import closing
 import sqlite3
+import subprocess
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -20,7 +22,7 @@ from app.services.search_execution import search_plan_executor
 from app.services.semantic_content import collect_content
 from app.services.semantic_search import (ContentDocument, ContentSource, ProviderSpec,
     SemanticCache, SemanticError, SemanticSearch, corpus_revision)
-from app.evaluation.semantic_search import SemanticCase, evaluate
+from app.evaluation.semantic_search import SemanticCase, evaluate, load_fixture
 
 
 SPEC = ProviderSpec("synthetic/three-axes", "fixture-v1", 3)
@@ -252,6 +254,31 @@ class SemanticCoreTests(unittest.TestCase):
         bad = evaluate([cases[-1]], {"broken": lambda case: [self.ids[0]]})
         self.assertEqual(bad["methods"]["broken"]["hard_condition_violations"], 1)
         self.assertEqual(bad["methods"]["broken"]["precision_at_10"], 0)
+
+    def test_reviewable_bilingual_pilot_manifest_has_independent_hard_truth_and_no_user_data(self):
+        manifest = load_fixture(Path(__file__).parent / "fixtures" / "semantic_search" / "quality-v1.json")
+        self.assertEqual(len(manifest.films), 8)
+        self.assertEqual(len(manifest.cases), 24)
+        self.assertEqual(sum(c.locale == "zh" for c in manifest.cases), 12)
+        self.assertEqual(sum(c.locale == "en" for c in manifest.cases), 12)
+        self.assertEqual(sum(c.reference is not None for c in manifest.cases), 2)
+        self.assertTrue(all(len(f.document().chunks) == 1 for f in manifest.films))
+        self.assertIn("not evidence of natural-language parsing", manifest.notice)
+        broken = manifest.model_dump()
+        broken["cases"][0]["expected"] = [999]
+        with self.assertRaises(ValueError):
+            type(manifest).model_validate(broken)
+        broken = manifest.model_dump()
+        broken["cases"][20]["allowed"] = [1,3,6,8]  # Film 1 is not watched.
+        with self.assertRaises(ValueError):
+            type(manifest).model_validate(broken)
+
+    def test_standalone_model_core_does_not_load_application_database_or_chat_client(self):
+        result = subprocess.run([sys.executable, "-c",
+            "import sys; from app.services.semantic_search import SemanticSearch; "
+            "assert 'app.database' not in sys.modules; assert 'openai' not in sys.modules"],
+            cwd=Path(__file__).parent, capture_output=True, text=True, timeout=20)
+        self.assertEqual(result.returncode, 0, result.stderr)
 
 
 class SemanticLibraryBridgeTests(unittest.TestCase):
