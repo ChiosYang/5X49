@@ -37,7 +37,7 @@ export default function UnifiedSearchInput({ query = "" }: { query?: string }) {
     const timer = setTimeout(async () => {
       try {
         const keywords = discoveryKeywords(q);
-        const params = new URLSearchParams({ q: keywords, limit: "3" });
+        const params = new URLSearchParams({ q: keywords, limit: "3", rank_exact: "true" });
         const responses = await Promise.all([
           fetch(API.libraryFilmPage(params), { signal: abort.signal }),
           fetch(API.exploreFacets("person", { q: keywords, limit: 3 }), { signal: abort.signal }),

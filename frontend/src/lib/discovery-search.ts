@@ -1,15 +1,24 @@
 import type { AskPlan, AskResolution } from "./ask";
+import { isSearchPlan, type SearchPlan } from "./search-plan.ts";
 const PLAN_FIELDS = ["genre", "person", "person_role", "country", "decade", "view", "sort", "direction"];
 
 export type DiscoveryStatus = "keyword" | "ready" | "needs_clarification" | "clarify" | "unsupported" | "unavailable" | "needs_ai";
-export interface DiscoveryResolution extends Omit<AskResolution, "version" | "status"> {
-  version: "discovery.v1";
+export interface DiscoveryResolution extends Omit<AskResolution, "version" | "status" | "plan" | "constraints" | "issues"> {
+  version: "discovery.v1" | "discovery.v2";
+  plan: AskPlan | SearchPlan | null;
+  people_ids?: Record<string, string>;
+  constraints: Array<{ dimension: "genre" | "person" | "country" | "decade" | "year" | "duration";
+    key: string; label: string; role?: "any" | "actor" | "director"; id?: string; field?: string; index?: number;
+    labels?: Record<string, string>; exclude?: boolean; min?: number | null; max?: number | null; min_exclusive?: boolean; max_exclusive?: boolean }>;
+  issues: Array<{ field: string; index?: number; code: "unknown_value" | "choose_person";
+    candidates: AskResolution["issues"][number]["candidates"] }>;
   status: DiscoveryStatus;
   source: "local" | "ai";
   reason: string | null;
 }
 export interface DiscoveryState {
-  plan?: AskPlan | null;
+  plan?: AskPlan | SearchPlan | null;
+  peopleIds?: Record<string, string>;
   personId?: string | null;
   edited?: boolean;
   source?: "local" | "ai";
@@ -28,6 +37,9 @@ export function discoveryKeywords(query: string) {
   return match ? match[1].trim() : query;
 }
 export function hasPrivateDiscoveryInput(value: string) {
+  return hasPrivateInputForm(value) || hasPrivateInputForm(value.normalize("NFKC"));
+}
+function hasPrivateInputForm(value: string) {
   // Keep both path patterns aligned with the provider-boundary guard in ask.py.
   const credentialOrRoot = /(?:\bsk-[A-Za-z0-9_-]{8,}|\bgh[pousr]_[A-Za-z0-9]{10,}|\b(?:api[_ -]?key|authorization|password|secret|token)\s*[:=]|\bbearer\s+\S+|[A-Za-z]:[\\/]|\\\\[^\s\\]+\\|file:\/\/|(?:^|[\s"'(\[{=，。！？；：\u0060])(?:~[^\\/\s]*[\\/]|\.{1,2}[\\/]|[\\/])[^\s"'<>)}\]]+)/i.test(value);
   const relativeMediaPath = /(?:^|[\s"'(\[{=，。！？；：\u0060])(?:[^\s\\/"'<>:|?*\u0060]+[\\/])+[^\\/\r\n]*\.(?:mkv|mp4|m4v|avi|mov|webm|wmv|mpg|mpeg|m2ts|ts|vob|iso|nfo|srt|ass|ssa|vtt|sub|idx|jpe?g|png|gif|webp|txt|json|xml|db|sqlite3?|env|pem|key)(?=$|[\s"')\]}>,.;:!?，。！？；：\u0060])/i.test(value);
@@ -39,6 +51,7 @@ export function discoveryHref(query: string, state: DiscoveryState = {}) {
   const params = new URLSearchParams({ q });
   if (state.plan) {
     params.set("p", JSON.stringify(state.plan));
+    if (state.peopleIds && Object.keys(state.peopleIds).length) params.set("people_ids", JSON.stringify(state.peopleIds));
     if (state.personId) params.set("person_id", state.personId);
     if (state.edited) params.set("edited", "1");
     if (state.source === "ai") params.set("source", "ai");
@@ -50,13 +63,14 @@ export function discoveryHref(query: string, state: DiscoveryState = {}) {
   return `/explore/search?${params}`;
 }
 export function resolutionHref(query: string, result: DiscoveryResolution) {
-  return discoveryHref(query, { plan: result.plan, personId: result.person_id, source: result.source,
+  return discoveryHref(query, { plan: result.plan, personId: result.person_id, peopleIds: result.people_ids, source: result.source,
     status: result.status, reason: result.reason });
 }
-export function parseDiscoveryPlan(raw: string | undefined): AskPlan | null {
+export function parseDiscoveryPlan(raw: string | undefined): AskPlan | SearchPlan | null {
   try {
-    if (!raw || raw.length > 2000) return null;
+    if (!raw || raw.length > 6000) return null;
     const p = JSON.parse(raw);
+    if (isSearchPlan(p)) return p;
     if (!p || typeof p !== "object" || Object.keys(p).length !== PLAN_FIELDS.length
       || Object.keys(p).some(key => !PLAN_FIELDS.includes(key))
       || !["genre", "country", "person"].every(key => p[key] === null || typeof p[key] === "string" && p[key].trim().length > 0 && p[key].length <= 100)

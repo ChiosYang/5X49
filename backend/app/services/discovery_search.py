@@ -6,10 +6,17 @@ whole request, and an AI plan must be grounded in the original, not just valid J
 from __future__ import annotations
 
 import re
+from sqlmodel import Session, select
 
 from app.contracts.ask import AskPlan, AskQueryRequest, AskResolveRequest
 from app.contracts.discovery_search import DiscoveryQuestion, DiscoveryQuery
+from app.contracts.search_plan import SearchPlan
+from app.canonical_models import FilmSearchReadModel, LibraryFilmReadModel
+from app.contracts.structured_metadata import normalize_metadata_text
+from app.services import ask as ask_module
 from app.services.ask import AskError, ask_service, has_private_input
+from app.services.search_execution import search_plan_executor
+from app.services.search_rules import is_extended_request, parse_extended, grounded_extended
 from app.services.structured_metadata_vocab import STRUCTURED_METADATA_VOCABULARY as vocabulary
 
 
@@ -62,7 +69,7 @@ def _aliases(text, aliases):
 
 
 def unsupported_reason(text):
-    """Adapted from PR28's guard; v2 duration/rating support is NOT enabled."""
+    """Legacy v1 guard; v2 local grammar validates its own complete requirements."""
     text = _replace(text, _UNWATCHED)
     rules = (
         ("non_search", r"\b(?:sql|delete|scrape|write|download|rename|password|api.key)\b|删除|下载|修改|重命名|刮削|私人笔记|私密笔记"),
@@ -217,6 +224,23 @@ class DiscoverySearchService:
         question = request.question
         if has_private_input(question):
             raise AskError("ask_private_input", 422)
+        # A known literal title wins even if it contains condition words or years.
+        term = keyword_text(question)
+        if len(term) <= 200:
+            with Session(ask_module.engine) as session:
+                exact = session.exec(select(FilmSearchReadModel.film_id).join(LibraryFilmReadModel,
+                    FilmSearchReadModel.film_id == LibraryFilmReadModel.film_id).where(
+                    LibraryFilmReadModel.visible.is_(True), FilmSearchReadModel.exact_titles.contains(
+                        "\n" + normalize_metadata_text(term) + "\n", autoescape=True)).limit(1)).first()
+                exact_person = ask_module.AskService._people(session, term, exact_only=True)[1] if not exact else False
+            if exact or exact_person:
+                return self.state("keyword")
+        if is_extended_request(question):
+            plan, leftover, issue = parse_extended(question)
+            if issue or leftover or plan is None:
+                return self.state("clarify" if issue == "ambiguous_request" else "unsupported",
+                    issue or "incomplete_request")
+            return search_plan_executor.resolve(plan)
         values, text, issue = local_plan(question)
         conditional = bool(re.search(_REQUEST, keyword_text(question), re.IGNORECASE) or "view" in values or "person" in values)
         if not conditional:
@@ -253,6 +277,14 @@ class DiscoverySearchService:
     def query(self, request: DiscoveryQuery):
         if has_private_input(request.question):
             raise AskError("ask_private_input", 422)
+        if isinstance(request.plan, SearchPlan):
+            if not grounded_extended(request.plan, request.question, edited=request.edited):
+                return self.state("unsupported", "incomplete_request")
+            if request.person_id:
+                raise AskError("ask_invalid_selection", 422)
+            return search_plan_executor.query(request.plan, people_ids=request.people_ids, offset=request.offset)
+        if request.people_ids:
+            raise AskError("ask_invalid_selection", 422)
         reason = unsupported_reason(request.question)
         if reason or not grounded(request.plan, request.question, edited=request.edited):
             return self.state("unsupported", reason or "incomplete_request")

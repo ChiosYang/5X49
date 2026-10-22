@@ -39,6 +39,7 @@ from app.canonical_models import (
     LibraryItem,
     MediaAsset,
     Person,
+    PersonAlias,
     ProjectionState,
     StructuredMetadataReview,
     Viewing,
@@ -53,7 +54,7 @@ PROJECTION_VERSIONS = {
     "cinema_dna": "cinema-dna-film.v1",
     "library": "library-film.v2",
     "detail": "film-detail.v2",
-    "search": "film-search.v1",
+    "search": "film-search.v2",
     "explore_films": "factual-explore-film.v1",
     "explore_facets": "factual-explore-facet.v1",
     "graph_nodes": "graph-node.v1",
@@ -279,9 +280,20 @@ class ProjectionCoordinator:
         session.add(row)
 
     def _upsert_search(self, session: Session, film_id: str, detail: dict[str, Any]) -> None:
+        titles = [detail.get("title"), detail.get("original_title"), *session.exec(
+            select(FilmTitle.title).where(FilmTitle.film_id == film_id,
+                FilmTitle.superseded_at.is_(None),
+                FilmTitle.origin_kind.in_(("curated", "nfo", "tmdb", "filename")))).all()]
+        credit_ids = provenance_resolver.resolve_credits(session, film_id).value
+        people = select(Credit.person_id).where(Credit.id.in_(credit_ids))
+        names = session.exec(select(Person.canonical_name).where(Person.id.in_(people),
+            Person.lifecycle_status == "active")).all()
+        aliases = session.exec(select(PersonAlias.name).join(Person, PersonAlias.person_id == Person.id)
+            .join(ExternalIdentity, PersonAlias.identity_id == ExternalIdentity.id)
+            .where(PersonAlias.person_id.in_(people), PersonAlias.superseded_at.is_(None),
+                Person.lifecycle_status == "active", ExternalIdentity.identity_status == "active")).all()
         searchable = [
-            detail.get("title"),
-            detail.get("original_title"),
+            *titles, *names, *aliases,
             *(detail.get("countries") or []),
             *(detail.get("genres") or []),
             *(detail.get("directors") or []),
@@ -291,6 +303,7 @@ class ProjectionCoordinator:
         )
         source = {
             "normalized_title": normalize_metadata_text(str(detail.get("title") or "")),
+            "exact_titles": "\n" + "\n".join(sorted({normalize_metadata_text(str(t)) for t in titles if t})) + "\n",
             "release_year": detail.get("year"),
             "search_text": search_text,
         }
@@ -303,6 +316,7 @@ class ProjectionCoordinator:
             projection_version=PROJECTION_VERSIONS["search"],
         )
         row.normalized_title = source["normalized_title"]
+        row.exact_titles = source["exact_titles"]
         row.release_year = detail.get("year")
         row.search_text = search_text
         row.source_hash = source_hash
@@ -663,6 +677,7 @@ class ProjectionCoordinator:
             return _hash(
                 {
                     "normalized_title": row.normalized_title,
+                    "exact_titles": row.exact_titles,
                     "release_year": row.release_year,
                     "search_text": row.search_text,
                 }
@@ -716,7 +731,7 @@ class ProjectionReader:
     def film_page(self, engine, *, query=None, filter="all", sort="title", direction="asc",
                   metadata_status="all", favorite=False, duration_min=None, duration_max=None,
                   year_min=None, year_max=None, rating_min=None, rating_max=None,
-                  limit=40, offset=0) -> dict[str, Any]:
+                  limit=40, offset=0, rank_exact=False) -> dict[str, Any]:
         with Session(engine) as session:
             self._require(session, "library")
             model = LibraryFilmReadModel
@@ -761,7 +776,12 @@ class ProjectionReader:
             else:
                 value = model.sort_title
             order = value.desc() if direction == "desc" else value.asc()
-            rows = session.exec(select(model).where(*conditions).order_by(value.is_(None), order,
+            priority = []
+            if rank_exact and query and query.strip():
+                exact_ids = select(FilmSearchReadModel.film_id).where(
+                    FilmSearchReadModel.exact_titles.contains("\n" + normalize_metadata_text(query) + "\n", autoescape=True))
+                priority = [case((model.film_id.in_(exact_ids), 0), else_=1)]
+            rows = session.exec(select(model).where(*conditions).order_by(*priority, value.is_(None), order,
                 model.sort_title, model.release_year, model.film_id).limit(limit).offset(offset)).all()
             return {"items": [json.loads(_canonical_json(row.payload)) for row in rows],
                 "total": total, "library_total": library_total, "metadata_reviews": reviews,
@@ -878,6 +898,8 @@ def _affected_film_ids(session: Session) -> set[str]:
                 film_ids.add(value.subject_entity_id)
             elif isinstance(value, ExternalIdentity):
                 film_ids.add(value.entity_id)
+                if value.entity_id.startswith("person_"):
+                    film_ids.update(session.exec(select(Credit.film_id).where(Credit.person_id == value.entity_id)).all())
             elif isinstance(value, MediaAsset) and value.library_item_id:
                 item = session.get(LibraryItem, value.library_item_id)
                 if item is not None:
@@ -898,9 +920,10 @@ def _affected_film_ids(session: Session) -> set[str]:
                 assertion = session.get(Assertion, value.assertion_id)
                 if assertion is not None:
                     film_ids.add(assertion.subject_entity_id)
-            elif isinstance(value, Person):
+            elif isinstance(value, (Person, PersonAlias)):
                 film_ids.update(
-                    session.exec(select(Credit.film_id).where(Credit.person_id == value.id)).all()
+                    session.exec(select(Credit.film_id).where(Credit.person_id ==
+                        (value.person_id if isinstance(value, PersonAlias) else value.id))).all()
                 )
             elif isinstance(value, Concept):
                 film_ids.update(

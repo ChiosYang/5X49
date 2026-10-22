@@ -61,6 +61,7 @@ class CreditObservation:
     billing_order: int | None = None
     provider: str | None = None
     external_id: str | None = None
+    aliases: tuple[str, ...] = ()
 
     def __post_init__(self) -> None:
         if not isinstance(self.name, str) or not self.name.strip():
@@ -73,6 +74,11 @@ class CreditObservation:
             raise ValueError("observed billing order must not be negative")
         if bool(self.provider) != bool(self.external_id):
             raise ValueError("observed person provider and external id must be supplied together")
+        if len(self.aliases) > 10 or any(not isinstance(name, str) or not name.strip()
+                                       or len(name) > 100 for name in self.aliases):
+            raise ValueError("observed person aliases are invalid")
+        if self.aliases and not self.provider:
+            raise ValueError("aliases require a stable external person identity")
 
 
 @dataclass(frozen=True)
@@ -114,6 +120,7 @@ class StructuredMetadataObservation:
     credits: tuple[CreditObservation, ...] = ()
     genres: tuple[GenreObservation, ...] = ()
     issues: tuple[ObservationIssue, ...] = ()
+    locale: str = "und"
 
     def __post_init__(self) -> None:
         if self.origin_kind not in STRUCTURED_METADATA_ORIGINS:
@@ -124,6 +131,8 @@ class StructuredMetadataObservation:
             raise ValueError("structured metadata observed_at must not be empty")
         if not self.complete_fields.issubset(STRUCTURED_METADATA_FIELDS):
             raise ValueError("structured metadata complete_fields contains an unknown field")
+        if not isinstance(self.locale, str) or not re.fullmatch(r"[A-Za-z]{2,8}(?:-[A-Za-z0-9]{1,8})*", self.locale) or len(self.locale) > 35:
+            raise ValueError("structured metadata locale is invalid")
 
 
 @dataclass(frozen=True)
@@ -137,6 +146,7 @@ class StructuredMetadataObservationDraft:
     credits: tuple[CreditObservation, ...] = ()
     genres: tuple[GenreObservation, ...] = ()
     issues: tuple[ObservationIssue, ...] = ()
+    locale: str = "und"
 
     def __post_init__(self) -> None:
         if self.origin_kind not in STRUCTURED_METADATA_ORIGINS:
@@ -153,6 +163,7 @@ class StructuredMetadataObservationDraft:
             origin_ref=origin_ref,
             source_instance_id=self.source_instance_id,
             observed_at=self.observed_at,
+            locale=self.locale,
             complete_fields=self.complete_fields,
             titles=self.titles,
             countries=self.countries,

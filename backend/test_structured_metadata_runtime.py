@@ -15,6 +15,7 @@ from app.canonical_models import (
     GraphEntity,
     LibraryItem,
     LocalProfile,
+    PersonAlias,
     StructuredMetadataReview,
 )
 from app.contracts.analysis_persistence import predicate_seed_rows
@@ -202,6 +203,85 @@ class StructuredMetadataRuntimeTests(unittest.TestCase):
             self.assertTrue(
                 all(row.status == "open" for row in session.exec(select(StructuredMetadataReview)).all())
             )
+
+    def test_stable_provider_names_are_aliases_of_one_identity_and_refresh_is_scoped(self):
+        from app.services.structured_metadata_observations import tmdb_structured_metadata_observation
+        payload = {"title": "Film", "credits": {"cast": [
+            {"id": 7, "name": "渡边谦", "original_name": "Ken Watanabe"}]}}
+        first = tmdb_structured_metadata_observation(payload, 42, language="zh-CN", observed_at=T1)
+        self.assertEqual(first.credits[0].aliases, ("渡边谦",))
+        with Session(self.engine) as session:
+            self.sync.sync(session, film_id=FILM_ID, library_item_id=ITEM_ID, observation=first)
+            session.commit()
+            aliases = session.exec(select(PersonAlias).where(PersonAlias.superseded_at.is_(None))).all()
+            self.assertEqual({row.name for row in aliases}, {"渡边谦", "Ken Watanabe"})
+            self.assertEqual(len({row.person_id for row in aliases}), 1)
+            person_id = aliases[0].person_id
+            payload["credits"]["cast"][0]["name"] = "渡辺謙"
+            second = tmdb_structured_metadata_observation(payload, 42, language="ja", observed_at=T2)
+            self.sync.sync(session, film_id=FILM_ID, library_item_id=ITEM_ID, observation=second)
+            session.commit()
+            aliases = session.exec(select(PersonAlias).where(PersonAlias.superseded_at.is_(None))).all()
+            self.assertEqual({row.name for row in aliases}, {"渡边谦", "渡辺謙", "Ken Watanabe"})
+            self.assertEqual({row.person_id for row in aliases}, {person_id})
+            from app.services.projections import projection_reader
+            self.assertEqual(projection_reader.film_page(self.engine, query="渡边谦")["total"], 1)
+            # An explicit English name is retained even when it equals original_name.
+            payload["credits"]["cast"][0]["name"] = "Ken Watanabe"
+            english = tmdb_structured_metadata_observation(payload, 42, language="en-US", observed_at=T2)
+            self.sync.sync(session, film_id=FILM_ID, library_item_id=ITEM_ID, observation=english)
+            session.commit()
+            self.assertEqual(projection_reader.film_page(self.engine, query="渡辺謙")["total"], 1)
+            # The same-locale response genuinely withdraws its old localized name.
+            withdrawn = tmdb_structured_metadata_observation(payload, 42, language="zh-CN", observed_at=T2)
+            self.sync.sync(session, film_id=FILM_ID, library_item_id=ITEM_ID, observation=withdrawn)
+            session.commit()
+            self.assertEqual(projection_reader.film_page(self.engine, query="渡边谦")["total"], 0)
+            self.assertEqual(projection_reader.film_page(self.engine, query="渡辺謙")["total"], 1)
+            active = session.exec(select(PersonAlias).where(PersonAlias.superseded_at.is_(None))).all()
+            self.assertIn(("en-us", "Ken Watanabe"), {(row.locale, row.name) for row in active})
+            self.assertIn(("ja", "渡辺謙"), {(row.locale, row.name) for row in active})
+            # Replacing the credited stable identity cannot retain any old-language
+            # aliases from that movie/source or transfer them to the new person.
+            payload["credits"]["cast"][0].update(id=8, name="別の人", original_name="Another Person")
+            replaced = tmdb_structured_metadata_observation(payload, 42, language="ja", observed_at=T2)
+            self.sync.sync(session, film_id=FILM_ID, library_item_id=ITEM_ID, observation=replaced)
+            session.commit()
+            active = session.exec(select(PersonAlias).where(PersonAlias.superseded_at.is_(None))).all()
+            self.assertNotIn(person_id, {row.person_id for row in active})
+            self.assertEqual({row.name for row in active}, {"Another Person", "別の人"})
+            self.assertEqual(projection_reader.film_page(self.engine, query="Ken Watanabe")["total"], 0)
+
+    def test_aliases_never_link_people_by_name_only(self):
+        from app.services.structured_metadata_observations import tmdb_structured_metadata_observation
+        payload = {"credits": {"cast": [{"name": "共有者", "original_name": "Shared Person"}]}}
+        observed = tmdb_structured_metadata_observation(payload, 42, language="zh")
+        self.assertEqual(observed.credits[0].aliases, ())
+        with self.assertRaises(ValueError):
+            CreditObservation("A", "Acting", "Actor", aliases=("B",))
+
+    def test_localized_film_titles_survive_other_language_refresh_and_retract_in_their_own_locale(self):
+        from app.services.structured_metadata_observations import tmdb_structured_metadata_observation
+        from app.services.projections import projection_reader
+        payload = {"title": "星际回声", "original_title": "Original Echo", "original_language": "en"}
+        with Session(self.engine) as session:
+            first = tmdb_structured_metadata_observation(payload, 42, language="zh-CN", observed_at=T1)
+            self.sync.sync(session, film_id=FILM_ID, library_item_id=ITEM_ID, observation=first)
+            session.commit()
+            payload["title"] = "別の反響"
+            second = tmdb_structured_metadata_observation(payload, 42, language="ja", observed_at=T2)
+            self.sync.sync(session, film_id=FILM_ID, library_item_id=ITEM_ID, observation=second)
+            session.commit()
+            self.assertEqual(projection_reader.film_page(self.engine, query="星际回声")["total"], 1)
+            self.assertEqual(projection_reader.film_page(self.engine, query="別の反響")["total"], 1)
+            self.assertEqual(session.get(Film, FILM_ID).canonical_title, "別の反響")
+            payload["title"] = "新的回声"
+            third = tmdb_structured_metadata_observation(payload, 42, language="zh-CN", observed_at=T2)
+            self.sync.sync(session, film_id=FILM_ID, library_item_id=ITEM_ID, observation=third)
+            session.commit()
+            self.assertEqual(projection_reader.film_page(self.engine, query="星际回声")["total"], 0)
+            self.assertEqual(projection_reader.film_page(self.engine, query="別の反響")["total"], 1)
+            self.assertEqual(session.get(Film, FILM_ID).canonical_title, "新的回声")
 
     @staticmethod
     def _counts(session):

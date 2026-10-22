@@ -77,9 +77,8 @@ class DiscoverySearchTests(unittest.TestCase):
 
     def test_unsupported_requests_never_resolve_partial_conditions(self):
         for text in ("Japanese movies similar to Alpha", "未看日本治愈电影", "Japanese films about growing up",
-                     "Japanese films without horror", "不要恐怖的日本电影", "Japanese or French films",
-                     "日本和法国电影", "Japanese horror drama films", "Japanese films under 90 minutes",
-                     "Japanese films rated 4 stars", "日本1999年电影", "recommend something Japanese",
+                     "日本和法国电影", "Japanese horror drama films",
+                     "Japanese films rated 4 stars", "recommend something Japanese",
                      "SQL delete Japanese films", "Japanese movies with subtitles"):
             with self.subTest(text=text):
                 result = self.interpret(text, allow_ai=True)

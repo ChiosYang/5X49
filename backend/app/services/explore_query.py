@@ -12,6 +12,8 @@ from app.canonical_models import (
     ExploreFilmReadModel,
     LibraryFilmReadModel,
     ProjectionState,
+    PersonAlias,
+    ExternalIdentity,
 )
 from app.database import engine
 from app.contracts.structured_metadata import normalize_metadata_text
@@ -45,8 +47,13 @@ class ExploreQueryService:
             films = {row.film_id: row for row in session.exec(select(ExploreFilmReadModel)).all()}
             entries = self._collection_memberships(session, films)
             needle = normalize_metadata_text(query.strip())
+            alias_people = set(session.exec(select(PersonAlias.person_id).join(ExternalIdentity,
+                PersonAlias.identity_id == ExternalIdentity.id).where(PersonAlias.superseded_at.is_(None),
+                ExternalIdentity.identity_status == "active",
+                PersonAlias.normalized_name.contains(needle, autoescape=True))).all()) if needle else set()
             candidates = [entry for entry in entries if len(entry["ids"]) >= 2
-                          and (not needle or self._collection_matches(entry, needle))]
+                          and (not needle or self._collection_matches(entry, needle)
+                               or entry["kind"] == "director" and entry["key"] in alias_people)]
             candidates.sort(key=lambda entry: (-len(entry["ids"]), entry["label"].casefold(), entry["key"]))
             # Exact duplicates within a category are quieted in the directory. Direct
             # addresses still work for every valid definition, including singletons.
@@ -231,7 +238,12 @@ class ExploreQueryService:
         """Literal local label/alias search, including the bundled bilingual vocabulary."""
         condition = ExploreFacetReadModel.normalized_label.contains(query, autoescape=True)
         alias_query = normalize_metadata_text(query)
-        if dimension == "country":
+        if dimension == "person":
+            aliases = select(PersonAlias.person_id).join(ExternalIdentity, PersonAlias.identity_id == ExternalIdentity.id).where(
+                PersonAlias.superseded_at.is_(None), ExternalIdentity.identity_status == "active",
+                PersonAlias.normalized_name.contains(alias_query, autoescape=True))
+            condition = or_(condition, ExploreFacetReadModel.facet_key.in_(aliases))
+        elif dimension == "country":
             codes = {code for alias, code in VOCABULARY.country_aliases.items() if alias_query in alias}
             condition = or_(condition, ExploreFacetReadModel.facet_key.in_(codes))
         elif dimension == "genre":
@@ -281,7 +293,7 @@ class ExploreQueryService:
         with Session(engine) as session:
             self._require(session)
             total_films = self._total_films(session)
-            normalized_query = (query or "").strip().casefold()
+            normalized_query = normalize_metadata_text(query or "")
             base = (
                 select(ExploreFacetReadModel.facet_key)
                 .where(ExploreFacetReadModel.dimension == dimension)

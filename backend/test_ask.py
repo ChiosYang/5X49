@@ -206,9 +206,9 @@ class AskTests(unittest.TestCase):
                      "Movies/O'Brien's Private Film.mkv", "Movies/私人的电影.mkv",
                      "\u0060/private.mkv\u0060", "\u0060~/Movies/private.mkv\u0060", "\u0060./Movies/private.mkv\u0060",
                      "'/private.mkv'", "(~/Movies/private.mkv)", "路径：./私密/片单.txt",
-                     "my api_key=private", "use sk-abcdefgh12345678"):
+                     "my api_key=private", "use sk-abcdefgh12345678", "Ｃ：＼Movies＼private.mkv", "～／Movies／private.mkv"):
             question = "Japanese films featuring " + path
-            for method in (interpreter.interpret, interpreter.interpret_search):
+            for method in (interpreter.interpret, interpreter.interpret_search, interpreter.interpret_extended_search):
                 with self.subTest(path=path, method=method.__name__), \
                      patch.dict(os.environ, {"OPENROUTER_API_KEY": "synthetic-only"}), \
                      self.assertRaisesRegex(AskError, "ask_private_input"):

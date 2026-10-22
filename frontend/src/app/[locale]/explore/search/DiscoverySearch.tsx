@@ -60,7 +60,7 @@ export default function DiscoverySearch({ snapshot, resolution, state, explicitK
     </header>
     {resolution ? <div className="pt-8">
       {resolution.plan ? <ConditionSearchResults query={query} resolution={resolution} state={state} locale={locale}
-        pending={pending || activeHref !== href} navigate={navigate} replace={target => startTransition(() => { beginRead(target); setActiveHref(target); router.replace(target, { scroll: false }); })} />
+        pending={pending || searchSession.pending || activeHref !== href} navigate={navigate} replace={target => startTransition(() => { beginRead(target); setActiveHref(target); router.replace(target, { scroll: false }); })} />
         : <section aria-live="polite" className="max-w-2xl space-y-4">
           <h2 className="font-serif text-2xl">{unifiedT(`states.${resolution.status}`)}</h2>
           <p className="text-sm leading-6 text-ink-muted">{unifiedT(`reasons.${discoveryReason(resolution.reason)}`)}</p>
@@ -68,6 +68,13 @@ export default function DiscoverySearch({ snapshot, resolution, state, explicitK
         </section>}
     </div> : !snapshot ? <p className="py-10 text-sm text-ink-muted">{t("searchInitial")}</p> : <div className="space-y-12 pt-8" aria-busy={pending}>
       {explicitKeyword ? <p className="max-w-2xl text-sm text-ink-muted" role="status">{unifiedT("keywordOnly")}</p> : null}
+      <section aria-labelledby="search-films-title">
+        <h2 id="search-films-title" className="font-serif text-2xl">{t("filmCount", { count: snapshot.films.total })}</h2>
+        {snapshot.films.items.length ? <div className="mt-5 grid grid-cols-2 gap-x-3 gap-y-6 sm:grid-cols-3 lg:grid-cols-4">{snapshot.films.items.map(film => <LibraryMovieCard key={film.id} movie={film} />)}</div>
+          : snapshot.films.total > 0 ? <Spinner className="my-10" /> : <p className="mt-3 text-sm text-ink-muted">{searchT("empty", { query })}</p>}
+        <SearchPages label={t("filmPages")} previous={page > 1 ? discoverySearchHref(query, page - 1, peopleOffset, collectionOffset) : null}
+          next={snapshot.films.offset + snapshot.films.items.length < snapshot.films.total ? discoverySearchHref(query, page + 1, peopleOffset, collectionOffset) : null} navigate={navigate} />
+      </section>
       <section aria-labelledby="search-collections-title">
         <h2 id="search-collections-title" className="font-serif text-2xl">{t("collectionResults", { count: snapshot.collections.total })}</h2>
         {snapshot.collections.items.length ? <div className="mt-5 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">{snapshot.collections.items.map(item => <CollectionDirectoryEntry key={item.id} item={item} locale={locale} />)}</div> : <p className="mt-3 text-sm text-ink-muted">{t("noCollections")}</p>}
@@ -82,13 +89,6 @@ export default function DiscoverySearch({ snapshot, resolution, state, explicitK
         </Link>)}</div> : <p className="mt-3 text-sm text-ink-muted">{t("noPeople")}</p>}
         <SearchPages label={t("peoplePages")} previous={peopleOffset > 0 ? discoverySearchHref(query, page, Math.max(0, peopleOffset - snapshot.people.limit), collectionOffset) : null}
           next={snapshot.people.next_offset !== null ? discoverySearchHref(query, page, snapshot.people.next_offset, collectionOffset) : null} navigate={navigate} />
-      </section>
-      <section aria-labelledby="search-films-title">
-        <h2 id="search-films-title" className="font-serif text-2xl">{t("filmCount", { count: snapshot.films.total })}</h2>
-        {snapshot.films.items.length ? <div className="mt-5 grid grid-cols-2 gap-x-3 gap-y-6 sm:grid-cols-3 lg:grid-cols-4">{snapshot.films.items.map(film => <LibraryMovieCard key={film.id} movie={film} />)}</div>
-          : snapshot.films.total > 0 ? <Spinner className="my-10" /> : <p className="mt-3 text-sm text-ink-muted">{searchT("empty", { query })}</p>}
-        <SearchPages label={t("filmPages")} previous={page > 1 ? discoverySearchHref(query, page - 1, peopleOffset, collectionOffset) : null}
-          next={snapshot.films.offset + snapshot.films.items.length < snapshot.films.total ? discoverySearchHref(query, page + 1, peopleOffset, collectionOffset) : null} navigate={navigate} />
       </section>
     </div>}
   </div>;

@@ -44,6 +44,7 @@ from app.models import (
     MediaAsset,
     OperationSnapshot,
     Person,
+    PersonAlias,
     StructuredMetadataReview,
     Viewing,
     WorkflowRun,
@@ -805,6 +806,7 @@ class LibraryManager:
             session.exec(delete(FilmMetadataOverride))
             session.exec(delete(StructuredMetadataReview))
             session.exec(delete(CreditProvenance))
+            session.exec(delete(PersonAlias))
             session.exec(delete(Credit))
             session.exec(delete(FilmCountryProvenance))
             session.exec(delete(FilmCountry))

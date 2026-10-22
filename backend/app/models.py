@@ -185,6 +185,7 @@ from app.canonical_models import (  # noqa: E402, F401
     MediaAsset,
     OperationSnapshot,
     Person,
+    PersonAlias,
     ProjectionState,
     SchemaMetadata,
     Setting,

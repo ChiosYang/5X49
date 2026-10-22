@@ -11,7 +11,7 @@ description: 5X49 Fresh Canonical FastAPI 的 Film、LibraryItem、Factual Explo
   strict boolean. Keyword/local rules are model-free. Only explicit submission may
   set allow_ai true; at most one existing transport call, no retry, no library input.
 - `POST /explore/search/query`: `{question,plan,person_id:null,edited:false,offset:0}`;
-  always local, 40/page. Ask v1 facts only; exact roles and strict missing/conflict
+  always local, 40/page. Ask v1 remains compatible; exact roles and strict missing/conflict
   handling. Edited conditions reflect explicit user corrections, never partial AI.
 - Envelope: discovery.v1, status, source, reason, plan, person_id, constraints,
   issues, results. Status keyword/ready/needs_clarification/clarify/unsupported/
@@ -26,7 +26,41 @@ description: 5X49 Fresh Canonical FastAPI 的 Film、LibraryItem、Factual Explo
   input for display/history and preserving inner title words.
 - Refresh/Back/page/mutations must never infer. Keep global Library search and old
   exact Explore URL meanings. Ask UI redirects to Explore; old APIs stay compatible.
-  PR28 v2 and live-budget/review gates remain separate. No Jev dependency is added.
+  PR28 and live-budget/review gates remain separate. No Jev dependency is added.
+
+### Enhanced search phase one
+
+- Exact known Film/Person names take precedence over request words. Shared Film
+  search includes active source-backed FilmTitle names and credited Person aliases;
+  NFKC/case/whitespace normalization, stable IDs, no translation or fuzzy merge.
+  `GET /library/films/page?rank_exact=true` gives exact title/alias priority;
+  default Library sorting is preserved. Schema v11 and film-search.v2 rebuild locally.
+- New plans require `version:"search-plan.v2"`: genre/country include and exclude
+  arrays (<=10 each), people clauses (<=8, literal name + any/actor/director +
+  exclude), inclusive year_min/max 1870..2100, duration_min/max integer minutes
+  1..10000 plus strict duration_min/max_exclusive booleans; existing view/sort/dir.
+- Include facets are OR within a dimension; each person/role and every other
+  condition is AND. SQL filters precede counts/sorting/page; duration keeps exact
+  primary seconds then metadata fallback. Missing/conflicted facts fail positive
+  and negative requirements. Do not infer exclusions from absent metadata.
+- Discovery.v2 adds people_ids keyed by clause index; send that map on local
+  query, not v1 person_id. Only exact aliases/canonical names auto-resolve; partial
+  or duplicate names need a local candidate. Full original request grounding is
+  mandatory unless explicit chip/view/sort corrections are marked edited.
+- Existing TMDB name/original_name may populate aliases only through stable
+  active external identities and existing metadata requests. No bulk enrichment,
+  guessed aliases, AI identity rewriting or new credential dependency.
+- Person alias supersession is scoped to the response locale (case-insensitive);
+  another language's names survive. Removed/changed source identities retract all
+  their locales. Original names use und. Year clauses intersect, never overwrite
+  each other; contradictory years clarify without partial execution.
+- Localized/alternative Film titles retain other response languages on refresh;
+  same-language withdrawals retract their old search names. Canonical/original
+  display-title selection is unchanged.
+- Expanded provider schema is offline/mock only until a separately authorized
+  real-model quality gate. Production v2 is local rules; existing guarded v1 AI
+  fallback remains. No real model call, download or quality claim is authorized.
+  No Ask workspace/manual form is reintroduced. See docs/api.md for full limits.
 
 ## Addressable local collections
 
