@@ -526,12 +526,6 @@
     "categoryLabel": "片单分类",
     "categories": { "all": "全部", "director": "导演", "person": "人物", "country": "地区", "decade": "年代" },
     "titles": { "director": "{label}导演作品", "person": "{label}参与的电影", "country": "来自{label}的电影", "decade": "{label}电影" },
-    "descriptions": {
-      "director": "库中有 {count} 部电影的导演署名为{label}。",
-      "person": "库中有 {count} 部电影由{label}参与演出或执导。",
-      "country": "库中有 {count} 部电影的制片国家或地区记录包含{label}。",
-      "decade": "库中有 {count} 部电影上映于{label}。"
-    },
     "filmCount": "{count} 部电影",
     "unwatchedCount": "{count} 部未看",
     "viewAll": "查看全部",
