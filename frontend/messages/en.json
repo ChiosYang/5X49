@@ -526,12 +526,6 @@
     "categoryLabel": "Collection categories",
     "categories": { "all": "All", "director": "Directors", "person": "People", "country": "Regions", "decade": "Decades" },
     "titles": { "director": "Directed by {label}", "person": "Films with {label}", "country": "Films from {label}", "decade": "The {label}" },
-    "descriptions": {
-      "director": "{count, plural, one {# local film} other {# local films}} credited to {label} as director.",
-      "person": "{count, plural, one {# local film} other {# local films}} with {label} credited as actor or director.",
-      "country": "{count, plural, one {# local film} other {# local films}} with {label} recorded as a production country.",
-      "decade": "{count, plural, one {# local film} other {# local films}} released in the {label}."
-    },
     "filmCount": "{count, plural, one {# Film} other {# Films}}",
     "unwatchedCount": "{count} unwatched",
     "viewAll": "View all",

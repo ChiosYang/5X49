@@ -98,7 +98,6 @@ export default function ExploreClient({ collection, basePath, locale, query, res
       <header className="flex flex-col gap-7 border-b border-line pb-8 lg:flex-row lg:items-end lg:justify-between">
         <div className="min-w-0">
           <h1 className="type-display-editorial break-words">{c(`titles.${collection.kind}`, { label: collectionLabel })}</h1>
-          <p className="mt-4 max-w-2xl text-sm leading-6 text-ink-muted">{c(`descriptions.${collection.kind}`, { label: collectionLabel, count: collection.count })}</p>
         </div>
       </header>
       <div className="mt-6 min-w-0 space-y-8">

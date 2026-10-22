@@ -38,6 +38,30 @@ test.beforeEach(async ({context}) => {
   await context.route('**/*', route => ['127.0.0.1','localhost'].includes(new URL(route.request().url()).hostname) ? route.continue() : route.abort('blockedbyclient'));
 });
 
+for(const [locale,copy] of [['en',en],['zh',zh]] as const) for(const width of [1440,320]){
+  test(`${locale} all Collection kinds keep titles and controls without header descriptions at ${width}px`,async({page,request})=>{
+    await page.setViewportSize({width,height:900});
+    const catalog:CollectionCatalog=await read(request,'/explore/catalog?limit=24');
+    const director=catalog.items.find(item=>item.kind==='director')!;
+    expect(director).toBeTruthy();
+    const definitions=[['director',director.key],['person',director.key],['country','JP'],['decade','1980']];
+    for(const [kind,key] of definitions){
+      const expected:LocalCollectionPage=await read(request,`/explore/collections/${kind}/${key}`);
+      await page.goto(`/${locale}/explore/collections/${kind}/${key}`);
+      const heading=page.getByRole('heading',{level:1});
+      await expect(heading).toHaveText(collectionTitle(expected.collection,locale));
+      await expect(page.locator('header').filter({has:heading}).locator('p')).toHaveCount(0);
+      await expect(page.getByText(/local films? (?:released|credited|with)|库中有.+部电影(?:的导演|由|的制片|上映)/)).toHaveCount(0);
+      await expect(page.locator('#explore-results-title')).toHaveText(new RegExp(`^${expected.results.total}\\b`));
+      await expect(cards(page)).toHaveCount(Math.min(40,expected.results.total));
+      await expect(page.getByRole('group',{name:copy.Explore.viewLabel,exact:true})).toBeVisible();
+      await expect(page.getByRole('group',{name:copy.Explore.sortLabel,exact:true})).toBeVisible();
+      await expect(page.locator('a[href*="/explore/filter"]')).toHaveCount(0);
+      await noOverflow(page);await capture(page,`collection-no-description-${kind}-${locale}-${width}.png`);
+    }
+  });
+}
+
 for (const locale of ['en','zh']) for (const width of [1920,1024,768,390,320]) {
   test(`${locale} Explore starts with the full catalog and preserves detail hierarchy at ${width}px`, async ({page,request}) => {
     const copy = locale === 'zh' ? zh.Collections : en.Collections;
@@ -100,7 +124,7 @@ test('collection view, sorting, pagination and browser history retain stable ide
   await expect(views.getByRole('button',{name:'Unwatched',exact:true})).toHaveAttribute('aria-pressed','true');
   await expect(page.getByRole('button',{name:'Year',exact:true})).toHaveAttribute('aria-pressed','true');
   await expect(page.locator('h1')).toHaveText('The 1980s');
-  await expect(page.getByText(`${initial.collection.count} local films released in the 1980s.`,{exact:true})).toBeVisible();
+  await expect(page.getByText(/local films? released in the 1980s\./)).toHaveCount(0);
   await page.goBack(); await expect(page).toHaveURL(unwatched);
   await page.goForward(); await expect(page).toHaveURL(sorted);
   await views.getByRole('button',{name:'All',exact:true}).click();
