@@ -156,6 +156,8 @@ def _vector(values, dimensions: int):
 
 
 def _embed(provider, texts, *, query):
+    for text in texts:
+        _safe(text, CHUNK_CHARS * MAX_CHUNKS + MAX_CHUNKS)
     try:
         raw = provider.embed(tuple(texts), query=query)
         if not isinstance(raw, (list, tuple)) or len(raw) != len(texts):
@@ -255,6 +257,9 @@ class SemanticCache:
                     _safe(alias, 300)
                 for chunk in payload["chunks"]:
                     _safe(chunk, CHUNK_CHARS)
+                # Validate the complete transport text as well as each chunk.
+                # Fragmented restored data must not reconstruct a private path.
+                _safe(" ".join(payload["chunks"]), CHUNK_CHARS * MAX_CHUNKS + MAX_CHUNKS)
                 valid_labels = {f"{kind}:{origin}" for kind in ("overview", "reviewed_theme")
                                 for origin in ("library", "user", "nfo", "tmdb", "rule", "analysis_run")}
                 if any(label not in valid_labels for label in payload["sources"]):
@@ -283,12 +288,18 @@ class SemanticCache:
 class SemanticSearch:
     """Structured offline retrieval; this is not a natural-language interpreter."""
     def __init__(self, cache: SemanticCache, spec: ProviderSpec, *, provider=None,
-                 reranker=None, minimum_similarity=.35, clock=time.time):
+                 reranker=None, minimum_similarity=.35, strategy="hybrid", clock=time.time):
         if (type(minimum_similarity) not in (int, float) or not math.isfinite(minimum_similarity)
                 or not -1 <= minimum_similarity <= 1):
             raise SemanticError("invalid_threshold")
+        if not isinstance(strategy, str) or strategy not in {"dense", "lexical", "hybrid"}:
+            raise SemanticError("invalid_strategy")
         self.cache, self.spec, self.provider = cache, spec, provider
         self.reranker, self.threshold, self.clock = reranker, minimum_similarity, clock
+        self.strategy = strategy
+
+    def _intent_hash(self, text, reference_id):
+        return _hash([text, reference_id, self.strategy, self.threshold])
 
     @staticmethod
     def reference_candidates(title, identities):
@@ -303,7 +314,7 @@ class SemanticSearch:
             raise SemanticError("index_stale")
         documents = self.cache.documents(self.spec)
         eligible = _eligible(eligible_ids)
-        query_hash = _hash([text, reference_id])
+        query_hash = self._intent_hash(text, reference_id)
         if not eligible:
             token = self.cache.snapshot(query_hash, [], revision=expected_revision,
                 fingerprint=self.spec.fingerprint, now=self.clock(), ttl=86400)
@@ -316,24 +327,26 @@ class SemanticSearch:
                 raise SemanticError("reference_missing_content")
             vector = documents[reference_id][1]
             topic = " ".join(documents[reference_id][0]["chunks"])
-        else:
+        elif self.strategy != "lexical":
             if self.provider is None:
                 raise SemanticError("not_configured")
             if self.provider.spec != self.spec:
                 raise SemanticError("index_stale")
             vector = _embed(self.provider, [text], query=True)[0]
             topic = text
+        else:
+            vector, topic = None, text
         words = _tokens(topic)
         cosine = {}
         lexical = {}
         for film_id, (document, candidate) in documents.items():
             if film_id == reference_id:
                 continue
-            score = sum(a * b for a, b in zip(vector, candidate))
+            score = sum(a * b for a, b in zip(vector, candidate)) if vector is not None else -1
             shared = len(words & _tokens(" ".join(document["chunks"])))
-            if score >= self.threshold:
+            if self.strategy != "lexical" and score >= self.threshold:
                 cosine[film_id] = score
-            if shared:
+            if self.strategy != "dense" and shared:
                 lexical[film_id] = shared
         # RRF combines independent lists; do not pretend the score is probability.
         scores = {}
@@ -344,8 +357,11 @@ class SemanticSearch:
         if self.reranker is not None:
             candidates = [i for i in ranked if i in eligible][:20]
             if candidates:
+                safe_topic = _safe(topic, CHUNK_CHARS * MAX_CHUNKS + MAX_CHUNKS)
+                safe_documents = [_safe(" ".join(documents[i][0]["chunks"]),
+                    CHUNK_CHARS * MAX_CHUNKS + MAX_CHUNKS) for i in candidates]
                 try:
-                    values = self.reranker.rank(topic, [" ".join(documents[i][0]["chunks"]) for i in candidates])
+                    values = self.reranker.rank(safe_topic, safe_documents)
                     if (not isinstance(values, (list, tuple)) or len(values) != len(candidates)
                             or any(type(v) not in (int, float) or not math.isfinite(v) or not 0 <= v <= 1 for v in values)):
                         raise SemanticError("invalid_rerank")
@@ -373,7 +389,7 @@ class SemanticSearch:
             FROM semantic_snapshots WHERE id=?""", (token,)).fetchone()
         if row is None or row[3] <= self.clock():
             raise SemanticError("snapshot_expired")
-        if row[0] != _hash([text, reference_id]):
+        if row[0] != self._intent_hash(text, reference_id):
             raise SemanticError("snapshot_mismatch")
         if row[1] != expected_revision or row[2] != self.spec.fingerprint:
             raise SemanticError("snapshot_stale")
@@ -391,6 +407,7 @@ class SemanticSearch:
         total, limit = len(ranked), 40
         offset = min(offset, max(0, (total - 1) // limit * limit))
         return {"mode": "offline-contract", "real_model_quality_verified": False,
+                "strategy": self.strategy,
                 "snapshot_id": token, "total": total, "limit": limit, "offset": offset,
                 "next_offset": offset + limit if offset + limit < total else None,
                 "items": [{"film_id": i, "match_kind": "content_relevance",

@@ -7,7 +7,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 from sqlmodel import Session, select
 
@@ -279,6 +279,34 @@ class SemanticCoreTests(unittest.TestCase):
             "assert 'app.database' not in sys.modules; assert 'openai' not in sys.modules"],
             cwd=Path(__file__).parent, capture_output=True, text=True, timeout=20)
         self.assertEqual(result.returncode, 0, result.stderr)
+
+    def test_restored_fragments_cannot_reconstruct_private_transport_text(self):
+        row = json.loads(self.db.execute("SELECT document FROM semantic_documents LIMIT 1").fetchone()[0])
+        row["chunks"] = ["Movies/", "My Private Film.mkv"]
+        self.db.execute("UPDATE semantic_documents SET document=? WHERE film_id=?",
+                        (json.dumps(row), self.ids[0]))
+        ranker = Mock()
+        engine = SemanticSearch(self.cache, SPEC, provider=self.provider, reranker=ranker)
+        count = len(self.provider.calls)
+        with self.assertRaisesRegex(SemanticError, "private_input"):
+            engine.submit("space", eligible_ids=self.ids, expected_revision=self.revision)
+        self.assertEqual(len(self.provider.calls), count)
+        ranker.rank.assert_not_called()
+
+    def test_explicit_offline_baselines_keep_strategy_bound_to_snapshot(self):
+        dense = SemanticSearch(self.cache, SPEC, provider=self.provider, strategy="dense")
+        page = dense.submit("space journey", eligible_ids=self.ids, expected_revision=self.revision)
+        self.assertEqual({i["film_id"] for i in page["items"]}, set(self.ids[:2]))
+        count = len(self.provider.calls)
+        lexical = SemanticSearch(self.cache, SPEC, strategy="lexical")
+        result = lexical.submit("space journey", eligible_ids=self.ids, expected_revision=self.revision)
+        self.assertEqual([i["film_id"] for i in result["items"]], [self.ids[0]])
+        self.assertEqual(len(self.provider.calls), count)
+        with self.assertRaisesRegex(SemanticError, "snapshot_mismatch"):
+            lexical.resume(page["snapshot_id"], "space journey",
+                eligible_ids=self.ids, expected_revision=self.revision)
+        with self.assertRaisesRegex(SemanticError, "invalid_strategy"):
+            SemanticSearch(self.cache, SPEC, strategy="unmeasured")
 
 
 class SemanticLibraryBridgeTests(unittest.TestCase):

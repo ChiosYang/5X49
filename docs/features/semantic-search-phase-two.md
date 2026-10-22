@@ -98,6 +98,8 @@ provider, quality and UI integration gates below have passed.
 Status: In Progress
 
 - Provider-independent cache/ranking and source selection.
+- Explicit dense/lexical/hybrid experiment modes; snapshots bind the mode and
+  threshold to avoid mixing an earlier ordering into another strategy's report.
 - Strict hard-filter bridge, reference identities and snapshot invalidation.
 - EN/ZH synthetic expected-ID evaluation and malformed-provider/privacy tests.
 
@@ -131,6 +133,13 @@ Status: Pending resource/provider authorization
   or chat client. Manifest SHA256:
   2a1309d20b4c745fa453f23fb738effed39d6c6415b2964658c42e5004e123a9.
 - Fresh full verification and independent review of the increment are pending.
+- Head 6133347aac8e89ed419b2f2465ce9cf46e0a6bed subsequently passed local
+  backend 486/3 Windows skips and E2E 272; CI39725356154 passed backend
+  486/1 skip + tooling 15, frontend 138/audit/lint/type/build and E2E 272.
+- Final transport-boundary/experiment increment: 93 targeted tests passed
+  (20 semantic tests). Restored fragments are screened as complete transport
+  strings before embedding/reranking; the private-path reconstruction regression
+  proves zero provider calls. Fresh full CI and independent review still pending.
 - Phase one is merged at fb745f2cb3173d062aca170b3450ceb474d8a1f1, tree equal to
   reviewed d12a5319dbf4f5fb142d4bb77b295c1eaa5cfa52. CI39721297391: backend
   468/1 skip, tooling 15, frontend 138, audit/lint/types/build, E2E 272.
