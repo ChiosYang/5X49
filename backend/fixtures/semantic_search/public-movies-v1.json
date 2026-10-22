@@ -1,0 +1,4592 @@
+{
+  "version": "semantic-quality.public-movies.v1",
+  "notice": "Public real-film pilot, not a private-library sample or production acceptance. All theme qrels are provisional curated judgments, not verified human gold.",
+  "created": "2026-10-22",
+  "license_policy": "CC0 structured facts; independently authored brief plot paraphrases; source prose/images are not redistributed.",
+  "qrels_status": "provisional-curated-not-human-gold",
+  "default_unlisted_grade": 0,
+  "year_policy": "earliest recorded publication/premiere year; never substitute later territorial release or production year",
+  "runtime_policy": "all selected whole-minute observations must agree; unresolved differences fail duration predicates",
+  "films": [
+    {
+      "id": "film_c0a13babdf49f9d922e497c96d83b4ba",
+      "key": "tokyo-story",
+      "qid": "Q26060",
+      "titles": [
+        {
+          "locale": "en",
+          "value": "Tokyo Story",
+          "source": "wikidata-Q26060"
+        },
+        {
+          "locale": "zh-hans",
+          "value": "东京物语",
+          "source": "wikidata-Q26060"
+        },
+        {
+          "locale": "zh",
+          "value": "東京物語",
+          "source": "wikidata-Q26060"
+        },
+        {
+          "locale": "ja",
+          "value": "東京物語",
+          "source": "wikidata-Q26060"
+        },
+        {
+          "locale": "ko",
+          "value": "동경 이야기",
+          "source": "wikidata-Q26060"
+        },
+        {
+          "locale": "ko",
+          "value": "도쿄 이야기",
+          "source": "wikidata-Q26060"
+        },
+        {
+          "locale": "ko",
+          "value": "도쿄이야기",
+          "source": "wikidata-Q26060"
+        },
+        {
+          "locale": "ko",
+          "value": "동경이야기",
+          "source": "wikidata-Q26060"
+        },
+        {
+          "locale": "en",
+          "value": "Tokyo monogatari",
+          "source": "wikidata-Q26060"
+        },
+        {
+          "locale": "ja",
+          "value": "とうきょうものがたり",
+          "source": "wikidata-Q26060"
+        }
+      ],
+      "title_en": "Tokyo Story",
+      "title_zh": "东京物语",
+      "document_text": "Tokyo Story / 东京物语. An elderly couple visits their grown children in Tokyo and encounters distance within the family. 年迈夫妇赴东京探望成年子女，感受到家庭里的疏离。",
+      "paraphrase": {
+        "en": "An elderly couple visits their grown children in Tokyo and encounters distance within the family.",
+        "zh": "年迈夫妇赴东京探望成年子女，感受到家庭里的疏离。",
+        "sources": [
+          "official-tokyo-story"
+        ]
+      },
+      "year": {
+        "status": "accepted",
+        "value": 1953,
+        "sources": [
+          "wikidata-Q26060"
+        ],
+        "reason": "Earliest recorded publication/premiere year in the fixed P577 snapshot; territorial later releases remain separate."
+      },
+      "minutes": {
+        "status": "conflicted",
+        "value": null,
+        "sources": [
+          "official-tokyo-story",
+          "wikidata-Q26060"
+        ],
+        "reason": "Different published whole-minute values; cut/rounding equivalence was not established. Fail duration conditions."
+      },
+      "runtime_observations": [
+        {
+          "source": "wikidata-Q26060",
+          "value": 136,
+          "unit": "minutes"
+        },
+        {
+          "source": "official-tokyo-story",
+          "value": 137,
+          "unit": "minutes"
+        }
+      ],
+      "countries": {
+        "status": "accepted",
+        "value": [
+          "JP"
+        ],
+        "sources": [
+          "wikidata-Q26060"
+        ],
+        "reason": "Explicit fixed P495 claims; a distributor territory is never a country inference."
+      },
+      "directors": {
+        "status": "accepted",
+        "value": [
+          "Q55402"
+        ],
+        "sources": [
+          "wikidata-Q26060"
+        ],
+        "reason": "Explicit P57 director identities; actor/producer roles are not inferred."
+      },
+      "genres": {
+        "status": "accepted",
+        "value": [
+          "drama"
+        ],
+        "sources": [
+          "wikidata-Q26060"
+        ],
+        "reason": "Only explicit Q471839/Q130232 statements mapped; absent genres are not negations."
+      }
+    },
+    {
+      "id": "film_fb0a6b49596cc730d45217af7525676f",
+      "key": "still-walking",
+      "qid": "Q874074",
+      "titles": [
+        {
+          "locale": "en",
+          "value": "Still Walking",
+          "source": "wikidata-Q874074"
+        },
+        {
+          "locale": "zh-cn",
+          "value": "步履不停",
+          "source": "wikidata-Q874074"
+        },
+        {
+          "locale": "zh",
+          "value": "横山家之味",
+          "source": "wikidata-Q874074"
+        },
+        {
+          "locale": "ja",
+          "value": "歩いても 歩いても",
+          "source": "wikidata-Q874074"
+        },
+        {
+          "locale": "ko",
+          "value": "걸어도 걸어도",
+          "source": "wikidata-Q874074"
+        },
+        {
+          "locale": "ja",
+          "value": "歩いても歩いても",
+          "source": "wikidata-Q874074"
+        }
+      ],
+      "title_en": "Still Walking",
+      "title_zh": "步履不停",
+      "document_text": "Still Walking / 步履不停. A family gathers for a day of remembrance; cooking and small conversations expose old regrets. 一家人团聚纪念逝者，做饭与闲谈牵出积年的遗憾。",
+      "paraphrase": {
+        "en": "A family gathers for a day of remembrance; cooking and small conversations expose old regrets.",
+        "zh": "一家人团聚纪念逝者，做饭与闲谈牵出积年的遗憾。",
+        "sources": [
+          "official-still-walking"
+        ]
+      },
+      "year": {
+        "status": "accepted",
+        "value": 2008,
+        "sources": [
+          "wikidata-Q874074"
+        ],
+        "reason": "Earliest recorded publication/premiere year in the fixed P577 snapshot; territorial later releases remain separate."
+      },
+      "minutes": {
+        "status": "accepted",
+        "value": 114,
+        "sources": [
+          "official-still-walking",
+          "wikidata-Q874074"
+        ],
+        "reason": "Published whole-minute value; original units retained in observations."
+      },
+      "runtime_observations": [
+        {
+          "source": "wikidata-Q874074",
+          "value": 114,
+          "unit": "minutes"
+        },
+        {
+          "source": "official-still-walking",
+          "value": 114,
+          "unit": "minutes"
+        }
+      ],
+      "countries": {
+        "status": "accepted",
+        "value": [
+          "JP"
+        ],
+        "sources": [
+          "wikidata-Q874074"
+        ],
+        "reason": "Explicit fixed P495 claims; a distributor territory is never a country inference."
+      },
+      "directors": {
+        "status": "accepted",
+        "value": [
+          "Q740758"
+        ],
+        "sources": [
+          "wikidata-Q874074"
+        ],
+        "reason": "Explicit P57 director identities; actor/producer roles are not inferred."
+      },
+      "genres": {
+        "status": "accepted",
+        "value": [
+          "drama"
+        ],
+        "sources": [
+          "wikidata-Q874074"
+        ],
+        "reason": "Only explicit Q471839/Q130232 statements mapped; absent genres are not negations."
+      }
+    },
+    {
+      "id": "film_a3e38d924b2d3fc298eb79a0d349e9ec",
+      "key": "yi-yi",
+      "qid": "Q704513",
+      "titles": [
+        {
+          "locale": "en",
+          "value": "Yi Yi",
+          "source": "wikidata-Q704513"
+        },
+        {
+          "locale": "zh-hans",
+          "value": "一一",
+          "source": "wikidata-Q704513"
+        },
+        {
+          "locale": "zh",
+          "value": "一一",
+          "source": "wikidata-Q704513"
+        },
+        {
+          "locale": "zh-hant",
+          "value": "一一",
+          "source": "wikidata-Q704513"
+        },
+        {
+          "locale": "ja",
+          "value": "ヤンヤン 夏の想い出",
+          "source": "wikidata-Q704513"
+        },
+        {
+          "locale": "ko",
+          "value": "하나 그리고 둘",
+          "source": "wikidata-Q704513"
+        },
+        {
+          "locale": "en",
+          "value": "A One and a Two",
+          "source": "wikidata-Q704513"
+        },
+        {
+          "locale": "en",
+          "value": "A One and a Two...",
+          "source": "wikidata-Q704513"
+        }
+      ],
+      "title_en": "Yi Yi",
+      "title_zh": "一一",
+      "document_text": "Yi Yi / 一一. A Taipei family passes through a wedding, a funeral, and encounters with a father's former love. 台北一家人经历婚礼与葬礼，父亲也再遇旧日恋人。",
+      "paraphrase": {
+        "en": "A Taipei family passes through a wedding, a funeral, and encounters with a father's former love.",
+        "zh": "台北一家人经历婚礼与葬礼，父亲也再遇旧日恋人。",
+        "sources": [
+          "official-yi-yi"
+        ]
+      },
+      "year": {
+        "status": "accepted",
+        "value": 2000,
+        "sources": [
+          "wikidata-Q704513"
+        ],
+        "reason": "Earliest recorded publication/premiere year in the fixed P577 snapshot; territorial later releases remain separate."
+      },
+      "minutes": {
+        "status": "accepted",
+        "value": 173,
+        "sources": [
+          "official-yi-yi",
+          "wikidata-Q704513"
+        ],
+        "reason": "Published whole-minute value; original units retained in observations."
+      },
+      "runtime_observations": [
+        {
+          "source": "wikidata-Q704513",
+          "value": 173,
+          "unit": "minutes"
+        },
+        {
+          "source": "official-yi-yi",
+          "value": 173,
+          "unit": "minutes"
+        }
+      ],
+      "countries": {
+        "status": "accepted",
+        "value": [
+          "JP",
+          "TW"
+        ],
+        "sources": [
+          "wikidata-Q704513"
+        ],
+        "reason": "Explicit fixed P495 claims; a distributor territory is never a country inference."
+      },
+      "directors": {
+        "status": "accepted",
+        "value": [
+          "Q716700"
+        ],
+        "sources": [
+          "wikidata-Q704513"
+        ],
+        "reason": "Explicit P57 director identities; actor/producer roles are not inferred."
+      },
+      "genres": {
+        "status": "accepted",
+        "value": [
+          "drama"
+        ],
+        "sources": [
+          "wikidata-Q704513"
+        ],
+        "reason": "Only explicit Q471839/Q130232 statements mapped; absent genres are not negations."
+      }
+    },
+    {
+      "id": "film_960d32eba90d7f95c18174fb28d849d0",
+      "key": "the-farewell",
+      "qid": "Q60611804",
+      "titles": [
+        {
+          "locale": "en",
+          "value": "The Farewell",
+          "source": "wikidata-Q60611804"
+        },
+        {
+          "locale": "zh",
+          "value": "别告诉她",
+          "source": "wikidata-Q60611804"
+        },
+        {
+          "locale": "ja",
+          "value": "ザ・フェアウェル",
+          "source": "wikidata-Q60611804"
+        },
+        {
+          "locale": "ko",
+          "value": "페어웰",
+          "source": "wikidata-Q60611804"
+        },
+        {
+          "locale": "ko",
+          "value": "더 페어웰",
+          "source": "wikidata-Q60611804"
+        }
+      ],
+      "title_en": "The Farewell",
+      "title_zh": "别告诉她",
+      "document_text": "The Farewell / 别告诉她. Billi's relatives arrange a wedding in China to reunite with her ill grandmother without telling her why. 比莉一家借婚礼回中国团聚，向患病的祖母隐瞒病情。",
+      "paraphrase": {
+        "en": "Billi's relatives arrange a wedding in China to reunite with her ill grandmother without telling her why.",
+        "zh": "比莉一家借婚礼回中国团聚，向患病的祖母隐瞒病情。",
+        "sources": [
+          "official-the-farewell"
+        ]
+      },
+      "year": {
+        "status": "accepted",
+        "value": 2019,
+        "sources": [
+          "wikidata-Q60611804"
+        ],
+        "reason": "Earliest recorded publication/premiere year in the fixed P577 snapshot; territorial later releases remain separate."
+      },
+      "minutes": {
+        "status": "conflicted",
+        "value": null,
+        "sources": [
+          "official-the-farewell",
+          "wikidata-Q60611804"
+        ],
+        "reason": "Different published whole-minute values; cut/rounding equivalence was not established. Fail duration conditions."
+      },
+      "runtime_observations": [
+        {
+          "source": "wikidata-Q60611804",
+          "value": 98,
+          "unit": "minutes"
+        },
+        {
+          "source": "official-the-farewell",
+          "value": 100,
+          "unit": "minutes"
+        }
+      ],
+      "countries": {
+        "status": "accepted",
+        "value": [
+          "US"
+        ],
+        "sources": [
+          "wikidata-Q60611804"
+        ],
+        "reason": "Explicit fixed P495 claims; a distributor territory is never a country inference."
+      },
+      "directors": {
+        "status": "accepted",
+        "value": [
+          "Q25190449"
+        ],
+        "sources": [
+          "wikidata-Q60611804"
+        ],
+        "reason": "Explicit P57 director identities; actor/producer roles are not inferred."
+      },
+      "genres": {
+        "status": "accepted",
+        "value": [
+          "drama"
+        ],
+        "sources": [
+          "wikidata-Q60611804"
+        ],
+        "reason": "Only explicit Q471839/Q130232 statements mapped; absent genres are not negations."
+      }
+    },
+    {
+      "id": "film_c24885a838181a18fc08dda3ef2e8a06",
+      "key": "in-the-mood-for-love",
+      "qid": "Q1056853",
+      "titles": [
+        {
+          "locale": "en",
+          "value": "In the Mood for Love",
+          "source": "wikidata-Q1056853"
+        },
+        {
+          "locale": "zh-hans",
+          "value": "花样年华",
+          "source": "wikidata-Q1056853"
+        },
+        {
+          "locale": "zh",
+          "value": "花樣年華",
+          "source": "wikidata-Q1056853"
+        },
+        {
+          "locale": "zh-hant",
+          "value": "花樣年華",
+          "source": "wikidata-Q1056853"
+        },
+        {
+          "locale": "ja",
+          "value": "花様年華",
+          "source": "wikidata-Q1056853"
+        },
+        {
+          "locale": "ko",
+          "value": "화양연화",
+          "source": "wikidata-Q1056853"
+        }
+      ],
+      "title_en": "In the Mood for Love",
+      "title_zh": "花样年华",
+      "document_text": "In the Mood for Love / 花样年华. Two Hong Kong neighbors grow close after discovering that their spouses are having an affair. 香港两名邻居发现各自配偶有婚外情，逐渐彼此靠近。",
+      "paraphrase": {
+        "en": "Two Hong Kong neighbors grow close after discovering that their spouses are having an affair.",
+        "zh": "香港两名邻居发现各自配偶有婚外情，逐渐彼此靠近。",
+        "sources": [
+          "official-in-the-mood-for-love"
+        ]
+      },
+      "year": {
+        "status": "accepted",
+        "value": 2000,
+        "sources": [
+          "wikidata-Q1056853"
+        ],
+        "reason": "Earliest recorded publication/premiere year in the fixed P577 snapshot; territorial later releases remain separate."
+      },
+      "minutes": {
+        "status": "accepted",
+        "value": 98,
+        "sources": [
+          "official-in-the-mood-for-love",
+          "wikidata-Q1056853"
+        ],
+        "reason": "Published whole-minute value; original units retained in observations."
+      },
+      "runtime_observations": [
+        {
+          "source": "wikidata-Q1056853",
+          "value": 98,
+          "unit": "minutes"
+        },
+        {
+          "source": "official-in-the-mood-for-love",
+          "value": 98,
+          "unit": "minutes"
+        }
+      ],
+      "countries": {
+        "status": "accepted",
+        "value": [
+          "FR",
+          "HK",
+          "TH"
+        ],
+        "sources": [
+          "wikidata-Q1056853"
+        ],
+        "reason": "Explicit fixed P495 claims; a distributor territory is never a country inference."
+      },
+      "directors": {
+        "status": "accepted",
+        "value": [
+          "Q55431"
+        ],
+        "sources": [
+          "wikidata-Q1056853"
+        ],
+        "reason": "Explicit P57 director identities; actor/producer roles are not inferred."
+      },
+      "genres": {
+        "status": "accepted",
+        "value": [
+          "drama"
+        ],
+        "sources": [
+          "wikidata-Q1056853"
+        ],
+        "reason": "Only explicit Q471839/Q130232 statements mapped; absent genres are not negations."
+      }
+    },
+    {
+      "id": "film_4ef9d61174e7ba14bfb60c5ae2892565",
+      "key": "chungking-express",
+      "qid": "Q766263",
+      "titles": [
+        {
+          "locale": "en",
+          "value": "Chungking Express",
+          "source": "wikidata-Q766263"
+        },
+        {
+          "locale": "zh-cn",
+          "value": "重庆森林",
+          "source": "wikidata-Q766263"
+        },
+        {
+          "locale": "zh-hans",
+          "value": "重庆森林",
+          "source": "wikidata-Q766263"
+        },
+        {
+          "locale": "zh",
+          "value": "重慶森林",
+          "source": "wikidata-Q766263"
+        },
+        {
+          "locale": "zh-hant",
+          "value": "重慶森林",
+          "source": "wikidata-Q766263"
+        },
+        {
+          "locale": "ja",
+          "value": "恋する惑星",
+          "source": "wikidata-Q766263"
+        },
+        {
+          "locale": "ko",
+          "value": "중경삼림 리마스터링",
+          "source": "wikidata-Q766263"
+        }
+      ],
+      "title_en": "Chungking Express",
+      "title_zh": "重庆森林",
+      "document_text": "Chungking Express / 重庆森林. Two lovelorn Hong Kong policemen cross paths with new people around a late-night food counter. 两名失恋的香港警察，在深夜快餐店周围遇见新的人。",
+      "paraphrase": {
+        "en": "Two lovelorn Hong Kong policemen cross paths with new people around a late-night food counter.",
+        "zh": "两名失恋的香港警察，在深夜快餐店周围遇见新的人。",
+        "sources": [
+          "official-chungking-express"
+        ]
+      },
+      "year": {
+        "status": "accepted",
+        "value": 1994,
+        "sources": [
+          "wikidata-Q766263"
+        ],
+        "reason": "Earliest recorded publication/premiere year in the fixed P577 snapshot; territorial later releases remain separate."
+      },
+      "minutes": {
+        "status": "conflicted",
+        "value": null,
+        "sources": [
+          "official-chungking-express",
+          "wikidata-Q766263"
+        ],
+        "reason": "Different published whole-minute values; cut/rounding equivalence was not established. Fail duration conditions."
+      },
+      "runtime_observations": [
+        {
+          "source": "wikidata-Q766263",
+          "value": 102,
+          "unit": "minutes"
+        },
+        {
+          "source": "wikidata-Q766263",
+          "value": 101,
+          "unit": "minutes"
+        },
+        {
+          "source": "official-chungking-express",
+          "value": 102,
+          "unit": "minutes"
+        }
+      ],
+      "countries": {
+        "status": "accepted",
+        "value": [
+          "HK"
+        ],
+        "sources": [
+          "wikidata-Q766263"
+        ],
+        "reason": "Explicit fixed P495 claims; a distributor territory is never a country inference."
+      },
+      "directors": {
+        "status": "accepted",
+        "value": [
+          "Q55431"
+        ],
+        "sources": [
+          "wikidata-Q766263"
+        ],
+        "reason": "Explicit P57 director identities; actor/producer roles are not inferred."
+      },
+      "genres": {
+        "status": "missing",
+        "value": [],
+        "sources": [
+          "wikidata-Q766263"
+        ],
+        "reason": "Only explicit Q471839/Q130232 statements mapped; absent genres are not negations."
+      }
+    },
+    {
+      "id": "film_7a46b914cc187c1cea8f5d6fd3c32a82",
+      "key": "past-lives",
+      "qid": "Q116025865",
+      "titles": [
+        {
+          "locale": "en",
+          "value": "Past Lives",
+          "source": "wikidata-Q116025865"
+        },
+        {
+          "locale": "zh",
+          "value": "之前的我們",
+          "source": "wikidata-Q116025865"
+        },
+        {
+          "locale": "ja",
+          "value": "パスト・ライブス",
+          "source": "wikidata-Q116025865"
+        },
+        {
+          "locale": "ko",
+          "value": "전생",
+          "source": "wikidata-Q116025865"
+        },
+        {
+          "locale": "zh",
+          "value": "過往人生",
+          "source": "wikidata-Q116025865"
+        },
+        {
+          "locale": "zh",
+          "value": "從前的我們",
+          "source": "wikidata-Q116025865"
+        },
+        {
+          "locale": "zh",
+          "value": "前度人生",
+          "source": "wikidata-Q116025865"
+        },
+        {
+          "locale": "ko",
+          "value": "패스트 라이브즈",
+          "source": "wikidata-Q116025865"
+        },
+        {
+          "locale": "ko",
+          "value": "패스트 라이브스",
+          "source": "wikidata-Q116025865"
+        }
+      ],
+      "title_en": "Past Lives",
+      "title_zh": "之前的我們",
+      "document_text": "Past Lives / 之前的我們. Childhood sweethearts meet again for one week after spending decades apart. 童年恋人在分离数十年后重逢，共度一周。",
+      "paraphrase": {
+        "en": "Childhood sweethearts meet again for one week after spending decades apart.",
+        "zh": "童年恋人在分离数十年后重逢，共度一周。",
+        "sources": [
+          "official-past-lives"
+        ]
+      },
+      "year": {
+        "status": "accepted",
+        "value": 2023,
+        "sources": [
+          "wikidata-Q116025865"
+        ],
+        "reason": "Earliest recorded publication/premiere year in the fixed P577 snapshot; territorial later releases remain separate."
+      },
+      "minutes": {
+        "status": "conflicted",
+        "value": null,
+        "sources": [
+          "official-past-lives",
+          "wikidata-Q116025865"
+        ],
+        "reason": "Different published whole-minute values; cut/rounding equivalence was not established. Fail duration conditions."
+      },
+      "runtime_observations": [
+        {
+          "source": "wikidata-Q116025865",
+          "value": 106,
+          "unit": "minutes"
+        },
+        {
+          "source": "official-past-lives",
+          "value": 105,
+          "unit": "minutes"
+        }
+      ],
+      "countries": {
+        "status": "accepted",
+        "value": [
+          "US"
+        ],
+        "sources": [
+          "wikidata-Q116025865"
+        ],
+        "reason": "Explicit fixed P495 claims; a distributor territory is never a country inference."
+      },
+      "directors": {
+        "status": "accepted",
+        "value": [
+          "Q116286260"
+        ],
+        "sources": [
+          "wikidata-Q116025865"
+        ],
+        "reason": "Explicit P57 director identities; actor/producer roles are not inferred."
+      },
+      "genres": {
+        "status": "accepted",
+        "value": [
+          "drama"
+        ],
+        "sources": [
+          "wikidata-Q116025865"
+        ],
+        "reason": "Only explicit Q471839/Q130232 statements mapped; absent genres are not negations."
+      }
+    },
+    {
+      "id": "film_45566885297210e3b7c01480cad3e592",
+      "key": "eternal-sunshine",
+      "qid": "Q208269",
+      "titles": [
+        {
+          "locale": "en",
+          "value": "Eternal Sunshine of the Spotless Mind",
+          "source": "wikidata-Q208269"
+        },
+        {
+          "locale": "zh-cn",
+          "value": "美丽心灵的永恒阳光",
+          "source": "wikidata-Q208269"
+        },
+        {
+          "locale": "zh-hans",
+          "value": "美丽心灵的永恒阳光",
+          "source": "wikidata-Q208269"
+        },
+        {
+          "locale": "zh",
+          "value": "無痛失戀",
+          "source": "wikidata-Q208269"
+        },
+        {
+          "locale": "zh-hant",
+          "value": "王牌冤家",
+          "source": "wikidata-Q208269"
+        },
+        {
+          "locale": "ja",
+          "value": "エターナル・サンシャイン",
+          "source": "wikidata-Q208269"
+        },
+        {
+          "locale": "ko",
+          "value": "이터널 선샤인",
+          "source": "wikidata-Q208269"
+        }
+      ],
+      "title_en": "Eternal Sunshine of the Spotless Mind",
+      "title_zh": "美丽心灵的永恒阳光",
+      "document_text": "Eternal Sunshine of the Spotless Mind / 美丽心灵的永恒阳光. After Clementine erases their relationship, Joel seeks the same procedure but resists losing his memories. 克莱门汀抹去恋爱记忆，乔尔也接受手术，却不愿失去回忆。",
+      "paraphrase": {
+        "en": "After Clementine erases their relationship, Joel seeks the same procedure but resists losing his memories.",
+        "zh": "克莱门汀抹去恋爱记忆，乔尔也接受手术，却不愿失去回忆。",
+        "sources": [
+          "official-eternal-sunshine"
+        ]
+      },
+      "year": {
+        "status": "accepted",
+        "value": 2004,
+        "sources": [
+          "wikidata-Q208269"
+        ],
+        "reason": "Earliest recorded publication/premiere year in the fixed P577 snapshot; territorial later releases remain separate."
+      },
+      "minutes": {
+        "status": "accepted",
+        "value": 104,
+        "sources": [
+          "wikidata-Q208269"
+        ],
+        "reason": "Published whole-minute value; original units retained in observations."
+      },
+      "runtime_observations": [
+        {
+          "source": "wikidata-Q208269",
+          "value": 104,
+          "unit": "minutes"
+        }
+      ],
+      "countries": {
+        "status": "accepted",
+        "value": [
+          "US"
+        ],
+        "sources": [
+          "wikidata-Q208269"
+        ],
+        "reason": "Explicit fixed P495 claims; a distributor territory is never a country inference."
+      },
+      "directors": {
+        "status": "accepted",
+        "value": [
+          "Q126098"
+        ],
+        "sources": [
+          "wikidata-Q208269"
+        ],
+        "reason": "Explicit P57 director identities; actor/producer roles are not inferred."
+      },
+      "genres": {
+        "status": "accepted",
+        "value": [
+          "science fiction"
+        ],
+        "sources": [
+          "wikidata-Q208269"
+        ],
+        "reason": "Only explicit Q471839/Q130232 statements mapped; absent genres are not negations."
+      }
+    },
+    {
+      "id": "film_8077701cd5c1d4a4bab55d99385d42d5",
+      "key": "ex-machina",
+      "qid": "Q16635326",
+      "titles": [
+        {
+          "locale": "en",
+          "value": "Ex Machina",
+          "source": "wikidata-Q16635326"
+        },
+        {
+          "locale": "zh",
+          "value": "机械姬",
+          "source": "wikidata-Q16635326"
+        },
+        {
+          "locale": "ja",
+          "value": "エクス・マキナ",
+          "source": "wikidata-Q16635326"
+        },
+        {
+          "locale": "ko",
+          "value": "엑스 마키나 (영화)",
+          "source": "wikidata-Q16635326"
+        },
+        {
+          "locale": "en",
+          "value": "EX_MACHINA",
+          "source": "wikidata-Q16635326"
+        }
+      ],
+      "title_en": "Ex Machina",
+      "title_zh": "机械姬",
+      "document_text": "Ex Machina / 机械姬. A young programmer is invited to assess a humanoid robot by his secluded company chief. 年轻程序员受隐居的公司老板邀请，评估一台人形机器人。",
+      "paraphrase": {
+        "en": "A young programmer is invited to assess a humanoid robot by his secluded company chief.",
+        "zh": "年轻程序员受隐居的公司老板邀请，评估一台人形机器人。",
+        "sources": [
+          "official-ex-machina"
+        ]
+      },
+      "year": {
+        "status": "accepted",
+        "value": 2014,
+        "sources": [
+          "wikidata-Q16635326"
+        ],
+        "reason": "Earliest recorded publication/premiere year in the fixed P577 snapshot; territorial later releases remain separate."
+      },
+      "minutes": {
+        "status": "accepted",
+        "value": 108,
+        "sources": [
+          "official-ex-machina",
+          "wikidata-Q16635326"
+        ],
+        "reason": "Published whole-minute value; original units retained in observations."
+      },
+      "runtime_observations": [
+        {
+          "source": "wikidata-Q16635326",
+          "value": 108,
+          "unit": "minutes"
+        },
+        {
+          "source": "wikidata-Q16635326",
+          "value": 6478.0,
+          "unit": "seconds"
+        },
+        {
+          "source": "official-ex-machina",
+          "value": 108,
+          "unit": "minutes"
+        }
+      ],
+      "countries": {
+        "status": "accepted",
+        "value": [
+          "GB"
+        ],
+        "sources": [
+          "wikidata-Q16635326"
+        ],
+        "reason": "Explicit fixed P495 claims; a distributor territory is never a country inference."
+      },
+      "directors": {
+        "status": "accepted",
+        "value": [
+          "Q542634"
+        ],
+        "sources": [
+          "wikidata-Q16635326"
+        ],
+        "reason": "Explicit P57 director identities; actor/producer roles are not inferred."
+      },
+      "genres": {
+        "status": "accepted",
+        "value": [
+          "drama",
+          "science fiction"
+        ],
+        "sources": [
+          "wikidata-Q16635326"
+        ],
+        "reason": "Only explicit Q471839/Q130232 statements mapped; absent genres are not negations."
+      }
+    },
+    {
+      "id": "film_c82732426ee82b025598535347039c64",
+      "key": "after-yang",
+      "qid": "Q63398229",
+      "titles": [
+        {
+          "locale": "en",
+          "value": "After Yang",
+          "source": "wikidata-Q63398229"
+        },
+        {
+          "locale": "zh",
+          "value": "杨之后",
+          "source": "wikidata-Q63398229"
+        },
+        {
+          "locale": "zh-hant",
+          "value": "人造眷戀",
+          "source": "wikidata-Q63398229"
+        },
+        {
+          "locale": "ja",
+          "value": "アフター・ヤン",
+          "source": "wikidata-Q63398229"
+        },
+        {
+          "locale": "ko",
+          "value": "애프터 양",
+          "source": "wikidata-Q63398229"
+        },
+        {
+          "locale": "zh",
+          "value": "楊之後",
+          "source": "wikidata-Q63398229"
+        }
+      ],
+      "title_en": "After Yang",
+      "title_zh": "杨之后",
+      "document_text": "After Yang / 杨之后. A father investigates his daughter's broken android companion and discovers its hidden memories. 父亲调查女儿损坏的仿生人伙伴，发现它未曾公开的记忆。",
+      "paraphrase": {
+        "en": "A father investigates his daughter's broken android companion and discovers its hidden memories.",
+        "zh": "父亲调查女儿损坏的仿生人伙伴，发现它未曾公开的记忆。",
+        "sources": [
+          "official-after-yang"
+        ]
+      },
+      "year": {
+        "status": "accepted",
+        "value": 2021,
+        "sources": [
+          "wikidata-Q63398229"
+        ],
+        "reason": "Earliest recorded publication/premiere year in the fixed P577 snapshot; territorial later releases remain separate."
+      },
+      "minutes": {
+        "status": "accepted",
+        "value": 96,
+        "sources": [
+          "official-after-yang",
+          "wikidata-Q63398229"
+        ],
+        "reason": "Published whole-minute value; original units retained in observations."
+      },
+      "runtime_observations": [
+        {
+          "source": "wikidata-Q63398229",
+          "value": 96,
+          "unit": "minutes"
+        },
+        {
+          "source": "official-after-yang",
+          "value": 96,
+          "unit": "minutes"
+        }
+      ],
+      "countries": {
+        "status": "accepted",
+        "value": [
+          "US"
+        ],
+        "sources": [
+          "wikidata-Q63398229"
+        ],
+        "reason": "Explicit fixed P495 claims; a distributor territory is never a country inference."
+      },
+      "directors": {
+        "status": "accepted",
+        "value": [
+          "Q40039676"
+        ],
+        "sources": [
+          "wikidata-Q63398229"
+        ],
+        "reason": "Explicit P57 director identities; actor/producer roles are not inferred."
+      },
+      "genres": {
+        "status": "accepted",
+        "value": [
+          "drama",
+          "science fiction"
+        ],
+        "sources": [
+          "wikidata-Q63398229"
+        ],
+        "reason": "Only explicit Q471839/Q130232 statements mapped; absent genres are not negations."
+      }
+    },
+    {
+      "id": "film_82639eb3c583c6bd695a9adab70462fc",
+      "key": "arrival",
+      "qid": "Q20382729",
+      "titles": [
+        {
+          "locale": "en",
+          "value": "Arrival",
+          "source": "wikidata-Q20382729"
+        },
+        {
+          "locale": "zh",
+          "value": "降临",
+          "source": "wikidata-Q20382729"
+        },
+        {
+          "locale": "ja",
+          "value": "メッセージ",
+          "source": "wikidata-Q20382729"
+        },
+        {
+          "locale": "ko",
+          "value": "컨택트",
+          "source": "wikidata-Q20382729"
+        },
+        {
+          "locale": "ko",
+          "value": "어라이벌",
+          "source": "wikidata-Q20382729"
+        },
+        {
+          "locale": "ko",
+          "value": "네 인생의 이야기",
+          "source": "wikidata-Q20382729"
+        },
+        {
+          "locale": "zh",
+          "value": "異星入境",
+          "source": "wikidata-Q20382729"
+        },
+        {
+          "locale": "zh",
+          "value": "天煞異降",
+          "source": "wikidata-Q20382729"
+        }
+      ],
+      "title_en": "Arrival",
+      "title_zh": "降临",
+      "document_text": "Arrival / 降临. A linguist works to communicate with extraterrestrial visitors who have arrived on Earth. 外星访客来到地球，一名语言学家尝试与它们沟通。",
+      "paraphrase": {
+        "en": "A linguist works to communicate with extraterrestrial visitors who have arrived on Earth.",
+        "zh": "外星访客来到地球，一名语言学家尝试与它们沟通。",
+        "sources": [
+          "official-arrival",
+          "bfi-arrival-plot"
+        ]
+      },
+      "year": {
+        "status": "accepted",
+        "value": 2016,
+        "sources": [
+          "wikidata-Q20382729"
+        ],
+        "reason": "Earliest recorded publication/premiere year in the fixed P577 snapshot; territorial later releases remain separate."
+      },
+      "minutes": {
+        "status": "accepted",
+        "value": 116,
+        "sources": [
+          "official-arrival",
+          "wikidata-Q20382729"
+        ],
+        "reason": "Published whole-minute value; original units retained in observations."
+      },
+      "runtime_observations": [
+        {
+          "source": "wikidata-Q20382729",
+          "value": 116,
+          "unit": "minutes"
+        },
+        {
+          "source": "official-arrival",
+          "value": 116,
+          "unit": "minutes"
+        }
+      ],
+      "countries": {
+        "status": "accepted",
+        "value": [
+          "US"
+        ],
+        "sources": [
+          "wikidata-Q20382729"
+        ],
+        "reason": "Explicit fixed P495 claims; a distributor territory is never a country inference."
+      },
+      "directors": {
+        "status": "accepted",
+        "value": [
+          "Q548823"
+        ],
+        "sources": [
+          "wikidata-Q20382729"
+        ],
+        "reason": "Explicit P57 director identities; actor/producer roles are not inferred."
+      },
+      "genres": {
+        "status": "accepted",
+        "value": [
+          "drama",
+          "science fiction"
+        ],
+        "sources": [
+          "wikidata-Q20382729"
+        ],
+        "reason": "Only explicit Q471839/Q130232 statements mapped; absent genres are not negations."
+      }
+    },
+    {
+      "id": "film_32105708e2d5ed0af3dc22cecdccf459",
+      "key": "moon",
+      "qid": "Q26751",
+      "titles": [
+        {
+          "locale": "en",
+          "value": "Moon",
+          "source": "wikidata-Q26751"
+        },
+        {
+          "locale": "zh",
+          "value": "月球",
+          "source": "wikidata-Q26751"
+        },
+        {
+          "locale": "ja",
+          "value": "月に囚われた男",
+          "source": "wikidata-Q26751"
+        },
+        {
+          "locale": "ko",
+          "value": "더 문",
+          "source": "wikidata-Q26751"
+        },
+        {
+          "locale": "zh",
+          "value": "寂寞月影",
+          "source": "wikidata-Q26751"
+        },
+        {
+          "locale": "zh",
+          "value": "月劫余生",
+          "source": "wikidata-Q26751"
+        },
+        {
+          "locale": "ko",
+          "value": "더문",
+          "source": "wikidata-Q26751"
+        }
+      ],
+      "title_en": "Moon",
+      "title_zh": "月球",
+      "document_text": "Moon / 月球. An isolated lunar worker nears the end of his contract; an accident triggers a disturbing discovery. 独自在月球工作的男子临近合同结束，一次事故带来不安的发现。",
+      "paraphrase": {
+        "en": "An isolated lunar worker nears the end of his contract; an accident triggers a disturbing discovery.",
+        "zh": "独自在月球工作的男子临近合同结束，一次事故带来不安的发现。",
+        "sources": [
+          "official-moon"
+        ]
+      },
+      "year": {
+        "status": "accepted",
+        "value": 2009,
+        "sources": [
+          "wikidata-Q26751"
+        ],
+        "reason": "Earliest recorded publication/premiere year in the fixed P577 snapshot; territorial later releases remain separate."
+      },
+      "minutes": {
+        "status": "accepted",
+        "value": 96,
+        "sources": [
+          "wikidata-Q26751"
+        ],
+        "reason": "Published whole-minute value; original units retained in observations."
+      },
+      "runtime_observations": [
+        {
+          "source": "wikidata-Q26751",
+          "value": 96,
+          "unit": "minutes"
+        }
+      ],
+      "countries": {
+        "status": "accepted",
+        "value": [
+          "GB",
+          "US"
+        ],
+        "sources": [
+          "wikidata-Q26751"
+        ],
+        "reason": "Explicit fixed P495 claims; a distributor territory is never a country inference."
+      },
+      "directors": {
+        "status": "accepted",
+        "value": [
+          "Q552731"
+        ],
+        "sources": [
+          "wikidata-Q26751"
+        ],
+        "reason": "Explicit P57 director identities; actor/producer roles are not inferred."
+      },
+      "genres": {
+        "status": "accepted",
+        "value": [
+          "drama",
+          "science fiction"
+        ],
+        "sources": [
+          "wikidata-Q26751"
+        ],
+        "reason": "Only explicit Q471839/Q130232 statements mapped; absent genres are not negations."
+      }
+    },
+    {
+      "id": "film_8d9a7edb1b540a48231502b9cb7837bb",
+      "key": "perfect-days",
+      "qid": "Q117663112",
+      "titles": [
+        {
+          "locale": "en",
+          "value": "Perfect Days",
+          "source": "wikidata-Q117663112"
+        },
+        {
+          "locale": "zh",
+          "value": "我的完美日常",
+          "source": "wikidata-Q117663112"
+        },
+        {
+          "locale": "ja",
+          "value": "PERFECT DAYS",
+          "source": "wikidata-Q117663112"
+        },
+        {
+          "locale": "ko",
+          "value": "퍼펙트 데이즈",
+          "source": "wikidata-Q117663112"
+        },
+        {
+          "locale": "zh",
+          "value": "完美的日子",
+          "source": "wikidata-Q117663112"
+        },
+        {
+          "locale": "ja",
+          "value": "パーフェクトデイズ",
+          "source": "wikidata-Q117663112"
+        }
+      ],
+      "title_en": "Perfect Days",
+      "title_zh": "我的完美日常",
+      "document_text": "Perfect Days / 我的完美日常. Hirayama cleans toilets in Tokyo, following routines shaped by music, books and unexpected encounters. 平山在东京清扫厕所，日常由音乐、书籍和偶然相遇组成。",
+      "paraphrase": {
+        "en": "Hirayama cleans toilets in Tokyo, following routines shaped by music, books and unexpected encounters.",
+        "zh": "平山在东京清扫厕所，日常由音乐、书籍和偶然相遇组成。",
+        "sources": [
+          "official-perfect-days"
+        ]
+      },
+      "year": {
+        "status": "accepted",
+        "value": 2023,
+        "sources": [
+          "wikidata-Q117663112"
+        ],
+        "reason": "Earliest recorded publication/premiere year in the fixed P577 snapshot; territorial later releases remain separate."
+      },
+      "minutes": {
+        "status": "accepted",
+        "value": 123,
+        "sources": [
+          "wikidata-Q117663112"
+        ],
+        "reason": "Published whole-minute value; original units retained in observations."
+      },
+      "runtime_observations": [
+        {
+          "source": "wikidata-Q117663112",
+          "value": 123,
+          "unit": "minutes"
+        }
+      ],
+      "countries": {
+        "status": "accepted",
+        "value": [
+          "DE",
+          "JP"
+        ],
+        "sources": [
+          "wikidata-Q117663112"
+        ],
+        "reason": "Explicit fixed P495 claims; a distributor territory is never a country inference."
+      },
+      "directors": {
+        "status": "accepted",
+        "value": [
+          "Q55411"
+        ],
+        "sources": [
+          "wikidata-Q117663112"
+        ],
+        "reason": "Explicit P57 director identities; actor/producer roles are not inferred."
+      },
+      "genres": {
+        "status": "accepted",
+        "value": [
+          "drama"
+        ],
+        "sources": [
+          "wikidata-Q117663112"
+        ],
+        "reason": "Only explicit Q471839/Q130232 statements mapped; absent genres are not negations."
+      }
+    },
+    {
+      "id": "film_b9162670a4ef9828ed7e68653cab8c73",
+      "key": "paterson",
+      "qid": "Q23817035",
+      "titles": [
+        {
+          "locale": "en",
+          "value": "Paterson",
+          "source": "wikidata-Q23817035"
+        },
+        {
+          "locale": "zh",
+          "value": "派特森",
+          "source": "wikidata-Q23817035"
+        },
+        {
+          "locale": "ja",
+          "value": "パターソン",
+          "source": "wikidata-Q23817035"
+        },
+        {
+          "locale": "ko",
+          "value": "패터슨",
+          "source": "wikidata-Q23817035"
+        },
+        {
+          "locale": "zh",
+          "value": "帕特森的幸福詩篇",
+          "source": "wikidata-Q23817035"
+        }
+      ],
+      "title_en": "Paterson",
+      "title_zh": "派特森",
+      "document_text": "Paterson / 派特森. A bus driver observes his New Jersey town and writes poetry during a week of everyday routines. 新泽西的一名公交司机，在一周的寻常生活里观察周遭、写诗。",
+      "paraphrase": {
+        "en": "A bus driver observes his New Jersey town and writes poetry during a week of everyday routines.",
+        "zh": "新泽西的一名公交司机，在一周的寻常生活里观察周遭、写诗。",
+        "sources": [
+          "official-paterson"
+        ]
+      },
+      "year": {
+        "status": "accepted",
+        "value": 2016,
+        "sources": [
+          "wikidata-Q23817035"
+        ],
+        "reason": "Earliest recorded publication/premiere year in the fixed P577 snapshot; territorial later releases remain separate."
+      },
+      "minutes": {
+        "status": "accepted",
+        "value": 113,
+        "sources": [
+          "wikidata-Q23817035"
+        ],
+        "reason": "Published whole-minute value; original units retained in observations."
+      },
+      "runtime_observations": [
+        {
+          "source": "wikidata-Q23817035",
+          "value": 113,
+          "unit": "minutes"
+        }
+      ],
+      "countries": {
+        "status": "accepted",
+        "value": [
+          "US"
+        ],
+        "sources": [
+          "wikidata-Q23817035"
+        ],
+        "reason": "Explicit fixed P495 claims; a distributor territory is never a country inference."
+      },
+      "directors": {
+        "status": "accepted",
+        "value": [
+          "Q191755"
+        ],
+        "sources": [
+          "wikidata-Q23817035"
+        ],
+        "reason": "Explicit P57 director identities; actor/producer roles are not inferred."
+      },
+      "genres": {
+        "status": "accepted",
+        "value": [
+          "drama"
+        ],
+        "sources": [
+          "wikidata-Q23817035"
+        ],
+        "reason": "Only explicit Q471839/Q130232 statements mapped; absent genres are not negations."
+      }
+    },
+    {
+      "id": "film_c4743ee97a14dcb9e2ae00cedb6b566c",
+      "key": "ikiru",
+      "qid": "Q152105",
+      "titles": [
+        {
+          "locale": "en",
+          "value": "Ikiru",
+          "source": "wikidata-Q152105"
+        },
+        {
+          "locale": "zh-cn",
+          "value": "生之欲",
+          "source": "wikidata-Q152105"
+        },
+        {
+          "locale": "zh-hans",
+          "value": "生之欲",
+          "source": "wikidata-Q152105"
+        },
+        {
+          "locale": "zh",
+          "value": "生之慾",
+          "source": "wikidata-Q152105"
+        },
+        {
+          "locale": "zh-hant",
+          "value": "生之慾",
+          "source": "wikidata-Q152105"
+        },
+        {
+          "locale": "ja",
+          "value": "生きる",
+          "source": "wikidata-Q152105"
+        },
+        {
+          "locale": "ko",
+          "value": "이키루",
+          "source": "wikidata-Q152105"
+        }
+      ],
+      "title_en": "Ikiru",
+      "title_zh": "生之欲",
+      "document_text": "Ikiru / 生之欲. A longtime Japanese civil servant faces terminal illness and searches for a meaningful contribution. 一名长期任职的日本公务员身患绝症，开始寻找有意义的贡献。",
+      "paraphrase": {
+        "en": "A longtime Japanese civil servant faces terminal illness and searches for a meaningful contribution.",
+        "zh": "一名长期任职的日本公务员身患绝症，开始寻找有意义的贡献。",
+        "sources": [
+          "official-ikiru"
+        ]
+      },
+      "year": {
+        "status": "accepted",
+        "value": 1952,
+        "sources": [
+          "wikidata-Q152105"
+        ],
+        "reason": "Earliest recorded publication/premiere year in the fixed P577 snapshot; territorial later releases remain separate."
+      },
+      "minutes": {
+        "status": "conflicted",
+        "value": null,
+        "sources": [
+          "official-ikiru",
+          "wikidata-Q152105"
+        ],
+        "reason": "Different published whole-minute values; cut/rounding equivalence was not established. Fail duration conditions."
+      },
+      "runtime_observations": [
+        {
+          "source": "wikidata-Q152105",
+          "value": 143,
+          "unit": "minutes"
+        },
+        {
+          "source": "official-ikiru",
+          "value": 130,
+          "unit": "minutes"
+        }
+      ],
+      "countries": {
+        "status": "accepted",
+        "value": [
+          "JP"
+        ],
+        "sources": [
+          "wikidata-Q152105"
+        ],
+        "reason": "Explicit fixed P495 claims; a distributor territory is never a country inference."
+      },
+      "directors": {
+        "status": "accepted",
+        "value": [
+          "Q8006"
+        ],
+        "sources": [
+          "wikidata-Q152105"
+        ],
+        "reason": "Explicit P57 director identities; actor/producer roles are not inferred."
+      },
+      "genres": {
+        "status": "accepted",
+        "value": [
+          "drama"
+        ],
+        "sources": [
+          "wikidata-Q152105"
+        ],
+        "reason": "Only explicit Q471839/Q130232 statements mapped; absent genres are not negations."
+      }
+    },
+    {
+      "id": "film_47d26dac6294b1bc2e15cdcfac7365ed",
+      "key": "living",
+      "qid": "Q107304169",
+      "titles": [
+        {
+          "locale": "en",
+          "value": "Living",
+          "source": "wikidata-Q107304169"
+        },
+        {
+          "locale": "zh",
+          "value": "倫敦生之慾",
+          "source": "wikidata-Q107304169"
+        },
+        {
+          "locale": "ja",
+          "value": "生きる LIVING",
+          "source": "wikidata-Q107304169"
+        },
+        {
+          "locale": "ko",
+          "value": "리빙",
+          "source": "wikidata-Q107304169"
+        },
+        {
+          "locale": "zh",
+          "value": "生之欲（2022年電影）",
+          "source": "wikidata-Q107304169"
+        },
+        {
+          "locale": "zh",
+          "value": "伦敦生之欲",
+          "source": "wikidata-Q107304169"
+        }
+      ],
+      "title_en": "Living",
+      "title_zh": "倫敦生之慾",
+      "document_text": "Living / 倫敦生之慾. A London civil servant learns his time is short and tries to leave something useful for others. 伦敦一名公务员得知时日无多，尝试为他人留下有用的事。",
+      "paraphrase": {
+        "en": "A London civil servant learns his time is short and tries to leave something useful for others.",
+        "zh": "伦敦一名公务员得知时日无多，尝试为他人留下有用的事。",
+        "sources": [
+          "official-living"
+        ]
+      },
+      "year": {
+        "status": "accepted",
+        "value": 2022,
+        "sources": [
+          "wikidata-Q107304169"
+        ],
+        "reason": "Earliest recorded publication/premiere year in the fixed P577 snapshot; territorial later releases remain separate. BFI Player's 2020 catalog label and Sony's 2023 US label are not premiere-year evidence."
+      },
+      "minutes": {
+        "status": "accepted",
+        "value": 102,
+        "sources": [
+          "wikidata-Q107304169",
+          "bfi-living-runtime"
+        ],
+        "reason": "Published whole-minute value; original units retained in observations."
+      },
+      "runtime_observations": [
+        {
+          "source": "wikidata-Q107304169",
+          "value": 102,
+          "unit": "minutes"
+        },
+        {
+          "source": "bfi-living-runtime",
+          "value": 102,
+          "unit": "minutes"
+        }
+      ],
+      "countries": {
+        "status": "accepted",
+        "value": [
+          "GB"
+        ],
+        "sources": [
+          "wikidata-Q107304169"
+        ],
+        "reason": "Explicit fixed P495 claims; a distributor territory is never a country inference."
+      },
+      "directors": {
+        "status": "accepted",
+        "value": [
+          "Q13035667"
+        ],
+        "sources": [
+          "wikidata-Q107304169"
+        ],
+        "reason": "Explicit P57 director identities; actor/producer roles are not inferred."
+      },
+      "genres": {
+        "status": "accepted",
+        "value": [
+          "drama"
+        ],
+        "sources": [
+          "wikidata-Q107304169"
+        ],
+        "reason": "Only explicit Q471839/Q130232 statements mapped; absent genres are not negations."
+      }
+    },
+    {
+      "id": "film_1aa7fd59b59a1ad42f162c1cc11ad43f",
+      "key": "parasite",
+      "qid": "Q61448040",
+      "titles": [
+        {
+          "locale": "en",
+          "value": "Parasite",
+          "source": "wikidata-Q61448040"
+        },
+        {
+          "locale": "zh-cn",
+          "value": "寄生虫",
+          "source": "wikidata-Q61448040"
+        },
+        {
+          "locale": "zh-hans",
+          "value": "寄生虫",
+          "source": "wikidata-Q61448040"
+        },
+        {
+          "locale": "zh",
+          "value": "寄生上流",
+          "source": "wikidata-Q61448040"
+        },
+        {
+          "locale": "zh-hant",
+          "value": "寄生上流",
+          "source": "wikidata-Q61448040"
+        },
+        {
+          "locale": "ja",
+          "value": "パラサイト 半地下の家族",
+          "source": "wikidata-Q61448040"
+        },
+        {
+          "locale": "ko",
+          "value": "기생충",
+          "source": "wikidata-Q61448040"
+        },
+        {
+          "locale": "zh",
+          "value": "上流寄生族",
+          "source": "wikidata-Q61448040"
+        },
+        {
+          "locale": "zh",
+          "value": "寄生蟲",
+          "source": "wikidata-Q61448040"
+        },
+        {
+          "locale": "zh",
+          "value": "寄生魔種",
+          "source": "wikidata-Q61448040"
+        },
+        {
+          "locale": "en",
+          "value": "Gisaengchung",
+          "source": "wikidata-Q61448040"
+        },
+        {
+          "locale": "ja",
+          "value": "パラサイト",
+          "source": "wikidata-Q61448040"
+        }
+      ],
+      "title_en": "Parasite",
+      "title_zh": "寄生虫",
+      "document_text": "Parasite / 寄生虫. A struggling Seoul family becomes entangled with a wealthy household across a sharp class divide. 首尔一个拮据家庭与富裕人家纠缠在一起，阶层鸿沟逐渐显露。",
+      "paraphrase": {
+        "en": "A struggling Seoul family becomes entangled with a wealthy household across a sharp class divide.",
+        "zh": "首尔一个拮据家庭与富裕人家纠缠在一起，阶层鸿沟逐渐显露。",
+        "sources": [
+          "official-parasite"
+        ]
+      },
+      "year": {
+        "status": "accepted",
+        "value": 2019,
+        "sources": [
+          "wikidata-Q61448040"
+        ],
+        "reason": "Earliest recorded publication/premiere year in the fixed P577 snapshot; territorial later releases remain separate."
+      },
+      "minutes": {
+        "status": "conflicted",
+        "value": null,
+        "sources": [
+          "official-parasite",
+          "wikidata-Q61448040"
+        ],
+        "reason": "Different published whole-minute values; cut/rounding equivalence was not established. Fail duration conditions."
+      },
+      "runtime_observations": [
+        {
+          "source": "wikidata-Q61448040",
+          "value": 132,
+          "unit": "minutes"
+        },
+        {
+          "source": "official-parasite",
+          "value": 131,
+          "unit": "minutes"
+        }
+      ],
+      "countries": {
+        "status": "accepted",
+        "value": [
+          "KR"
+        ],
+        "sources": [
+          "wikidata-Q61448040"
+        ],
+        "reason": "Explicit fixed P495 claims; a distributor territory is never a country inference."
+      },
+      "directors": {
+        "status": "accepted",
+        "value": [
+          "Q495980"
+        ],
+        "sources": [
+          "wikidata-Q61448040"
+        ],
+        "reason": "Explicit P57 director identities; actor/producer roles are not inferred."
+      },
+      "genres": {
+        "status": "missing",
+        "value": [],
+        "sources": [
+          "wikidata-Q61448040"
+        ],
+        "reason": "Only explicit Q471839/Q130232 statements mapped; absent genres are not negations."
+      }
+    },
+    {
+      "id": "film_d1a0084d8eb5ff38c2f0af611a73aae1",
+      "key": "shoplifters",
+      "qid": "Q48765577",
+      "titles": [
+        {
+          "locale": "en",
+          "value": "Shoplifters",
+          "source": "wikidata-Q48765577"
+        },
+        {
+          "locale": "zh",
+          "value": "小偷家族",
+          "source": "wikidata-Q48765577"
+        },
+        {
+          "locale": "ja",
+          "value": "万引き家族",
+          "source": "wikidata-Q48765577"
+        },
+        {
+          "locale": "ko",
+          "value": "어느 가족",
+          "source": "wikidata-Q48765577"
+        },
+        {
+          "locale": "en",
+          "value": "Shoplifting Family",
+          "source": "wikidata-Q48765577"
+        },
+        {
+          "locale": "en",
+          "value": "Manbiki Kazoku",
+          "source": "wikidata-Q48765577"
+        },
+        {
+          "locale": "ko",
+          "value": "만비키 가족",
+          "source": "wikidata-Q48765577"
+        }
+      ],
+      "title_en": "Shoplifters",
+      "title_zh": "小偷家族",
+      "document_text": "Shoplifters / 小偷家族. A makeshift Tokyo family survives through petty theft until an arrest exposes its hidden history. 东京一个拼凑的家庭靠小偷小摸生活，逮捕事件揭开隐情。",
+      "paraphrase": {
+        "en": "A makeshift Tokyo family survives through petty theft until an arrest exposes its hidden history.",
+        "zh": "东京一个拼凑的家庭靠小偷小摸生活，逮捕事件揭开隐情。",
+        "sources": [
+          "official-shoplifters"
+        ]
+      },
+      "year": {
+        "status": "accepted",
+        "value": 2018,
+        "sources": [
+          "wikidata-Q48765577"
+        ],
+        "reason": "Earliest recorded publication/premiere year in the fixed P577 snapshot; territorial later releases remain separate."
+      },
+      "minutes": {
+        "status": "accepted",
+        "value": 121,
+        "sources": [
+          "wikidata-Q48765577"
+        ],
+        "reason": "Published whole-minute value; original units retained in observations."
+      },
+      "runtime_observations": [
+        {
+          "source": "wikidata-Q48765577",
+          "value": 121,
+          "unit": "minutes"
+        }
+      ],
+      "countries": {
+        "status": "accepted",
+        "value": [
+          "JP"
+        ],
+        "sources": [
+          "wikidata-Q48765577"
+        ],
+        "reason": "Explicit fixed P495 claims; a distributor territory is never a country inference."
+      },
+      "directors": {
+        "status": "accepted",
+        "value": [
+          "Q740758"
+        ],
+        "sources": [
+          "wikidata-Q48765577"
+        ],
+        "reason": "Explicit P57 director identities; actor/producer roles are not inferred."
+      },
+      "genres": {
+        "status": "accepted",
+        "value": [
+          "drama"
+        ],
+        "sources": [
+          "wikidata-Q48765577"
+        ],
+        "reason": "Only explicit Q471839/Q130232 statements mapped; absent genres are not negations."
+      }
+    },
+    {
+      "id": "film_4b4b0d5016f0693e123ab229eb68e86c",
+      "key": "the-florida-project",
+      "qid": "Q29514872",
+      "titles": [
+        {
+          "locale": "en",
+          "value": "The Florida Project",
+          "source": "wikidata-Q29514872"
+        },
+        {
+          "locale": "zh",
+          "value": "歡迎光臨奇幻城堡",
+          "source": "wikidata-Q29514872"
+        },
+        {
+          "locale": "ja",
+          "value": "ザ・フロリダ・プロジェクト",
+          "source": "wikidata-Q29514872"
+        },
+        {
+          "locale": "ko",
+          "value": "플로리다 프로젝트",
+          "source": "wikidata-Q29514872"
+        },
+        {
+          "locale": "en",
+          "value": "Florida Project",
+          "source": "wikidata-Q29514872"
+        },
+        {
+          "locale": "ko",
+          "value": "더 플로리다 프로젝트",
+          "source": "wikidata-Q29514872"
+        }
+      ],
+      "title_en": "The Florida Project",
+      "title_zh": "歡迎光臨奇幻城堡",
+      "document_text": "The Florida Project / 歡迎光臨奇幻城堡. A young girl enjoys daily adventures while her struggling mother and a motel manager shield her. 小女孩享受每天的冒险，拮据的母亲与汽车旅馆经理试图保护她。",
+      "paraphrase": {
+        "en": "A young girl enjoys daily adventures while her struggling mother and a motel manager shield her.",
+        "zh": "小女孩享受每天的冒险，拮据的母亲与汽车旅馆经理试图保护她。",
+        "sources": [
+          "official-the-florida-project"
+        ]
+      },
+      "year": {
+        "status": "accepted",
+        "value": 2017,
+        "sources": [
+          "wikidata-Q29514872"
+        ],
+        "reason": "Earliest recorded publication/premiere year in the fixed P577 snapshot; territorial later releases remain separate."
+      },
+      "minutes": {
+        "status": "conflicted",
+        "value": null,
+        "sources": [
+          "official-the-florida-project",
+          "wikidata-Q29514872"
+        ],
+        "reason": "Different published whole-minute values; cut/rounding equivalence was not established. Fail duration conditions."
+      },
+      "runtime_observations": [
+        {
+          "source": "wikidata-Q29514872",
+          "value": 115,
+          "unit": "minutes"
+        },
+        {
+          "source": "official-the-florida-project",
+          "value": 111,
+          "unit": "minutes"
+        }
+      ],
+      "countries": {
+        "status": "accepted",
+        "value": [
+          "US"
+        ],
+        "sources": [
+          "wikidata-Q29514872"
+        ],
+        "reason": "Explicit fixed P495 claims; a distributor territory is never a country inference."
+      },
+      "directors": {
+        "status": "accepted",
+        "value": [
+          "Q7441419"
+        ],
+        "sources": [
+          "wikidata-Q29514872"
+        ],
+        "reason": "Explicit P57 director identities; actor/producer roles are not inferred."
+      },
+      "genres": {
+        "status": "accepted",
+        "value": [
+          "drama"
+        ],
+        "sources": [
+          "wikidata-Q29514872"
+        ],
+        "reason": "Only explicit Q471839/Q130232 statements mapped; absent genres are not negations."
+      }
+    },
+    {
+      "id": "film_7ff568d0b5d82d1e71a46c05c06241ac",
+      "key": "minari",
+      "qid": "Q65679599",
+      "titles": [
+        {
+          "locale": "en",
+          "value": "Minari",
+          "source": "wikidata-Q65679599"
+        },
+        {
+          "locale": "zh",
+          "value": "夢想之地",
+          "source": "wikidata-Q65679599"
+        },
+        {
+          "locale": "zh-hant",
+          "value": "夢想之地",
+          "source": "wikidata-Q65679599"
+        },
+        {
+          "locale": "ja",
+          "value": "ミナリ",
+          "source": "wikidata-Q65679599"
+        },
+        {
+          "locale": "ko",
+          "value": "미나리",
+          "source": "wikidata-Q65679599"
+        }
+      ],
+      "title_en": "Minari",
+      "title_zh": "夢想之地",
+      "document_text": "Minari / 夢想之地. A Korean-American family moves to a farm in pursuit of a livelihood and a new home. 一个韩裔美国家庭搬到农场，努力谋生并建立新家。",
+      "paraphrase": {
+        "en": "A Korean-American family moves to a farm in pursuit of a livelihood and a new home.",
+        "zh": "一个韩裔美国家庭搬到农场，努力谋生并建立新家。",
+        "sources": [
+          "official-minari"
+        ]
+      },
+      "year": {
+        "status": "accepted",
+        "value": 2020,
+        "sources": [
+          "wikidata-Q65679599"
+        ],
+        "reason": "Earliest recorded publication/premiere year in the fixed P577 snapshot; territorial later releases remain separate."
+      },
+      "minutes": {
+        "status": "accepted",
+        "value": 115,
+        "sources": [
+          "official-minari",
+          "wikidata-Q65679599"
+        ],
+        "reason": "Published whole-minute value; original units retained in observations."
+      },
+      "runtime_observations": [
+        {
+          "source": "wikidata-Q65679599",
+          "value": 115,
+          "unit": "minutes"
+        },
+        {
+          "source": "official-minari",
+          "value": 115,
+          "unit": "minutes"
+        }
+      ],
+      "countries": {
+        "status": "accepted",
+        "value": [
+          "US"
+        ],
+        "sources": [
+          "wikidata-Q65679599"
+        ],
+        "reason": "Explicit fixed P495 claims; a distributor territory is never a country inference."
+      },
+      "directors": {
+        "status": "accepted",
+        "value": [
+          "Q6514075"
+        ],
+        "sources": [
+          "wikidata-Q65679599"
+        ],
+        "reason": "Explicit P57 director identities; actor/producer roles are not inferred."
+      },
+      "genres": {
+        "status": "accepted",
+        "value": [
+          "drama"
+        ],
+        "sources": [
+          "wikidata-Q65679599"
+        ],
+        "reason": "Only explicit Q471839/Q130232 statements mapped; absent genres are not negations."
+      }
+    },
+    {
+      "id": "film_d9c270d97e12fa7eb8dbd0bccd071901",
+      "key": "after-life",
+      "qid": "Q1139458",
+      "titles": [
+        {
+          "locale": "en",
+          "value": "After Life",
+          "source": "wikidata-Q1139458"
+        },
+        {
+          "locale": "zh",
+          "value": "下一站，天國！",
+          "source": "wikidata-Q1139458"
+        },
+        {
+          "locale": "ja",
+          "value": "ワンダフルライフ",
+          "source": "wikidata-Q1139458"
+        },
+        {
+          "locale": "ko",
+          "value": "원더풀 라이프",
+          "source": "wikidata-Q1139458"
+        },
+        {
+          "locale": "zh",
+          "value": "下一站天國",
+          "source": "wikidata-Q1139458"
+        }
+      ],
+      "title_en": "After Life",
+      "title_zh": "下一站，天國！",
+      "document_text": "After Life / 下一站，天國！. Newly dead people choose one memory to have recreated on film before moving to the next world. 新近逝者选出一段记忆，拍成电影后带往另一个世界。",
+      "paraphrase": {
+        "en": "Newly dead people choose one memory to have recreated on film before moving to the next world.",
+        "zh": "新近逝者选出一段记忆，拍成电影后带往另一个世界。",
+        "sources": [
+          "official-after-life"
+        ]
+      },
+      "year": {
+        "status": "accepted",
+        "value": 1998,
+        "sources": [
+          "wikidata-Q1139458"
+        ],
+        "reason": "Earliest recorded publication/premiere year in the fixed P577 snapshot; territorial later releases remain separate."
+      },
+      "minutes": {
+        "status": "conflicted",
+        "value": null,
+        "sources": [
+          "official-after-life",
+          "wikidata-Q1139458"
+        ],
+        "reason": "Different published whole-minute values; cut/rounding equivalence was not established. Fail duration conditions."
+      },
+      "runtime_observations": [
+        {
+          "source": "wikidata-Q1139458",
+          "value": 118,
+          "unit": "minutes"
+        },
+        {
+          "source": "official-after-life",
+          "value": 119,
+          "unit": "minutes"
+        }
+      ],
+      "countries": {
+        "status": "accepted",
+        "value": [
+          "JP"
+        ],
+        "sources": [
+          "wikidata-Q1139458"
+        ],
+        "reason": "Explicit fixed P495 claims; a distributor territory is never a country inference."
+      },
+      "directors": {
+        "status": "accepted",
+        "value": [
+          "Q740758"
+        ],
+        "sources": [
+          "wikidata-Q1139458"
+        ],
+        "reason": "Explicit P57 director identities; actor/producer roles are not inferred."
+      },
+      "genres": {
+        "status": "accepted",
+        "value": [
+          "drama"
+        ],
+        "sources": [
+          "wikidata-Q1139458"
+        ],
+        "reason": "Only explicit Q471839/Q130232 statements mapped; absent genres are not negations."
+      }
+    },
+    {
+      "id": "film_c4913df3a8e8e145d39b99642733af1a",
+      "key": "a-ghost-story",
+      "qid": "Q27964497",
+      "titles": [
+        {
+          "locale": "en",
+          "value": "A Ghost Story",
+          "source": "wikidata-Q27964497"
+        },
+        {
+          "locale": "zh",
+          "value": "鬼魅浮生",
+          "source": "wikidata-Q27964497"
+        },
+        {
+          "locale": "zh-hant",
+          "value": "鬼魅浮生",
+          "source": "wikidata-Q27964497"
+        },
+        {
+          "locale": "ja",
+          "value": "ア・ゴースト・ストーリー",
+          "source": "wikidata-Q27964497"
+        },
+        {
+          "locale": "ko",
+          "value": "고스트 스토리",
+          "source": "wikidata-Q27964497"
+        },
+        {
+          "locale": "en",
+          "value": "Ghost Story",
+          "source": "wikidata-Q27964497"
+        },
+        {
+          "locale": "ko",
+          "value": "어 고스트 스토리",
+          "source": "wikidata-Q27964497"
+        }
+      ],
+      "title_en": "A Ghost Story",
+      "title_zh": "鬼魅浮生",
+      "document_text": "A Ghost Story / 鬼魅浮生. Loss separates a young couple, while their attachment continues beyond their time together. 一对年轻伴侣因死亡分离，彼此的牵挂仍然延续。",
+      "paraphrase": {
+        "en": "Loss separates a young couple, while their attachment continues beyond their time together.",
+        "zh": "一对年轻伴侣因死亡分离，彼此的牵挂仍然延续。",
+        "sources": [
+          "official-a-ghost-story"
+        ]
+      },
+      "year": {
+        "status": "accepted",
+        "value": 2017,
+        "sources": [
+          "wikidata-Q27964497"
+        ],
+        "reason": "Earliest recorded publication/premiere year in the fixed P577 snapshot; territorial later releases remain separate."
+      },
+      "minutes": {
+        "status": "accepted",
+        "value": 92,
+        "sources": [
+          "official-a-ghost-story",
+          "wikidata-Q27964497"
+        ],
+        "reason": "Published whole-minute value; original units retained in observations."
+      },
+      "runtime_observations": [
+        {
+          "source": "wikidata-Q27964497",
+          "value": 92,
+          "unit": "minutes"
+        },
+        {
+          "source": "official-a-ghost-story",
+          "value": 92,
+          "unit": "minutes"
+        }
+      ],
+      "countries": {
+        "status": "accepted",
+        "value": [
+          "US"
+        ],
+        "sources": [
+          "wikidata-Q27964497"
+        ],
+        "reason": "Explicit fixed P495 claims; a distributor territory is never a country inference."
+      },
+      "directors": {
+        "status": "accepted",
+        "value": [
+          "Q16935094"
+        ],
+        "sources": [
+          "wikidata-Q27964497"
+        ],
+        "reason": "Explicit P57 director identities; actor/producer roles are not inferred."
+      },
+      "genres": {
+        "status": "accepted",
+        "value": [
+          "drama"
+        ],
+        "sources": [
+          "wikidata-Q27964497"
+        ],
+        "reason": "Only explicit Q471839/Q130232 statements mapped; absent genres are not negations."
+      }
+    },
+    {
+      "id": "film_32ae27af7029f7079098df1169756168",
+      "key": "aftersun",
+      "qid": "Q111668106",
+      "titles": [
+        {
+          "locale": "en",
+          "value": "Aftersun",
+          "source": "wikidata-Q111668106"
+        },
+        {
+          "locale": "zh",
+          "value": "晒后假日",
+          "source": "wikidata-Q111668106"
+        },
+        {
+          "locale": "zh-hant",
+          "value": "日麗",
+          "source": "wikidata-Q111668106"
+        },
+        {
+          "locale": "ja",
+          "value": "aftersun／アフターサン",
+          "source": "wikidata-Q111668106"
+        },
+        {
+          "locale": "ko",
+          "value": "에프터선",
+          "source": "wikidata-Q111668106"
+        },
+        {
+          "locale": "zh",
+          "value": "曬後夏日",
+          "source": "wikidata-Q111668106"
+        },
+        {
+          "locale": "ja",
+          "value": "aftersun アフターサン",
+          "source": "wikidata-Q111668106"
+        },
+        {
+          "locale": "ja",
+          "value": "Aftersun/アフターサン",
+          "source": "wikidata-Q111668106"
+        }
+      ],
+      "title_en": "Aftersun",
+      "title_zh": "晒后假日",
+      "document_text": "Aftersun / 晒后假日. Sophie looks back on a holiday with her father, reconciling her memories with what she did not know. 索菲回看与父亲共度的假期，尝试理解记忆里未曾了解的他。",
+      "paraphrase": {
+        "en": "Sophie looks back on a holiday with her father, reconciling her memories with what she did not know.",
+        "zh": "索菲回看与父亲共度的假期，尝试理解记忆里未曾了解的他。",
+        "sources": [
+          "official-aftersun"
+        ]
+      },
+      "year": {
+        "status": "accepted",
+        "value": 2022,
+        "sources": [
+          "wikidata-Q111668106"
+        ],
+        "reason": "Earliest recorded publication/premiere year in the fixed P577 snapshot; territorial later releases remain separate."
+      },
+      "minutes": {
+        "status": "conflicted",
+        "value": null,
+        "sources": [
+          "official-aftersun",
+          "wikidata-Q111668106"
+        ],
+        "reason": "Different published whole-minute values; cut/rounding equivalence was not established. Fail duration conditions."
+      },
+      "runtime_observations": [
+        {
+          "source": "wikidata-Q111668106",
+          "value": 101,
+          "unit": "minutes"
+        },
+        {
+          "source": "official-aftersun",
+          "value": 102,
+          "unit": "minutes"
+        }
+      ],
+      "countries": {
+        "status": "accepted",
+        "value": [
+          "GB",
+          "US"
+        ],
+        "sources": [
+          "wikidata-Q111668106"
+        ],
+        "reason": "Explicit fixed P495 claims; a distributor territory is never a country inference."
+      },
+      "directors": {
+        "status": "accepted",
+        "value": [
+          "Q115803783"
+        ],
+        "sources": [
+          "wikidata-Q111668106"
+        ],
+        "reason": "Explicit P57 director identities; actor/producer roles are not inferred."
+      },
+      "genres": {
+        "status": "accepted",
+        "value": [
+          "drama"
+        ],
+        "sources": [
+          "wikidata-Q111668106"
+        ],
+        "reason": "Only explicit Q471839/Q130232 statements mapped; absent genres are not negations."
+      }
+    },
+    {
+      "id": "film_c90047e2cf3df2a842270a31b6a330ec",
+      "key": "everything-everywhere",
+      "qid": "Q83808444",
+      "titles": [
+        {
+          "locale": "en",
+          "value": "Everything Everywhere All at Once",
+          "source": "wikidata-Q83808444"
+        },
+        {
+          "locale": "zh-cn",
+          "value": "瞬息全宇宙",
+          "source": "wikidata-Q83808444"
+        },
+        {
+          "locale": "zh-hans",
+          "value": "天马行空",
+          "source": "wikidata-Q83808444"
+        },
+        {
+          "locale": "zh",
+          "value": "天馬行空",
+          "source": "wikidata-Q83808444"
+        },
+        {
+          "locale": "zh-hant",
+          "value": "奇異女俠玩救宇宙",
+          "source": "wikidata-Q83808444"
+        },
+        {
+          "locale": "ja",
+          "value": "エブリシング・エブリホウェアー・オール・アット・ワンス",
+          "source": "wikidata-Q83808444"
+        },
+        {
+          "locale": "ko",
+          "value": "에브리씽 에브리웨어 올 앤 원스",
+          "source": "wikidata-Q83808444"
+        },
+        {
+          "locale": "zh",
+          "value": "一切隨處可見",
+          "source": "wikidata-Q83808444"
+        },
+        {
+          "locale": "zh",
+          "value": "媽的多重宇宙",
+          "source": "wikidata-Q83808444"
+        },
+        {
+          "locale": "en",
+          "value": "EEAAO",
+          "source": "wikidata-Q83808444"
+        },
+        {
+          "locale": "ko",
+          "value": "양자경의 더 모든 날 모든 순간",
+          "source": "wikidata-Q83808444"
+        },
+        {
+          "locale": "ko",
+          "value": "천마행공",
+          "source": "wikidata-Q83808444"
+        }
+      ],
+      "title_en": "Everything Everywhere All at Once",
+      "title_zh": "瞬息全宇宙",
+      "document_text": "Everything Everywhere All at Once / 瞬息全宇宙. An immigrant mother crosses fractured realities and faces a crisis involving her family and the multiverse. 移民母亲穿越破碎的现实，面对牵涉家庭与多重宇宙的危机。",
+      "paraphrase": {
+        "en": "An immigrant mother crosses fractured realities and faces a crisis involving her family and the multiverse.",
+        "zh": "移民母亲穿越破碎的现实，面对牵涉家庭与多重宇宙的危机。",
+        "sources": [
+          "official-everything-everywhere"
+        ]
+      },
+      "year": {
+        "status": "accepted",
+        "value": 2022,
+        "sources": [
+          "wikidata-Q83808444"
+        ],
+        "reason": "Earliest recorded publication/premiere year in the fixed P577 snapshot; territorial later releases remain separate."
+      },
+      "minutes": {
+        "status": "conflicted",
+        "value": null,
+        "sources": [
+          "official-everything-everywhere",
+          "wikidata-Q83808444"
+        ],
+        "reason": "Different published whole-minute values; cut/rounding equivalence was not established. Fail duration conditions."
+      },
+      "runtime_observations": [
+        {
+          "source": "wikidata-Q83808444",
+          "value": 140,
+          "unit": "minutes"
+        },
+        {
+          "source": "wikidata-Q83808444",
+          "value": 139,
+          "unit": "minutes"
+        },
+        {
+          "source": "official-everything-everywhere",
+          "value": 139,
+          "unit": "minutes"
+        }
+      ],
+      "countries": {
+        "status": "accepted",
+        "value": [
+          "US"
+        ],
+        "sources": [
+          "wikidata-Q83808444"
+        ],
+        "reason": "Explicit fixed P495 claims; a distributor territory is never a country inference."
+      },
+      "directors": {
+        "status": "accepted",
+        "value": [
+          "Q28746830",
+          "Q28746848"
+        ],
+        "sources": [
+          "wikidata-Q83808444"
+        ],
+        "reason": "Explicit P57 director identities; actor/producer roles are not inferred."
+      },
+      "genres": {
+        "status": "accepted",
+        "value": [
+          "science fiction"
+        ],
+        "sources": [
+          "wikidata-Q83808444"
+        ],
+        "reason": "Only explicit Q471839/Q130232 statements mapped; absent genres are not negations."
+      }
+    }
+  ],
+  "people": [
+    {
+      "qid": "Q740758",
+      "name": "Hirokazu Kore-eda",
+      "aliases": [
+        "Hirokazu Kore-Eda",
+        "Hirokazu Kore-eda",
+        "Hirokazu Koreeda",
+        "Kore-Eda",
+        "Koreeda",
+        "これえだひろかず",
+        "是枝裕和",
+        "고레다 히로카즈",
+        "고레에다 히로카즈",
+        "코레에다 히로카즈"
+      ],
+      "source": "wikidata-Q740758"
+    },
+    {
+      "qid": "Q55431",
+      "name": "Wong Kar-wai",
+      "aliases": [
+        "Chia-wei Wang",
+        "Ga Wai Wong",
+        "Jia Wei Wang",
+        "Kar Wai Wong",
+        "Kar-Wai Wong",
+        "WKW",
+        "Wang Gu Wei",
+        "Wohng Ga Waih",
+        "Wong Kar Wai",
+        "Wong Kar-Wai",
+        "Wong Kar-wai",
+        "ウォン・カーウァイ",
+        "王佳伟",
+        "王家卫",
+        "王家衛",
+        "王家衞",
+        "왕가위",
+        "왕자웨이",
+        "웡가와이"
+      ],
+      "source": "wikidata-Q55431"
+    }
+  ],
+  "cases": [
+    {
+      "id": "identity-en-tokyo",
+      "locale": "en",
+      "kind": "identity",
+      "question": "Tokyo Story",
+      "reference_id": null,
+      "hard": {
+        "version": "search-plan.v2"
+      },
+      "qrels": [
+        {
+          "film_id": "film_c0a13babdf49f9d922e497c96d83b4ba",
+          "grade": 3,
+          "reason": "Exact source-backed English title.",
+          "sources": [
+            "official-tokyo-story",
+            "wikidata-Q26060"
+          ]
+        }
+      ],
+      "zero_grade_reason": "The fixed synopsis does not contain the requested specific premise.",
+      "expected_ids": [
+        "film_c0a13babdf49f9d922e497c96d83b4ba"
+      ],
+      "qrels_status": "source-backed-objective",
+      "split": "test",
+      "translation_group": "identity-en-tokyo",
+      "allowed_ids": [
+        "film_c0a13babdf49f9d922e497c96d83b4ba"
+      ],
+      "embedding_query": null
+    },
+    {
+      "id": "identity-zh-mood",
+      "locale": "zh",
+      "kind": "identity",
+      "question": "花样年华",
+      "reference_id": null,
+      "hard": {
+        "version": "search-plan.v2"
+      },
+      "qrels": [
+        {
+          "film_id": "film_c24885a838181a18fc08dda3ef2e8a06",
+          "grade": 3,
+          "reason": "Exact source-backed Simplified Chinese label.",
+          "sources": [
+            "official-in-the-mood-for-love",
+            "wikidata-Q1056853"
+          ]
+        }
+      ],
+      "zero_grade_reason": "The fixed synopsis does not contain the requested specific premise.",
+      "expected_ids": [
+        "film_c24885a838181a18fc08dda3ef2e8a06"
+      ],
+      "qrels_status": "source-backed-objective",
+      "split": "test",
+      "translation_group": "identity-zh-mood",
+      "allowed_ids": [
+        "film_c24885a838181a18fc08dda3ef2e8a06"
+      ],
+      "embedding_query": null
+    },
+    {
+      "id": "identity-en-sunshine",
+      "locale": "en",
+      "kind": "identity",
+      "question": "Eternal Sunshine of the Spotless Mind",
+      "reference_id": null,
+      "hard": {
+        "version": "search-plan.v2"
+      },
+      "qrels": [
+        {
+          "film_id": "film_45566885297210e3b7c01480cad3e592",
+          "grade": 3,
+          "reason": "Exact source-backed English title.",
+          "sources": [
+            "official-eternal-sunshine",
+            "wikidata-Q208269"
+          ]
+        }
+      ],
+      "zero_grade_reason": "The fixed synopsis does not contain the requested specific premise.",
+      "expected_ids": [
+        "film_45566885297210e3b7c01480cad3e592"
+      ],
+      "qrels_status": "source-backed-objective",
+      "split": "test",
+      "translation_group": "identity-en-sunshine",
+      "allowed_ids": [
+        "film_45566885297210e3b7c01480cad3e592"
+      ],
+      "embedding_query": null
+    },
+    {
+      "id": "identity-zh-everywhere",
+      "locale": "zh",
+      "kind": "identity",
+      "question": "瞬息全宇宙",
+      "reference_id": null,
+      "hard": {
+        "version": "search-plan.v2"
+      },
+      "qrels": [
+        {
+          "film_id": "film_c90047e2cf3df2a842270a31b6a330ec",
+          "grade": 3,
+          "reason": "Exact source-backed zh-cn label.",
+          "sources": [
+            "official-everything-everywhere",
+            "wikidata-Q83808444"
+          ]
+        }
+      ],
+      "zero_grade_reason": "The fixed synopsis does not contain the requested specific premise.",
+      "expected_ids": [
+        "film_c90047e2cf3df2a842270a31b6a330ec"
+      ],
+      "qrels_status": "source-backed-objective",
+      "split": "test",
+      "translation_group": "identity-zh-everywhere",
+      "allowed_ids": [
+        "film_c90047e2cf3df2a842270a31b6a330ec"
+      ],
+      "embedding_query": null
+    },
+    {
+      "id": "plot-en-tokyo",
+      "locale": "en",
+      "kind": "plot_fact",
+      "question": "An old couple travels to Tokyo to visit their adult children.",
+      "reference_id": null,
+      "hard": {
+        "version": "search-plan.v2"
+      },
+      "qrels": [
+        {
+          "film_id": "film_c0a13babdf49f9d922e497c96d83b4ba",
+          "grade": 3,
+          "reason": "The official synopsis specifies the elderly parents and their Tokyo visit.",
+          "sources": [
+            "official-tokyo-story",
+            "wikidata-Q26060"
+          ]
+        }
+      ],
+      "zero_grade_reason": "The fixed synopsis does not contain the requested specific premise.",
+      "expected_ids": [
+        "film_c0a13babdf49f9d922e497c96d83b4ba"
+      ],
+      "qrels_status": "source-backed-objective",
+      "split": "test",
+      "translation_group": "plot-en-tokyo",
+      "allowed_ids": [
+        "film_1aa7fd59b59a1ad42f162c1cc11ad43f",
+        "film_32105708e2d5ed0af3dc22cecdccf459",
+        "film_32ae27af7029f7079098df1169756168",
+        "film_45566885297210e3b7c01480cad3e592",
+        "film_47d26dac6294b1bc2e15cdcfac7365ed",
+        "film_4b4b0d5016f0693e123ab229eb68e86c",
+        "film_4ef9d61174e7ba14bfb60c5ae2892565",
+        "film_7a46b914cc187c1cea8f5d6fd3c32a82",
+        "film_7ff568d0b5d82d1e71a46c05c06241ac",
+        "film_8077701cd5c1d4a4bab55d99385d42d5",
+        "film_82639eb3c583c6bd695a9adab70462fc",
+        "film_8d9a7edb1b540a48231502b9cb7837bb",
+        "film_960d32eba90d7f95c18174fb28d849d0",
+        "film_a3e38d924b2d3fc298eb79a0d349e9ec",
+        "film_b9162670a4ef9828ed7e68653cab8c73",
+        "film_c0a13babdf49f9d922e497c96d83b4ba",
+        "film_c24885a838181a18fc08dda3ef2e8a06",
+        "film_c4743ee97a14dcb9e2ae00cedb6b566c",
+        "film_c4913df3a8e8e145d39b99642733af1a",
+        "film_c82732426ee82b025598535347039c64",
+        "film_c90047e2cf3df2a842270a31b6a330ec",
+        "film_d1a0084d8eb5ff38c2f0af611a73aae1",
+        "film_d9c270d97e12fa7eb8dbd0bccd071901",
+        "film_fb0a6b49596cc730d45217af7525676f"
+      ],
+      "embedding_query": "An old couple travels to Tokyo to visit their adult children."
+    },
+    {
+      "id": "plot-zh-farewell",
+      "locale": "zh",
+      "kind": "plot_fact",
+      "question": "一家人隐瞒祖母的病情，借婚礼团聚。",
+      "reference_id": null,
+      "hard": {
+        "version": "search-plan.v2"
+      },
+      "qrels": [
+        {
+          "film_id": "film_960d32eba90d7f95c18174fb28d849d0",
+          "grade": 3,
+          "reason": "The family reunion/wedding conceals the purpose of saying goodbye to the matriarch.",
+          "sources": [
+            "official-the-farewell",
+            "wikidata-Q60611804"
+          ]
+        }
+      ],
+      "zero_grade_reason": "The fixed synopsis does not contain the requested specific premise.",
+      "expected_ids": [
+        "film_960d32eba90d7f95c18174fb28d849d0"
+      ],
+      "qrels_status": "source-backed-objective",
+      "split": "test",
+      "translation_group": "plot-zh-farewell",
+      "allowed_ids": [
+        "film_1aa7fd59b59a1ad42f162c1cc11ad43f",
+        "film_32105708e2d5ed0af3dc22cecdccf459",
+        "film_32ae27af7029f7079098df1169756168",
+        "film_45566885297210e3b7c01480cad3e592",
+        "film_47d26dac6294b1bc2e15cdcfac7365ed",
+        "film_4b4b0d5016f0693e123ab229eb68e86c",
+        "film_4ef9d61174e7ba14bfb60c5ae2892565",
+        "film_7a46b914cc187c1cea8f5d6fd3c32a82",
+        "film_7ff568d0b5d82d1e71a46c05c06241ac",
+        "film_8077701cd5c1d4a4bab55d99385d42d5",
+        "film_82639eb3c583c6bd695a9adab70462fc",
+        "film_8d9a7edb1b540a48231502b9cb7837bb",
+        "film_960d32eba90d7f95c18174fb28d849d0",
+        "film_a3e38d924b2d3fc298eb79a0d349e9ec",
+        "film_b9162670a4ef9828ed7e68653cab8c73",
+        "film_c0a13babdf49f9d922e497c96d83b4ba",
+        "film_c24885a838181a18fc08dda3ef2e8a06",
+        "film_c4743ee97a14dcb9e2ae00cedb6b566c",
+        "film_c4913df3a8e8e145d39b99642733af1a",
+        "film_c82732426ee82b025598535347039c64",
+        "film_c90047e2cf3df2a842270a31b6a330ec",
+        "film_d1a0084d8eb5ff38c2f0af611a73aae1",
+        "film_d9c270d97e12fa7eb8dbd0bccd071901",
+        "film_fb0a6b49596cc730d45217af7525676f"
+      ],
+      "embedding_query": "一家人隐瞒祖母的病情，借婚礼团聚。"
+    },
+    {
+      "id": "plot-en-robot",
+      "locale": "en",
+      "kind": "plot_fact",
+      "question": "A programmer evaluates a humanoid robot in a secluded home.",
+      "reference_id": null,
+      "hard": {
+        "version": "search-plan.v2"
+      },
+      "qrels": [
+        {
+          "film_id": "film_8077701cd5c1d4a4bab55d99385d42d5",
+          "grade": 3,
+          "reason": "The invited programmer and robot evaluation are the documented premise.",
+          "sources": [
+            "official-ex-machina",
+            "wikidata-Q16635326"
+          ]
+        }
+      ],
+      "zero_grade_reason": "The fixed synopsis does not contain the requested specific premise.",
+      "expected_ids": [
+        "film_8077701cd5c1d4a4bab55d99385d42d5"
+      ],
+      "qrels_status": "source-backed-objective",
+      "split": "test",
+      "translation_group": "plot-en-robot",
+      "allowed_ids": [
+        "film_1aa7fd59b59a1ad42f162c1cc11ad43f",
+        "film_32105708e2d5ed0af3dc22cecdccf459",
+        "film_32ae27af7029f7079098df1169756168",
+        "film_45566885297210e3b7c01480cad3e592",
+        "film_47d26dac6294b1bc2e15cdcfac7365ed",
+        "film_4b4b0d5016f0693e123ab229eb68e86c",
+        "film_4ef9d61174e7ba14bfb60c5ae2892565",
+        "film_7a46b914cc187c1cea8f5d6fd3c32a82",
+        "film_7ff568d0b5d82d1e71a46c05c06241ac",
+        "film_8077701cd5c1d4a4bab55d99385d42d5",
+        "film_82639eb3c583c6bd695a9adab70462fc",
+        "film_8d9a7edb1b540a48231502b9cb7837bb",
+        "film_960d32eba90d7f95c18174fb28d849d0",
+        "film_a3e38d924b2d3fc298eb79a0d349e9ec",
+        "film_b9162670a4ef9828ed7e68653cab8c73",
+        "film_c0a13babdf49f9d922e497c96d83b4ba",
+        "film_c24885a838181a18fc08dda3ef2e8a06",
+        "film_c4743ee97a14dcb9e2ae00cedb6b566c",
+        "film_c4913df3a8e8e145d39b99642733af1a",
+        "film_c82732426ee82b025598535347039c64",
+        "film_c90047e2cf3df2a842270a31b6a330ec",
+        "film_d1a0084d8eb5ff38c2f0af611a73aae1",
+        "film_d9c270d97e12fa7eb8dbd0bccd071901",
+        "film_fb0a6b49596cc730d45217af7525676f"
+      ],
+      "embedding_query": "A programmer evaluates a humanoid robot in a secluded home."
+    },
+    {
+      "id": "plot-zh-arrival",
+      "locale": "zh",
+      "kind": "plot_fact",
+      "question": "外星飞船来到地球，语言学家尝试理解它们的交流方式。",
+      "reference_id": null,
+      "hard": {
+        "version": "search-plan.v2"
+      },
+      "qrels": [
+        {
+          "film_id": "film_82639eb3c583c6bd695a9adab70462fc",
+          "grade": 3,
+          "reason": "BFI describes the linguist communicating with extraterrestrial arrivals.",
+          "sources": [
+            "official-arrival",
+            "wikidata-Q20382729"
+          ]
+        }
+      ],
+      "zero_grade_reason": "The fixed synopsis does not contain the requested specific premise.",
+      "expected_ids": [
+        "film_82639eb3c583c6bd695a9adab70462fc"
+      ],
+      "qrels_status": "source-backed-objective",
+      "split": "test",
+      "translation_group": "plot-zh-arrival",
+      "allowed_ids": [
+        "film_1aa7fd59b59a1ad42f162c1cc11ad43f",
+        "film_32105708e2d5ed0af3dc22cecdccf459",
+        "film_32ae27af7029f7079098df1169756168",
+        "film_45566885297210e3b7c01480cad3e592",
+        "film_47d26dac6294b1bc2e15cdcfac7365ed",
+        "film_4b4b0d5016f0693e123ab229eb68e86c",
+        "film_4ef9d61174e7ba14bfb60c5ae2892565",
+        "film_7a46b914cc187c1cea8f5d6fd3c32a82",
+        "film_7ff568d0b5d82d1e71a46c05c06241ac",
+        "film_8077701cd5c1d4a4bab55d99385d42d5",
+        "film_82639eb3c583c6bd695a9adab70462fc",
+        "film_8d9a7edb1b540a48231502b9cb7837bb",
+        "film_960d32eba90d7f95c18174fb28d849d0",
+        "film_a3e38d924b2d3fc298eb79a0d349e9ec",
+        "film_b9162670a4ef9828ed7e68653cab8c73",
+        "film_c0a13babdf49f9d922e497c96d83b4ba",
+        "film_c24885a838181a18fc08dda3ef2e8a06",
+        "film_c4743ee97a14dcb9e2ae00cedb6b566c",
+        "film_c4913df3a8e8e145d39b99642733af1a",
+        "film_c82732426ee82b025598535347039c64",
+        "film_c90047e2cf3df2a842270a31b6a330ec",
+        "film_d1a0084d8eb5ff38c2f0af611a73aae1",
+        "film_d9c270d97e12fa7eb8dbd0bccd071901",
+        "film_fb0a6b49596cc730d45217af7525676f"
+      ],
+      "embedding_query": "外星飞船来到地球，语言学家尝试理解它们的交流方式。"
+    },
+    {
+      "id": "plot-en-poet",
+      "locale": "en",
+      "kind": "plot_fact",
+      "question": "A bus driver writes poems during his daily routines.",
+      "reference_id": null,
+      "hard": {
+        "version": "search-plan.v2"
+      },
+      "qrels": [
+        {
+          "film_id": "film_b9162670a4ef9828ed7e68653cab8c73",
+          "grade": 3,
+          "reason": "Bleecker Street identifies the bus driver and daily poetry.",
+          "sources": [
+            "official-paterson",
+            "wikidata-Q23817035"
+          ]
+        }
+      ],
+      "zero_grade_reason": "The fixed synopsis does not contain the requested specific premise.",
+      "expected_ids": [
+        "film_b9162670a4ef9828ed7e68653cab8c73"
+      ],
+      "qrels_status": "source-backed-objective",
+      "split": "test",
+      "translation_group": "plot-en-poet",
+      "allowed_ids": [
+        "film_1aa7fd59b59a1ad42f162c1cc11ad43f",
+        "film_32105708e2d5ed0af3dc22cecdccf459",
+        "film_32ae27af7029f7079098df1169756168",
+        "film_45566885297210e3b7c01480cad3e592",
+        "film_47d26dac6294b1bc2e15cdcfac7365ed",
+        "film_4b4b0d5016f0693e123ab229eb68e86c",
+        "film_4ef9d61174e7ba14bfb60c5ae2892565",
+        "film_7a46b914cc187c1cea8f5d6fd3c32a82",
+        "film_7ff568d0b5d82d1e71a46c05c06241ac",
+        "film_8077701cd5c1d4a4bab55d99385d42d5",
+        "film_82639eb3c583c6bd695a9adab70462fc",
+        "film_8d9a7edb1b540a48231502b9cb7837bb",
+        "film_960d32eba90d7f95c18174fb28d849d0",
+        "film_a3e38d924b2d3fc298eb79a0d349e9ec",
+        "film_b9162670a4ef9828ed7e68653cab8c73",
+        "film_c0a13babdf49f9d922e497c96d83b4ba",
+        "film_c24885a838181a18fc08dda3ef2e8a06",
+        "film_c4743ee97a14dcb9e2ae00cedb6b566c",
+        "film_c4913df3a8e8e145d39b99642733af1a",
+        "film_c82732426ee82b025598535347039c64",
+        "film_c90047e2cf3df2a842270a31b6a330ec",
+        "film_d1a0084d8eb5ff38c2f0af611a73aae1",
+        "film_d9c270d97e12fa7eb8dbd0bccd071901",
+        "film_fb0a6b49596cc730d45217af7525676f"
+      ],
+      "embedding_query": "A bus driver writes poems during his daily routines."
+    },
+    {
+      "id": "plot-zh-memory",
+      "locale": "zh",
+      "kind": "plot_fact",
+      "question": "在死后中转站选择一段记忆并拍成电影。",
+      "reference_id": null,
+      "hard": {
+        "version": "search-plan.v2"
+      },
+      "qrels": [
+        {
+          "film_id": "film_d9c270d97e12fa7eb8dbd0bccd071901",
+          "grade": 3,
+          "reason": "The deceased choose one memory for recreation on film.",
+          "sources": [
+            "official-after-life",
+            "wikidata-Q1139458"
+          ]
+        }
+      ],
+      "zero_grade_reason": "The fixed synopsis does not contain the requested specific premise.",
+      "expected_ids": [
+        "film_d9c270d97e12fa7eb8dbd0bccd071901"
+      ],
+      "qrels_status": "source-backed-objective",
+      "split": "test",
+      "translation_group": "plot-zh-memory",
+      "allowed_ids": [
+        "film_1aa7fd59b59a1ad42f162c1cc11ad43f",
+        "film_32105708e2d5ed0af3dc22cecdccf459",
+        "film_32ae27af7029f7079098df1169756168",
+        "film_45566885297210e3b7c01480cad3e592",
+        "film_47d26dac6294b1bc2e15cdcfac7365ed",
+        "film_4b4b0d5016f0693e123ab229eb68e86c",
+        "film_4ef9d61174e7ba14bfb60c5ae2892565",
+        "film_7a46b914cc187c1cea8f5d6fd3c32a82",
+        "film_7ff568d0b5d82d1e71a46c05c06241ac",
+        "film_8077701cd5c1d4a4bab55d99385d42d5",
+        "film_82639eb3c583c6bd695a9adab70462fc",
+        "film_8d9a7edb1b540a48231502b9cb7837bb",
+        "film_960d32eba90d7f95c18174fb28d849d0",
+        "film_a3e38d924b2d3fc298eb79a0d349e9ec",
+        "film_b9162670a4ef9828ed7e68653cab8c73",
+        "film_c0a13babdf49f9d922e497c96d83b4ba",
+        "film_c24885a838181a18fc08dda3ef2e8a06",
+        "film_c4743ee97a14dcb9e2ae00cedb6b566c",
+        "film_c4913df3a8e8e145d39b99642733af1a",
+        "film_c82732426ee82b025598535347039c64",
+        "film_c90047e2cf3df2a842270a31b6a330ec",
+        "film_d1a0084d8eb5ff38c2f0af611a73aae1",
+        "film_d9c270d97e12fa7eb8dbd0bccd071901",
+        "film_fb0a6b49596cc730d45217af7525676f"
+      ],
+      "embedding_query": "在死后中转站选择一段记忆并拍成电影。"
+    },
+    {
+      "id": "theme-en-gathering",
+      "locale": "en",
+      "kind": "theme",
+      "question": "Family members reconnect at a gathering while old tensions remain.",
+      "reference_id": null,
+      "hard": {
+        "version": "search-plan.v2"
+      },
+      "qrels": [
+        {
+          "film_id": "film_fb0a6b49596cc730d45217af7525676f",
+          "grade": 3,
+          "reason": "A memorial gathering and domestic rituals reveal long-held family regrets.",
+          "sources": [
+            "official-still-walking",
+            "wikidata-Q874074"
+          ]
+        },
+        {
+          "film_id": "film_c0a13babdf49f9d922e497c96d83b4ba",
+          "grade": 3,
+          "reason": "An intergenerational visit exposes distance between parents and grown children.",
+          "sources": [
+            "official-tokyo-story",
+            "wikidata-Q26060"
+          ]
+        },
+        {
+          "film_id": "film_960d32eba90d7f95c18174fb28d849d0",
+          "grade": 3,
+          "reason": "A wedding reunion centers on family bonds and an unspoken illness.",
+          "sources": [
+            "official-the-farewell",
+            "wikidata-Q60611804"
+          ]
+        },
+        {
+          "film_id": "film_a3e38d924b2d3fc298eb79a0d349e9ec",
+          "grade": 2,
+          "reason": "Weddings/funerals and several generations provide closely related family encounters.",
+          "sources": [
+            "official-yi-yi",
+            "wikidata-Q704513"
+          ]
+        },
+        {
+          "film_id": "film_7ff568d0b5d82d1e71a46c05c06241ac",
+          "grade": 1,
+          "reason": "Family and a new home overlap, but the documented premise is relocation, not a reunion.",
+          "sources": [
+            "official-minari",
+            "wikidata-Q65679599"
+          ]
+        }
+      ],
+      "zero_grade_reason": "No supporting evidence for this intent in the fixed short synopsis; provisional thematic judgment.",
+      "expected_ids": [
+        "film_960d32eba90d7f95c18174fb28d849d0",
+        "film_a3e38d924b2d3fc298eb79a0d349e9ec",
+        "film_c0a13babdf49f9d922e497c96d83b4ba",
+        "film_fb0a6b49596cc730d45217af7525676f"
+      ],
+      "qrels_status": "provisional-curated-not-human-gold",
+      "split": "test",
+      "translation_group": "theme-en-gathering",
+      "allowed_ids": [
+        "film_1aa7fd59b59a1ad42f162c1cc11ad43f",
+        "film_32105708e2d5ed0af3dc22cecdccf459",
+        "film_32ae27af7029f7079098df1169756168",
+        "film_45566885297210e3b7c01480cad3e592",
+        "film_47d26dac6294b1bc2e15cdcfac7365ed",
+        "film_4b4b0d5016f0693e123ab229eb68e86c",
+        "film_4ef9d61174e7ba14bfb60c5ae2892565",
+        "film_7a46b914cc187c1cea8f5d6fd3c32a82",
+        "film_7ff568d0b5d82d1e71a46c05c06241ac",
+        "film_8077701cd5c1d4a4bab55d99385d42d5",
+        "film_82639eb3c583c6bd695a9adab70462fc",
+        "film_8d9a7edb1b540a48231502b9cb7837bb",
+        "film_960d32eba90d7f95c18174fb28d849d0",
+        "film_a3e38d924b2d3fc298eb79a0d349e9ec",
+        "film_b9162670a4ef9828ed7e68653cab8c73",
+        "film_c0a13babdf49f9d922e497c96d83b4ba",
+        "film_c24885a838181a18fc08dda3ef2e8a06",
+        "film_c4743ee97a14dcb9e2ae00cedb6b566c",
+        "film_c4913df3a8e8e145d39b99642733af1a",
+        "film_c82732426ee82b025598535347039c64",
+        "film_c90047e2cf3df2a842270a31b6a330ec",
+        "film_d1a0084d8eb5ff38c2f0af611a73aae1",
+        "film_d9c270d97e12fa7eb8dbd0bccd071901",
+        "film_fb0a6b49596cc730d45217af7525676f"
+      ],
+      "embedding_query": "Family members reconnect at a gathering while old tensions remain."
+    },
+    {
+      "id": "theme-zh-romance",
+      "locale": "zh",
+      "kind": "theme",
+      "question": "亲密关系里错过、等待与没有说出口的感情。",
+      "reference_id": null,
+      "hard": {
+        "version": "search-plan.v2"
+      },
+      "qrels": [
+        {
+          "film_id": "film_c24885a838181a18fc08dda3ef2e8a06",
+          "grade": 3,
+          "reason": "Neighboring married people develop an intimate bond around their spouses' infidelity.",
+          "sources": [
+            "official-in-the-mood-for-love",
+            "wikidata-Q1056853"
+          ]
+        },
+        {
+          "film_id": "film_7a46b914cc187c1cea8f5d6fd3c32a82",
+          "grade": 3,
+          "reason": "A brief reunion follows decades of separation between childhood sweethearts.",
+          "sources": [
+            "official-past-lives",
+            "wikidata-Q116025865"
+          ]
+        },
+        {
+          "film_id": "film_4ef9d61174e7ba14bfb60c5ae2892565",
+          "grade": 2,
+          "reason": "Lovelorn policemen and new encounters share longing and missed connections.",
+          "sources": [
+            "official-chungking-express",
+            "wikidata-Q766263"
+          ]
+        },
+        {
+          "film_id": "film_45566885297210e3b7c01480cad3e592",
+          "grade": 2,
+          "reason": "Erasing a relationship and resisting its loss address attachment and regret.",
+          "sources": [
+            "official-eternal-sunshine",
+            "wikidata-Q208269"
+          ]
+        },
+        {
+          "film_id": "film_a3e38d924b2d3fc298eb79a0d349e9ec",
+          "grade": 1,
+          "reason": "The father's former love is one strand of a broader family story.",
+          "sources": [
+            "official-yi-yi",
+            "wikidata-Q704513"
+          ]
+        }
+      ],
+      "zero_grade_reason": "No supporting evidence for this intent in the fixed short synopsis; provisional thematic judgment.",
+      "expected_ids": [
+        "film_45566885297210e3b7c01480cad3e592",
+        "film_4ef9d61174e7ba14bfb60c5ae2892565",
+        "film_7a46b914cc187c1cea8f5d6fd3c32a82",
+        "film_c24885a838181a18fc08dda3ef2e8a06"
+      ],
+      "qrels_status": "provisional-curated-not-human-gold",
+      "split": "test",
+      "translation_group": "theme-zh-romance",
+      "allowed_ids": [
+        "film_1aa7fd59b59a1ad42f162c1cc11ad43f",
+        "film_32105708e2d5ed0af3dc22cecdccf459",
+        "film_32ae27af7029f7079098df1169756168",
+        "film_45566885297210e3b7c01480cad3e592",
+        "film_47d26dac6294b1bc2e15cdcfac7365ed",
+        "film_4b4b0d5016f0693e123ab229eb68e86c",
+        "film_4ef9d61174e7ba14bfb60c5ae2892565",
+        "film_7a46b914cc187c1cea8f5d6fd3c32a82",
+        "film_7ff568d0b5d82d1e71a46c05c06241ac",
+        "film_8077701cd5c1d4a4bab55d99385d42d5",
+        "film_82639eb3c583c6bd695a9adab70462fc",
+        "film_8d9a7edb1b540a48231502b9cb7837bb",
+        "film_960d32eba90d7f95c18174fb28d849d0",
+        "film_a3e38d924b2d3fc298eb79a0d349e9ec",
+        "film_b9162670a4ef9828ed7e68653cab8c73",
+        "film_c0a13babdf49f9d922e497c96d83b4ba",
+        "film_c24885a838181a18fc08dda3ef2e8a06",
+        "film_c4743ee97a14dcb9e2ae00cedb6b566c",
+        "film_c4913df3a8e8e145d39b99642733af1a",
+        "film_c82732426ee82b025598535347039c64",
+        "film_c90047e2cf3df2a842270a31b6a330ec",
+        "film_d1a0084d8eb5ff38c2f0af611a73aae1",
+        "film_d9c270d97e12fa7eb8dbd0bccd071901",
+        "film_fb0a6b49596cc730d45217af7525676f"
+      ],
+      "embedding_query": "亲密关系里错过、等待与没有说出口的感情。"
+    },
+    {
+      "id": "theme-en-livelihood",
+      "locale": "en",
+      "kind": "theme",
+      "question": "People living on limited incomes try to protect a makeshift family.",
+      "reference_id": null,
+      "hard": {
+        "version": "search-plan.v2"
+      },
+      "qrels": [
+        {
+          "film_id": "film_d1a0084d8eb5ff38c2f0af611a73aae1",
+          "grade": 3,
+          "reason": "A nontraditional family survives by petty theft; secrecy threatens the unit.",
+          "sources": [
+            "official-shoplifters",
+            "wikidata-Q48765577"
+          ]
+        },
+        {
+          "film_id": "film_4b4b0d5016f0693e123ab229eb68e86c",
+          "grade": 3,
+          "reason": "The struggling mother and motel manager try to protect a child.",
+          "sources": [
+            "official-the-florida-project",
+            "wikidata-Q29514872"
+          ]
+        },
+        {
+          "film_id": "film_1aa7fd59b59a1ad42f162c1cc11ad43f",
+          "grade": 2,
+          "reason": "A poor family and unequal household relations share economic insecurity, not identical family structure.",
+          "sources": [
+            "official-parasite",
+            "wikidata-Q61448040"
+          ]
+        },
+        {
+          "film_id": "film_7ff568d0b5d82d1e71a46c05c06241ac",
+          "grade": 2,
+          "reason": "A family pursues farm income and a new home, though it is not described as makeshift.",
+          "sources": [
+            "official-minari",
+            "wikidata-Q65679599"
+          ]
+        }
+      ],
+      "zero_grade_reason": "No supporting evidence for this intent in the fixed short synopsis; provisional thematic judgment.",
+      "expected_ids": [
+        "film_1aa7fd59b59a1ad42f162c1cc11ad43f",
+        "film_4b4b0d5016f0693e123ab229eb68e86c",
+        "film_7ff568d0b5d82d1e71a46c05c06241ac",
+        "film_d1a0084d8eb5ff38c2f0af611a73aae1"
+      ],
+      "qrels_status": "provisional-curated-not-human-gold",
+      "split": "test",
+      "translation_group": "theme-en-livelihood",
+      "allowed_ids": [
+        "film_1aa7fd59b59a1ad42f162c1cc11ad43f",
+        "film_32105708e2d5ed0af3dc22cecdccf459",
+        "film_32ae27af7029f7079098df1169756168",
+        "film_45566885297210e3b7c01480cad3e592",
+        "film_47d26dac6294b1bc2e15cdcfac7365ed",
+        "film_4b4b0d5016f0693e123ab229eb68e86c",
+        "film_4ef9d61174e7ba14bfb60c5ae2892565",
+        "film_7a46b914cc187c1cea8f5d6fd3c32a82",
+        "film_7ff568d0b5d82d1e71a46c05c06241ac",
+        "film_8077701cd5c1d4a4bab55d99385d42d5",
+        "film_82639eb3c583c6bd695a9adab70462fc",
+        "film_8d9a7edb1b540a48231502b9cb7837bb",
+        "film_960d32eba90d7f95c18174fb28d849d0",
+        "film_a3e38d924b2d3fc298eb79a0d349e9ec",
+        "film_b9162670a4ef9828ed7e68653cab8c73",
+        "film_c0a13babdf49f9d922e497c96d83b4ba",
+        "film_c24885a838181a18fc08dda3ef2e8a06",
+        "film_c4743ee97a14dcb9e2ae00cedb6b566c",
+        "film_c4913df3a8e8e145d39b99642733af1a",
+        "film_c82732426ee82b025598535347039c64",
+        "film_c90047e2cf3df2a842270a31b6a330ec",
+        "film_d1a0084d8eb5ff38c2f0af611a73aae1",
+        "film_d9c270d97e12fa7eb8dbd0bccd071901",
+        "film_fb0a6b49596cc730d45217af7525676f"
+      ],
+      "embedding_query": "People living on limited incomes try to protect a makeshift family."
+    },
+    {
+      "id": "theme-zh-technology",
+      "locale": "zh",
+      "kind": "theme",
+      "question": "在人与技术的关系中追问陪伴、记忆和自我。",
+      "reference_id": null,
+      "hard": {
+        "version": "search-plan.v2"
+      },
+      "qrels": [
+        {
+          "film_id": "film_c82732426ee82b025598535347039c64",
+          "grade": 3,
+          "reason": "The broken companion and its hidden memories directly connect all requested aspects.",
+          "sources": [
+            "official-after-yang",
+            "wikidata-Q63398229"
+          ]
+        },
+        {
+          "film_id": "film_32105708e2d5ed0af3dc22cecdccf459",
+          "grade": 2,
+          "reason": "An isolated worker and computer companion face a destabilizing discovery.",
+          "sources": [
+            "official-moon",
+            "wikidata-Q26751"
+          ]
+        },
+        {
+          "film_id": "film_8077701cd5c1d4a4bab55d99385d42d5",
+          "grade": 2,
+          "reason": "Assessing a humanoid robot addresses the human/technology boundary.",
+          "sources": [
+            "official-ex-machina",
+            "wikidata-Q16635326"
+          ]
+        },
+        {
+          "film_id": "film_45566885297210e3b7c01480cad3e592",
+          "grade": 2,
+          "reason": "A technical memory-erasure procedure changes a personal relationship.",
+          "sources": [
+            "official-eternal-sunshine",
+            "wikidata-Q208269"
+          ]
+        }
+      ],
+      "zero_grade_reason": "No supporting evidence for this intent in the fixed short synopsis; provisional thematic judgment.",
+      "expected_ids": [
+        "film_32105708e2d5ed0af3dc22cecdccf459",
+        "film_45566885297210e3b7c01480cad3e592",
+        "film_8077701cd5c1d4a4bab55d99385d42d5",
+        "film_c82732426ee82b025598535347039c64"
+      ],
+      "qrels_status": "provisional-curated-not-human-gold",
+      "split": "test",
+      "translation_group": "theme-zh-technology",
+      "allowed_ids": [
+        "film_1aa7fd59b59a1ad42f162c1cc11ad43f",
+        "film_32105708e2d5ed0af3dc22cecdccf459",
+        "film_32ae27af7029f7079098df1169756168",
+        "film_45566885297210e3b7c01480cad3e592",
+        "film_47d26dac6294b1bc2e15cdcfac7365ed",
+        "film_4b4b0d5016f0693e123ab229eb68e86c",
+        "film_4ef9d61174e7ba14bfb60c5ae2892565",
+        "film_7a46b914cc187c1cea8f5d6fd3c32a82",
+        "film_7ff568d0b5d82d1e71a46c05c06241ac",
+        "film_8077701cd5c1d4a4bab55d99385d42d5",
+        "film_82639eb3c583c6bd695a9adab70462fc",
+        "film_8d9a7edb1b540a48231502b9cb7837bb",
+        "film_960d32eba90d7f95c18174fb28d849d0",
+        "film_a3e38d924b2d3fc298eb79a0d349e9ec",
+        "film_b9162670a4ef9828ed7e68653cab8c73",
+        "film_c0a13babdf49f9d922e497c96d83b4ba",
+        "film_c24885a838181a18fc08dda3ef2e8a06",
+        "film_c4743ee97a14dcb9e2ae00cedb6b566c",
+        "film_c4913df3a8e8e145d39b99642733af1a",
+        "film_c82732426ee82b025598535347039c64",
+        "film_c90047e2cf3df2a842270a31b6a330ec",
+        "film_d1a0084d8eb5ff38c2f0af611a73aae1",
+        "film_d9c270d97e12fa7eb8dbd0bccd071901",
+        "film_fb0a6b49596cc730d45217af7525676f"
+      ],
+      "embedding_query": "在人与技术的关系中追问陪伴、记忆和自我。"
+    },
+    {
+      "id": "theme-en-routines",
+      "locale": "en",
+      "kind": "theme",
+      "question": "How ordinary work and repeated daily routines can carry meaning.",
+      "reference_id": null,
+      "hard": {
+        "version": "search-plan.v2"
+      },
+      "qrels": [
+        {
+          "film_id": "film_8d9a7edb1b540a48231502b9cb7837bb",
+          "grade": 3,
+          "reason": "Toilet cleaning and ordinary cultural routines form the central daily pattern.",
+          "sources": [
+            "official-perfect-days",
+            "wikidata-Q117663112"
+          ]
+        },
+        {
+          "film_id": "film_b9162670a4ef9828ed7e68653cab8c73",
+          "grade": 3,
+          "reason": "Bus driving and poetry structure an ordinary working week.",
+          "sources": [
+            "official-paterson",
+            "wikidata-Q23817035"
+          ]
+        },
+        {
+          "film_id": "film_c4743ee97a14dcb9e2ae00cedb6b566c",
+          "grade": 3,
+          "reason": "A career civil servant seeks a meaningful contribution after terminal illness.",
+          "sources": [
+            "official-ikiru",
+            "wikidata-Q152105"
+          ]
+        },
+        {
+          "film_id": "film_47d26dac6294b1bc2e15cdcfac7365ed",
+          "grade": 3,
+          "reason": "An office worker uses his remaining time to leave a useful legacy.",
+          "sources": [
+            "official-living",
+            "wikidata-Q107304169"
+          ]
+        },
+        {
+          "film_id": "film_fb0a6b49596cc730d45217af7525676f",
+          "grade": 1,
+          "reason": "Cooking/domestic routines matter, although the story centers on family remembrance.",
+          "sources": [
+            "official-still-walking",
+            "wikidata-Q874074"
+          ]
+        }
+      ],
+      "zero_grade_reason": "No supporting evidence for this intent in the fixed short synopsis; provisional thematic judgment.",
+      "expected_ids": [
+        "film_47d26dac6294b1bc2e15cdcfac7365ed",
+        "film_8d9a7edb1b540a48231502b9cb7837bb",
+        "film_b9162670a4ef9828ed7e68653cab8c73",
+        "film_c4743ee97a14dcb9e2ae00cedb6b566c"
+      ],
+      "qrels_status": "provisional-curated-not-human-gold",
+      "split": "test",
+      "translation_group": "theme-en-routines",
+      "allowed_ids": [
+        "film_1aa7fd59b59a1ad42f162c1cc11ad43f",
+        "film_32105708e2d5ed0af3dc22cecdccf459",
+        "film_32ae27af7029f7079098df1169756168",
+        "film_45566885297210e3b7c01480cad3e592",
+        "film_47d26dac6294b1bc2e15cdcfac7365ed",
+        "film_4b4b0d5016f0693e123ab229eb68e86c",
+        "film_4ef9d61174e7ba14bfb60c5ae2892565",
+        "film_7a46b914cc187c1cea8f5d6fd3c32a82",
+        "film_7ff568d0b5d82d1e71a46c05c06241ac",
+        "film_8077701cd5c1d4a4bab55d99385d42d5",
+        "film_82639eb3c583c6bd695a9adab70462fc",
+        "film_8d9a7edb1b540a48231502b9cb7837bb",
+        "film_960d32eba90d7f95c18174fb28d849d0",
+        "film_a3e38d924b2d3fc298eb79a0d349e9ec",
+        "film_b9162670a4ef9828ed7e68653cab8c73",
+        "film_c0a13babdf49f9d922e497c96d83b4ba",
+        "film_c24885a838181a18fc08dda3ef2e8a06",
+        "film_c4743ee97a14dcb9e2ae00cedb6b566c",
+        "film_c4913df3a8e8e145d39b99642733af1a",
+        "film_c82732426ee82b025598535347039c64",
+        "film_c90047e2cf3df2a842270a31b6a330ec",
+        "film_d1a0084d8eb5ff38c2f0af611a73aae1",
+        "film_d9c270d97e12fa7eb8dbd0bccd071901",
+        "film_fb0a6b49596cc730d45217af7525676f"
+      ],
+      "embedding_query": "How ordinary work and repeated daily routines can carry meaning."
+    },
+    {
+      "id": "theme-zh-father",
+      "locale": "zh",
+      "kind": "theme",
+      "question": "成年后回看与父亲相处的往事，记忆里的理解与遗憾。",
+      "reference_id": null,
+      "hard": {
+        "version": "search-plan.v2"
+      },
+      "qrels": [
+        {
+          "film_id": "film_32ae27af7029f7079098df1169756168",
+          "grade": 3,
+          "reason": "Sophie revisits a holiday and the gap between her memory and her father's interior life.",
+          "sources": [
+            "official-aftersun",
+            "wikidata-Q111668106"
+          ]
+        },
+        {
+          "film_id": "film_c82732426ee82b025598535347039c64",
+          "grade": 1,
+          "reason": "A father and hidden memories overlap, but the viewpoint is not an adult daughter revisiting childhood.",
+          "sources": [
+            "official-after-yang",
+            "wikidata-Q63398229"
+          ]
+        }
+      ],
+      "zero_grade_reason": "No supporting evidence for this intent in the fixed short synopsis; provisional thematic judgment.",
+      "expected_ids": [
+        "film_32ae27af7029f7079098df1169756168"
+      ],
+      "qrels_status": "provisional-curated-not-human-gold",
+      "split": "test",
+      "translation_group": "theme-zh-father",
+      "allowed_ids": [
+        "film_1aa7fd59b59a1ad42f162c1cc11ad43f",
+        "film_32105708e2d5ed0af3dc22cecdccf459",
+        "film_32ae27af7029f7079098df1169756168",
+        "film_45566885297210e3b7c01480cad3e592",
+        "film_47d26dac6294b1bc2e15cdcfac7365ed",
+        "film_4b4b0d5016f0693e123ab229eb68e86c",
+        "film_4ef9d61174e7ba14bfb60c5ae2892565",
+        "film_7a46b914cc187c1cea8f5d6fd3c32a82",
+        "film_7ff568d0b5d82d1e71a46c05c06241ac",
+        "film_8077701cd5c1d4a4bab55d99385d42d5",
+        "film_82639eb3c583c6bd695a9adab70462fc",
+        "film_8d9a7edb1b540a48231502b9cb7837bb",
+        "film_960d32eba90d7f95c18174fb28d849d0",
+        "film_a3e38d924b2d3fc298eb79a0d349e9ec",
+        "film_b9162670a4ef9828ed7e68653cab8c73",
+        "film_c0a13babdf49f9d922e497c96d83b4ba",
+        "film_c24885a838181a18fc08dda3ef2e8a06",
+        "film_c4743ee97a14dcb9e2ae00cedb6b566c",
+        "film_c4913df3a8e8e145d39b99642733af1a",
+        "film_c82732426ee82b025598535347039c64",
+        "film_c90047e2cf3df2a842270a31b6a330ec",
+        "film_d1a0084d8eb5ff38c2f0af611a73aae1",
+        "film_d9c270d97e12fa7eb8dbd0bccd071901",
+        "film_fb0a6b49596cc730d45217af7525676f"
+      ],
+      "embedding_query": "成年后回看与父亲相处的往事，记忆里的理解与遗憾。"
+    },
+    {
+      "id": "reference-en-ikiru",
+      "locale": "en",
+      "kind": "theme",
+      "question": "Films similar to Ikiru.",
+      "reference_id": "film_c4743ee97a14dcb9e2ae00cedb6b566c",
+      "hard": {
+        "version": "search-plan.v2"
+      },
+      "qrels": [
+        {
+          "film_id": "film_47d26dac6294b1bc2e15cdcfac7365ed",
+          "grade": 3,
+          "reason": "Sony explicitly identifies Living as based on Ikiru, sharing the terminally ill civil-servant premise.",
+          "sources": [
+            "official-living",
+            "wikidata-Q107304169"
+          ]
+        },
+        {
+          "film_id": "film_8d9a7edb1b540a48231502b9cb7837bb",
+          "grade": 2,
+          "reason": "A Japanese working life and attention to everyday meaning provide thematic similarity.",
+          "sources": [
+            "official-perfect-days",
+            "wikidata-Q117663112"
+          ]
+        },
+        {
+          "film_id": "film_b9162670a4ef9828ed7e68653cab8c73",
+          "grade": 2,
+          "reason": "An ordinary worker's routines and inner life offer thematic, rather than plot, similarity.",
+          "sources": [
+            "official-paterson",
+            "wikidata-Q23817035"
+          ]
+        }
+      ],
+      "zero_grade_reason": "No supporting evidence for this intent in the fixed short synopsis; provisional thematic judgment.",
+      "expected_ids": [
+        "film_47d26dac6294b1bc2e15cdcfac7365ed",
+        "film_8d9a7edb1b540a48231502b9cb7837bb",
+        "film_b9162670a4ef9828ed7e68653cab8c73"
+      ],
+      "qrels_status": "provisional-curated-not-human-gold",
+      "split": "test",
+      "translation_group": "reference-en-ikiru",
+      "allowed_ids": [
+        "film_1aa7fd59b59a1ad42f162c1cc11ad43f",
+        "film_32105708e2d5ed0af3dc22cecdccf459",
+        "film_32ae27af7029f7079098df1169756168",
+        "film_45566885297210e3b7c01480cad3e592",
+        "film_47d26dac6294b1bc2e15cdcfac7365ed",
+        "film_4b4b0d5016f0693e123ab229eb68e86c",
+        "film_4ef9d61174e7ba14bfb60c5ae2892565",
+        "film_7a46b914cc187c1cea8f5d6fd3c32a82",
+        "film_7ff568d0b5d82d1e71a46c05c06241ac",
+        "film_8077701cd5c1d4a4bab55d99385d42d5",
+        "film_82639eb3c583c6bd695a9adab70462fc",
+        "film_8d9a7edb1b540a48231502b9cb7837bb",
+        "film_960d32eba90d7f95c18174fb28d849d0",
+        "film_a3e38d924b2d3fc298eb79a0d349e9ec",
+        "film_b9162670a4ef9828ed7e68653cab8c73",
+        "film_c0a13babdf49f9d922e497c96d83b4ba",
+        "film_c24885a838181a18fc08dda3ef2e8a06",
+        "film_c4913df3a8e8e145d39b99642733af1a",
+        "film_c82732426ee82b025598535347039c64",
+        "film_c90047e2cf3df2a842270a31b6a330ec",
+        "film_d1a0084d8eb5ff38c2f0af611a73aae1",
+        "film_d9c270d97e12fa7eb8dbd0bccd071901",
+        "film_fb0a6b49596cc730d45217af7525676f"
+      ],
+      "embedding_query": null
+    },
+    {
+      "id": "reference-zh-mood",
+      "locale": "zh",
+      "kind": "theme",
+      "question": "找和《花样年华》相似的电影。",
+      "reference_id": "film_c24885a838181a18fc08dda3ef2e8a06",
+      "hard": {
+        "version": "search-plan.v2"
+      },
+      "qrels": [
+        {
+          "film_id": "film_7a46b914cc187c1cea8f5d6fd3c32a82",
+          "grade": 3,
+          "reason": "A short reunion after long separation offers a strong thematic neighbor for romantic longing.",
+          "sources": [
+            "official-past-lives",
+            "wikidata-Q116025865"
+          ]
+        },
+        {
+          "film_id": "film_4ef9d61174e7ba14bfb60c5ae2892565",
+          "grade": 3,
+          "reason": "The same director's Hong Kong stories of loneliness and new encounters are a thematic neighbor; not a claimed identical plot.",
+          "sources": [
+            "official-chungking-express",
+            "wikidata-Q766263"
+          ]
+        },
+        {
+          "film_id": "film_45566885297210e3b7c01480cad3e592",
+          "grade": 2,
+          "reason": "Attachment, separation and regret offer a related emotional subject.",
+          "sources": [
+            "official-eternal-sunshine",
+            "wikidata-Q208269"
+          ]
+        },
+        {
+          "film_id": "film_a3e38d924b2d3fc298eb79a0d349e9ec",
+          "grade": 1,
+          "reason": "Revisiting a former love is a secondary storyline.",
+          "sources": [
+            "official-yi-yi",
+            "wikidata-Q704513"
+          ]
+        }
+      ],
+      "zero_grade_reason": "No supporting evidence for this intent in the fixed short synopsis; provisional thematic judgment.",
+      "expected_ids": [
+        "film_45566885297210e3b7c01480cad3e592",
+        "film_4ef9d61174e7ba14bfb60c5ae2892565",
+        "film_7a46b914cc187c1cea8f5d6fd3c32a82"
+      ],
+      "qrels_status": "provisional-curated-not-human-gold",
+      "split": "test",
+      "translation_group": "reference-zh-mood",
+      "allowed_ids": [
+        "film_1aa7fd59b59a1ad42f162c1cc11ad43f",
+        "film_32105708e2d5ed0af3dc22cecdccf459",
+        "film_32ae27af7029f7079098df1169756168",
+        "film_45566885297210e3b7c01480cad3e592",
+        "film_47d26dac6294b1bc2e15cdcfac7365ed",
+        "film_4b4b0d5016f0693e123ab229eb68e86c",
+        "film_4ef9d61174e7ba14bfb60c5ae2892565",
+        "film_7a46b914cc187c1cea8f5d6fd3c32a82",
+        "film_7ff568d0b5d82d1e71a46c05c06241ac",
+        "film_8077701cd5c1d4a4bab55d99385d42d5",
+        "film_82639eb3c583c6bd695a9adab70462fc",
+        "film_8d9a7edb1b540a48231502b9cb7837bb",
+        "film_960d32eba90d7f95c18174fb28d849d0",
+        "film_a3e38d924b2d3fc298eb79a0d349e9ec",
+        "film_b9162670a4ef9828ed7e68653cab8c73",
+        "film_c0a13babdf49f9d922e497c96d83b4ba",
+        "film_c4743ee97a14dcb9e2ae00cedb6b566c",
+        "film_c4913df3a8e8e145d39b99642733af1a",
+        "film_c82732426ee82b025598535347039c64",
+        "film_c90047e2cf3df2a842270a31b6a330ec",
+        "film_d1a0084d8eb5ff38c2f0af611a73aae1",
+        "film_d9c270d97e12fa7eb8dbd0bccd071901",
+        "film_fb0a6b49596cc730d45217af7525676f"
+      ],
+      "embedding_query": null
+    },
+    {
+      "id": "hard-en-director",
+      "locale": "en",
+      "kind": "hard_conditions",
+      "question": "Japanese films directed by Hirokazu Kore-eda from 1998 through 2018.",
+      "reference_id": null,
+      "hard": {
+        "version": "search-plan.v2",
+        "countries": [
+          "JP"
+        ],
+        "people": [
+          {
+            "name": "Hirokazu Kore-eda",
+            "role": "director",
+            "exclude": false
+          }
+        ],
+        "year_min": 1998,
+        "year_max": 2018
+      },
+      "qrels": [
+        {
+          "film_id": "film_fb0a6b49596cc730d45217af7525676f",
+          "grade": 3,
+          "reason": "All source-backed hard predicates match; missing/conflicted fields fail closed.",
+          "sources": [
+            "official-still-walking",
+            "wikidata-Q874074"
+          ]
+        },
+        {
+          "film_id": "film_d1a0084d8eb5ff38c2f0af611a73aae1",
+          "grade": 3,
+          "reason": "All source-backed hard predicates match; missing/conflicted fields fail closed.",
+          "sources": [
+            "official-shoplifters",
+            "wikidata-Q48765577"
+          ]
+        },
+        {
+          "film_id": "film_d9c270d97e12fa7eb8dbd0bccd071901",
+          "grade": 3,
+          "reason": "All source-backed hard predicates match; missing/conflicted fields fail closed.",
+          "sources": [
+            "official-after-life",
+            "wikidata-Q1139458"
+          ]
+        }
+      ],
+      "zero_grade_reason": "At least one required source-backed predicate is absent, conflicted or outside the requested bounds.",
+      "expected_ids": [
+        "film_d1a0084d8eb5ff38c2f0af611a73aae1",
+        "film_d9c270d97e12fa7eb8dbd0bccd071901",
+        "film_fb0a6b49596cc730d45217af7525676f"
+      ],
+      "qrels_status": "source-backed-objective",
+      "split": "test",
+      "translation_group": "hard-en-director",
+      "allowed_ids": [
+        "film_d1a0084d8eb5ff38c2f0af611a73aae1",
+        "film_d9c270d97e12fa7eb8dbd0bccd071901",
+        "film_fb0a6b49596cc730d45217af7525676f"
+      ],
+      "embedding_query": null
+    },
+    {
+      "id": "hard-zh-decade",
+      "locale": "zh",
+      "kind": "hard_conditions",
+      "question": "王家卫执导、1990年代上映的香港电影。",
+      "reference_id": null,
+      "hard": {
+        "version": "search-plan.v2",
+        "countries": [
+          "HK"
+        ],
+        "people": [
+          {
+            "name": "王家卫",
+            "role": "director",
+            "exclude": false
+          }
+        ],
+        "year_min": 1990,
+        "year_max": 1999
+      },
+      "qrels": [
+        {
+          "film_id": "film_4ef9d61174e7ba14bfb60c5ae2892565",
+          "grade": 3,
+          "reason": "All source-backed hard predicates match; missing/conflicted fields fail closed.",
+          "sources": [
+            "official-chungking-express",
+            "wikidata-Q766263"
+          ]
+        }
+      ],
+      "zero_grade_reason": "At least one required source-backed predicate is absent, conflicted or outside the requested bounds.",
+      "expected_ids": [
+        "film_4ef9d61174e7ba14bfb60c5ae2892565"
+      ],
+      "qrels_status": "source-backed-objective",
+      "split": "test",
+      "translation_group": "hard-zh-decade",
+      "allowed_ids": [
+        "film_4ef9d61174e7ba14bfb60c5ae2892565"
+      ],
+      "embedding_query": null
+    },
+    {
+      "id": "hard-en-duration",
+      "locale": "en",
+      "kind": "hard_conditions",
+      "question": "American science-fiction films released from 2014 through 2017 and shorter than 120 minutes.",
+      "reference_id": null,
+      "hard": {
+        "version": "search-plan.v2",
+        "countries": [
+          "US"
+        ],
+        "genres": [
+          "science fiction"
+        ],
+        "year_min": 2014,
+        "year_max": 2017,
+        "duration_max": 120,
+        "duration_max_exclusive": true
+      },
+      "qrels": [
+        {
+          "film_id": "film_82639eb3c583c6bd695a9adab70462fc",
+          "grade": 3,
+          "reason": "All source-backed hard predicates match; missing/conflicted fields fail closed.",
+          "sources": [
+            "official-arrival",
+            "wikidata-Q20382729"
+          ]
+        }
+      ],
+      "zero_grade_reason": "At least one required source-backed predicate is absent, conflicted or outside the requested bounds.",
+      "expected_ids": [
+        "film_82639eb3c583c6bd695a9adab70462fc"
+      ],
+      "qrels_status": "source-backed-objective",
+      "split": "test",
+      "translation_group": "hard-en-duration",
+      "allowed_ids": [
+        "film_82639eb3c583c6bd695a9adab70462fc"
+      ],
+      "embedding_query": null
+    },
+    {
+      "id": "hard-zh-duration",
+      "locale": "zh",
+      "kind": "hard_conditions",
+      "question": "2022年至2023年、片长不超过110分钟的电影。",
+      "reference_id": null,
+      "hard": {
+        "version": "search-plan.v2",
+        "year_min": 2022,
+        "year_max": 2023,
+        "duration_max": 110
+      },
+      "qrels": [
+        {
+          "film_id": "film_47d26dac6294b1bc2e15cdcfac7365ed",
+          "grade": 3,
+          "reason": "All source-backed hard predicates match; missing/conflicted fields fail closed.",
+          "sources": [
+            "official-living",
+            "wikidata-Q107304169"
+          ]
+        }
+      ],
+      "zero_grade_reason": "At least one required source-backed predicate is absent, conflicted or outside the requested bounds.",
+      "expected_ids": [
+        "film_47d26dac6294b1bc2e15cdcfac7365ed"
+      ],
+      "qrels_status": "source-backed-objective",
+      "split": "test",
+      "translation_group": "hard-zh-duration",
+      "allowed_ids": [
+        "film_47d26dac6294b1bc2e15cdcfac7365ed"
+      ],
+      "embedding_query": null
+    },
+    {
+      "id": "none-en-submarine",
+      "locale": "en",
+      "kind": "no_answer",
+      "question": "A submarine crew makes first contact under the Arctic ice.",
+      "reference_id": null,
+      "hard": {
+        "version": "search-plan.v2"
+      },
+      "qrels": [],
+      "zero_grade_reason": "No film in the frozen corpus has the complete submarine/Arctic first-contact premise.",
+      "expected_ids": [],
+      "qrels_status": "source-backed-objective",
+      "split": "test",
+      "translation_group": "none-en-submarine",
+      "allowed_ids": [
+        "film_1aa7fd59b59a1ad42f162c1cc11ad43f",
+        "film_32105708e2d5ed0af3dc22cecdccf459",
+        "film_32ae27af7029f7079098df1169756168",
+        "film_45566885297210e3b7c01480cad3e592",
+        "film_47d26dac6294b1bc2e15cdcfac7365ed",
+        "film_4b4b0d5016f0693e123ab229eb68e86c",
+        "film_4ef9d61174e7ba14bfb60c5ae2892565",
+        "film_7a46b914cc187c1cea8f5d6fd3c32a82",
+        "film_7ff568d0b5d82d1e71a46c05c06241ac",
+        "film_8077701cd5c1d4a4bab55d99385d42d5",
+        "film_82639eb3c583c6bd695a9adab70462fc",
+        "film_8d9a7edb1b540a48231502b9cb7837bb",
+        "film_960d32eba90d7f95c18174fb28d849d0",
+        "film_a3e38d924b2d3fc298eb79a0d349e9ec",
+        "film_b9162670a4ef9828ed7e68653cab8c73",
+        "film_c0a13babdf49f9d922e497c96d83b4ba",
+        "film_c24885a838181a18fc08dda3ef2e8a06",
+        "film_c4743ee97a14dcb9e2ae00cedb6b566c",
+        "film_c4913df3a8e8e145d39b99642733af1a",
+        "film_c82732426ee82b025598535347039c64",
+        "film_c90047e2cf3df2a842270a31b6a330ec",
+        "film_d1a0084d8eb5ff38c2f0af611a73aae1",
+        "film_d9c270d97e12fa7eb8dbd0bccd071901",
+        "film_fb0a6b49596cc730d45217af7525676f"
+      ],
+      "embedding_query": "A submarine crew makes first contact under the Arctic ice."
+    },
+    {
+      "id": "none-zh-jupiter",
+      "locale": "zh",
+      "kind": "no_answer",
+      "question": "以木星空间站为主要场景的法庭审判电影。",
+      "reference_id": null,
+      "hard": {
+        "version": "search-plan.v2"
+      },
+      "qrels": [],
+      "zero_grade_reason": "No film in the frozen corpus has the complete Jupiter-station/courtroom premise.",
+      "expected_ids": [],
+      "qrels_status": "source-backed-objective",
+      "split": "test",
+      "translation_group": "none-zh-jupiter",
+      "allowed_ids": [
+        "film_1aa7fd59b59a1ad42f162c1cc11ad43f",
+        "film_32105708e2d5ed0af3dc22cecdccf459",
+        "film_32ae27af7029f7079098df1169756168",
+        "film_45566885297210e3b7c01480cad3e592",
+        "film_47d26dac6294b1bc2e15cdcfac7365ed",
+        "film_4b4b0d5016f0693e123ab229eb68e86c",
+        "film_4ef9d61174e7ba14bfb60c5ae2892565",
+        "film_7a46b914cc187c1cea8f5d6fd3c32a82",
+        "film_7ff568d0b5d82d1e71a46c05c06241ac",
+        "film_8077701cd5c1d4a4bab55d99385d42d5",
+        "film_82639eb3c583c6bd695a9adab70462fc",
+        "film_8d9a7edb1b540a48231502b9cb7837bb",
+        "film_960d32eba90d7f95c18174fb28d849d0",
+        "film_a3e38d924b2d3fc298eb79a0d349e9ec",
+        "film_b9162670a4ef9828ed7e68653cab8c73",
+        "film_c0a13babdf49f9d922e497c96d83b4ba",
+        "film_c24885a838181a18fc08dda3ef2e8a06",
+        "film_c4743ee97a14dcb9e2ae00cedb6b566c",
+        "film_c4913df3a8e8e145d39b99642733af1a",
+        "film_c82732426ee82b025598535347039c64",
+        "film_c90047e2cf3df2a842270a31b6a330ec",
+        "film_d1a0084d8eb5ff38c2f0af611a73aae1",
+        "film_d9c270d97e12fa7eb8dbd0bccd071901",
+        "film_fb0a6b49596cc730d45217af7525676f"
+      ],
+      "embedding_query": "以木星空间站为主要场景的法庭审判电影。"
+    }
+  ],
+  "sources": [
+    {
+      "id": "wikidata-Q26060",
+      "url": "https://www.wikidata.org/wiki/Q26060",
+      "revision": "2556518541",
+      "retrieved": "2026-10-22",
+      "license": "CC0-1.0",
+      "kind": "structured_metadata"
+    },
+    {
+      "id": "official-tokyo-story",
+      "url": "https://www.criterion.com/films/284-tokyo-story",
+      "revision": null,
+      "retrieved": "2026-10-22",
+      "license": "independent-fact-paraphrase; original prose remains copyrighted",
+      "kind": "primary_film_source"
+    },
+    {
+      "id": "wikidata-Q874074",
+      "url": "https://www.wikidata.org/wiki/Q874074",
+      "revision": "2538548018",
+      "retrieved": "2026-10-22",
+      "license": "CC0-1.0",
+      "kind": "structured_metadata"
+    },
+    {
+      "id": "official-still-walking",
+      "url": "https://www.criterion.com/films/27540-still-walking",
+      "revision": null,
+      "retrieved": "2026-10-22",
+      "license": "independent-fact-paraphrase; original prose remains copyrighted",
+      "kind": "primary_film_source"
+    },
+    {
+      "id": "wikidata-Q704513",
+      "url": "https://www.wikidata.org/wiki/Q704513",
+      "revision": "2538548852",
+      "retrieved": "2026-10-22",
+      "license": "CC0-1.0",
+      "kind": "structured_metadata"
+    },
+    {
+      "id": "official-yi-yi",
+      "url": "https://www.criterion.com/films/781-yi-yi",
+      "revision": null,
+      "retrieved": "2026-10-22",
+      "license": "independent-fact-paraphrase; original prose remains copyrighted",
+      "kind": "primary_film_source"
+    },
+    {
+      "id": "wikidata-Q60611804",
+      "url": "https://www.wikidata.org/wiki/Q60611804",
+      "revision": "2552373511",
+      "retrieved": "2026-10-22",
+      "license": "CC0-1.0",
+      "kind": "structured_metadata"
+    },
+    {
+      "id": "official-the-farewell",
+      "url": "https://a24films.com/films/the-farewell",
+      "revision": null,
+      "retrieved": "2026-10-22",
+      "license": "independent-fact-paraphrase; original prose remains copyrighted",
+      "kind": "primary_film_source"
+    },
+    {
+      "id": "wikidata-Q1056853",
+      "url": "https://www.wikidata.org/wiki/Q1056853",
+      "revision": "2547881830",
+      "retrieved": "2026-10-22",
+      "license": "CC0-1.0",
+      "kind": "structured_metadata"
+    },
+    {
+      "id": "official-in-the-mood-for-love",
+      "url": "https://www.criterion.com/films/198-in-the-mood-for-love",
+      "revision": null,
+      "retrieved": "2026-10-22",
+      "license": "independent-fact-paraphrase; original prose remains copyrighted",
+      "kind": "primary_film_source"
+    },
+    {
+      "id": "wikidata-Q766263",
+      "url": "https://www.wikidata.org/wiki/Q766263",
+      "revision": "2542498146",
+      "retrieved": "2026-10-22",
+      "license": "CC0-1.0",
+      "kind": "structured_metadata"
+    },
+    {
+      "id": "official-chungking-express",
+      "url": "https://www.criterion.com/films/226-chungking-express",
+      "revision": null,
+      "retrieved": "2026-10-22",
+      "license": "independent-fact-paraphrase; original prose remains copyrighted",
+      "kind": "primary_film_source"
+    },
+    {
+      "id": "wikidata-Q116025865",
+      "url": "https://www.wikidata.org/wiki/Q116025865",
+      "revision": "2557080167",
+      "retrieved": "2026-10-22",
+      "license": "CC0-1.0",
+      "kind": "structured_metadata"
+    },
+    {
+      "id": "official-past-lives",
+      "url": "https://a24films.com/films/past-lives",
+      "revision": null,
+      "retrieved": "2026-10-22",
+      "license": "independent-fact-paraphrase; original prose remains copyrighted",
+      "kind": "primary_film_source"
+    },
+    {
+      "id": "wikidata-Q208269",
+      "url": "https://www.wikidata.org/wiki/Q208269",
+      "revision": "2558362247",
+      "retrieved": "2026-10-22",
+      "license": "CC0-1.0",
+      "kind": "structured_metadata"
+    },
+    {
+      "id": "official-eternal-sunshine",
+      "url": "https://www.focusfeatures.com/eternal_sunshine_of_the_spotless_mind",
+      "revision": null,
+      "retrieved": "2026-10-22",
+      "license": "independent-fact-paraphrase; original prose remains copyrighted",
+      "kind": "primary_film_source"
+    },
+    {
+      "id": "wikidata-Q16635326",
+      "url": "https://www.wikidata.org/wiki/Q16635326",
+      "revision": "2557088539",
+      "retrieved": "2026-10-22",
+      "license": "CC0-1.0",
+      "kind": "structured_metadata"
+    },
+    {
+      "id": "official-ex-machina",
+      "url": "https://a24films.com/films/ex-machina",
+      "revision": null,
+      "retrieved": "2026-10-22",
+      "license": "independent-fact-paraphrase; original prose remains copyrighted",
+      "kind": "primary_film_source"
+    },
+    {
+      "id": "wikidata-Q63398229",
+      "url": "https://www.wikidata.org/wiki/Q63398229",
+      "revision": "2552210596",
+      "retrieved": "2026-10-22",
+      "license": "CC0-1.0",
+      "kind": "structured_metadata"
+    },
+    {
+      "id": "official-after-yang",
+      "url": "https://a24films.com/films/after-yang",
+      "revision": null,
+      "retrieved": "2026-10-22",
+      "license": "independent-fact-paraphrase; original prose remains copyrighted",
+      "kind": "primary_film_source"
+    },
+    {
+      "id": "wikidata-Q20382729",
+      "url": "https://www.wikidata.org/wiki/Q20382729",
+      "revision": "2558772418",
+      "retrieved": "2026-10-22",
+      "license": "CC0-1.0",
+      "kind": "structured_metadata"
+    },
+    {
+      "id": "official-arrival",
+      "url": "https://www.bfi.org.uk/film/e78648fa-23dd-5ed1-aaac-6c03ffb18ef7/arrival",
+      "revision": null,
+      "retrieved": "2026-10-22",
+      "license": "independent-fact-paraphrase; original prose remains copyrighted",
+      "kind": "primary_film_source"
+    },
+    {
+      "id": "wikidata-Q26751",
+      "url": "https://www.wikidata.org/wiki/Q26751",
+      "revision": "2558546947",
+      "retrieved": "2026-10-22",
+      "license": "CC0-1.0",
+      "kind": "structured_metadata"
+    },
+    {
+      "id": "official-moon",
+      "url": "https://www.sonypictures.com/movies/moon",
+      "revision": null,
+      "retrieved": "2026-10-22",
+      "license": "independent-fact-paraphrase; original prose remains copyrighted",
+      "kind": "primary_film_source"
+    },
+    {
+      "id": "wikidata-Q117663112",
+      "url": "https://www.wikidata.org/wiki/Q117663112",
+      "revision": "2559118509",
+      "retrieved": "2026-10-22",
+      "license": "CC0-1.0",
+      "kind": "structured_metadata"
+    },
+    {
+      "id": "official-perfect-days",
+      "url": "https://www.neonrated.com/film/perfect-days",
+      "revision": null,
+      "retrieved": "2026-10-22",
+      "license": "independent-fact-paraphrase; original prose remains copyrighted",
+      "kind": "primary_film_source"
+    },
+    {
+      "id": "wikidata-Q23817035",
+      "url": "https://www.wikidata.org/wiki/Q23817035",
+      "revision": "2558767185",
+      "retrieved": "2026-10-22",
+      "license": "CC0-1.0",
+      "kind": "structured_metadata"
+    },
+    {
+      "id": "official-paterson",
+      "url": "https://bleeckerstreetmedia.com/paterson",
+      "revision": null,
+      "retrieved": "2026-10-22",
+      "license": "independent-fact-paraphrase; original prose remains copyrighted",
+      "kind": "primary_film_source"
+    },
+    {
+      "id": "wikidata-Q152105",
+      "url": "https://www.wikidata.org/wiki/Q152105",
+      "revision": "2549120917",
+      "retrieved": "2026-10-22",
+      "license": "CC0-1.0",
+      "kind": "structured_metadata"
+    },
+    {
+      "id": "official-ikiru",
+      "url": "https://www.bfi.org.uk/film/57504754-58ba-53bd-9de4-d72080579594/ikiru",
+      "revision": null,
+      "retrieved": "2026-10-22",
+      "license": "independent-fact-paraphrase; original prose remains copyrighted",
+      "kind": "primary_film_source"
+    },
+    {
+      "id": "wikidata-Q107304169",
+      "url": "https://www.wikidata.org/wiki/Q107304169",
+      "revision": "2557106988",
+      "retrieved": "2026-10-22",
+      "license": "CC0-1.0",
+      "kind": "structured_metadata"
+    },
+    {
+      "id": "official-living",
+      "url": "https://www.sonypictures.com/movies/living",
+      "revision": null,
+      "retrieved": "2026-10-22",
+      "license": "independent-fact-paraphrase; original prose remains copyrighted",
+      "kind": "primary_film_source"
+    },
+    {
+      "id": "wikidata-Q61448040",
+      "url": "https://www.wikidata.org/wiki/Q61448040",
+      "revision": "2556031043",
+      "retrieved": "2026-10-22",
+      "license": "CC0-1.0",
+      "kind": "structured_metadata"
+    },
+    {
+      "id": "official-parasite",
+      "url": "https://www.criterion.com/films/30619-parasite",
+      "revision": null,
+      "retrieved": "2026-10-22",
+      "license": "independent-fact-paraphrase; original prose remains copyrighted",
+      "kind": "primary_film_source"
+    },
+    {
+      "id": "wikidata-Q48765577",
+      "url": "https://www.wikidata.org/wiki/Q48765577",
+      "revision": "2559117007",
+      "retrieved": "2026-10-22",
+      "license": "CC0-1.0",
+      "kind": "structured_metadata"
+    },
+    {
+      "id": "official-shoplifters",
+      "url": "https://www.magpictures.com/shoplifters/trailer/",
+      "revision": null,
+      "retrieved": "2026-10-22",
+      "license": "independent-fact-paraphrase; original prose remains copyrighted",
+      "kind": "primary_film_source"
+    },
+    {
+      "id": "wikidata-Q29514872",
+      "url": "https://www.wikidata.org/wiki/Q29514872",
+      "revision": "2558780223",
+      "retrieved": "2026-10-22",
+      "license": "CC0-1.0",
+      "kind": "structured_metadata"
+    },
+    {
+      "id": "official-the-florida-project",
+      "url": "https://a24films.com/films/the-florida-project",
+      "revision": null,
+      "retrieved": "2026-10-22",
+      "license": "independent-fact-paraphrase; original prose remains copyrighted",
+      "kind": "primary_film_source"
+    },
+    {
+      "id": "wikidata-Q65679599",
+      "url": "https://www.wikidata.org/wiki/Q65679599",
+      "revision": "2557120615",
+      "retrieved": "2026-10-22",
+      "license": "CC0-1.0",
+      "kind": "structured_metadata"
+    },
+    {
+      "id": "official-minari",
+      "url": "https://a24films.com/films/minari",
+      "revision": null,
+      "retrieved": "2026-10-22",
+      "license": "independent-fact-paraphrase; original prose remains copyrighted",
+      "kind": "primary_film_source"
+    },
+    {
+      "id": "wikidata-Q1139458",
+      "url": "https://www.wikidata.org/wiki/Q1139458",
+      "revision": "2552375036",
+      "retrieved": "2026-10-22",
+      "license": "CC0-1.0",
+      "kind": "structured_metadata"
+    },
+    {
+      "id": "official-after-life",
+      "url": "https://www.criterion.com/films/29081-after-life",
+      "revision": null,
+      "retrieved": "2026-10-22",
+      "license": "independent-fact-paraphrase; original prose remains copyrighted",
+      "kind": "primary_film_source"
+    },
+    {
+      "id": "wikidata-Q27964497",
+      "url": "https://www.wikidata.org/wiki/Q27964497",
+      "revision": "2558810690",
+      "retrieved": "2026-10-22",
+      "license": "CC0-1.0",
+      "kind": "structured_metadata"
+    },
+    {
+      "id": "official-a-ghost-story",
+      "url": "https://a24films.com/films/a-ghost-story",
+      "revision": null,
+      "retrieved": "2026-10-22",
+      "license": "independent-fact-paraphrase; original prose remains copyrighted",
+      "kind": "primary_film_source"
+    },
+    {
+      "id": "wikidata-Q111668106",
+      "url": "https://www.wikidata.org/wiki/Q111668106",
+      "revision": "2557085505",
+      "retrieved": "2026-10-22",
+      "license": "CC0-1.0",
+      "kind": "structured_metadata"
+    },
+    {
+      "id": "official-aftersun",
+      "url": "https://a24films.com/films/aftersun",
+      "revision": null,
+      "retrieved": "2026-10-22",
+      "license": "independent-fact-paraphrase; original prose remains copyrighted",
+      "kind": "primary_film_source"
+    },
+    {
+      "id": "wikidata-Q83808444",
+      "url": "https://www.wikidata.org/wiki/Q83808444",
+      "revision": "2557107500",
+      "retrieved": "2026-10-22",
+      "license": "CC0-1.0",
+      "kind": "structured_metadata"
+    },
+    {
+      "id": "official-everything-everywhere",
+      "url": "https://a24films.com/films/everything-everywhere-all-at-once",
+      "revision": null,
+      "retrieved": "2026-10-22",
+      "license": "independent-fact-paraphrase; original prose remains copyrighted",
+      "kind": "primary_film_source"
+    },
+    {
+      "id": "wikidata-Q740758",
+      "url": "https://www.wikidata.org/wiki/Q740758",
+      "revision": "2558706589",
+      "retrieved": "2026-10-22",
+      "license": "CC0-1.0",
+      "kind": "structured_metadata"
+    },
+    {
+      "id": "wikidata-Q55431",
+      "url": "https://www.wikidata.org/wiki/Q55431",
+      "revision": "2558069505",
+      "retrieved": "2026-10-22",
+      "license": "CC0-1.0",
+      "kind": "structured_metadata"
+    },
+    {
+      "id": "bfi-arrival-plot",
+      "url": "https://www.bfi.org.uk/features/strange-new-worlds-craft-denis-villeneuve",
+      "revision": null,
+      "retrieved": "2026-10-22",
+      "license": "independent-fact-paraphrase; original prose remains copyrighted",
+      "kind": "primary_film_source"
+    },
+    {
+      "id": "bfi-living-runtime",
+      "url": "https://player.bfi.org.uk/rentals/film/watch-living-2020-online",
+      "revision": null,
+      "retrieved": "2026-10-22",
+      "license": "factual-metadata-only; original prose remains copyrighted",
+      "kind": "primary_film_source"
+    }
+  ],
+  "configuration": {
+    "model": "nvidia/nemotron-3.5-embed-8b:free",
+    "provider": "nvidia/bf16",
+    "dimensions": 4096,
+    "model_created": 1792591666,
+    "provider_fingerprint": "368d665ce45b20e515a3f00a79de6cb3b2d15465210d85a68c70aae794718044",
+    "input_type": {
+      "document": "passage",
+      "query": "query"
+    },
+    "minimum_similarity": 0.35,
+    "rrf_k": 60,
+    "hybrid_weights": {
+      "dense": 1,
+      "lexical": 1
+    },
+    "lexical_policy": "existing-semantic-search-NFKC-English-words-CJK-bigrams-v1",
+    "same_document_text_for_all_methods": true,
+    "maximum_requests": 42,
+    "maximum_encoded_texts": 42,
+    "expected_document_encodings": 24,
+    "expected_query_encodings": 14,
+    "maximum_reserved_tokens": 20000,
+    "cost_ceiling_usd": "0",
+    "fallbacks": false,
+    "automatic_retries": 0,
+    "chat_requests": 0,
+    "rerank_requests": 0,
+    "nvidia_input_logging_accepted": true,
+    "production_enabled": false,
+    "tuning_on_this_test_set": false,
+    "sent_fields": [
+      "films[].document_text",
+      "cases[].embedding_query (non-null only)"
+    ],
+    "local_only_fields": [
+      "source URLs/revisions",
+      "stable IDs",
+      "qrels/reasons",
+      "hard fact records",
+      "title aliases beyond document text",
+      "private library (never read)"
+    ]
+  }
+}
