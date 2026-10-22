@@ -1,0 +1,3489 @@
+{
+  "version": "public-movie-evaluation.results.v1",
+  "status": "completed_public_movie_pilot",
+  "implementation_head": "a836b576b23a3a7325ba710ce50e6e37ecab03b6",
+  "freeze_id": "289c657b808e30bad11c61137d1ec3d59db0d43ec7daf32697d732397ee40df3",
+  "fixture_sha256": "1e8e52f991866c2d8240c464b1b45d4720bc6b6a0002de4f2bcaaefe162884ad",
+  "evidence_sha256": "c0f9e3e9693d61c01c0ff0539b2110631e82b62bf5745d5a9bd66fd8f977c475",
+  "corpus_revision": "b9c422cbd83d605e3f4e9b7565a45f5bc8942431626c84d0efbce1226cb2c220",
+  "model_requested": "nvidia/nemotron-3.5-embed-8b:free",
+  "provider_requested": "nvidia/bf16",
+  "models_observed": [
+    "nvidia/nemotron-3.5-embed-8b"
+  ],
+  "providers_observed": [
+    "Nvidia"
+  ],
+  "dimensions": 4096,
+  "model_created": 1792591666,
+  "first_response_utc": "2026-10-22T09:04:10.127200+00:00",
+  "last_response_utc": "2026-10-22T09:08:39.802565+00:00",
+  "counts": {
+    "films": 24,
+    "questions": 24,
+    "languages": {
+      "en": 12,
+      "zh": 12
+    },
+    "semantic_cases": 16,
+    "question_kinds": {
+      "identity": 4,
+      "plot_fact": 6,
+      "theme": 8,
+      "hard_conditions": 4,
+      "no_answer": 2
+    },
+    "documents_encoded": 24,
+    "queries_encoded": 14,
+    "requests": 38,
+    "maximum_authorized_requests": 42,
+    "tokens": 1653,
+    "chat_requests": 0,
+    "rerank_requests": 0,
+    "retries": 0,
+    "paid_fallbacks": 0
+  },
+  "cost": {
+    "reported_cost_usd": "0",
+    "estimated_cost_usd": "0",
+    "cost_complete": true,
+    "all_costs_reported": true
+  },
+  "wall_ms": 275814.991,
+  "remote": {
+    "requests": 38,
+    "median_ms": 5437.336499999999,
+    "p95_ms": 15983.722,
+    "total_ms": 246407.717
+  },
+  "remote_documents": {
+    "requests": 24,
+    "median_ms": 1991.095,
+    "p95_ms": 9552.433,
+    "total_ms": 94118.938
+  },
+  "remote_queries": {
+    "requests": 14,
+    "median_ms": 12217.1365,
+    "p95_ms": 16219.733,
+    "total_ms": 152288.779
+  },
+  "metadata_coverage": {
+    "runtime_accepted": 14,
+    "runtime_conflicted": 10,
+    "runtime_conflicted_films": [
+      "tokyo-story",
+      "the-farewell",
+      "chungking-express",
+      "past-lives",
+      "ikiru",
+      "parasite",
+      "the-florida-project",
+      "after-life",
+      "aftersun",
+      "everything-everywhere"
+    ],
+    "hard_zh_duration_coverage_loss": [
+      "past-lives",
+      "aftersun"
+    ],
+    "note": "Both published durations meet <=110, but unresolved source conflicts fail the predicate; this is a coverage loss."
+  },
+  "hard_evaluation": "Explicit structured plans injected and verified against real SQL executor over isolated public projections; not natural-language extraction.",
+  "qrels_status": "provisional-curated-not-human-gold",
+  "data_or_parameter_changes_after_observation": false,
+  "production_enabled": false,
+  "private_library_read": false,
+  "human_quality_verified": false,
+  "real_private_library_quality_verified": false,
+  "natural_language_model_router_evaluated": false,
+  "replay": {
+    "new_model_calls": 0,
+    "saved_vectors": 38,
+    "ranked_lists_equal": 72,
+    "artifact_sha256": {
+      "budget.json": "0315021c55843c2b0a6f77ce114457150b90e1bbb626ab298e9105518f01c4de",
+      "vectors.json": "e389c28c39f965d44ad403515f263488eaa3b18283601c24bab4a1758abd8b0d",
+      "report.json": "ef064d49d1b523e4995c51e3e6f3dcba39975579f735ed223aa6ef934a4a50b0",
+      "frozen-protocol.json": "91b50e87b648fbfc01010d2b8fe132a885ed47e33b013c782ba61d6066ae48e2"
+    }
+  },
+  "historical_qwen": {
+    "model": "qwen/qwen3-embedding-8b",
+    "receipt_sha256": "8b5219ef6a0a61e0f03f8c9e7a8d3dd5fe1879a85dbb63e1d487ee7fe8611637",
+    "requests": 1,
+    "actual_cost_usd": null,
+    "reservation_usd": "0.01",
+    "status": "halted_unreconciled",
+    "retried": false
+  },
+  "films": {
+    "film_c0a13babdf49f9d922e497c96d83b4ba": {
+      "key": "tokyo-story",
+      "title": "Tokyo Story",
+      "qid": "Q26060"
+    },
+    "film_fb0a6b49596cc730d45217af7525676f": {
+      "key": "still-walking",
+      "title": "Still Walking",
+      "qid": "Q874074"
+    },
+    "film_a3e38d924b2d3fc298eb79a0d349e9ec": {
+      "key": "yi-yi",
+      "title": "Yi Yi",
+      "qid": "Q704513"
+    },
+    "film_960d32eba90d7f95c18174fb28d849d0": {
+      "key": "the-farewell",
+      "title": "The Farewell",
+      "qid": "Q60611804"
+    },
+    "film_c24885a838181a18fc08dda3ef2e8a06": {
+      "key": "in-the-mood-for-love",
+      "title": "In the Mood for Love",
+      "qid": "Q1056853"
+    },
+    "film_4ef9d61174e7ba14bfb60c5ae2892565": {
+      "key": "chungking-express",
+      "title": "Chungking Express",
+      "qid": "Q766263"
+    },
+    "film_7a46b914cc187c1cea8f5d6fd3c32a82": {
+      "key": "past-lives",
+      "title": "Past Lives",
+      "qid": "Q116025865"
+    },
+    "film_45566885297210e3b7c01480cad3e592": {
+      "key": "eternal-sunshine",
+      "title": "Eternal Sunshine of the Spotless Mind",
+      "qid": "Q208269"
+    },
+    "film_8077701cd5c1d4a4bab55d99385d42d5": {
+      "key": "ex-machina",
+      "title": "Ex Machina",
+      "qid": "Q16635326"
+    },
+    "film_c82732426ee82b025598535347039c64": {
+      "key": "after-yang",
+      "title": "After Yang",
+      "qid": "Q63398229"
+    },
+    "film_82639eb3c583c6bd695a9adab70462fc": {
+      "key": "arrival",
+      "title": "Arrival",
+      "qid": "Q20382729"
+    },
+    "film_32105708e2d5ed0af3dc22cecdccf459": {
+      "key": "moon",
+      "title": "Moon",
+      "qid": "Q26751"
+    },
+    "film_8d9a7edb1b540a48231502b9cb7837bb": {
+      "key": "perfect-days",
+      "title": "Perfect Days",
+      "qid": "Q117663112"
+    },
+    "film_b9162670a4ef9828ed7e68653cab8c73": {
+      "key": "paterson",
+      "title": "Paterson",
+      "qid": "Q23817035"
+    },
+    "film_c4743ee97a14dcb9e2ae00cedb6b566c": {
+      "key": "ikiru",
+      "title": "Ikiru",
+      "qid": "Q152105"
+    },
+    "film_47d26dac6294b1bc2e15cdcfac7365ed": {
+      "key": "living",
+      "title": "Living",
+      "qid": "Q107304169"
+    },
+    "film_1aa7fd59b59a1ad42f162c1cc11ad43f": {
+      "key": "parasite",
+      "title": "Parasite",
+      "qid": "Q61448040"
+    },
+    "film_d1a0084d8eb5ff38c2f0af611a73aae1": {
+      "key": "shoplifters",
+      "title": "Shoplifters",
+      "qid": "Q48765577"
+    },
+    "film_4b4b0d5016f0693e123ab229eb68e86c": {
+      "key": "the-florida-project",
+      "title": "The Florida Project",
+      "qid": "Q29514872"
+    },
+    "film_7ff568d0b5d82d1e71a46c05c06241ac": {
+      "key": "minari",
+      "title": "Minari",
+      "qid": "Q65679599"
+    },
+    "film_d9c270d97e12fa7eb8dbd0bccd071901": {
+      "key": "after-life",
+      "title": "After Life",
+      "qid": "Q1139458"
+    },
+    "film_c4913df3a8e8e145d39b99642733af1a": {
+      "key": "a-ghost-story",
+      "title": "A Ghost Story",
+      "qid": "Q27964497"
+    },
+    "film_32ae27af7029f7079098df1169756168": {
+      "key": "aftersun",
+      "title": "Aftersun",
+      "qid": "Q111668106"
+    },
+    "film_c90047e2cf3df2a842270a31b6a330ec": {
+      "key": "everything-everywhere",
+      "title": "Everything Everywhere All at Once",
+      "qid": "Q83808444"
+    }
+  },
+  "methods": {
+    "lexical": {
+      "all_cases": {
+        "cases": 24,
+        "top1_hit_rate": 0.7916666666666666,
+        "recall_at_3": 0.7951388888888888,
+        "ndcg_at_10": 0.8261430972621295,
+        "exact_set_rate": 0.375,
+        "hard_condition_violations": 0,
+        "no_answer_false_positives": 1
+      },
+      "semantic_cases": {
+        "cases": 16,
+        "top1_hit_rate": 0.6875,
+        "recall_at_3": 0.6927083333333334,
+        "ndcg_at_10": 0.7392146458931942,
+        "exact_set_rate": 0.0625,
+        "hard_condition_violations": 0,
+        "no_answer_false_positives": 1
+      },
+      "semantic_by_locale": {
+        "en": {
+          "cases": 8,
+          "top1_hit_rate": 0.75,
+          "recall_at_3": 0.6979166666666666,
+          "ndcg_at_10": 0.8040028344673089,
+          "exact_set_rate": 0.125,
+          "hard_condition_violations": 0,
+          "no_answer_false_positives": 0
+        },
+        "zh": {
+          "cases": 8,
+          "top1_hit_rate": 0.625,
+          "recall_at_3": 0.6875,
+          "ndcg_at_10": 0.6744264573190796,
+          "exact_set_rate": 0.0,
+          "hard_condition_violations": 0,
+          "no_answer_false_positives": 1
+        }
+      },
+      "by_kind": {
+        "hard_conditions": {
+          "cases": 4,
+          "top1_hit_rate": 1.0,
+          "recall_at_3": 1.0,
+          "ndcg_at_10": 1.0,
+          "exact_set_rate": 1.0,
+          "hard_condition_violations": 0,
+          "no_answer_false_positives": 0
+        },
+        "identity": {
+          "cases": 4,
+          "top1_hit_rate": 1.0,
+          "recall_at_3": 1.0,
+          "ndcg_at_10": 1.0,
+          "exact_set_rate": 1.0,
+          "hard_condition_violations": 0,
+          "no_answer_false_positives": 0
+        },
+        "no_answer": {
+          "cases": 2,
+          "top1_hit_rate": 0.5,
+          "recall_at_3": 0.5,
+          "ndcg_at_10": 0.5,
+          "exact_set_rate": 0.5,
+          "hard_condition_violations": 0,
+          "no_answer_false_positives": 1
+        },
+        "plot_fact": {
+          "cases": 6,
+          "top1_hit_rate": 1.0,
+          "recall_at_3": 1.0,
+          "ndcg_at_10": 1.0,
+          "exact_set_rate": 0.0,
+          "hard_condition_violations": 0,
+          "no_answer_false_positives": 0
+        },
+        "theme": {
+          "cases": 8,
+          "top1_hit_rate": 0.5,
+          "recall_at_3": 0.5104166666666666,
+          "ndcg_at_10": 0.6034292917863884,
+          "exact_set_rate": 0.0,
+          "hard_condition_violations": 0,
+          "no_answer_false_positives": 0
+        }
+      },
+      "by_locale": {
+        "en": {
+          "cases": 12,
+          "top1_hit_rate": 0.8333333333333334,
+          "recall_at_3": 0.7986111111111112,
+          "ndcg_at_10": 0.869335222978206,
+          "exact_set_rate": 0.4166666666666667,
+          "hard_condition_violations": 0,
+          "no_answer_false_positives": 0
+        },
+        "zh": {
+          "cases": 12,
+          "top1_hit_rate": 0.75,
+          "recall_at_3": 0.7916666666666666,
+          "ndcg_at_10": 0.782950971546053,
+          "exact_set_rate": 0.3333333333333333,
+          "hard_condition_violations": 0,
+          "no_answer_false_positives": 1
+        }
+      },
+      "results": [
+        {
+          "id": "identity-en-tokyo",
+          "kind": "identity",
+          "locale": "en",
+          "actual_ids": [
+            "film_c0a13babdf49f9d922e497c96d83b4ba"
+          ],
+          "expected_ids": [
+            "film_c0a13babdf49f9d922e497c96d83b4ba"
+          ],
+          "top1_hit": true,
+          "recall_at_3": 1.0,
+          "ndcg_at_10": 1.0,
+          "exact_set": true,
+          "hard_condition_violations": [],
+          "no_answer_false_positive": false,
+          "qrels_status": "source-backed-objective",
+          "elapsed_ms": 0.136
+        },
+        {
+          "id": "identity-zh-mood",
+          "kind": "identity",
+          "locale": "zh",
+          "actual_ids": [
+            "film_c24885a838181a18fc08dda3ef2e8a06"
+          ],
+          "expected_ids": [
+            "film_c24885a838181a18fc08dda3ef2e8a06"
+          ],
+          "top1_hit": true,
+          "recall_at_3": 1.0,
+          "ndcg_at_10": 1.0,
+          "exact_set": true,
+          "hard_condition_violations": [],
+          "no_answer_false_positive": false,
+          "qrels_status": "source-backed-objective",
+          "elapsed_ms": 0.066
+        },
+        {
+          "id": "identity-en-sunshine",
+          "kind": "identity",
+          "locale": "en",
+          "actual_ids": [
+            "film_45566885297210e3b7c01480cad3e592"
+          ],
+          "expected_ids": [
+            "film_45566885297210e3b7c01480cad3e592"
+          ],
+          "top1_hit": true,
+          "recall_at_3": 1.0,
+          "ndcg_at_10": 1.0,
+          "exact_set": true,
+          "hard_condition_violations": [],
+          "no_answer_false_positive": false,
+          "qrels_status": "source-backed-objective",
+          "elapsed_ms": 0.068
+        },
+        {
+          "id": "identity-zh-everywhere",
+          "kind": "identity",
+          "locale": "zh",
+          "actual_ids": [
+            "film_c90047e2cf3df2a842270a31b6a330ec"
+          ],
+          "expected_ids": [
+            "film_c90047e2cf3df2a842270a31b6a330ec"
+          ],
+          "top1_hit": true,
+          "recall_at_3": 1.0,
+          "ndcg_at_10": 1.0,
+          "exact_set": true,
+          "hard_condition_violations": [],
+          "no_answer_false_positive": false,
+          "qrels_status": "source-backed-objective",
+          "elapsed_ms": 0.05
+        },
+        {
+          "id": "plot-en-tokyo",
+          "kind": "plot_fact",
+          "locale": "en",
+          "actual_ids": [
+            "film_c0a13babdf49f9d922e497c96d83b4ba",
+            "film_c4913df3a8e8e145d39b99642733af1a",
+            "film_45566885297210e3b7c01480cad3e592",
+            "film_8d9a7edb1b540a48231502b9cb7837bb",
+            "film_c24885a838181a18fc08dda3ef2e8a06",
+            "film_d1a0084d8eb5ff38c2f0af611a73aae1",
+            "film_fb0a6b49596cc730d45217af7525676f"
+          ],
+          "expected_ids": [
+            "film_c0a13babdf49f9d922e497c96d83b4ba"
+          ],
+          "top1_hit": true,
+          "recall_at_3": 1.0,
+          "ndcg_at_10": 1.0,
+          "exact_set": false,
+          "hard_condition_violations": [],
+          "no_answer_false_positive": false,
+          "qrels_status": "source-backed-objective",
+          "elapsed_ms": 54.783
+        },
+        {
+          "id": "plot-zh-farewell",
+          "kind": "plot_fact",
+          "locale": "zh",
+          "actual_ids": [
+            "film_960d32eba90d7f95c18174fb28d849d0",
+            "film_a3e38d924b2d3fc298eb79a0d349e9ec",
+            "film_fb0a6b49596cc730d45217af7525676f"
+          ],
+          "expected_ids": [
+            "film_960d32eba90d7f95c18174fb28d849d0"
+          ],
+          "top1_hit": true,
+          "recall_at_3": 1.0,
+          "ndcg_at_10": 1.0,
+          "exact_set": false,
+          "hard_condition_violations": [],
+          "no_answer_false_positive": false,
+          "qrels_status": "source-backed-objective",
+          "elapsed_ms": 51.438
+        },
+        {
+          "id": "plot-en-robot",
+          "kind": "plot_fact",
+          "locale": "en",
+          "actual_ids": [
+            "film_8077701cd5c1d4a4bab55d99385d42d5",
+            "film_7ff568d0b5d82d1e71a46c05c06241ac"
+          ],
+          "expected_ids": [
+            "film_8077701cd5c1d4a4bab55d99385d42d5"
+          ],
+          "top1_hit": true,
+          "recall_at_3": 1.0,
+          "ndcg_at_10": 1.0,
+          "exact_set": false,
+          "hard_condition_violations": [],
+          "no_answer_false_positive": false,
+          "qrels_status": "source-backed-objective",
+          "elapsed_ms": 51.903
+        },
+        {
+          "id": "plot-zh-arrival",
+          "kind": "plot_fact",
+          "locale": "zh",
+          "actual_ids": [
+            "film_82639eb3c583c6bd695a9adab70462fc",
+            "film_32ae27af7029f7079098df1169756168",
+            "film_47d26dac6294b1bc2e15cdcfac7365ed"
+          ],
+          "expected_ids": [
+            "film_82639eb3c583c6bd695a9adab70462fc"
+          ],
+          "top1_hit": true,
+          "recall_at_3": 1.0,
+          "ndcg_at_10": 1.0,
+          "exact_set": false,
+          "hard_condition_violations": [],
+          "no_answer_false_positive": false,
+          "qrels_status": "source-backed-objective",
+          "elapsed_ms": 53.344
+        },
+        {
+          "id": "plot-en-poet",
+          "kind": "plot_fact",
+          "locale": "en",
+          "actual_ids": [
+            "film_b9162670a4ef9828ed7e68653cab8c73",
+            "film_32105708e2d5ed0af3dc22cecdccf459",
+            "film_45566885297210e3b7c01480cad3e592",
+            "film_47d26dac6294b1bc2e15cdcfac7365ed",
+            "film_4b4b0d5016f0693e123ab229eb68e86c",
+            "film_8077701cd5c1d4a4bab55d99385d42d5",
+            "film_8d9a7edb1b540a48231502b9cb7837bb",
+            "film_c82732426ee82b025598535347039c64"
+          ],
+          "expected_ids": [
+            "film_b9162670a4ef9828ed7e68653cab8c73"
+          ],
+          "top1_hit": true,
+          "recall_at_3": 1.0,
+          "ndcg_at_10": 1.0,
+          "exact_set": false,
+          "hard_condition_violations": [],
+          "no_answer_false_positive": false,
+          "qrels_status": "source-backed-objective",
+          "elapsed_ms": 55.135
+        },
+        {
+          "id": "plot-zh-memory",
+          "kind": "plot_fact",
+          "locale": "zh",
+          "actual_ids": [
+            "film_d9c270d97e12fa7eb8dbd0bccd071901",
+            "film_32ae27af7029f7079098df1169756168",
+            "film_45566885297210e3b7c01480cad3e592",
+            "film_c82732426ee82b025598535347039c64"
+          ],
+          "expected_ids": [
+            "film_d9c270d97e12fa7eb8dbd0bccd071901"
+          ],
+          "top1_hit": true,
+          "recall_at_3": 1.0,
+          "ndcg_at_10": 1.0,
+          "exact_set": false,
+          "hard_condition_violations": [],
+          "no_answer_false_positive": false,
+          "qrels_status": "source-backed-objective",
+          "elapsed_ms": 45.031
+        },
+        {
+          "id": "theme-en-gathering",
+          "kind": "theme",
+          "locale": "en",
+          "actual_ids": [
+            "film_c90047e2cf3df2a842270a31b6a330ec",
+            "film_fb0a6b49596cc730d45217af7525676f",
+            "film_1aa7fd59b59a1ad42f162c1cc11ad43f",
+            "film_4b4b0d5016f0693e123ab229eb68e86c",
+            "film_7ff568d0b5d82d1e71a46c05c06241ac",
+            "film_a3e38d924b2d3fc298eb79a0d349e9ec",
+            "film_c0a13babdf49f9d922e497c96d83b4ba",
+            "film_c4913df3a8e8e145d39b99642733af1a",
+            "film_d1a0084d8eb5ff38c2f0af611a73aae1"
+          ],
+          "expected_ids": [
+            "film_960d32eba90d7f95c18174fb28d849d0",
+            "film_a3e38d924b2d3fc298eb79a0d349e9ec",
+            "film_c0a13babdf49f9d922e497c96d83b4ba",
+            "film_fb0a6b49596cc730d45217af7525676f"
+          ],
+          "top1_hit": false,
+          "recall_at_3": 0.25,
+          "ndcg_at_10": 0.49443343018004055,
+          "exact_set": false,
+          "hard_condition_violations": [],
+          "no_answer_false_positive": false,
+          "qrels_status": "provisional-curated-not-human-gold",
+          "elapsed_ms": 58.039
+        },
+        {
+          "id": "theme-zh-romance",
+          "kind": "theme",
+          "locale": "zh",
+          "actual_ids": [],
+          "expected_ids": [
+            "film_45566885297210e3b7c01480cad3e592",
+            "film_4ef9d61174e7ba14bfb60c5ae2892565",
+            "film_7a46b914cc187c1cea8f5d6fd3c32a82",
+            "film_c24885a838181a18fc08dda3ef2e8a06"
+          ],
+          "top1_hit": false,
+          "recall_at_3": 0.0,
+          "ndcg_at_10": 0.0,
+          "exact_set": false,
+          "hard_condition_violations": [],
+          "no_answer_false_positive": false,
+          "qrels_status": "provisional-curated-not-human-gold",
+          "elapsed_ms": 45.669
+        },
+        {
+          "id": "theme-en-livelihood",
+          "kind": "theme",
+          "locale": "en",
+          "actual_ids": [
+            "film_d1a0084d8eb5ff38c2f0af611a73aae1",
+            "film_1aa7fd59b59a1ad42f162c1cc11ad43f",
+            "film_47d26dac6294b1bc2e15cdcfac7365ed",
+            "film_4ef9d61174e7ba14bfb60c5ae2892565",
+            "film_7ff568d0b5d82d1e71a46c05c06241ac",
+            "film_a3e38d924b2d3fc298eb79a0d349e9ec",
+            "film_c0a13babdf49f9d922e497c96d83b4ba",
+            "film_c90047e2cf3df2a842270a31b6a330ec",
+            "film_d9c270d97e12fa7eb8dbd0bccd071901",
+            "film_fb0a6b49596cc730d45217af7525676f"
+          ],
+          "expected_ids": [
+            "film_1aa7fd59b59a1ad42f162c1cc11ad43f",
+            "film_4b4b0d5016f0693e123ab229eb68e86c",
+            "film_7ff568d0b5d82d1e71a46c05c06241ac",
+            "film_d1a0084d8eb5ff38c2f0af611a73aae1"
+          ],
+          "top1_hit": true,
+          "recall_at_3": 0.5,
+          "ndcg_at_10": 0.7075568027018304,
+          "exact_set": false,
+          "hard_condition_violations": [],
+          "no_answer_false_positive": false,
+          "qrels_status": "provisional-curated-not-human-gold",
+          "elapsed_ms": 55.394
+        },
+        {
+          "id": "theme-zh-technology",
+          "kind": "theme",
+          "locale": "zh",
+          "actual_ids": [
+            "film_32ae27af7029f7079098df1169756168",
+            "film_45566885297210e3b7c01480cad3e592",
+            "film_c82732426ee82b025598535347039c64",
+            "film_d9c270d97e12fa7eb8dbd0bccd071901"
+          ],
+          "expected_ids": [
+            "film_32105708e2d5ed0af3dc22cecdccf459",
+            "film_45566885297210e3b7c01480cad3e592",
+            "film_8077701cd5c1d4a4bab55d99385d42d5",
+            "film_c82732426ee82b025598535347039c64"
+          ],
+          "top1_hit": false,
+          "recall_at_3": 0.5,
+          "ndcg_at_10": 0.46152099495451687,
+          "exact_set": false,
+          "hard_condition_violations": [],
+          "no_answer_false_positive": false,
+          "qrels_status": "provisional-curated-not-human-gold",
+          "elapsed_ms": 55.736
+        },
+        {
+          "id": "theme-en-routines",
+          "kind": "theme",
+          "locale": "en",
+          "actual_ids": [
+            "film_4b4b0d5016f0693e123ab229eb68e86c",
+            "film_8d9a7edb1b540a48231502b9cb7837bb",
+            "film_b9162670a4ef9828ed7e68653cab8c73"
+          ],
+          "expected_ids": [
+            "film_47d26dac6294b1bc2e15cdcfac7365ed",
+            "film_8d9a7edb1b540a48231502b9cb7837bb",
+            "film_b9162670a4ef9828ed7e68653cab8c73",
+            "film_c4743ee97a14dcb9e2ae00cedb6b566c"
+          ],
+          "top1_hit": false,
+          "recall_at_3": 0.5,
+          "ndcg_at_10": 0.4321687061632412,
+          "exact_set": false,
+          "hard_condition_violations": [],
+          "no_answer_false_positive": false,
+          "qrels_status": "provisional-curated-not-human-gold",
+          "elapsed_ms": 56.079
+        },
+        {
+          "id": "theme-zh-father",
+          "kind": "theme",
+          "locale": "zh",
+          "actual_ids": [
+            "film_32ae27af7029f7079098df1169756168",
+            "film_c0a13babdf49f9d922e497c96d83b4ba",
+            "film_c82732426ee82b025598535347039c64",
+            "film_45566885297210e3b7c01480cad3e592",
+            "film_7a46b914cc187c1cea8f5d6fd3c32a82",
+            "film_a3e38d924b2d3fc298eb79a0d349e9ec",
+            "film_d9c270d97e12fa7eb8dbd0bccd071901",
+            "film_fb0a6b49596cc730d45217af7525676f"
+          ],
+          "expected_ids": [
+            "film_32ae27af7029f7079098df1169756168"
+          ],
+          "top1_hit": true,
+          "recall_at_3": 1.0,
+          "ndcg_at_10": 0.9828422279067397,
+          "exact_set": false,
+          "hard_condition_violations": [],
+          "no_answer_false_positive": false,
+          "qrels_status": "provisional-curated-not-human-gold",
+          "elapsed_ms": 66.381
+        },
+        {
+          "id": "reference-en-ikiru",
+          "kind": "theme",
+          "locale": "en",
+          "actual_ids": [
+            "film_47d26dac6294b1bc2e15cdcfac7365ed",
+            "film_7a46b914cc187c1cea8f5d6fd3c32a82",
+            "film_82639eb3c583c6bd695a9adab70462fc",
+            "film_b9162670a4ef9828ed7e68653cab8c73",
+            "film_c24885a838181a18fc08dda3ef2e8a06",
+            "film_c90047e2cf3df2a842270a31b6a330ec",
+            "film_fb0a6b49596cc730d45217af7525676f"
+          ],
+          "expected_ids": [
+            "film_47d26dac6294b1bc2e15cdcfac7365ed",
+            "film_8d9a7edb1b540a48231502b9cb7837bb",
+            "film_b9162670a4ef9828ed7e68653cab8c73"
+          ],
+          "top1_hit": true,
+          "recall_at_3": 0.3333333333333333,
+          "ndcg_at_10": 0.7978637366933587,
+          "exact_set": false,
+          "hard_condition_violations": [],
+          "no_answer_false_positive": false,
+          "qrels_status": "provisional-curated-not-human-gold",
+          "elapsed_ms": 65.32
+        },
+        {
+          "id": "reference-zh-mood",
+          "kind": "theme",
+          "locale": "zh",
+          "actual_ids": [
+            "film_4ef9d61174e7ba14bfb60c5ae2892565",
+            "film_45566885297210e3b7c01480cad3e592",
+            "film_7a46b914cc187c1cea8f5d6fd3c32a82",
+            "film_c4913df3a8e8e145d39b99642733af1a",
+            "film_c82732426ee82b025598535347039c64",
+            "film_1aa7fd59b59a1ad42f162c1cc11ad43f",
+            "film_32105708e2d5ed0af3dc22cecdccf459",
+            "film_47d26dac6294b1bc2e15cdcfac7365ed",
+            "film_a3e38d924b2d3fc298eb79a0d349e9ec",
+            "film_c0a13babdf49f9d922e497c96d83b4ba",
+            "film_c4743ee97a14dcb9e2ae00cedb6b566c",
+            "film_d9c270d97e12fa7eb8dbd0bccd071901",
+            "film_fb0a6b49596cc730d45217af7525676f"
+          ],
+          "expected_ids": [
+            "film_45566885297210e3b7c01480cad3e592",
+            "film_4ef9d61174e7ba14bfb60c5ae2892565",
+            "film_7a46b914cc187c1cea8f5d6fd3c32a82"
+          ],
+          "top1_hit": true,
+          "recall_at_3": 1.0,
+          "ndcg_at_10": 0.9510484356913798,
+          "exact_set": false,
+          "hard_condition_violations": [],
+          "no_answer_false_positive": false,
+          "qrels_status": "provisional-curated-not-human-gold",
+          "elapsed_ms": 66.225
+        },
+        {
+          "id": "hard-en-director",
+          "kind": "hard_conditions",
+          "locale": "en",
+          "actual_ids": [
+            "film_d1a0084d8eb5ff38c2f0af611a73aae1",
+            "film_d9c270d97e12fa7eb8dbd0bccd071901",
+            "film_fb0a6b49596cc730d45217af7525676f"
+          ],
+          "expected_ids": [
+            "film_d1a0084d8eb5ff38c2f0af611a73aae1",
+            "film_d9c270d97e12fa7eb8dbd0bccd071901",
+            "film_fb0a6b49596cc730d45217af7525676f"
+          ],
+          "top1_hit": true,
+          "recall_at_3": 1.0,
+          "ndcg_at_10": 1.0,
+          "exact_set": true,
+          "hard_condition_violations": [],
+          "no_answer_false_positive": false,
+          "qrels_status": "source-backed-objective",
+          "elapsed_ms": 0.401
+        },
+        {
+          "id": "hard-zh-decade",
+          "kind": "hard_conditions",
+          "locale": "zh",
+          "actual_ids": [
+            "film_4ef9d61174e7ba14bfb60c5ae2892565"
+          ],
+          "expected_ids": [
+            "film_4ef9d61174e7ba14bfb60c5ae2892565"
+          ],
+          "top1_hit": true,
+          "recall_at_3": 1.0,
+          "ndcg_at_10": 1.0,
+          "exact_set": true,
+          "hard_condition_violations": [],
+          "no_answer_false_positive": false,
+          "qrels_status": "source-backed-objective",
+          "elapsed_ms": 0.447
+        },
+        {
+          "id": "hard-en-duration",
+          "kind": "hard_conditions",
+          "locale": "en",
+          "actual_ids": [
+            "film_82639eb3c583c6bd695a9adab70462fc"
+          ],
+          "expected_ids": [
+            "film_82639eb3c583c6bd695a9adab70462fc"
+          ],
+          "top1_hit": true,
+          "recall_at_3": 1.0,
+          "ndcg_at_10": 1.0,
+          "exact_set": true,
+          "hard_condition_violations": [],
+          "no_answer_false_positive": false,
+          "qrels_status": "source-backed-objective",
+          "elapsed_ms": 0.264
+        },
+        {
+          "id": "hard-zh-duration",
+          "kind": "hard_conditions",
+          "locale": "zh",
+          "actual_ids": [
+            "film_47d26dac6294b1bc2e15cdcfac7365ed"
+          ],
+          "expected_ids": [
+            "film_47d26dac6294b1bc2e15cdcfac7365ed"
+          ],
+          "top1_hit": true,
+          "recall_at_3": 1.0,
+          "ndcg_at_10": 1.0,
+          "exact_set": true,
+          "hard_condition_violations": [],
+          "no_answer_false_positive": false,
+          "qrels_status": "source-backed-objective",
+          "elapsed_ms": 0.355
+        },
+        {
+          "id": "none-en-submarine",
+          "kind": "no_answer",
+          "locale": "en",
+          "actual_ids": [],
+          "expected_ids": [],
+          "top1_hit": true,
+          "recall_at_3": 1,
+          "ndcg_at_10": 1,
+          "exact_set": true,
+          "hard_condition_violations": [],
+          "no_answer_false_positive": false,
+          "qrels_status": "source-backed-objective",
+          "elapsed_ms": 56.566
+        },
+        {
+          "id": "none-zh-jupiter",
+          "kind": "no_answer",
+          "locale": "zh",
+          "actual_ids": [
+            "film_d9c270d97e12fa7eb8dbd0bccd071901"
+          ],
+          "expected_ids": [],
+          "top1_hit": false,
+          "recall_at_3": 0,
+          "ndcg_at_10": 0,
+          "exact_set": false,
+          "hard_condition_violations": [],
+          "no_answer_false_positive": true,
+          "qrels_status": "source-backed-objective",
+          "elapsed_ms": 48.055
+        }
+      ],
+      "semantic_warm_median_ms": 55.2645,
+      "semantic_warm_p95_ms": 66.381,
+      "latency_scope": "warm local retrieval; remote requests timed separately"
+    },
+    "dense": {
+      "all_cases": {
+        "cases": 24,
+        "top1_hit_rate": 0.8333333333333334,
+        "recall_at_3": 0.7465277777777778,
+        "ndcg_at_10": 0.7864624957925104,
+        "exact_set_rate": 0.625,
+        "hard_condition_violations": 0,
+        "no_answer_false_positives": 0
+      },
+      "semantic_cases": {
+        "cases": 16,
+        "top1_hit_rate": 0.75,
+        "recall_at_3": 0.6197916666666666,
+        "ndcg_at_10": 0.6796937436887656,
+        "exact_set_rate": 0.4375,
+        "hard_condition_violations": 0,
+        "no_answer_false_positives": 0
+      },
+      "semantic_by_locale": {
+        "en": {
+          "cases": 8,
+          "top1_hit_rate": 0.75,
+          "recall_at_3": 0.5729166666666667,
+          "ndcg_at_10": 0.6497713937865863,
+          "exact_set_rate": 0.5,
+          "hard_condition_violations": 0,
+          "no_answer_false_positives": 0
+        },
+        "zh": {
+          "cases": 8,
+          "top1_hit_rate": 0.75,
+          "recall_at_3": 0.6666666666666666,
+          "ndcg_at_10": 0.7096160935909448,
+          "exact_set_rate": 0.375,
+          "hard_condition_violations": 0,
+          "no_answer_false_positives": 0
+        }
+      },
+      "by_kind": {
+        "hard_conditions": {
+          "cases": 4,
+          "top1_hit_rate": 1.0,
+          "recall_at_3": 1.0,
+          "ndcg_at_10": 1.0,
+          "exact_set_rate": 1.0,
+          "hard_condition_violations": 0,
+          "no_answer_false_positives": 0
+        },
+        "identity": {
+          "cases": 4,
+          "top1_hit_rate": 1.0,
+          "recall_at_3": 1.0,
+          "ndcg_at_10": 1.0,
+          "exact_set_rate": 1.0,
+          "hard_condition_violations": 0,
+          "no_answer_false_positives": 0
+        },
+        "no_answer": {
+          "cases": 2,
+          "top1_hit_rate": 1.0,
+          "recall_at_3": 1.0,
+          "ndcg_at_10": 1.0,
+          "exact_set_rate": 1.0,
+          "hard_condition_violations": 0,
+          "no_answer_false_positives": 0
+        },
+        "plot_fact": {
+          "cases": 6,
+          "top1_hit_rate": 1.0,
+          "recall_at_3": 1.0,
+          "ndcg_at_10": 1.0,
+          "exact_set_rate": 0.8333333333333334,
+          "hard_condition_violations": 0,
+          "no_answer_false_positives": 0
+        },
+        "theme": {
+          "cases": 8,
+          "top1_hit_rate": 0.5,
+          "recall_at_3": 0.23958333333333331,
+          "ndcg_at_10": 0.3593874873775311,
+          "exact_set_rate": 0.0,
+          "hard_condition_violations": 0,
+          "no_answer_false_positives": 0
+        }
+      },
+      "by_locale": {
+        "en": {
+          "cases": 12,
+          "top1_hit_rate": 0.8333333333333334,
+          "recall_at_3": 0.7152777777777777,
+          "ndcg_at_10": 0.7665142625243909,
+          "exact_set_rate": 0.6666666666666666,
+          "hard_condition_violations": 0,
+          "no_answer_false_positives": 0
+        },
+        "zh": {
+          "cases": 12,
+          "top1_hit_rate": 0.8333333333333334,
+          "recall_at_3": 0.7777777777777778,
+          "ndcg_at_10": 0.8064107290606298,
+          "exact_set_rate": 0.5833333333333334,
+          "hard_condition_violations": 0,
+          "no_answer_false_positives": 0
+        }
+      },
+      "results": [
+        {
+          "id": "identity-en-tokyo",
+          "kind": "identity",
+          "locale": "en",
+          "actual_ids": [
+            "film_c0a13babdf49f9d922e497c96d83b4ba"
+          ],
+          "expected_ids": [
+            "film_c0a13babdf49f9d922e497c96d83b4ba"
+          ],
+          "top1_hit": true,
+          "recall_at_3": 1.0,
+          "ndcg_at_10": 1.0,
+          "exact_set": true,
+          "hard_condition_violations": [],
+          "no_answer_false_positive": false,
+          "qrels_status": "source-backed-objective",
+          "elapsed_ms": 0.13
+        },
+        {
+          "id": "identity-zh-mood",
+          "kind": "identity",
+          "locale": "zh",
+          "actual_ids": [
+            "film_c24885a838181a18fc08dda3ef2e8a06"
+          ],
+          "expected_ids": [
+            "film_c24885a838181a18fc08dda3ef2e8a06"
+          ],
+          "top1_hit": true,
+          "recall_at_3": 1.0,
+          "ndcg_at_10": 1.0,
+          "exact_set": true,
+          "hard_condition_violations": [],
+          "no_answer_false_positive": false,
+          "qrels_status": "source-backed-objective",
+          "elapsed_ms": 0.099
+        },
+        {
+          "id": "identity-en-sunshine",
+          "kind": "identity",
+          "locale": "en",
+          "actual_ids": [
+            "film_45566885297210e3b7c01480cad3e592"
+          ],
+          "expected_ids": [
+            "film_45566885297210e3b7c01480cad3e592"
+          ],
+          "top1_hit": true,
+          "recall_at_3": 1.0,
+          "ndcg_at_10": 1.0,
+          "exact_set": true,
+          "hard_condition_violations": [],
+          "no_answer_false_positive": false,
+          "qrels_status": "source-backed-objective",
+          "elapsed_ms": 0.095
+        },
+        {
+          "id": "identity-zh-everywhere",
+          "kind": "identity",
+          "locale": "zh",
+          "actual_ids": [
+            "film_c90047e2cf3df2a842270a31b6a330ec"
+          ],
+          "expected_ids": [
+            "film_c90047e2cf3df2a842270a31b6a330ec"
+          ],
+          "top1_hit": true,
+          "recall_at_3": 1.0,
+          "ndcg_at_10": 1.0,
+          "exact_set": true,
+          "hard_condition_violations": [],
+          "no_answer_false_positive": false,
+          "qrels_status": "source-backed-objective",
+          "elapsed_ms": 0.092
+        },
+        {
+          "id": "plot-en-tokyo",
+          "kind": "plot_fact",
+          "locale": "en",
+          "actual_ids": [
+            "film_c0a13babdf49f9d922e497c96d83b4ba"
+          ],
+          "expected_ids": [
+            "film_c0a13babdf49f9d922e497c96d83b4ba"
+          ],
+          "top1_hit": true,
+          "recall_at_3": 1.0,
+          "ndcg_at_10": 1.0,
+          "exact_set": true,
+          "hard_condition_violations": [],
+          "no_answer_false_positive": false,
+          "qrels_status": "source-backed-objective",
+          "elapsed_ms": 57.009
+        },
+        {
+          "id": "plot-zh-farewell",
+          "kind": "plot_fact",
+          "locale": "zh",
+          "actual_ids": [
+            "film_960d32eba90d7f95c18174fb28d849d0"
+          ],
+          "expected_ids": [
+            "film_960d32eba90d7f95c18174fb28d849d0"
+          ],
+          "top1_hit": true,
+          "recall_at_3": 1.0,
+          "ndcg_at_10": 1.0,
+          "exact_set": true,
+          "hard_condition_violations": [],
+          "no_answer_false_positive": false,
+          "qrels_status": "source-backed-objective",
+          "elapsed_ms": 62.563
+        },
+        {
+          "id": "plot-en-robot",
+          "kind": "plot_fact",
+          "locale": "en",
+          "actual_ids": [
+            "film_8077701cd5c1d4a4bab55d99385d42d5"
+          ],
+          "expected_ids": [
+            "film_8077701cd5c1d4a4bab55d99385d42d5"
+          ],
+          "top1_hit": true,
+          "recall_at_3": 1.0,
+          "ndcg_at_10": 1.0,
+          "exact_set": true,
+          "hard_condition_violations": [],
+          "no_answer_false_positive": false,
+          "qrels_status": "source-backed-objective",
+          "elapsed_ms": 60.793
+        },
+        {
+          "id": "plot-zh-arrival",
+          "kind": "plot_fact",
+          "locale": "zh",
+          "actual_ids": [
+            "film_82639eb3c583c6bd695a9adab70462fc"
+          ],
+          "expected_ids": [
+            "film_82639eb3c583c6bd695a9adab70462fc"
+          ],
+          "top1_hit": true,
+          "recall_at_3": 1.0,
+          "ndcg_at_10": 1.0,
+          "exact_set": true,
+          "hard_condition_violations": [],
+          "no_answer_false_positive": false,
+          "qrels_status": "source-backed-objective",
+          "elapsed_ms": 55.452
+        },
+        {
+          "id": "plot-en-poet",
+          "kind": "plot_fact",
+          "locale": "en",
+          "actual_ids": [
+            "film_b9162670a4ef9828ed7e68653cab8c73"
+          ],
+          "expected_ids": [
+            "film_b9162670a4ef9828ed7e68653cab8c73"
+          ],
+          "top1_hit": true,
+          "recall_at_3": 1.0,
+          "ndcg_at_10": 1.0,
+          "exact_set": true,
+          "hard_condition_violations": [],
+          "no_answer_false_positive": false,
+          "qrels_status": "source-backed-objective",
+          "elapsed_ms": 63.514
+        },
+        {
+          "id": "plot-zh-memory",
+          "kind": "plot_fact",
+          "locale": "zh",
+          "actual_ids": [
+            "film_d9c270d97e12fa7eb8dbd0bccd071901",
+            "film_45566885297210e3b7c01480cad3e592"
+          ],
+          "expected_ids": [
+            "film_d9c270d97e12fa7eb8dbd0bccd071901"
+          ],
+          "top1_hit": true,
+          "recall_at_3": 1.0,
+          "ndcg_at_10": 1.0,
+          "exact_set": false,
+          "hard_condition_violations": [],
+          "no_answer_false_positive": false,
+          "qrels_status": "source-backed-objective",
+          "elapsed_ms": 61.339
+        },
+        {
+          "id": "theme-en-gathering",
+          "kind": "theme",
+          "locale": "en",
+          "actual_ids": [
+            "film_fb0a6b49596cc730d45217af7525676f"
+          ],
+          "expected_ids": [
+            "film_960d32eba90d7f95c18174fb28d849d0",
+            "film_a3e38d924b2d3fc298eb79a0d349e9ec",
+            "film_c0a13babdf49f9d922e497c96d83b4ba",
+            "film_fb0a6b49596cc730d45217af7525676f"
+          ],
+          "top1_hit": true,
+          "recall_at_3": 0.25,
+          "ndcg_at_10": 0.42180386727424835,
+          "exact_set": false,
+          "hard_condition_violations": [],
+          "no_answer_false_positive": false,
+          "qrels_status": "provisional-curated-not-human-gold",
+          "elapsed_ms": 65.574
+        },
+        {
+          "id": "theme-zh-romance",
+          "kind": "theme",
+          "locale": "zh",
+          "actual_ids": [],
+          "expected_ids": [
+            "film_45566885297210e3b7c01480cad3e592",
+            "film_4ef9d61174e7ba14bfb60c5ae2892565",
+            "film_7a46b914cc187c1cea8f5d6fd3c32a82",
+            "film_c24885a838181a18fc08dda3ef2e8a06"
+          ],
+          "top1_hit": false,
+          "recall_at_3": 0.0,
+          "ndcg_at_10": 0.0,
+          "exact_set": false,
+          "hard_condition_violations": [],
+          "no_answer_false_positive": false,
+          "qrels_status": "provisional-curated-not-human-gold",
+          "elapsed_ms": 60.541
+        },
+        {
+          "id": "theme-en-livelihood",
+          "kind": "theme",
+          "locale": "en",
+          "actual_ids": [],
+          "expected_ids": [
+            "film_1aa7fd59b59a1ad42f162c1cc11ad43f",
+            "film_4b4b0d5016f0693e123ab229eb68e86c",
+            "film_7ff568d0b5d82d1e71a46c05c06241ac",
+            "film_d1a0084d8eb5ff38c2f0af611a73aae1"
+          ],
+          "top1_hit": false,
+          "recall_at_3": 0.0,
+          "ndcg_at_10": 0.0,
+          "exact_set": false,
+          "hard_condition_violations": [],
+          "no_answer_false_positive": false,
+          "qrels_status": "provisional-curated-not-human-gold",
+          "elapsed_ms": 64.99
+        },
+        {
+          "id": "theme-zh-technology",
+          "kind": "theme",
+          "locale": "zh",
+          "actual_ids": [],
+          "expected_ids": [
+            "film_32105708e2d5ed0af3dc22cecdccf459",
+            "film_45566885297210e3b7c01480cad3e592",
+            "film_8077701cd5c1d4a4bab55d99385d42d5",
+            "film_c82732426ee82b025598535347039c64"
+          ],
+          "top1_hit": false,
+          "recall_at_3": 0.0,
+          "ndcg_at_10": 0.0,
+          "exact_set": false,
+          "hard_condition_violations": [],
+          "no_answer_false_positive": false,
+          "qrels_status": "provisional-curated-not-human-gold",
+          "elapsed_ms": 50.973
+        },
+        {
+          "id": "theme-en-routines",
+          "kind": "theme",
+          "locale": "en",
+          "actual_ids": [],
+          "expected_ids": [
+            "film_47d26dac6294b1bc2e15cdcfac7365ed",
+            "film_8d9a7edb1b540a48231502b9cb7837bb",
+            "film_b9162670a4ef9828ed7e68653cab8c73",
+            "film_c4743ee97a14dcb9e2ae00cedb6b566c"
+          ],
+          "top1_hit": false,
+          "recall_at_3": 0.0,
+          "ndcg_at_10": 0.0,
+          "exact_set": false,
+          "hard_condition_violations": [],
+          "no_answer_false_positive": false,
+          "qrels_status": "provisional-curated-not-human-gold",
+          "elapsed_ms": 44.847
+        },
+        {
+          "id": "theme-zh-father",
+          "kind": "theme",
+          "locale": "zh",
+          "actual_ids": [
+            "film_32ae27af7029f7079098df1169756168",
+            "film_fb0a6b49596cc730d45217af7525676f"
+          ],
+          "expected_ids": [
+            "film_32ae27af7029f7079098df1169756168"
+          ],
+          "top1_hit": true,
+          "recall_at_3": 1.0,
+          "ndcg_at_10": 0.9173194127129571,
+          "exact_set": false,
+          "hard_condition_violations": [],
+          "no_answer_false_positive": false,
+          "qrels_status": "provisional-curated-not-human-gold",
+          "elapsed_ms": 58.353
+        },
+        {
+          "id": "reference-en-ikiru",
+          "kind": "theme",
+          "locale": "en",
+          "actual_ids": [
+            "film_47d26dac6294b1bc2e15cdcfac7365ed",
+            "film_c0a13babdf49f9d922e497c96d83b4ba",
+            "film_d1a0084d8eb5ff38c2f0af611a73aae1",
+            "film_c4913df3a8e8e145d39b99642733af1a",
+            "film_fb0a6b49596cc730d45217af7525676f",
+            "film_8d9a7edb1b540a48231502b9cb7837bb",
+            "film_1aa7fd59b59a1ad42f162c1cc11ad43f",
+            "film_7ff568d0b5d82d1e71a46c05c06241ac",
+            "film_4ef9d61174e7ba14bfb60c5ae2892565",
+            "film_d9c270d97e12fa7eb8dbd0bccd071901",
+            "film_c24885a838181a18fc08dda3ef2e8a06",
+            "film_45566885297210e3b7c01480cad3e592",
+            "film_32105708e2d5ed0af3dc22cecdccf459",
+            "film_a3e38d924b2d3fc298eb79a0d349e9ec",
+            "film_7a46b914cc187c1cea8f5d6fd3c32a82",
+            "film_8077701cd5c1d4a4bab55d99385d42d5",
+            "film_c90047e2cf3df2a842270a31b6a330ec",
+            "film_82639eb3c583c6bd695a9adab70462fc",
+            "film_c82732426ee82b025598535347039c64",
+            "film_32ae27af7029f7079098df1169756168",
+            "film_b9162670a4ef9828ed7e68653cab8c73",
+            "film_960d32eba90d7f95c18174fb28d849d0",
+            "film_4b4b0d5016f0693e123ab229eb68e86c"
+          ],
+          "expected_ids": [
+            "film_47d26dac6294b1bc2e15cdcfac7365ed",
+            "film_8d9a7edb1b540a48231502b9cb7837bb",
+            "film_b9162670a4ef9828ed7e68653cab8c73"
+          ],
+          "top1_hit": true,
+          "recall_at_3": 0.3333333333333333,
+          "ndcg_at_10": 0.7763672830184426,
+          "exact_set": false,
+          "hard_condition_violations": [],
+          "no_answer_false_positive": false,
+          "qrels_status": "provisional-curated-not-human-gold",
+          "elapsed_ms": 64.188
+        },
+        {
+          "id": "reference-zh-mood",
+          "kind": "theme",
+          "locale": "zh",
+          "actual_ids": [
+            "film_4ef9d61174e7ba14bfb60c5ae2892565",
+            "film_c0a13babdf49f9d922e497c96d83b4ba",
+            "film_c4913df3a8e8e145d39b99642733af1a",
+            "film_a3e38d924b2d3fc298eb79a0d349e9ec",
+            "film_7a46b914cc187c1cea8f5d6fd3c32a82",
+            "film_d1a0084d8eb5ff38c2f0af611a73aae1",
+            "film_1aa7fd59b59a1ad42f162c1cc11ad43f",
+            "film_c4743ee97a14dcb9e2ae00cedb6b566c",
+            "film_fb0a6b49596cc730d45217af7525676f",
+            "film_47d26dac6294b1bc2e15cdcfac7365ed",
+            "film_45566885297210e3b7c01480cad3e592",
+            "film_7ff568d0b5d82d1e71a46c05c06241ac",
+            "film_c90047e2cf3df2a842270a31b6a330ec",
+            "film_c82732426ee82b025598535347039c64",
+            "film_960d32eba90d7f95c18174fb28d849d0",
+            "film_8d9a7edb1b540a48231502b9cb7837bb",
+            "film_32ae27af7029f7079098df1169756168",
+            "film_82639eb3c583c6bd695a9adab70462fc",
+            "film_8077701cd5c1d4a4bab55d99385d42d5",
+            "film_32105708e2d5ed0af3dc22cecdccf459",
+            "film_d9c270d97e12fa7eb8dbd0bccd071901",
+            "film_b9162670a4ef9828ed7e68653cab8c73",
+            "film_4b4b0d5016f0693e123ab229eb68e86c"
+          ],
+          "expected_ids": [
+            "film_45566885297210e3b7c01480cad3e592",
+            "film_4ef9d61174e7ba14bfb60c5ae2892565",
+            "film_7a46b914cc187c1cea8f5d6fd3c32a82"
+          ],
+          "top1_hit": true,
+          "recall_at_3": 0.3333333333333333,
+          "ndcg_at_10": 0.7596093360146008,
+          "exact_set": false,
+          "hard_condition_violations": [],
+          "no_answer_false_positive": false,
+          "qrels_status": "provisional-curated-not-human-gold",
+          "elapsed_ms": 59.314
+        },
+        {
+          "id": "hard-en-director",
+          "kind": "hard_conditions",
+          "locale": "en",
+          "actual_ids": [
+            "film_d1a0084d8eb5ff38c2f0af611a73aae1",
+            "film_d9c270d97e12fa7eb8dbd0bccd071901",
+            "film_fb0a6b49596cc730d45217af7525676f"
+          ],
+          "expected_ids": [
+            "film_d1a0084d8eb5ff38c2f0af611a73aae1",
+            "film_d9c270d97e12fa7eb8dbd0bccd071901",
+            "film_fb0a6b49596cc730d45217af7525676f"
+          ],
+          "top1_hit": true,
+          "recall_at_3": 1.0,
+          "ndcg_at_10": 1.0,
+          "exact_set": true,
+          "hard_condition_violations": [],
+          "no_answer_false_positive": false,
+          "qrels_status": "source-backed-objective",
+          "elapsed_ms": 0.362
+        },
+        {
+          "id": "hard-zh-decade",
+          "kind": "hard_conditions",
+          "locale": "zh",
+          "actual_ids": [
+            "film_4ef9d61174e7ba14bfb60c5ae2892565"
+          ],
+          "expected_ids": [
+            "film_4ef9d61174e7ba14bfb60c5ae2892565"
+          ],
+          "top1_hit": true,
+          "recall_at_3": 1.0,
+          "ndcg_at_10": 1.0,
+          "exact_set": true,
+          "hard_condition_violations": [],
+          "no_answer_false_positive": false,
+          "qrels_status": "source-backed-objective",
+          "elapsed_ms": 0.221
+        },
+        {
+          "id": "hard-en-duration",
+          "kind": "hard_conditions",
+          "locale": "en",
+          "actual_ids": [
+            "film_82639eb3c583c6bd695a9adab70462fc"
+          ],
+          "expected_ids": [
+            "film_82639eb3c583c6bd695a9adab70462fc"
+          ],
+          "top1_hit": true,
+          "recall_at_3": 1.0,
+          "ndcg_at_10": 1.0,
+          "exact_set": true,
+          "hard_condition_violations": [],
+          "no_answer_false_positive": false,
+          "qrels_status": "source-backed-objective",
+          "elapsed_ms": 0.216
+        },
+        {
+          "id": "hard-zh-duration",
+          "kind": "hard_conditions",
+          "locale": "zh",
+          "actual_ids": [
+            "film_47d26dac6294b1bc2e15cdcfac7365ed"
+          ],
+          "expected_ids": [
+            "film_47d26dac6294b1bc2e15cdcfac7365ed"
+          ],
+          "top1_hit": true,
+          "recall_at_3": 1.0,
+          "ndcg_at_10": 1.0,
+          "exact_set": true,
+          "hard_condition_violations": [],
+          "no_answer_false_positive": false,
+          "qrels_status": "source-backed-objective",
+          "elapsed_ms": 0.179
+        },
+        {
+          "id": "none-en-submarine",
+          "kind": "no_answer",
+          "locale": "en",
+          "actual_ids": [],
+          "expected_ids": [],
+          "top1_hit": true,
+          "recall_at_3": 1,
+          "ndcg_at_10": 1,
+          "exact_set": true,
+          "hard_condition_violations": [],
+          "no_answer_false_positive": false,
+          "qrels_status": "source-backed-objective",
+          "elapsed_ms": 61.369
+        },
+        {
+          "id": "none-zh-jupiter",
+          "kind": "no_answer",
+          "locale": "zh",
+          "actual_ids": [],
+          "expected_ids": [],
+          "top1_hit": true,
+          "recall_at_3": 1,
+          "ndcg_at_10": 1,
+          "exact_set": true,
+          "hard_condition_violations": [],
+          "no_answer_false_positive": false,
+          "qrels_status": "source-backed-objective",
+          "elapsed_ms": 62.822
+        }
+      ],
+      "semantic_warm_median_ms": 61.066,
+      "semantic_warm_p95_ms": 65.574,
+      "latency_scope": "warm local retrieval; remote requests timed separately"
+    },
+    "hybrid": {
+      "all_cases": {
+        "cases": 24,
+        "top1_hit_rate": 0.8333333333333334,
+        "recall_at_3": 0.78125,
+        "ndcg_at_10": 0.828966644698984,
+        "exact_set_rate": 0.375,
+        "hard_condition_violations": 0,
+        "no_answer_false_positives": 1
+      },
+      "semantic_cases": {
+        "cases": 16,
+        "top1_hit_rate": 0.75,
+        "recall_at_3": 0.671875,
+        "ndcg_at_10": 0.7434499670484761,
+        "exact_set_rate": 0.0625,
+        "hard_condition_violations": 0,
+        "no_answer_false_positives": 1
+      },
+      "semantic_by_locale": {
+        "en": {
+          "cases": 8,
+          "top1_hit_rate": 0.875,
+          "recall_at_3": 0.6979166666666666,
+          "ndcg_at_10": 0.8199498342827062,
+          "exact_set_rate": 0.125,
+          "hard_condition_violations": 0,
+          "no_answer_false_positives": 0
+        },
+        "zh": {
+          "cases": 8,
+          "top1_hit_rate": 0.625,
+          "recall_at_3": 0.6458333333333334,
+          "ndcg_at_10": 0.666950099814246,
+          "exact_set_rate": 0.0,
+          "hard_condition_violations": 0,
+          "no_answer_false_positives": 1
+        }
+      },
+      "by_kind": {
+        "hard_conditions": {
+          "cases": 4,
+          "top1_hit_rate": 1.0,
+          "recall_at_3": 1.0,
+          "ndcg_at_10": 1.0,
+          "exact_set_rate": 1.0,
+          "hard_condition_violations": 0,
+          "no_answer_false_positives": 0
+        },
+        "identity": {
+          "cases": 4,
+          "top1_hit_rate": 1.0,
+          "recall_at_3": 1.0,
+          "ndcg_at_10": 1.0,
+          "exact_set_rate": 1.0,
+          "hard_condition_violations": 0,
+          "no_answer_false_positives": 0
+        },
+        "no_answer": {
+          "cases": 2,
+          "top1_hit_rate": 0.5,
+          "recall_at_3": 0.5,
+          "ndcg_at_10": 0.5,
+          "exact_set_rate": 0.5,
+          "hard_condition_violations": 0,
+          "no_answer_false_positives": 1
+        },
+        "plot_fact": {
+          "cases": 6,
+          "top1_hit_rate": 1.0,
+          "recall_at_3": 1.0,
+          "ndcg_at_10": 1.0,
+          "exact_set_rate": 0.0,
+          "hard_condition_violations": 0,
+          "no_answer_false_positives": 0
+        },
+        "theme": {
+          "cases": 8,
+          "top1_hit_rate": 0.625,
+          "recall_at_3": 0.46875,
+          "ndcg_at_10": 0.6118999340969522,
+          "exact_set_rate": 0.0,
+          "hard_condition_violations": 0,
+          "no_answer_false_positives": 0
+        }
+      },
+      "by_locale": {
+        "en": {
+          "cases": 12,
+          "top1_hit_rate": 0.9166666666666666,
+          "recall_at_3": 0.7986111111111112,
+          "ndcg_at_10": 0.8799665561884709,
+          "exact_set_rate": 0.4166666666666667,
+          "hard_condition_violations": 0,
+          "no_answer_false_positives": 0
+        },
+        "zh": {
+          "cases": 12,
+          "top1_hit_rate": 0.75,
+          "recall_at_3": 0.7638888888888888,
+          "ndcg_at_10": 0.7779667332094973,
+          "exact_set_rate": 0.3333333333333333,
+          "hard_condition_violations": 0,
+          "no_answer_false_positives": 1
+        }
+      },
+      "results": [
+        {
+          "id": "identity-en-tokyo",
+          "kind": "identity",
+          "locale": "en",
+          "actual_ids": [
+            "film_c0a13babdf49f9d922e497c96d83b4ba"
+          ],
+          "expected_ids": [
+            "film_c0a13babdf49f9d922e497c96d83b4ba"
+          ],
+          "top1_hit": true,
+          "recall_at_3": 1.0,
+          "ndcg_at_10": 1.0,
+          "exact_set": true,
+          "hard_condition_violations": [],
+          "no_answer_false_positive": false,
+          "qrels_status": "source-backed-objective",
+          "elapsed_ms": 0.132
+        },
+        {
+          "id": "identity-zh-mood",
+          "kind": "identity",
+          "locale": "zh",
+          "actual_ids": [
+            "film_c24885a838181a18fc08dda3ef2e8a06"
+          ],
+          "expected_ids": [
+            "film_c24885a838181a18fc08dda3ef2e8a06"
+          ],
+          "top1_hit": true,
+          "recall_at_3": 1.0,
+          "ndcg_at_10": 1.0,
+          "exact_set": true,
+          "hard_condition_violations": [],
+          "no_answer_false_positive": false,
+          "qrels_status": "source-backed-objective",
+          "elapsed_ms": 0.098
+        },
+        {
+          "id": "identity-en-sunshine",
+          "kind": "identity",
+          "locale": "en",
+          "actual_ids": [
+            "film_45566885297210e3b7c01480cad3e592"
+          ],
+          "expected_ids": [
+            "film_45566885297210e3b7c01480cad3e592"
+          ],
+          "top1_hit": true,
+          "recall_at_3": 1.0,
+          "ndcg_at_10": 1.0,
+          "exact_set": true,
+          "hard_condition_violations": [],
+          "no_answer_false_positive": false,
+          "qrels_status": "source-backed-objective",
+          "elapsed_ms": 0.095
+        },
+        {
+          "id": "identity-zh-everywhere",
+          "kind": "identity",
+          "locale": "zh",
+          "actual_ids": [
+            "film_c90047e2cf3df2a842270a31b6a330ec"
+          ],
+          "expected_ids": [
+            "film_c90047e2cf3df2a842270a31b6a330ec"
+          ],
+          "top1_hit": true,
+          "recall_at_3": 1.0,
+          "ndcg_at_10": 1.0,
+          "exact_set": true,
+          "hard_condition_violations": [],
+          "no_answer_false_positive": false,
+          "qrels_status": "source-backed-objective",
+          "elapsed_ms": 0.092
+        },
+        {
+          "id": "plot-en-tokyo",
+          "kind": "plot_fact",
+          "locale": "en",
+          "actual_ids": [
+            "film_c0a13babdf49f9d922e497c96d83b4ba",
+            "film_c4913df3a8e8e145d39b99642733af1a",
+            "film_45566885297210e3b7c01480cad3e592",
+            "film_8d9a7edb1b540a48231502b9cb7837bb",
+            "film_c24885a838181a18fc08dda3ef2e8a06",
+            "film_d1a0084d8eb5ff38c2f0af611a73aae1",
+            "film_fb0a6b49596cc730d45217af7525676f"
+          ],
+          "expected_ids": [
+            "film_c0a13babdf49f9d922e497c96d83b4ba"
+          ],
+          "top1_hit": true,
+          "recall_at_3": 1.0,
+          "ndcg_at_10": 1.0,
+          "exact_set": false,
+          "hard_condition_violations": [],
+          "no_answer_false_positive": false,
+          "qrels_status": "source-backed-objective",
+          "elapsed_ms": 61.276
+        },
+        {
+          "id": "plot-zh-farewell",
+          "kind": "plot_fact",
+          "locale": "zh",
+          "actual_ids": [
+            "film_960d32eba90d7f95c18174fb28d849d0",
+            "film_a3e38d924b2d3fc298eb79a0d349e9ec",
+            "film_fb0a6b49596cc730d45217af7525676f"
+          ],
+          "expected_ids": [
+            "film_960d32eba90d7f95c18174fb28d849d0"
+          ],
+          "top1_hit": true,
+          "recall_at_3": 1.0,
+          "ndcg_at_10": 1.0,
+          "exact_set": false,
+          "hard_condition_violations": [],
+          "no_answer_false_positive": false,
+          "qrels_status": "source-backed-objective",
+          "elapsed_ms": 62.556
+        },
+        {
+          "id": "plot-en-robot",
+          "kind": "plot_fact",
+          "locale": "en",
+          "actual_ids": [
+            "film_8077701cd5c1d4a4bab55d99385d42d5",
+            "film_7ff568d0b5d82d1e71a46c05c06241ac"
+          ],
+          "expected_ids": [
+            "film_8077701cd5c1d4a4bab55d99385d42d5"
+          ],
+          "top1_hit": true,
+          "recall_at_3": 1.0,
+          "ndcg_at_10": 1.0,
+          "exact_set": false,
+          "hard_condition_violations": [],
+          "no_answer_false_positive": false,
+          "qrels_status": "source-backed-objective",
+          "elapsed_ms": 64.082
+        },
+        {
+          "id": "plot-zh-arrival",
+          "kind": "plot_fact",
+          "locale": "zh",
+          "actual_ids": [
+            "film_82639eb3c583c6bd695a9adab70462fc",
+            "film_32ae27af7029f7079098df1169756168",
+            "film_47d26dac6294b1bc2e15cdcfac7365ed"
+          ],
+          "expected_ids": [
+            "film_82639eb3c583c6bd695a9adab70462fc"
+          ],
+          "top1_hit": true,
+          "recall_at_3": 1.0,
+          "ndcg_at_10": 1.0,
+          "exact_set": false,
+          "hard_condition_violations": [],
+          "no_answer_false_positive": false,
+          "qrels_status": "source-backed-objective",
+          "elapsed_ms": 51.053
+        },
+        {
+          "id": "plot-en-poet",
+          "kind": "plot_fact",
+          "locale": "en",
+          "actual_ids": [
+            "film_b9162670a4ef9828ed7e68653cab8c73",
+            "film_32105708e2d5ed0af3dc22cecdccf459",
+            "film_45566885297210e3b7c01480cad3e592",
+            "film_47d26dac6294b1bc2e15cdcfac7365ed",
+            "film_4b4b0d5016f0693e123ab229eb68e86c",
+            "film_8077701cd5c1d4a4bab55d99385d42d5",
+            "film_8d9a7edb1b540a48231502b9cb7837bb",
+            "film_c82732426ee82b025598535347039c64"
+          ],
+          "expected_ids": [
+            "film_b9162670a4ef9828ed7e68653cab8c73"
+          ],
+          "top1_hit": true,
+          "recall_at_3": 1.0,
+          "ndcg_at_10": 1.0,
+          "exact_set": false,
+          "hard_condition_violations": [],
+          "no_answer_false_positive": false,
+          "qrels_status": "source-backed-objective",
+          "elapsed_ms": 63.576
+        },
+        {
+          "id": "plot-zh-memory",
+          "kind": "plot_fact",
+          "locale": "zh",
+          "actual_ids": [
+            "film_d9c270d97e12fa7eb8dbd0bccd071901",
+            "film_45566885297210e3b7c01480cad3e592",
+            "film_32ae27af7029f7079098df1169756168",
+            "film_c82732426ee82b025598535347039c64"
+          ],
+          "expected_ids": [
+            "film_d9c270d97e12fa7eb8dbd0bccd071901"
+          ],
+          "top1_hit": true,
+          "recall_at_3": 1.0,
+          "ndcg_at_10": 1.0,
+          "exact_set": false,
+          "hard_condition_violations": [],
+          "no_answer_false_positive": false,
+          "qrels_status": "source-backed-objective",
+          "elapsed_ms": 59.036
+        },
+        {
+          "id": "theme-en-gathering",
+          "kind": "theme",
+          "locale": "en",
+          "actual_ids": [
+            "film_fb0a6b49596cc730d45217af7525676f",
+            "film_c90047e2cf3df2a842270a31b6a330ec",
+            "film_1aa7fd59b59a1ad42f162c1cc11ad43f",
+            "film_4b4b0d5016f0693e123ab229eb68e86c",
+            "film_7ff568d0b5d82d1e71a46c05c06241ac",
+            "film_a3e38d924b2d3fc298eb79a0d349e9ec",
+            "film_c0a13babdf49f9d922e497c96d83b4ba",
+            "film_c4913df3a8e8e145d39b99642733af1a",
+            "film_d1a0084d8eb5ff38c2f0af611a73aae1"
+          ],
+          "expected_ids": [
+            "film_960d32eba90d7f95c18174fb28d849d0",
+            "film_a3e38d924b2d3fc298eb79a0d349e9ec",
+            "film_c0a13babdf49f9d922e497c96d83b4ba",
+            "film_fb0a6b49596cc730d45217af7525676f"
+          ],
+          "top1_hit": true,
+          "recall_at_3": 0.25,
+          "ndcg_at_10": 0.6501086874194596,
+          "exact_set": false,
+          "hard_condition_violations": [],
+          "no_answer_false_positive": false,
+          "qrels_status": "provisional-curated-not-human-gold",
+          "elapsed_ms": 62.934
+        },
+        {
+          "id": "theme-zh-romance",
+          "kind": "theme",
+          "locale": "zh",
+          "actual_ids": [],
+          "expected_ids": [
+            "film_45566885297210e3b7c01480cad3e592",
+            "film_4ef9d61174e7ba14bfb60c5ae2892565",
+            "film_7a46b914cc187c1cea8f5d6fd3c32a82",
+            "film_c24885a838181a18fc08dda3ef2e8a06"
+          ],
+          "top1_hit": false,
+          "recall_at_3": 0.0,
+          "ndcg_at_10": 0.0,
+          "exact_set": false,
+          "hard_condition_violations": [],
+          "no_answer_false_positive": false,
+          "qrels_status": "provisional-curated-not-human-gold",
+          "elapsed_ms": 56.333
+        },
+        {
+          "id": "theme-en-livelihood",
+          "kind": "theme",
+          "locale": "en",
+          "actual_ids": [
+            "film_d1a0084d8eb5ff38c2f0af611a73aae1",
+            "film_1aa7fd59b59a1ad42f162c1cc11ad43f",
+            "film_47d26dac6294b1bc2e15cdcfac7365ed",
+            "film_4ef9d61174e7ba14bfb60c5ae2892565",
+            "film_7ff568d0b5d82d1e71a46c05c06241ac",
+            "film_a3e38d924b2d3fc298eb79a0d349e9ec",
+            "film_c0a13babdf49f9d922e497c96d83b4ba",
+            "film_c90047e2cf3df2a842270a31b6a330ec",
+            "film_d9c270d97e12fa7eb8dbd0bccd071901",
+            "film_fb0a6b49596cc730d45217af7525676f"
+          ],
+          "expected_ids": [
+            "film_1aa7fd59b59a1ad42f162c1cc11ad43f",
+            "film_4b4b0d5016f0693e123ab229eb68e86c",
+            "film_7ff568d0b5d82d1e71a46c05c06241ac",
+            "film_d1a0084d8eb5ff38c2f0af611a73aae1"
+          ],
+          "top1_hit": true,
+          "recall_at_3": 0.5,
+          "ndcg_at_10": 0.7075568027018304,
+          "exact_set": false,
+          "hard_condition_violations": [],
+          "no_answer_false_positive": false,
+          "qrels_status": "provisional-curated-not-human-gold",
+          "elapsed_ms": 69.49
+        },
+        {
+          "id": "theme-zh-technology",
+          "kind": "theme",
+          "locale": "zh",
+          "actual_ids": [
+            "film_32ae27af7029f7079098df1169756168",
+            "film_45566885297210e3b7c01480cad3e592",
+            "film_c82732426ee82b025598535347039c64",
+            "film_d9c270d97e12fa7eb8dbd0bccd071901"
+          ],
+          "expected_ids": [
+            "film_32105708e2d5ed0af3dc22cecdccf459",
+            "film_45566885297210e3b7c01480cad3e592",
+            "film_8077701cd5c1d4a4bab55d99385d42d5",
+            "film_c82732426ee82b025598535347039c64"
+          ],
+          "top1_hit": false,
+          "recall_at_3": 0.5,
+          "ndcg_at_10": 0.46152099495451687,
+          "exact_set": false,
+          "hard_condition_violations": [],
+          "no_answer_false_positive": false,
+          "qrels_status": "provisional-curated-not-human-gold",
+          "elapsed_ms": 62.532
+        },
+        {
+          "id": "theme-en-routines",
+          "kind": "theme",
+          "locale": "en",
+          "actual_ids": [
+            "film_4b4b0d5016f0693e123ab229eb68e86c",
+            "film_8d9a7edb1b540a48231502b9cb7837bb",
+            "film_b9162670a4ef9828ed7e68653cab8c73"
+          ],
+          "expected_ids": [
+            "film_47d26dac6294b1bc2e15cdcfac7365ed",
+            "film_8d9a7edb1b540a48231502b9cb7837bb",
+            "film_b9162670a4ef9828ed7e68653cab8c73",
+            "film_c4743ee97a14dcb9e2ae00cedb6b566c"
+          ],
+          "top1_hit": false,
+          "recall_at_3": 0.5,
+          "ndcg_at_10": 0.4321687061632412,
+          "exact_set": false,
+          "hard_condition_violations": [],
+          "no_answer_false_positive": false,
+          "qrels_status": "provisional-curated-not-human-gold",
+          "elapsed_ms": 60.941
+        },
+        {
+          "id": "theme-zh-father",
+          "kind": "theme",
+          "locale": "zh",
+          "actual_ids": [
+            "film_32ae27af7029f7079098df1169756168",
+            "film_fb0a6b49596cc730d45217af7525676f",
+            "film_c0a13babdf49f9d922e497c96d83b4ba",
+            "film_c82732426ee82b025598535347039c64",
+            "film_45566885297210e3b7c01480cad3e592",
+            "film_7a46b914cc187c1cea8f5d6fd3c32a82",
+            "film_a3e38d924b2d3fc298eb79a0d349e9ec",
+            "film_d9c270d97e12fa7eb8dbd0bccd071901"
+          ],
+          "expected_ids": [
+            "film_32ae27af7029f7079098df1169756168"
+          ],
+          "top1_hit": true,
+          "recall_at_3": 1.0,
+          "ndcg_at_10": 0.9737576937588317,
+          "exact_set": false,
+          "hard_condition_violations": [],
+          "no_answer_false_positive": false,
+          "qrels_status": "provisional-curated-not-human-gold",
+          "elapsed_ms": 60.502
+        },
+        {
+          "id": "reference-en-ikiru",
+          "kind": "theme",
+          "locale": "en",
+          "actual_ids": [
+            "film_47d26dac6294b1bc2e15cdcfac7365ed",
+            "film_fb0a6b49596cc730d45217af7525676f",
+            "film_c24885a838181a18fc08dda3ef2e8a06",
+            "film_7a46b914cc187c1cea8f5d6fd3c32a82",
+            "film_82639eb3c583c6bd695a9adab70462fc",
+            "film_c90047e2cf3df2a842270a31b6a330ec",
+            "film_b9162670a4ef9828ed7e68653cab8c73",
+            "film_c0a13babdf49f9d922e497c96d83b4ba",
+            "film_d1a0084d8eb5ff38c2f0af611a73aae1",
+            "film_c4913df3a8e8e145d39b99642733af1a",
+            "film_8d9a7edb1b540a48231502b9cb7837bb",
+            "film_1aa7fd59b59a1ad42f162c1cc11ad43f",
+            "film_7ff568d0b5d82d1e71a46c05c06241ac",
+            "film_4ef9d61174e7ba14bfb60c5ae2892565",
+            "film_d9c270d97e12fa7eb8dbd0bccd071901",
+            "film_45566885297210e3b7c01480cad3e592",
+            "film_32105708e2d5ed0af3dc22cecdccf459",
+            "film_a3e38d924b2d3fc298eb79a0d349e9ec",
+            "film_8077701cd5c1d4a4bab55d99385d42d5",
+            "film_c82732426ee82b025598535347039c64",
+            "film_32ae27af7029f7079098df1169756168",
+            "film_960d32eba90d7f95c18174fb28d849d0",
+            "film_4b4b0d5016f0693e123ab229eb68e86c"
+          ],
+          "expected_ids": [
+            "film_47d26dac6294b1bc2e15cdcfac7365ed",
+            "film_8d9a7edb1b540a48231502b9cb7837bb",
+            "film_b9162670a4ef9828ed7e68653cab8c73"
+          ],
+          "top1_hit": true,
+          "recall_at_3": 0.3333333333333333,
+          "ndcg_at_10": 0.7697644779771182,
+          "exact_set": false,
+          "hard_condition_violations": [],
+          "no_answer_false_positive": false,
+          "qrels_status": "provisional-curated-not-human-gold",
+          "elapsed_ms": 62.148
+        },
+        {
+          "id": "reference-zh-mood",
+          "kind": "theme",
+          "locale": "zh",
+          "actual_ids": [
+            "film_4ef9d61174e7ba14bfb60c5ae2892565",
+            "film_c4913df3a8e8e145d39b99642733af1a",
+            "film_7a46b914cc187c1cea8f5d6fd3c32a82",
+            "film_c0a13babdf49f9d922e497c96d83b4ba",
+            "film_45566885297210e3b7c01480cad3e592",
+            "film_a3e38d924b2d3fc298eb79a0d349e9ec",
+            "film_1aa7fd59b59a1ad42f162c1cc11ad43f",
+            "film_47d26dac6294b1bc2e15cdcfac7365ed",
+            "film_c82732426ee82b025598535347039c64",
+            "film_c4743ee97a14dcb9e2ae00cedb6b566c",
+            "film_fb0a6b49596cc730d45217af7525676f",
+            "film_32105708e2d5ed0af3dc22cecdccf459",
+            "film_d9c270d97e12fa7eb8dbd0bccd071901",
+            "film_d1a0084d8eb5ff38c2f0af611a73aae1",
+            "film_7ff568d0b5d82d1e71a46c05c06241ac",
+            "film_c90047e2cf3df2a842270a31b6a330ec",
+            "film_960d32eba90d7f95c18174fb28d849d0",
+            "film_8d9a7edb1b540a48231502b9cb7837bb",
+            "film_32ae27af7029f7079098df1169756168",
+            "film_82639eb3c583c6bd695a9adab70462fc",
+            "film_8077701cd5c1d4a4bab55d99385d42d5",
+            "film_b9162670a4ef9828ed7e68653cab8c73",
+            "film_4b4b0d5016f0693e123ab229eb68e86c"
+          ],
+          "expected_ids": [
+            "film_45566885297210e3b7c01480cad3e592",
+            "film_4ef9d61174e7ba14bfb60c5ae2892565",
+            "film_7a46b914cc187c1cea8f5d6fd3c32a82"
+          ],
+          "top1_hit": true,
+          "recall_at_3": 0.6666666666666666,
+          "ndcg_at_10": 0.9003221098006193,
+          "exact_set": false,
+          "hard_condition_violations": [],
+          "no_answer_false_positive": false,
+          "qrels_status": "provisional-curated-not-human-gold",
+          "elapsed_ms": 80.724
+        },
+        {
+          "id": "hard-en-director",
+          "kind": "hard_conditions",
+          "locale": "en",
+          "actual_ids": [
+            "film_d1a0084d8eb5ff38c2f0af611a73aae1",
+            "film_d9c270d97e12fa7eb8dbd0bccd071901",
+            "film_fb0a6b49596cc730d45217af7525676f"
+          ],
+          "expected_ids": [
+            "film_d1a0084d8eb5ff38c2f0af611a73aae1",
+            "film_d9c270d97e12fa7eb8dbd0bccd071901",
+            "film_fb0a6b49596cc730d45217af7525676f"
+          ],
+          "top1_hit": true,
+          "recall_at_3": 1.0,
+          "ndcg_at_10": 1.0,
+          "exact_set": true,
+          "hard_condition_violations": [],
+          "no_answer_false_positive": false,
+          "qrels_status": "source-backed-objective",
+          "elapsed_ms": 0.628
+        },
+        {
+          "id": "hard-zh-decade",
+          "kind": "hard_conditions",
+          "locale": "zh",
+          "actual_ids": [
+            "film_4ef9d61174e7ba14bfb60c5ae2892565"
+          ],
+          "expected_ids": [
+            "film_4ef9d61174e7ba14bfb60c5ae2892565"
+          ],
+          "top1_hit": true,
+          "recall_at_3": 1.0,
+          "ndcg_at_10": 1.0,
+          "exact_set": true,
+          "hard_condition_violations": [],
+          "no_answer_false_positive": false,
+          "qrels_status": "source-backed-objective",
+          "elapsed_ms": 0.289
+        },
+        {
+          "id": "hard-en-duration",
+          "kind": "hard_conditions",
+          "locale": "en",
+          "actual_ids": [
+            "film_82639eb3c583c6bd695a9adab70462fc"
+          ],
+          "expected_ids": [
+            "film_82639eb3c583c6bd695a9adab70462fc"
+          ],
+          "top1_hit": true,
+          "recall_at_3": 1.0,
+          "ndcg_at_10": 1.0,
+          "exact_set": true,
+          "hard_condition_violations": [],
+          "no_answer_false_positive": false,
+          "qrels_status": "source-backed-objective",
+          "elapsed_ms": 0.264
+        },
+        {
+          "id": "hard-zh-duration",
+          "kind": "hard_conditions",
+          "locale": "zh",
+          "actual_ids": [
+            "film_47d26dac6294b1bc2e15cdcfac7365ed"
+          ],
+          "expected_ids": [
+            "film_47d26dac6294b1bc2e15cdcfac7365ed"
+          ],
+          "top1_hit": true,
+          "recall_at_3": 1.0,
+          "ndcg_at_10": 1.0,
+          "exact_set": true,
+          "hard_condition_violations": [],
+          "no_answer_false_positive": false,
+          "qrels_status": "source-backed-objective",
+          "elapsed_ms": 0.219
+        },
+        {
+          "id": "none-en-submarine",
+          "kind": "no_answer",
+          "locale": "en",
+          "actual_ids": [],
+          "expected_ids": [],
+          "top1_hit": true,
+          "recall_at_3": 1,
+          "ndcg_at_10": 1,
+          "exact_set": true,
+          "hard_condition_violations": [],
+          "no_answer_false_positive": false,
+          "qrels_status": "source-backed-objective",
+          "elapsed_ms": 83.482
+        },
+        {
+          "id": "none-zh-jupiter",
+          "kind": "no_answer",
+          "locale": "zh",
+          "actual_ids": [
+            "film_d9c270d97e12fa7eb8dbd0bccd071901"
+          ],
+          "expected_ids": [],
+          "top1_hit": false,
+          "recall_at_3": 0,
+          "ndcg_at_10": 0,
+          "exact_set": false,
+          "hard_condition_violations": [],
+          "no_answer_false_positive": true,
+          "qrels_status": "source-backed-objective",
+          "elapsed_ms": 102.525
+        }
+      ],
+      "semantic_warm_median_ms": 62.544,
+      "semantic_warm_p95_ms": 102.525,
+      "latency_scope": "warm local retrieval; remote requests timed separately"
+    }
+  },
+  "offline_failure_analysis": {
+    "new_model_calls": 0,
+    "dense_to_hybrid_top1_losses": [
+      "none-zh-jupiter"
+    ],
+    "dense_to_hybrid_top1_gains": [
+      "theme-en-livelihood"
+    ],
+    "cases": [
+      {
+        "id": "plot-en-tokyo",
+        "kind": "plot_fact",
+        "locale": "en",
+        "question": "An old couple travels to Tokyo to visit their adult children.",
+        "strong_expected": [
+          "Tokyo Story"
+        ],
+        "top5": {
+          "lexical": [
+            "Tokyo Story",
+            "A Ghost Story",
+            "Eternal Sunshine of the Spotless Mind",
+            "Perfect Days",
+            "In the Mood for Love"
+          ],
+          "dense": [
+            "Tokyo Story"
+          ],
+          "hybrid": [
+            "Tokyo Story",
+            "A Ghost Story",
+            "Eternal Sunshine of the Spotless Mind",
+            "Perfect Days",
+            "In the Mood for Love"
+          ]
+        },
+        "failed_or_abstained": {
+          "lexical": false,
+          "dense": false,
+          "hybrid": false
+        },
+        "cosine_top5": [
+          {
+            "title": "Tokyo Story",
+            "cosine": 0.56393,
+            "grade": 3,
+            "lexical_overlap": [
+              "children",
+              "couple",
+              "their",
+              "tokyo"
+            ]
+          },
+          {
+            "title": "Shoplifters",
+            "cosine": 0.30023,
+            "grade": 0,
+            "lexical_overlap": [
+              "tokyo"
+            ]
+          },
+          {
+            "title": "Perfect Days",
+            "cosine": 0.27718,
+            "grade": 0,
+            "lexical_overlap": [
+              "tokyo"
+            ]
+          },
+          {
+            "title": "Yi Yi",
+            "cosine": 0.267216,
+            "grade": 0,
+            "lexical_overlap": []
+          },
+          {
+            "title": "Ikiru",
+            "cosine": 0.219306,
+            "grade": 0,
+            "lexical_overlap": []
+          }
+        ],
+        "hybrid_top1_details": {
+          "title": "Tokyo Story",
+          "grade": 3,
+          "lexical_overlap": [
+            "children",
+            "couple",
+            "their",
+            "tokyo"
+          ]
+        }
+      },
+      {
+        "id": "plot-zh-farewell",
+        "kind": "plot_fact",
+        "locale": "zh",
+        "question": "一家人隐瞒祖母的病情，借婚礼团聚。",
+        "strong_expected": [
+          "The Farewell"
+        ],
+        "top5": {
+          "lexical": [
+            "The Farewell",
+            "Yi Yi",
+            "Still Walking"
+          ],
+          "dense": [
+            "The Farewell"
+          ],
+          "hybrid": [
+            "The Farewell",
+            "Yi Yi",
+            "Still Walking"
+          ]
+        },
+        "failed_or_abstained": {
+          "lexical": false,
+          "dense": false,
+          "hybrid": false
+        },
+        "cosine_top5": [
+          {
+            "title": "The Farewell",
+            "cosine": 0.59003,
+            "grade": 3,
+            "lexical_overlap": [
+              "一家",
+              "借婚",
+              "团聚",
+              "婚礼",
+              "病情",
+              "祖母",
+              "隐瞒"
+            ]
+          },
+          {
+            "title": "Still Walking",
+            "cosine": 0.316168,
+            "grade": 0,
+            "lexical_overlap": [
+              "一家",
+              "团聚",
+              "家人"
+            ]
+          },
+          {
+            "title": "Yi Yi",
+            "cosine": 0.2989,
+            "grade": 0,
+            "lexical_overlap": [
+              "一家",
+              "婚礼",
+              "家人"
+            ]
+          },
+          {
+            "title": "Tokyo Story",
+            "cosine": 0.22577,
+            "grade": 0,
+            "lexical_overlap": []
+          },
+          {
+            "title": "Everything Everywhere All at Once",
+            "cosine": 0.225025,
+            "grade": 0,
+            "lexical_overlap": []
+          }
+        ],
+        "hybrid_top1_details": {
+          "title": "The Farewell",
+          "grade": 3,
+          "lexical_overlap": [
+            "一家",
+            "借婚",
+            "团聚",
+            "婚礼",
+            "病情",
+            "祖母",
+            "隐瞒"
+          ]
+        }
+      },
+      {
+        "id": "plot-en-robot",
+        "kind": "plot_fact",
+        "locale": "en",
+        "question": "A programmer evaluates a humanoid robot in a secluded home.",
+        "strong_expected": [
+          "Ex Machina"
+        ],
+        "top5": {
+          "lexical": [
+            "Ex Machina",
+            "Minari"
+          ],
+          "dense": [
+            "Ex Machina"
+          ],
+          "hybrid": [
+            "Ex Machina",
+            "Minari"
+          ]
+        },
+        "failed_or_abstained": {
+          "lexical": false,
+          "dense": false,
+          "hybrid": false
+        },
+        "cosine_top5": [
+          {
+            "title": "Ex Machina",
+            "cosine": 0.424702,
+            "grade": 3,
+            "lexical_overlap": [
+              "humanoid",
+              "programmer",
+              "robot",
+              "secluded"
+            ]
+          },
+          {
+            "title": "After Yang",
+            "cosine": 0.259455,
+            "grade": 0,
+            "lexical_overlap": []
+          },
+          {
+            "title": "Still Walking",
+            "cosine": 0.180387,
+            "grade": 0,
+            "lexical_overlap": []
+          },
+          {
+            "title": "Moon",
+            "cosine": 0.166392,
+            "grade": 0,
+            "lexical_overlap": []
+          },
+          {
+            "title": "Perfect Days",
+            "cosine": 0.16529,
+            "grade": 0,
+            "lexical_overlap": []
+          }
+        ],
+        "hybrid_top1_details": {
+          "title": "Ex Machina",
+          "grade": 3,
+          "lexical_overlap": [
+            "humanoid",
+            "programmer",
+            "robot",
+            "secluded"
+          ]
+        }
+      },
+      {
+        "id": "plot-zh-arrival",
+        "kind": "plot_fact",
+        "locale": "zh",
+        "question": "外星飞船来到地球，语言学家尝试理解它们的交流方式。",
+        "strong_expected": [
+          "Arrival"
+        ],
+        "top5": {
+          "lexical": [
+            "Arrival",
+            "Aftersun",
+            "Living"
+          ],
+          "dense": [
+            "Arrival"
+          ],
+          "hybrid": [
+            "Arrival",
+            "Aftersun",
+            "Living"
+          ]
+        },
+        "failed_or_abstained": {
+          "lexical": false,
+          "dense": false,
+          "hybrid": false
+        },
+        "cosine_top5": [
+          {
+            "title": "Arrival",
+            "cosine": 0.580674,
+            "grade": 3,
+            "lexical_overlap": [
+              "到地",
+              "地球",
+              "外星",
+              "学家",
+              "它们",
+              "家尝",
+              "尝试",
+              "来到",
+              "言学",
+              "语言"
+            ]
+          },
+          {
+            "title": "Ex Machina",
+            "cosine": 0.247899,
+            "grade": 0,
+            "lexical_overlap": []
+          },
+          {
+            "title": "Moon",
+            "cosine": 0.23768,
+            "grade": 0,
+            "lexical_overlap": []
+          },
+          {
+            "title": "Everything Everywhere All at Once",
+            "cosine": 0.229262,
+            "grade": 0,
+            "lexical_overlap": []
+          },
+          {
+            "title": "After Yang",
+            "cosine": 0.200271,
+            "grade": 0,
+            "lexical_overlap": []
+          }
+        ],
+        "hybrid_top1_details": {
+          "title": "Arrival",
+          "grade": 3,
+          "lexical_overlap": [
+            "到地",
+            "地球",
+            "外星",
+            "学家",
+            "它们",
+            "家尝",
+            "尝试",
+            "来到",
+            "言学",
+            "语言"
+          ]
+        }
+      },
+      {
+        "id": "plot-en-poet",
+        "kind": "plot_fact",
+        "locale": "en",
+        "question": "A bus driver writes poems during his daily routines.",
+        "strong_expected": [
+          "Paterson"
+        ],
+        "top5": {
+          "lexical": [
+            "Paterson",
+            "Moon",
+            "Eternal Sunshine of the Spotless Mind",
+            "Living",
+            "The Florida Project"
+          ],
+          "dense": [
+            "Paterson"
+          ],
+          "hybrid": [
+            "Paterson",
+            "Moon",
+            "Eternal Sunshine of the Spotless Mind",
+            "Living",
+            "The Florida Project"
+          ]
+        },
+        "failed_or_abstained": {
+          "lexical": false,
+          "dense": false,
+          "hybrid": false
+        },
+        "cosine_top5": [
+          {
+            "title": "Paterson",
+            "cosine": 0.511431,
+            "grade": 3,
+            "lexical_overlap": [
+              "bus",
+              "driver",
+              "during",
+              "his",
+              "routines",
+              "writes"
+            ]
+          },
+          {
+            "title": "Perfect Days",
+            "cosine": 0.292286,
+            "grade": 0,
+            "lexical_overlap": [
+              "routines"
+            ]
+          },
+          {
+            "title": "Living",
+            "cosine": 0.195303,
+            "grade": 0,
+            "lexical_overlap": [
+              "his"
+            ]
+          },
+          {
+            "title": "Still Walking",
+            "cosine": 0.176011,
+            "grade": 0,
+            "lexical_overlap": []
+          },
+          {
+            "title": "Moon",
+            "cosine": 0.16209,
+            "grade": 0,
+            "lexical_overlap": [
+              "his"
+            ]
+          }
+        ],
+        "hybrid_top1_details": {
+          "title": "Paterson",
+          "grade": 3,
+          "lexical_overlap": [
+            "bus",
+            "driver",
+            "during",
+            "his",
+            "routines",
+            "writes"
+          ]
+        }
+      },
+      {
+        "id": "plot-zh-memory",
+        "kind": "plot_fact",
+        "locale": "zh",
+        "question": "在死后中转站选择一段记忆并拍成电影。",
+        "strong_expected": [
+          "After Life"
+        ],
+        "top5": {
+          "lexical": [
+            "After Life",
+            "Aftersun",
+            "Eternal Sunshine of the Spotless Mind",
+            "After Yang"
+          ],
+          "dense": [
+            "After Life",
+            "Eternal Sunshine of the Spotless Mind"
+          ],
+          "hybrid": [
+            "After Life",
+            "Eternal Sunshine of the Spotless Mind",
+            "Aftersun",
+            "After Yang"
+          ]
+        },
+        "failed_or_abstained": {
+          "lexical": false,
+          "dense": false,
+          "hybrid": false
+        },
+        "cosine_top5": [
+          {
+            "title": "After Life",
+            "cosine": 0.629822,
+            "grade": 3,
+            "lexical_overlap": [
+              "一段",
+              "成电",
+              "拍成",
+              "段记",
+              "电影",
+              "记忆"
+            ]
+          },
+          {
+            "title": "Eternal Sunshine of the Spotless Mind",
+            "cosine": 0.351542,
+            "grade": 0,
+            "lexical_overlap": [
+              "记忆"
+            ]
+          },
+          {
+            "title": "Still Walking",
+            "cosine": 0.328249,
+            "grade": 0,
+            "lexical_overlap": []
+          },
+          {
+            "title": "After Yang",
+            "cosine": 0.310604,
+            "grade": 0,
+            "lexical_overlap": [
+              "记忆"
+            ]
+          },
+          {
+            "title": "Aftersun",
+            "cosine": 0.307096,
+            "grade": 0,
+            "lexical_overlap": [
+              "记忆"
+            ]
+          }
+        ],
+        "hybrid_top1_details": {
+          "title": "After Life",
+          "grade": 3,
+          "lexical_overlap": [
+            "一段",
+            "成电",
+            "拍成",
+            "段记",
+            "电影",
+            "记忆"
+          ]
+        }
+      },
+      {
+        "id": "theme-en-gathering",
+        "kind": "theme",
+        "locale": "en",
+        "question": "Family members reconnect at a gathering while old tensions remain.",
+        "strong_expected": [
+          "The Farewell",
+          "Yi Yi",
+          "Tokyo Story",
+          "Still Walking"
+        ],
+        "top5": {
+          "lexical": [
+            "Everything Everywhere All at Once",
+            "Still Walking",
+            "Parasite",
+            "The Florida Project",
+            "Minari"
+          ],
+          "dense": [
+            "Still Walking"
+          ],
+          "hybrid": [
+            "Still Walking",
+            "Everything Everywhere All at Once",
+            "Parasite",
+            "The Florida Project",
+            "Minari"
+          ]
+        },
+        "failed_or_abstained": {
+          "lexical": true,
+          "dense": false,
+          "hybrid": false
+        },
+        "cosine_top5": [
+          {
+            "title": "Still Walking",
+            "cosine": 0.376811,
+            "grade": 3,
+            "lexical_overlap": [
+              "family",
+              "old"
+            ]
+          },
+          {
+            "title": "The Farewell",
+            "cosine": 0.260694,
+            "grade": 3,
+            "lexical_overlap": []
+          },
+          {
+            "title": "Yi Yi",
+            "cosine": 0.255856,
+            "grade": 2,
+            "lexical_overlap": [
+              "family"
+            ]
+          },
+          {
+            "title": "Past Lives",
+            "cosine": 0.241057,
+            "grade": 0,
+            "lexical_overlap": []
+          },
+          {
+            "title": "Tokyo Story",
+            "cosine": 0.236569,
+            "grade": 3,
+            "lexical_overlap": [
+              "family"
+            ]
+          }
+        ],
+        "hybrid_top1_details": {
+          "title": "Still Walking",
+          "grade": 3,
+          "lexical_overlap": [
+            "family",
+            "old"
+          ]
+        }
+      },
+      {
+        "id": "theme-zh-romance",
+        "kind": "theme",
+        "locale": "zh",
+        "question": "亲密关系里错过、等待与没有说出口的感情。",
+        "strong_expected": [
+          "Eternal Sunshine of the Spotless Mind",
+          "Chungking Express",
+          "Past Lives",
+          "In the Mood for Love"
+        ],
+        "top5": {
+          "lexical": [],
+          "dense": [],
+          "hybrid": []
+        },
+        "failed_or_abstained": {
+          "lexical": true,
+          "dense": true,
+          "hybrid": true
+        },
+        "cosine_top5": [
+          {
+            "title": "Past Lives",
+            "cosine": 0.281006,
+            "grade": 3,
+            "lexical_overlap": []
+          },
+          {
+            "title": "A Ghost Story",
+            "cosine": 0.278593,
+            "grade": 0,
+            "lexical_overlap": []
+          },
+          {
+            "title": "Still Walking",
+            "cosine": 0.267783,
+            "grade": 0,
+            "lexical_overlap": []
+          },
+          {
+            "title": "In the Mood for Love",
+            "cosine": 0.255057,
+            "grade": 3,
+            "lexical_overlap": []
+          },
+          {
+            "title": "Chungking Express",
+            "cosine": 0.243927,
+            "grade": 2,
+            "lexical_overlap": []
+          }
+        ],
+        "hybrid_top1_details": null
+      },
+      {
+        "id": "theme-en-livelihood",
+        "kind": "theme",
+        "locale": "en",
+        "question": "People living on limited incomes try to protect a makeshift family.",
+        "strong_expected": [
+          "Parasite",
+          "The Florida Project",
+          "Minari",
+          "Shoplifters"
+        ],
+        "top5": {
+          "lexical": [
+            "Shoplifters",
+            "Parasite",
+            "Living",
+            "Chungking Express",
+            "Minari"
+          ],
+          "dense": [],
+          "hybrid": [
+            "Shoplifters",
+            "Parasite",
+            "Living",
+            "Chungking Express",
+            "Minari"
+          ]
+        },
+        "failed_or_abstained": {
+          "lexical": false,
+          "dense": true,
+          "hybrid": false
+        },
+        "cosine_top5": [
+          {
+            "title": "Shoplifters",
+            "cosine": 0.285219,
+            "grade": 3,
+            "lexical_overlap": [
+              "family",
+              "makeshift"
+            ]
+          },
+          {
+            "title": "The Florida Project",
+            "cosine": 0.211753,
+            "grade": 3,
+            "lexical_overlap": []
+          },
+          {
+            "title": "Minari",
+            "cosine": 0.191055,
+            "grade": 2,
+            "lexical_overlap": [
+              "family"
+            ]
+          },
+          {
+            "title": "Parasite",
+            "cosine": 0.186161,
+            "grade": 2,
+            "lexical_overlap": [
+              "family"
+            ]
+          },
+          {
+            "title": "Everything Everywhere All at Once",
+            "cosine": 0.173679,
+            "grade": 0,
+            "lexical_overlap": [
+              "family"
+            ]
+          }
+        ],
+        "hybrid_top1_details": {
+          "title": "Shoplifters",
+          "grade": 3,
+          "lexical_overlap": [
+            "family",
+            "makeshift"
+          ]
+        }
+      },
+      {
+        "id": "theme-zh-technology",
+        "kind": "theme",
+        "locale": "zh",
+        "question": "在人与技术的关系中追问陪伴、记忆和自我。",
+        "strong_expected": [
+          "Moon",
+          "Eternal Sunshine of the Spotless Mind",
+          "Ex Machina",
+          "After Yang"
+        ],
+        "top5": {
+          "lexical": [
+            "Aftersun",
+            "Eternal Sunshine of the Spotless Mind",
+            "After Yang",
+            "After Life"
+          ],
+          "dense": [],
+          "hybrid": [
+            "Aftersun",
+            "Eternal Sunshine of the Spotless Mind",
+            "After Yang",
+            "After Life"
+          ]
+        },
+        "failed_or_abstained": {
+          "lexical": true,
+          "dense": true,
+          "hybrid": true
+        },
+        "cosine_top5": [
+          {
+            "title": "After Yang",
+            "cosine": 0.325665,
+            "grade": 3,
+            "lexical_overlap": [
+              "记忆"
+            ]
+          },
+          {
+            "title": "Ex Machina",
+            "cosine": 0.253522,
+            "grade": 2,
+            "lexical_overlap": []
+          },
+          {
+            "title": "Aftersun",
+            "cosine": 0.246984,
+            "grade": 0,
+            "lexical_overlap": [
+              "记忆"
+            ]
+          },
+          {
+            "title": "Still Walking",
+            "cosine": 0.222985,
+            "grade": 0,
+            "lexical_overlap": []
+          },
+          {
+            "title": "A Ghost Story",
+            "cosine": 0.20885,
+            "grade": 0,
+            "lexical_overlap": []
+          }
+        ],
+        "hybrid_top1_details": {
+          "title": "Aftersun",
+          "grade": 0,
+          "lexical_overlap": [
+            "记忆"
+          ]
+        }
+      },
+      {
+        "id": "theme-en-routines",
+        "kind": "theme",
+        "locale": "en",
+        "question": "How ordinary work and repeated daily routines can carry meaning.",
+        "strong_expected": [
+          "Living",
+          "Perfect Days",
+          "Paterson",
+          "Ikiru"
+        ],
+        "top5": {
+          "lexical": [
+            "The Florida Project",
+            "Perfect Days",
+            "Paterson"
+          ],
+          "dense": [],
+          "hybrid": [
+            "The Florida Project",
+            "Perfect Days",
+            "Paterson"
+          ]
+        },
+        "failed_or_abstained": {
+          "lexical": true,
+          "dense": true,
+          "hybrid": true
+        },
+        "cosine_top5": [
+          {
+            "title": "Perfect Days",
+            "cosine": 0.287856,
+            "grade": 3,
+            "lexical_overlap": [
+              "routines"
+            ]
+          },
+          {
+            "title": "Paterson",
+            "cosine": 0.235512,
+            "grade": 3,
+            "lexical_overlap": [
+              "routines"
+            ]
+          },
+          {
+            "title": "Ikiru",
+            "cosine": 0.216201,
+            "grade": 3,
+            "lexical_overlap": []
+          },
+          {
+            "title": "Still Walking",
+            "cosine": 0.186437,
+            "grade": 1,
+            "lexical_overlap": []
+          },
+          {
+            "title": "Living",
+            "cosine": 0.165219,
+            "grade": 3,
+            "lexical_overlap": []
+          }
+        ],
+        "hybrid_top1_details": {
+          "title": "The Florida Project",
+          "grade": 0,
+          "lexical_overlap": [
+            "daily"
+          ]
+        }
+      },
+      {
+        "id": "theme-zh-father",
+        "kind": "theme",
+        "locale": "zh",
+        "question": "成年后回看与父亲相处的往事，记忆里的理解与遗憾。",
+        "strong_expected": [
+          "Aftersun"
+        ],
+        "top5": {
+          "lexical": [
+            "Aftersun",
+            "Tokyo Story",
+            "After Yang",
+            "Eternal Sunshine of the Spotless Mind",
+            "Past Lives"
+          ],
+          "dense": [
+            "Aftersun",
+            "Still Walking"
+          ],
+          "hybrid": [
+            "Aftersun",
+            "Still Walking",
+            "Tokyo Story",
+            "After Yang",
+            "Eternal Sunshine of the Spotless Mind"
+          ]
+        },
+        "failed_or_abstained": {
+          "lexical": false,
+          "dense": false,
+          "hybrid": false
+        },
+        "cosine_top5": [
+          {
+            "title": "Aftersun",
+            "cosine": 0.412376,
+            "grade": 3,
+            "lexical_overlap": [
+              "与父",
+              "回看",
+              "忆里",
+              "父亲",
+              "理解",
+              "看与",
+              "记忆"
+            ]
+          },
+          {
+            "title": "Still Walking",
+            "cosine": 0.355827,
+            "grade": 0,
+            "lexical_overlap": [
+              "遗憾"
+            ]
+          },
+          {
+            "title": "After Yang",
+            "cosine": 0.255539,
+            "grade": 1,
+            "lexical_overlap": [
+              "父亲",
+              "记忆"
+            ]
+          },
+          {
+            "title": "Tokyo Story",
+            "cosine": 0.241719,
+            "grade": 0,
+            "lexical_overlap": [
+              "成年",
+              "里的"
+            ]
+          },
+          {
+            "title": "Yi Yi",
+            "cosine": 0.228282,
+            "grade": 0,
+            "lexical_overlap": [
+              "父亲"
+            ]
+          }
+        ],
+        "hybrid_top1_details": {
+          "title": "Aftersun",
+          "grade": 3,
+          "lexical_overlap": [
+            "与父",
+            "回看",
+            "忆里",
+            "父亲",
+            "理解",
+            "看与",
+            "记忆"
+          ]
+        }
+      },
+      {
+        "id": "reference-en-ikiru",
+        "kind": "theme",
+        "locale": "en",
+        "question": "Films similar to Ikiru.",
+        "strong_expected": [
+          "Living",
+          "Perfect Days",
+          "Paterson"
+        ],
+        "top5": {
+          "lexical": [
+            "Living",
+            "Past Lives",
+            "Arrival",
+            "Paterson",
+            "In the Mood for Love"
+          ],
+          "dense": [
+            "Living",
+            "Tokyo Story",
+            "Shoplifters",
+            "A Ghost Story",
+            "Still Walking"
+          ],
+          "hybrid": [
+            "Living",
+            "Still Walking",
+            "In the Mood for Love",
+            "Past Lives",
+            "Arrival"
+          ]
+        },
+        "failed_or_abstained": {
+          "lexical": false,
+          "dense": false,
+          "hybrid": false
+        },
+        "cosine_top5": [
+          {
+            "title": "Living",
+            "cosine": 0.64361,
+            "grade": 3,
+            "lexical_overlap": [
+              "civil",
+              "for",
+              "servant",
+              "一名",
+              "公务",
+              "务员",
+              "生之"
+            ]
+          },
+          {
+            "title": "Tokyo Story",
+            "cosine": 0.607213,
+            "grade": 0,
+            "lexical_overlap": []
+          },
+          {
+            "title": "Shoplifters",
+            "cosine": 0.598837,
+            "grade": 0,
+            "lexical_overlap": []
+          },
+          {
+            "title": "A Ghost Story",
+            "cosine": 0.546913,
+            "grade": 0,
+            "lexical_overlap": []
+          },
+          {
+            "title": "Still Walking",
+            "cosine": 0.539501,
+            "grade": 0,
+            "lexical_overlap": [
+              "for"
+            ]
+          }
+        ],
+        "hybrid_top1_details": {
+          "title": "Living",
+          "grade": 3,
+          "lexical_overlap": [
+            "civil",
+            "for",
+            "servant",
+            "一名",
+            "公务",
+            "务员",
+            "生之"
+          ]
+        }
+      },
+      {
+        "id": "reference-zh-mood",
+        "kind": "theme",
+        "locale": "zh",
+        "question": "找和《花样年华》相似的电影。",
+        "strong_expected": [
+          "Eternal Sunshine of the Spotless Mind",
+          "Chungking Express",
+          "Past Lives"
+        ],
+        "top5": {
+          "lexical": [
+            "Chungking Express",
+            "Eternal Sunshine of the Spotless Mind",
+            "Past Lives",
+            "A Ghost Story",
+            "After Yang"
+          ],
+          "dense": [
+            "Chungking Express",
+            "Tokyo Story",
+            "A Ghost Story",
+            "Yi Yi",
+            "Past Lives"
+          ],
+          "hybrid": [
+            "Chungking Express",
+            "A Ghost Story",
+            "Past Lives",
+            "Tokyo Story",
+            "Eternal Sunshine of the Spotless Mind"
+          ]
+        },
+        "failed_or_abstained": {
+          "lexical": false,
+          "dense": false,
+          "hybrid": false
+        },
+        "cosine_top5": [
+          {
+            "title": "Chungking Express",
+            "cosine": 0.624978,
+            "grade": 3,
+            "lexical_overlap": [
+              "hong",
+              "kong",
+              "two",
+              "两名",
+              "香港"
+            ]
+          },
+          {
+            "title": "Tokyo Story",
+            "cosine": 0.54906,
+            "grade": 0,
+            "lexical_overlap": [
+              "their"
+            ]
+          },
+          {
+            "title": "A Ghost Story",
+            "cosine": 0.548862,
+            "grade": 0,
+            "lexical_overlap": [
+              "their",
+              "彼此"
+            ]
+          },
+          {
+            "title": "Yi Yi",
+            "cosine": 0.547073,
+            "grade": 1,
+            "lexical_overlap": [
+              "love"
+            ]
+          },
+          {
+            "title": "Past Lives",
+            "cosine": 0.526884,
+            "grade": 3,
+            "lexical_overlap": [
+              "after",
+              "for"
+            ]
+          }
+        ],
+        "hybrid_top1_details": {
+          "title": "Chungking Express",
+          "grade": 3,
+          "lexical_overlap": [
+            "hong",
+            "kong",
+            "two",
+            "两名",
+            "香港"
+          ]
+        }
+      },
+      {
+        "id": "none-en-submarine",
+        "kind": "no_answer",
+        "locale": "en",
+        "question": "A submarine crew makes first contact under the Arctic ice.",
+        "strong_expected": [],
+        "top5": {
+          "lexical": [],
+          "dense": [],
+          "hybrid": []
+        },
+        "failed_or_abstained": {
+          "lexical": false,
+          "dense": false,
+          "hybrid": false
+        },
+        "cosine_top5": [
+          {
+            "title": "Arrival",
+            "cosine": 0.244692,
+            "grade": 0,
+            "lexical_overlap": []
+          },
+          {
+            "title": "Moon",
+            "cosine": 0.217466,
+            "grade": 0,
+            "lexical_overlap": []
+          },
+          {
+            "title": "After Yang",
+            "cosine": 0.153612,
+            "grade": 0,
+            "lexical_overlap": []
+          },
+          {
+            "title": "Ex Machina",
+            "cosine": 0.139274,
+            "grade": 0,
+            "lexical_overlap": []
+          },
+          {
+            "title": "Chungking Express",
+            "cosine": 0.11484,
+            "grade": 0,
+            "lexical_overlap": []
+          }
+        ],
+        "hybrid_top1_details": null
+      },
+      {
+        "id": "none-zh-jupiter",
+        "kind": "no_answer",
+        "locale": "zh",
+        "question": "以木星空间站为主要场景的法庭审判电影。",
+        "strong_expected": [],
+        "top5": {
+          "lexical": [
+            "After Life"
+          ],
+          "dense": [],
+          "hybrid": [
+            "After Life"
+          ]
+        },
+        "failed_or_abstained": {
+          "lexical": true,
+          "dense": false,
+          "hybrid": true
+        },
+        "cosine_top5": [
+          {
+            "title": "Moon",
+            "cosine": 0.264678,
+            "grade": 0,
+            "lexical_overlap": []
+          },
+          {
+            "title": "Ex Machina",
+            "cosine": 0.231964,
+            "grade": 0,
+            "lexical_overlap": []
+          },
+          {
+            "title": "Ikiru",
+            "cosine": 0.22792,
+            "grade": 0,
+            "lexical_overlap": []
+          },
+          {
+            "title": "Shoplifters",
+            "cosine": 0.221935,
+            "grade": 0,
+            "lexical_overlap": []
+          },
+          {
+            "title": "After Life",
+            "cosine": 0.218481,
+            "grade": 0,
+            "lexical_overlap": [
+              "电影"
+            ]
+          }
+        ],
+        "hybrid_top1_details": {
+          "title": "After Life",
+          "grade": 0,
+          "lexical_overlap": [
+            "电影"
+          ]
+        }
+      }
+    ]
+  }
+}
