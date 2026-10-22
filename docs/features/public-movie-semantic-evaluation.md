@@ -175,17 +175,40 @@ four requests are not spent on tuning. The old Qwen receipt SHA256 is still
 `8b5219ef6a0a61e0f03f8c9e7a8d3dd5fe1879a85dbb63e1d487ee7fe8611637`,
 with its separate unknown actual cost and USD .01 reservation unchanged.
 
-Compare the **16 semantic cases**, excluding eight shared local fast paths:
+The **16-case macro averages** below exclude eight shared local fast paths and
+include six plot-fact, eight theme/reference and two no-answer cases. For each
+no-answer case, the frozen evaluator assigns **1 to each of Top-1, Recall@3 and
+nDCG@10 when the result is empty, and 0 to each when it is nonempty**. Therefore
+all three columns mix ranking and abstention; none is a pure ranking metric.
+The raw result JSON's `semantic_cases` fields retain this frozen convention.
 
-| Method | Top-1 / correct abstention | Recall@3 | Graded nDCG@10 | No-answer false positives |
-| --- | ---: | ---: | ---: | ---: |
-| Keyword | 68.8% | 69.3% | .739 | 1/2 |
-| Dense | 75.0% | 62.0% | .680 | 0/2 |
-| Hybrid | 75.0% | 67.2% | .743 | 1/2 |
+| Method | Macro Top-1 + abstention | Macro Recall@3 + abstention | Macro graded nDCG@10 + abstention |
+| --- | ---: | ---: | ---: |
+| Keyword | 68.8% | 69.3% | .739 |
+| Dense | 75.0% | 62.0% | .680 |
+| Hybrid | 75.0% | 67.2% | .743 |
 
-The Top-1 aggregate includes correct abstention for the two no-answer cases; it
-is not purely a ranking hit rate. On six concrete plot-fact questions, all three
-methods hit Top-1 (6/6). On the eight **provisional** theme/reference questions:
+Separately, the **14 answerable cases** (six plot-fact + eight provisional
+theme/reference cases) give these pure ranking metrics. These aggregates are
+recomputed from the original frozen ranked lists and qrels, without changing
+any result, data, label, evaluator or parameter:
+
+| Method | Top-1 hit | Recall@3 | Graded nDCG@10 |
+| --- | ---: | ---: | ---: |
+| Keyword | 71.43% | 72.02% | .77339 |
+| Dense | 71.43% | 56.55% | .63394 |
+| Hybrid | 78.57% | 69.64% | .77823 |
+
+The **two no-answer cases** are reported independently:
+
+| Method | Correct empty result / abstention | False-positive cases |
+| --- | ---: | ---: |
+| Keyword | 1/2 | 1/2 |
+| Dense | 2/2 | 0/2 |
+| Hybrid | 1/2 | 1/2 |
+
+On six concrete plot-fact questions, all three methods hit Top-1 (6/6). On the
+eight **provisional** theme/reference questions:
 
 | Method | Top-1 | Recall@3 | Graded nDCG@10 |
 | --- | ---: | ---: | ---: |
@@ -198,9 +221,11 @@ expected ID sets for all strategies, with zero hard violations. Again, the hard
 plans were injected and SQL-verified; these are not four NLP-extraction passes.
 The two runtime-conflict exclusions and 14/24 usable runtimes remain visible.
 
-The eight semantic cases per language give English Top-1 keyword/dense/hybrid
-75.0/75.0/87.5%, Chinese 62.5/75.0/62.5%. This selected tiny sample and provisional
-judgments do not establish general multilingual quality.
+The eight semantic cases per language each include one no-answer case and use
+the same mixed ranking/abstention convention. Their macro Top-1 values are
+English keyword/dense/hybrid 75.0/75.0/87.5%, Chinese 62.5/75.0/62.5%; these are
+not pure language-specific ranking hit rates. This selected tiny sample and
+provisional judgments do not establish general multilingual quality.
 
 Wall time 275.815s includes deliberate serial pacing. Remote request median/P95
 5.437/15.984s. Document requests alone: 1.991/9.552s; fresh query requests alone:
