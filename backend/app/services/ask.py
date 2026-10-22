@@ -4,7 +4,6 @@ from __future__ import annotations
 import json
 import os
 import re
-import unicodedata
 from threading import BoundedSemaphore
 from urllib.parse import urlsplit
 
@@ -21,22 +20,11 @@ from app.contracts.structured_metadata import normalize_metadata_text
 from app.database import engine
 from app.services.explore_query import EXPLORE_DIMENSIONS, explore_query_service
 from app.services.structured_metadata_vocab import STRUCTURED_METADATA_VOCABULARY as vocabulary
+from app.services.search_privacy import has_private_input
 
 
 ASK_CONTRACT_VERSION = "ask.v1"
 _interpretation_slots = BoundedSemaphore(2)
-_PRIVATE_INPUT = re.compile(
-    r"(?:\bsk-[A-Za-z0-9_-]{8,}|\bgh[pousr]_[A-Za-z0-9]{10,}|"
-    r"\b(?:api[_ -]?key|authorization|password|secret|token)\s*[:=]|"
-    r"\bbearer\s+\S+|[A-Za-z]:[\\/]|\\\\[^\s\\]+\\|file://|"
-    r"(?:^|[\s\"'(\[{=，。！？；：\u0060])(?:~[^\\/\s]*[\\/]|\.{1,2}[\\/]|[\\/])[^\s\"'<>)}\]]+|"
-    # A separator plus a known media/sidecar extension distinguishes an
-    # unprefixed relative path from titles such as Face/Off, V/H/S and 9/11.
-    r"(?:^|[\s\"'(\[{=，。！？；：\u0060])(?:[^\s\\/\"'<>:|?*\u0060]+[\\/])+"
-    r"[^\\/\r\n]*\.(?:mkv|mp4|m4v|avi|mov|webm|wmv|mpg|mpeg|m2ts|ts|vob|iso|"
-    r"nfo|srt|ass|ssa|vtt|sub|idx|jpe?g|png|gif|webp|txt|json|xml|db|sqlite3?|env|pem|key)"
-    r"(?=$|[\s\"')\]}>,.;:!?，。！？；：\u0060]))", re.IGNORECASE,
-)
 
 
 class AskError(ValueError):
@@ -44,10 +32,6 @@ class AskError(ValueError):
         super().__init__(code)
         self.code = code
         self.status = status
-
-
-def has_private_input(text: str) -> bool:
-    return bool(_PRIVATE_INPUT.search(text) or _PRIVATE_INPUT.search(unicodedata.normalize("NFKC", text)))
 
 
 def _strict_json(content):

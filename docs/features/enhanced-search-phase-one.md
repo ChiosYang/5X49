@@ -1,6 +1,6 @@
 # Enhanced Explore search — phase one
 
-Status: In Progress
+Status: Done
 Last updated: 2026-10-22
 Related: unified-explore-search.md; factual-explore.md
 
@@ -120,7 +120,12 @@ Status: In Progress
 - Fixed-component enhanced E2E: 16 passed, including two real ambiguities and
   delayed chip navigation. Parser/alias/schema/Library review regression: 40 passed;
   fresh full verification and exact-head independent re-review remain pending.
-- Full suites/CI and independent exact-head review pending. No real model calls.
+- Final reviewed head d12a5319dbf4f5fb142d4bb77b295c1eaa5cfa52 passed full
+  local backend 468/3 Windows skips and E2E 272. CI39721297391 passed backend
+  468/1 skip, tooling 15, frontend 138/audit/lint/type/build and E2E 272.
+  Independent native review /root/review_enhanced_search_phase_one cleared all
+  P1/P2. Merged normally at fb745f2cb3173d062aca170b3450ceb474d8a1f1; remote
+  inclusion and tree equality verified. No real model calls.
 
 ## Remaining risks
 

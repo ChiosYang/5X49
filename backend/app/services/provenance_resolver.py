@@ -236,13 +236,14 @@ class ProvenanceResolver:
         *,
         predicate: str,
         kind: str,
+        scopes: tuple[str, ...] = ("factual",),
     ) -> ResolvedValue[tuple[str, ...]]:
         values: list[_OwnedValue[str]] = []
         assertions = session.exec(
             select(Assertion)
             .where(Assertion.subject_entity_id == film_id)
             .where(Assertion.predicate == predicate)
-            .where(Assertion.source_scope == "factual")
+            .where(Assertion.source_scope.in_(scopes))
             .where(Assertion.review_status == "accepted")
             .where(Assertion.superseded_at.is_(None))
         ).all()

@@ -1,0 +1,40 @@
+{
+  "version": "semantic-quality.synthetic.v1",
+  "notice": "Fictional films and manually assigned relevance labels. No user library data, real recommendations or model quality claim. Hard plans are oracle inputs, not evidence of natural-language parsing.",
+  "films": [
+    {"id": 1, "title": "Signal Harbor", "overview": "A stranded astronaut on a damaged cargo ship uses a repeating radio signal to ask another crew for rescue and return home.", "year": 2090, "minutes": 89, "watched": false},
+    {"id": 2, "title": "Moon Postcard", "overview": "一名被困在月球基地的工程师，通过发给家人的短讯等待另一艘飞船接她回家。", "year": 2091, "minutes": 110, "watched": true},
+    {"id": 3, "title": "Borrowed Morning", "overview": "A musician wakes into the same day again and again. She changes small decisions on each repetition to recover a lost friendship and understand her memories.", "year": 2092, "minutes": 95, "watched": true},
+    {"id": 4, "title": "Paper Lives", "overview": "一个人每天在梦境中重新经历同一天。他逐次改变选择，试图找回朋友，并分清自己的记忆和梦境。", "year": 2093, "minutes": 105, "watched": false},
+    {"id": 5, "title": "Lighthouse Letters", "overview": "An estranged father and adult daughter exchange letters while restoring a coastal lighthouse. Their messages slowly repair the family relationship.", "year": 2090, "minutes": 100, "watched": false},
+    {"id": 6, "title": "Quiet Platform", "overview": "两名年轻人每天乘同一班火车上学，在站台上的短暂相遇中逐渐相爱，毕业后各自决定未来的生活。", "year": 2091, "minutes": 98, "watched": true},
+    {"id": 7, "title": "Bridge After Rain", "overview": "After a war ends, a displaced family crosses a ruined bridge to return to their village and search for missing relatives. The story follows recovery rather than battlefield action.", "year": 2092, "minutes": 125, "watched": false},
+    {"id": 8, "title": "Shared Orchard", "overview": "几位童年朋友重回乡村，合作修复荒废的果园。他们在共同劳动中重新理解彼此，决定如何维系友情。", "year": 2093, "minutes": 91, "watched": true}
+  ],
+  "cases": [
+    {"id": "space-en", "locale": "en", "question": "Films about a space journey and returning home", "content_query": "space journey and returning home", "expected": [1,2], "allowed": [1,2,3,4,5,6,7,8]},
+    {"id": "space-zh", "locale": "zh", "question": "关于宇宙旅行和回家的电影", "content_query": "宇宙旅行和回家", "expected": [1,2], "allowed": [1,2,3,4,5,6,7,8]},
+    {"id": "rescue-en", "locale": "en", "question": "A stranded astronaut sends a distress signal from a cargo ship", "content_query": "stranded astronaut distress signal from a cargo ship", "expected": [1], "allowed": [1,2,3,4,5,6,7,8]},
+    {"id": "rescue-zh", "locale": "zh", "question": "宇航员被困货运飞船，用信号求救的故事", "content_query": "宇航员被困货运飞船用信号求救", "expected": [1], "allowed": [1,2,3,4,5,6,7,8]},
+    {"id": "moon-en", "locale": "en", "question": "An engineer waiting on the moon sends messages to her family", "content_query": "engineer waiting on the moon sends messages to family", "expected": [2], "allowed": [1,2,3,4,5,6,7,8]},
+    {"id": "moon-zh", "locale": "zh", "question": "月球基地的工程师给家人发短讯等候接回", "content_query": "月球基地工程师给家人发短讯等待接回", "expected": [2], "allowed": [1,2,3,4,5,6,7,8]},
+    {"id": "loop-en", "locale": "en", "question": "Films about repeating the same day and changing choices", "content_query": "repeating the same day and changing choices", "expected": [3,4], "allowed": [1,2,3,4,5,6,7,8]},
+    {"id": "loop-zh", "locale": "zh", "question": "反复经历同一天并改变选择的电影", "content_query": "反复经历同一天并改变选择", "expected": [3,4], "allowed": [1,2,3,4,5,6,7,8]},
+    {"id": "dream-en", "locale": "en", "question": "A story about dreams, memories and recovering a lost friendship", "content_query": "dreams memories and recovering a lost friendship", "expected": [3,4], "allowed": [1,2,3,4,5,6,7,8]},
+    {"id": "dream-zh", "locale": "zh", "question": "关于梦境、记忆和找回朋友的故事", "content_query": "梦境记忆和找回朋友", "expected": [3,4], "allowed": [1,2,3,4,5,6,7,8]},
+    {"id": "letters-en", "locale": "en", "question": "A father and daughter repair their relationship through letters", "content_query": "father daughter repair relationship through letters", "expected": [5], "allowed": [1,2,3,4,5,6,7,8]},
+    {"id": "letters-zh", "locale": "zh", "question": "父亲和女儿通过信件修复关系", "content_query": "父亲和女儿通过信件修复关系", "expected": [5], "allowed": [1,2,3,4,5,6,7,8]},
+    {"id": "train-en", "locale": "en", "question": "Young students fall in love on a daily train commute", "content_query": "young students fall in love during train commute", "expected": [6], "allowed": [1,2,3,4,5,6,7,8]},
+    {"id": "train-zh", "locale": "zh", "question": "上学火车上逐渐相爱的年轻人", "content_query": "上学火车上逐渐相爱的年轻人", "expected": [6], "allowed": [1,2,3,4,5,6,7,8]},
+    {"id": "war-en", "locale": "en", "question": "A family returns home after a war to find missing relatives", "content_query": "family returning home after war finding missing relatives", "expected": [7], "allowed": [1,2,3,4,5,6,7,8]},
+    {"id": "war-zh", "locale": "zh", "question": "战后回乡寻找失散亲人的家庭", "content_query": "战后回乡寻找失散亲人的家庭", "expected": [7], "allowed": [1,2,3,4,5,6,7,8]},
+    {"id": "orchard-en", "locale": "en", "question": "Childhood friends reconnect while restoring a village orchard", "content_query": "childhood friends reconnect restoring village orchard", "expected": [8], "allowed": [1,2,3,4,5,6,7,8]},
+    {"id": "orchard-zh", "locale": "zh", "question": "童年朋友合作修复乡村果园并重建友情", "content_query": "童年朋友合作修复乡村果园重建友情", "expected": [8], "allowed": [1,2,3,4,5,6,7,8]},
+    {"id": "unwatched-space-en", "locale": "en", "question": "Unwatched films through 2090 under 100 minutes about space rescue", "content_query": "space rescue", "expected": [1], "allowed": [1], "hard": {"version": "search-plan.v2", "view": "unwatched", "year_max": 2090, "duration_max": 100, "duration_max_exclusive": true}},
+    {"id": "unwatched-space-zh", "locale": "zh", "question": "未看、2090年及以前、少于100分钟的太空救援电影", "content_query": "太空救援", "expected": [1], "allowed": [1], "hard": {"version": "search-plan.v2", "view": "unwatched", "year_max": 2090, "duration_max": 100, "duration_max_exclusive": true}},
+    {"id": "watched-loop-en", "locale": "en", "question": "Watched films under 100 minutes about repeating a day", "content_query": "repeating a day", "expected": [3], "allowed": [3,6,8], "hard": {"version": "search-plan.v2", "view": "watched", "duration_max": 100, "duration_max_exclusive": true}},
+    {"id": "watched-loop-zh", "locale": "zh", "question": "已看、少于100分钟、反复经历一天的电影", "content_query": "反复经历一天", "expected": [3], "allowed": [3,6,8], "hard": {"version": "search-plan.v2", "view": "watched", "duration_max": 100, "duration_max_exclusive": true}},
+    {"id": "similar-en", "locale": "en", "question": "Films similar to Signal Harbor", "content_query": "Signal Harbor", "reference": 1, "expected": [2], "allowed": [2,3,4,5,6,7,8]},
+    {"id": "similar-zh", "locale": "zh", "question": "和《Signal Harbor》内容相似的电影", "content_query": "Signal Harbor", "reference": 1, "expected": [2], "allowed": [2,3,4,5,6,7,8]}
+  ]
+}

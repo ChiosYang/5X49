@@ -74,7 +74,13 @@ class SearchPlanExecutor:
             "source": "local", "reason": None, "plan": plan.model_dump(), "person_id": None,
             "people_ids": chosen, "constraints": constraints, "issues": issues, "results": None}
 
-    def query(self, plan: SearchPlan, *, people_ids=None, offset=0):
+    def eligible_ids(self, plan: SearchPlan, *, people_ids=None, maximum=5000):
+        """Offline retrieval bridge: reuse every hard predicate before ranking."""
+        if type(maximum) is not int or not 1 <= maximum <= 5000:
+            raise AskError("search_candidate_limit", 422)
+        return self.query(plan, people_ids=people_ids, _ids_limit=maximum)
+
+    def query(self, plan: SearchPlan, *, people_ids=None, offset=0, _ids_limit=None):
         result = self.resolve(plan, people_ids)
         if result["status"] != "ready":
             return result
@@ -123,6 +129,12 @@ class SearchPlanExecutor:
                 if upper is not None:
                     conditions.append(value < upper * factor if getattr(plan, field + "_max_exclusive", False) else value <= upper * factor)
             base = select(film).join(library, film.film_id == library.film_id).where(*conditions)
+            if _ids_limit is not None:
+                ids = session.exec(base.with_only_columns(film.film_id).order_by(
+                    film.film_id).limit(_ids_limit + 1)).all()
+                if len(ids) > _ids_limit:
+                    raise AskError("search_candidate_limit", 422)
+                return {**result, "eligible_ids": ids}
             total = session.exec(select(func.count()).select_from(base.subquery())).one()
             limit = 40
             offset = min(offset, max(0, (total - 1) // limit * limit))
