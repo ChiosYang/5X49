@@ -70,6 +70,7 @@ def get_library_film_page(
     direction: Literal["asc", "desc"] = "asc",
     metadata_status: Literal["all", "pending", "needs_review", "failed", "matched"] = "all",
     favorite: bool = False,
+    rank_exact: bool = False,
     duration_min: int | None = Query(default=None, ge=1, le=10000),
     duration_max: int | None = Query(default=None, ge=1, le=10000),
     year_min: int | None = Query(default=None, ge=1870, le=2100),
@@ -86,7 +87,7 @@ def get_library_film_page(
     return library_manager.film_page(query=q, filter=filter, sort=sort, direction=direction,
         metadata_status=metadata_status, favorite=favorite, duration_min=duration_min,
         duration_max=duration_max, year_min=year_min, year_max=year_max,
-        rating_min=rating_min, rating_max=rating_max, limit=limit, offset=offset)
+        rating_min=rating_min, rating_max=rating_max, limit=limit, offset=offset, rank_exact=rank_exact)
 
 
 @router.get("/library/films/{film_id}")

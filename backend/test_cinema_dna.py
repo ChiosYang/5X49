@@ -175,9 +175,9 @@ class CinemaDnaTests(unittest.TestCase):
             session.commit()
             self.assertEqual(session.get(ProjectionState, "cinema_dna").digest, before_hash)
         payload, version = build_export_payload(self.engine)
-        self.assertEqual(version, 10)
+        self.assertEqual(version, 11)
         self.assertNotIn("cinema_dna", json.dumps(payload))
-        backup = create_verified_backup(self.database_path, self.root / "backup", app_version="test", source_schema_version=10, target_schema_version=10)
+        backup = create_verified_backup(self.database_path, self.root / "backup", app_version="test", source_schema_version=11, target_schema_version=11)
         self._rate(self.films["Beta"], 5)
         self.engine.dispose()
         restore_verified_backup(backup.manifest_path, self.database_path,

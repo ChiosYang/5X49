@@ -17,6 +17,7 @@ from app.canonical_models import (
     FilmCountry,
     FilmCountryProvenance,
     FilmTitle,
+    PersonAlias,
     GraphEntity,
     Person,
     StructuredMetadataReview,
@@ -327,6 +328,7 @@ class StructuredMetadataSynchronizer:
         current_review_keys: set[str],
     ) -> None:
         desired_keys: set[str] = set()
+        desired_aliases: set[tuple[str, str]] = set()
         for item in observation.credits:
             person = self._resolve_person(
                 session,
@@ -338,6 +340,30 @@ class StructuredMetadataSynchronizer:
             )
             if person is None:
                 continue
+            identity = session.exec(select(ExternalIdentity).where(ExternalIdentity.entity_id == person.id,
+                ExternalIdentity.provider == item.provider, ExternalIdentity.external_id == item.external_id,
+                ExternalIdentity.identity_status == "active")).first() if item.provider and item.external_id else None
+            if identity is not None:
+                for name in (item.name, *item.aliases):
+                    normalized = normalize_metadata_text(name)
+                    desired_aliases.add((person.id, normalized))
+                    alias = session.exec(select(PersonAlias).where(
+                        PersonAlias.person_id == person.id, PersonAlias.film_id == film_id,
+                        PersonAlias.normalized_name == normalized,
+                        PersonAlias.origin_kind == observation.origin_kind,
+                        PersonAlias.origin_ref == observation.origin_ref)).first()
+                    if alias is None:
+                        alias = PersonAlias(id=self._new_id("person_alias"), person_id=person.id,
+                            film_id=film_id, identity_id=identity.id, name=name.strip(), normalized_name=normalized,
+                            origin_kind=observation.origin_kind, origin_ref=observation.origin_ref,
+                            observed_at=observation.observed_at)
+                        session.add(alias)
+                    elif alias.superseded_at is not None or alias.identity_id != identity.id or alias.name != name.strip():
+                        alias.superseded_at = None
+                        alias.identity_id = identity.id
+                        alias.name = name.strip()
+                        alias.observed_at = observation.observed_at
+                        session.add(alias)
             semantic_key = credit_semantic_key(
                 film_id,
                 person.id,
@@ -387,6 +413,13 @@ class StructuredMetadataSynchronizer:
                 session.add(provenance)
 
         now = self._now()
+        for alias in session.exec(select(PersonAlias).where(PersonAlias.film_id == film_id,
+                PersonAlias.origin_kind == observation.origin_kind,
+                PersonAlias.origin_ref == observation.origin_ref,
+                PersonAlias.superseded_at.is_(None))).all():
+            if (alias.person_id, alias.normalized_name) not in desired_aliases:
+                alias.superseded_at = now
+                session.add(alias)
         provenance_rows = session.exec(
             select(CreditProvenance)
             .where(CreditProvenance.origin_kind == observation.origin_kind)

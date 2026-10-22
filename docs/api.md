@@ -9,10 +9,11 @@ resolved conditions with no provider call. Only an explicit client submission se
 zero retries, only text/static schema, confidence >=0.9, literal grounding, complete
 JSON and local entity validation. Typing, restoration and refresh never infer.
 
-Responses are `{version:"discovery.v1",status,source:"local"|"ai",reason,plan,
+Responses are `{version:"discovery.v1"|"discovery.v2",status,source:"local"|"ai",reason,plan,
 person_id,constraints,issues,results}`. Statuses: `keyword`, `ready`,
 `needs_clarification`, `clarify`, `unsupported`, `unavailable`, `needs_ai`. Plans use
-Ask v1's single genre/person/role/country/decade, viewing state and sort. Literal
+Ask v1's single genre/person/role/country/decade, viewing state and sort remain
+compatible. Extended local requests use the explicit v2 contract below. Literal
 Person names survive filler/facet parsing; exact identities run directly, while
 partial or duplicate names require a candidate choice. Unknown values do not broaden
 results. Producer/writer/other unsupported roles and language requirements never
@@ -36,8 +37,71 @@ plan. For keyword lookup only, an explicit leading find/找 command is removed f
 the effective term; the original input stays in the URL/input, with all inner title
 words intact. Ordinary keyword fallback is explicit and labeled. Legacy `/ask` redirects to
 Explore; legacy Ask APIs remain compatible (`/ask/status` now reports
-`form_available:false`). PR28's duration/rating v2 and held live
-evaluation are not enabled. Jev is deferred; no new credential/provider dependency.
+`form_available:false`). PR28 is not integrated, merged or closed; its held live
+evaluation remains separate. Jev is deferred; no new credential/provider dependency.
+
+### Reliable names and extended local plans
+
+Schema v11 adds source-backed `PersonAlias` records, linked to a stable active
+ExternalIdentity, source Film, provenance and supersession. Existing TMDB credit
+`name`/`original_name` are retained during the existing metadata flow, with no new
+request. Name-only provisional people are never merged or assigned guessed aliases.
+An explicit existing single-Film metadata refresh/scrape can replenish available
+names; this change never starts bulk fetching or invents missing translations.
+Existing active FilmTitle canonical/original/localized/alternative names are indexed
+along with effective title/original_title and credited people. NFKC, case and
+whitespace normalization apply; there is no automatic translation, transliteration
+or fuzzy identity merge. A known exact Film or Person literal takes precedence over
+words that resemble filter syntax. All results deduplicate by canonical ID.
+
+`GET /library/films/page` adds optional `rank_exact=false`. Explore sets it true
+to prioritize exact title/alias matches before broad literal matches. Existing
+Library sorting stays unchanged by default. Source changes refresh the shared
+search projection (`film-search.v2`); the new schema rebuilds it locally. Database
+backups preserve aliases. The existing portable JSON v1 export still exports only
+its documented subset and does not gain Person aliases or an import capability.
+
+Discovery v2 plans require `version:"search-plan.v2"` and expose:
+
+- `genres`, `countries`, `exclude_genres`, `exclude_countries`: at most ten
+  literal vocabulary values per array; countries resolve to ISO codes and genres
+  to active local concepts. Include arrays mean OR within that dimension.
+- `people`: at most eight `{name,role:"any"|"actor"|"director",exclude:false}`
+  clauses. Every clause combines with AND, including two roles for one identity.
+  Exact canonical names or reliable aliases resolve locally. Partial/duplicate
+  names require a choice. No unsupported producer/writer role is reinterpreted.
+- `year_min/max`: strict integers 1870–2100, inclusive, nullable.
+- `duration_min/max`: strict integer minutes 1–10000, nullable;
+  `duration_min_exclusive/max_exclusive` are strict booleans, default false.
+  Duration uses positive primary-edition seconds, then positive metadata minutes;
+  comparisons retain seconds. Missing values never satisfy a bound.
+- `view`, `sort`, `direction` retain all/watched/unwatched, title/year and asc/desc.
+  Reversed/empty ranges, duplicate values, extra keys and invalid types fail 422.
+
+V2 responses add `people_ids:{"0":"person_..."}`. The keys identify the index
+of each person clause. `/explore/search/query` accepts that bounded map instead
+of v1's `person_id`. Selections must be local candidates for that literal name;
+unknown/stale selections cannot broaden the result. All requirements must resolve
+before execution. The SQL executor applies all conditions before count/sort/page,
+returns 40 Films and clamps a shrunken last page. Negative facets require an
+eligible known value for that dimension/role AND absence of the excluded value;
+missing/conflicting data cannot prove an exclusion. A zero result stays zero.
+
+Local examples: `Japanese or French films`, `films between 1994 and 1999`,
+`films under 90 minutes`, `films not directed by Name`,
+`films directed by Name and starring Other Name`, `日本或法国电影`,
+`未看1994到1999年电影`, `少于90分钟的电影`, `由甲执导，由乙主演的电影`.
+OR across whole clauses, unknown or unconsumed text, language, semantic themes,
+subjective recommendations and unsupported roles are rejected/clarified in full.
+The input is retained and ordinary keyword fallback stays explicit.
+
+The expanded model schema/transport and completeness gate are available for
+offline/mocked evaluation only. Production routing uses local rules for v2;
+the existing guarded v1 AI fallback is unchanged. No real-model quality, accuracy,
+cost or latency has been validated for the extension. Enabling that model path
+requires a separately authorized live-quality evaluation; the PR28 hold is intact.
+Restored v1/v2 plans, corrections, paging, refresh and Back/Return never infer.
+See `docs/features/enhanced-search-phase-one.md` for exact verification evidence.
 
 ## Multiple media roots and scan coverage
 

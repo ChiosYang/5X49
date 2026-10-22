@@ -61,6 +61,7 @@ class CreditObservation:
     billing_order: int | None = None
     provider: str | None = None
     external_id: str | None = None
+    aliases: tuple[str, ...] = ()
 
     def __post_init__(self) -> None:
         if not isinstance(self.name, str) or not self.name.strip():
@@ -73,6 +74,11 @@ class CreditObservation:
             raise ValueError("observed billing order must not be negative")
         if bool(self.provider) != bool(self.external_id):
             raise ValueError("observed person provider and external id must be supplied together")
+        if len(self.aliases) > 10 or any(not isinstance(name, str) or not name.strip()
+                                       or len(name) > 100 for name in self.aliases):
+            raise ValueError("observed person aliases are invalid")
+        if self.aliases and not self.provider:
+            raise ValueError("aliases require a stable external person identity")
 
 
 @dataclass(frozen=True)

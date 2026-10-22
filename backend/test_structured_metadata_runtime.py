@@ -15,6 +15,7 @@ from app.canonical_models import (
     GraphEntity,
     LibraryItem,
     LocalProfile,
+    PersonAlias,
     StructuredMetadataReview,
 )
 from app.contracts.analysis_persistence import predicate_seed_rows
@@ -202,6 +203,35 @@ class StructuredMetadataRuntimeTests(unittest.TestCase):
             self.assertTrue(
                 all(row.status == "open" for row in session.exec(select(StructuredMetadataReview)).all())
             )
+
+    def test_stable_provider_names_are_aliases_of_one_identity_and_refresh_is_scoped(self):
+        from app.services.structured_metadata_observations import tmdb_structured_metadata_observation
+        payload = {"title": "Film", "credits": {"cast": [
+            {"id": 7, "name": "渡边谦", "original_name": "Ken Watanabe"}]}}
+        first = tmdb_structured_metadata_observation(payload, 42, language="zh-CN", observed_at=T1)
+        self.assertEqual(first.credits[0].aliases, ("渡边谦",))
+        with Session(self.engine) as session:
+            self.sync.sync(session, film_id=FILM_ID, library_item_id=ITEM_ID, observation=first)
+            session.commit()
+            aliases = session.exec(select(PersonAlias).where(PersonAlias.superseded_at.is_(None))).all()
+            self.assertEqual({row.name for row in aliases}, {"渡边谦", "Ken Watanabe"})
+            self.assertEqual(len({row.person_id for row in aliases}), 1)
+            person_id = aliases[0].person_id
+            payload["credits"]["cast"][0]["name"] = "渡辺謙"
+            second = tmdb_structured_metadata_observation(payload, 42, language="ja", observed_at=T2)
+            self.sync.sync(session, film_id=FILM_ID, library_item_id=ITEM_ID, observation=second)
+            session.commit()
+            aliases = session.exec(select(PersonAlias).where(PersonAlias.superseded_at.is_(None))).all()
+            self.assertEqual({row.name for row in aliases}, {"渡辺謙", "Ken Watanabe"})
+            self.assertEqual({row.person_id for row in aliases}, {person_id})
+
+    def test_aliases_never_link_people_by_name_only(self):
+        from app.services.structured_metadata_observations import tmdb_structured_metadata_observation
+        payload = {"credits": {"cast": [{"name": "共有者", "original_name": "Shared Person"}]}}
+        observed = tmdb_structured_metadata_observation(payload, 42, language="zh")
+        self.assertEqual(observed.credits[0].aliases, ())
+        with self.assertRaises(ValueError):
+            CreditObservation("A", "Acting", "Actor", aliases=("B",))
 
     @staticmethod
     def _counts(session):

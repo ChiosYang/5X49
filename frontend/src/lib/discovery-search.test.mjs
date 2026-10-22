@@ -21,7 +21,8 @@ test("private path roots are blocked without rejecting ordinary slash-containing
     "'Movies/My Private Film.mkv'",'"Movies/My Private Film.mkv"',
     "Movies/O'Brien's Private Film.mkv","Movies/私人的电影.mkv",
     "\u0060/private.mkv\u0060","\u0060~/Movies/private.mkv\u0060","\u0060./Movies/private.mkv\u0060",
-    "'/private.mkv'","(~/Movies/private.mkv)","路径：./私密/片单.txt","my api_key=private","use sk-abcdefgh12345678"])
+    "'/private.mkv'","(~/Movies/private.mkv)","路径：./私密/片单.txt","my api_key=private","use sk-abcdefgh12345678",
+    "Ｃ：＼Movies＼private.mkv","～／Movies／private.mkv"])
     assert.equal(hasPrivateDiscoveryInput("Japanese films featuring "+path),true,path);
   for(const title of ["Face/Off","V/H/S","9/11","Fate/stay night","D: The Movie","The Secret Life of Walter Mitty","In the Mood for Love","日与夜","1/2","provider/model-2.5"]){
     assert.equal(hasPrivateDiscoveryInput(title),false,title);

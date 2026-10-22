@@ -101,7 +101,7 @@ for(const locale of ['en','zh'])for(const width of [1440,320]){
 for(const locale of ['en','zh']){
   test(locale+' multiple values explain available recovery without retired Explore filters',async({page,request})=>{
     const copy=locale==='zh'?zh:en;
-    const question=locale==='zh'?'日本或法国电影':'Japanese or French films';
+    const question=locale==='zh'?'日本恐怖剧情电影':'Japanese horror drama films';
     await page.setViewportSize({width:320,height:844});await page.goto('/'+locale+'/explore');
     await submit(page,question,locale);
     await expect(page.getByRole('heading',{name:copy.Discovery.states.unsupported,exact:true})).toBeVisible();

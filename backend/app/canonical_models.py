@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 from typing import Any
 from uuid import uuid4
 
-from sqlalchemy import CheckConstraint, Column, Index, UniqueConstraint, text
+from sqlalchemy import CheckConstraint, Column, Index, String, UniqueConstraint, text
 from sqlmodel import Field, JSON, SQLModel
 
 from app.contracts.analysis_persistence import (
@@ -136,6 +136,7 @@ class FilmSearchReadModel(SQLModel, table=True):
     source_hash: str
     projection_version: str
     projected_at: str = Field(default_factory=canonical_utc_now_iso)
+    exact_titles: str = Field(default="", sa_column=Column(String, nullable=False, server_default=text("''")))
 
 
 class ExploreFilmReadModel(SQLModel, table=True):
@@ -548,6 +549,26 @@ class ConceptAlias(SQLModel, table=True):
     provenance_ref: str
     created_at: str = Field(default_factory=canonical_utc_now_iso)
     updated_at: str = Field(default_factory=canonical_utc_now_iso)
+
+
+class PersonAlias(SQLModel, table=True):
+    """A literal observed name linked by a stable provider identity, never a guess."""
+    __tablename__ = "person_alias"
+    __table_args__ = (
+        UniqueConstraint("person_id", "film_id", "normalized_name", "origin_kind", "origin_ref",
+                         name="uq_person_alias_source_value"),
+        Index("ix_person_alias_name_active", "normalized_name", "superseded_at"),
+    )
+    id: str = Field(primary_key=True)
+    person_id: str = Field(foreign_key="person.id", ondelete="CASCADE", index=True)
+    film_id: str = Field(foreign_key="film.id", ondelete="CASCADE", index=True)
+    identity_id: str = Field(foreign_key="external_identity.id", ondelete="CASCADE")
+    name: str
+    normalized_name: str
+    origin_kind: str
+    origin_ref: str
+    observed_at: str
+    superseded_at: str | None = None
 
 
 class FilmTitle(SQLModel, table=True):

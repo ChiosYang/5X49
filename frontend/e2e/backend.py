@@ -325,6 +325,45 @@ def control(payload: dict, x_e2e_token: str = Header(default='')):
         viewing_manager.create(films['Orbit Unknown'], '2026-10-12', rating=5,
             idempotency_key='filter-viewing-0001')
         return films
+    elif action == 'enhanced_search_fixture':
+        from app.services.library import library_manager
+        from app.services.structured_metadata_sync import StructuredMetadataSynchronizer
+        from app.contracts.structured_metadata import StructuredMetadataObservation, TitleObservation, CountryObservation, GenreObservation, CreditObservation
+        from app.database import engine
+        from sqlmodel import Session
+        entries = [('Search Alpha', 2098, 89, 'JP', 'Action', '990002'),
+                   ('Search Beta', 2098, 90, 'FR', 'Drama', '990003'),
+                   ('Search Gamma', 2097, 95, 'US', 'Horror', '990004')]
+        observations = []
+        for title, year, minutes, *_rest in entries:
+            video = root / (title + '.mkv')
+            video.write_bytes(('enhanced-search-fixture-' + title).encode())
+            observations.append(dict(title=title, folder_name=title, media_path=str(video),
+                year=year, runtime=minutes, scrape_status='matched'))
+        for index in range(41):
+            title = f'Search Page {index:02}'
+            video = root / (title + '.mkv')
+            video.write_bytes(title.encode())
+            observations.append(dict(title=title, folder_name=title, media_path=str(video), year=2099, runtime=80))
+        library_manager.add_observations(observations)
+        films = {film['title']: film['id'] for film in library_manager.list_films()}
+        sync = StructuredMetadataSynchronizer()
+        with Session(engine) as session:
+            for title, year, minutes, country, genre, actor_id in entries:
+                names = (TitleObservation(title, 'canonical', 'en'),)
+                if title == 'Search Beta':
+                    names += (TitleObservation('星际回声', 'alternative', 'zh'),
+                              TitleObservation('Echo Films 2098', 'alternative', 'en'))
+                sync.sync(session, film_id=films[title], library_item_id=None,
+                    observation=StructuredMetadataObservation(origin_kind='nfo', origin_ref='e2e.search:' + films[title],
+                        source_instance_id='e2e.search', observed_at='2026-10-22T00:00:00Z', titles=names,
+                        countries=(CountryObservation(country),), genres=(GenreObservation(genre),),
+                        credits=(CreditObservation('Search Director', 'Directing', 'Director', provider='tmdb.person',
+                            external_id='990001', aliases=('本地导演甲',)),
+                            CreditObservation('Search Actor' if actor_id != '990003' else 'Other Search Actor', 'Acting', 'Actor',
+                                provider='tmdb.person', external_id=actor_id))))
+            session.commit()
+        return {title: films[title] for title in films if title.startswith('Search ')}
     elif action == 'catalog_pagination_fixture':
         from app.services.library_sync import library_sync_service
         from itertools import combinations, islice

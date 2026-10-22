@@ -111,6 +111,9 @@ def _tmdb_credit(
         billing_order=billing_order,
         provider="tmdb.person" if provider_id is not None else None,
         external_id=str(provider_id) if provider_id is not None else None,
+        aliases=tuple(dict.fromkeys(value for field in ("name", "original_name")
+            if (value := _text(item.get(field))) and value != name and len(value) <= 100))
+            if provider_id is not None else (),
     )
 
 

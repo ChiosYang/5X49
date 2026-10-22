@@ -24,6 +24,7 @@ type ResultStageProps = {
   onPage: (offset: number) => void;
   onClear: () => void;
   showMatchedFacts?: boolean;
+  hasConditions?: boolean;
 };
 
 export function ResultStage({
@@ -40,9 +41,11 @@ export function ResultStage({
   onPage,
   onClear,
   showMatchedFacts = true,
+  hasConditions,
 }: ResultStageProps) {
   const t = useTranslations("Explore");
   const total = results?.total ?? 0;
+  const filtered = hasConditions ?? hasExploreFilters(query);
   const nextOffset = results ? results.next_offset : null;
   const previousOffset = results && query.offset > 0
     ? Math.max(0, query.offset - results.limit)
@@ -148,9 +151,9 @@ export function ResultStage({
         ) : (
           <div className="flex min-h-80 flex-col items-center justify-center rounded-structural border border-dashed border-line-strong px-6 text-center">
             <Compass className="h-8 w-8 text-ink/25" />
-            <h3 className="mt-4 font-serif text-2xl text-ink">{t(hasExploreFilters(query) ? "zeroTitle" : "emptyViewTitle")}</h3>
-            <p className="mt-2 max-w-lg text-sm leading-6 text-ink-muted">{t(hasExploreFilters(query) ? "zeroDetail" : "emptyViewDetail")}</p>
-            {hasExploreFilters(query) ? <Button className="mt-5" variant="secondary" onClick={onClear}>{t("clearAll")}</Button> : null}
+            <h3 className="mt-4 font-serif text-2xl text-ink">{t(filtered ? "zeroTitle" : "emptyViewTitle")}</h3>
+            <p className="mt-2 max-w-lg text-sm leading-6 text-ink-muted">{t(filtered ? "zeroDetail" : "emptyViewDetail")}</p>
+            {filtered ? <Button className="mt-5" variant="secondary" onClick={onClear}>{t("clearAll")}</Button> : null}
           </div>
         )}
       </div>
