@@ -1,0 +1,105 @@
+{
+  "version": "public-retrieval-guards.regression.v1",
+  "scope": "Rule correctness and known-corpus regression; NOT independent semantic validation",
+  "policy_version": "retrieval-policy.offline.v2.1",
+  "policy_fingerprint": "cca6c7684c93951760bf176a29c7104fb7c5d4ba75c69af7f3bc68b1bc3ca345",
+  "experiment_fingerprint": "da6876b7ea4f0f7208d0da08e80911e6428ebb4a92f335f86144c2d6c16bdb9b",
+  "reference_report": "docs/evaluations/public-retrieval-ablation-v2.json",
+  "reference_sha256": "87b4c1cf5c9afd39280be558024c0034b39cfcefa1daea07bf5dcf69c9310801",
+  "archived_report_source_commit": "2a3ba4418b756799a047003943143d877da15fe0",
+  "original_freeze_id": "289c657b808e30bad11c61137d1ec3d59db0d43ec7daf32697d732397ee40df3",
+  "implementation_sha256": {
+    "backend\\app\\evaluation\\retrieval_ablation.py": "4d3510fb3fa2d044c2eed1a1d0977bef9891baa5fa655c9719a46fe47c6df5c5",
+    "backend\\app\\services\\retrieval_policy.py": "2e1244e434055e8954989bda39ba2be8091e092aef68b41676a1ab244b87ce76"
+  },
+  "immutable_inputs_sha256": {
+    "backend\\fixtures\\semantic_search\\public-movies-v1.json": "47bab20a827b28a481a4e9d30efd89b0c7ce68eb3f4d92957f885d4448f274fe",
+    "backend\\fixtures\\semantic_search\\public-movies-sources-v1.json": "9bfb165bc0ea4cc4e082d35824484d9b4ae4b5d80531470205551dc4f3f0d4de",
+    "backend\\fixtures\\semantic_search\\public-movies-v1.freeze.json": "91b50e87b648fbfc01010d2b8fe132a885ed47e33b013c782ba61d6066ae48e2",
+    "docs\\evaluations\\public-movies-v1-results.json": "8f14a7397f7f2a0c348e97d1eb106788e61d508253e999a83ef528d5253c0a97",
+    ".mcp-artifacts\\openrouter-public-movies-v1\\vectors.json": "e389c28c39f965d44ad403515f263488eaa3b18283601c24bab4a1758abd8b0d",
+    ".mcp-artifacts\\openrouter-public-movies-v1\\budget.json": "0315021c55843c2b0a6f77ce114457150b90e1bbb626ab298e9105518f01c4de",
+    ".mcp-artifacts\\openrouter-public-movies-v1\\report.json": "ef064d49d1b523e4995c51e3e6f3dcba39975579f735ed223aa6ef934a4a50b0"
+  },
+  "compared_fields": [
+    "id",
+    "actual_ids",
+    "candidate_ids",
+    "top1_hit",
+    "recall_at_3",
+    "ndcg_at_10"
+  ],
+  "comparisons": [
+    {
+      "stage": "baseline",
+      "method": "lexical",
+      "equal_rows": 16
+    },
+    {
+      "stage": "baseline",
+      "method": "dense",
+      "equal_rows": 16
+    },
+    {
+      "stage": "baseline",
+      "method": "hybrid",
+      "equal_rows": 16
+    },
+    {
+      "stage": "candidates",
+      "method": "lexical",
+      "equal_rows": 16
+    },
+    {
+      "stage": "candidates",
+      "method": "dense",
+      "equal_rows": 16
+    },
+    {
+      "stage": "candidates",
+      "method": "hybrid",
+      "equal_rows": 16
+    },
+    {
+      "stage": "lexical",
+      "method": "lexical",
+      "equal_rows": 16
+    },
+    {
+      "stage": "lexical",
+      "method": "dense",
+      "equal_rows": 16
+    },
+    {
+      "stage": "lexical",
+      "method": "hybrid",
+      "equal_rows": 16
+    },
+    {
+      "stage": "admission",
+      "method": "lexical",
+      "equal_rows": 16
+    },
+    {
+      "stage": "admission",
+      "method": "dense",
+      "equal_rows": 16
+    },
+    {
+      "stage": "admission",
+      "method": "hybrid",
+      "equal_rows": 16
+    }
+  ],
+  "equal_ranking_rows": 192,
+  "model_new_calls": 0,
+  "credential_lookups": 0,
+  "ledger_constructions": 0,
+  "production_enabled": false,
+  "new_rules": [
+    "Explicit Chinese conjunctions require every factual clause; exact full identity retains precedence",
+    "Overlapping or repeated CJK/English spans cannot manufacture independent lexical anchors"
+  ],
+  "changed_parameters": false,
+  "archived_reports_rewritten": false
+}
