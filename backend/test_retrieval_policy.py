@@ -98,7 +98,27 @@ class RetrievalPolicyTests(unittest.TestCase):
         final = engine.search("technology and memory", eligible_ids=[fid(1), fid(2)],
             query_vector=[1, 0, 0], strategy="dense", mode="exploratory")
         self.assertEqual(final.displayed_ids, [fid(1)])
-        self.assertEqual(final.candidates[0].reason, "theme_combined_support")
+        self.assertEqual(final.candidates[0].reason, "theme_semantic_anchor")
+
+    def test_theme_paraphrase_anchor_does_not_require_literal_majority(self):
+        docs = (doc(1, "An observatory beside a lake."), doc(2, "A distant voyage."))
+        engine = index(docs, [.32, .1])
+        question = "observatory longing companionship identity meaning everyday uncertainty reconciliation"
+        result = engine.search(question, eligible_ids=[fid(1), fid(2)], query_vector=[1, 0, 0],
+                               mode="exploratory")
+        self.assertEqual(result.displayed_ids, [fid(1)])
+        self.assertLess(result.candidates[0].lexical.coverage, .12)
+        strict = engine.search(question, eligible_ids=[fid(1), fid(2)], query_vector=[1, 0, 0])
+        self.assertEqual(strict.displayed_ids, [])
+
+    def test_multiple_rare_anchors_can_support_literal_results_without_semantics(self):
+        docs = (doc(1, "An observatory orbital voyage."), *[doc(n, "A daily routine.") for n in range(2, 13)])
+        engine = index(docs, [.1] * len(docs))
+        result = engine.search("observatory orbital memory identity reconciliation", strategy="lexical",
+                               eligible_ids=[d.film_id for d in docs])
+        self.assertEqual(result.displayed_ids, [fid(1)])
+        self.assertEqual(result.candidates[0].reason, "factual_lexical_anchor_bundle")
+        self.assertLess(result.candidates[0].lexical.coverage, .70)
 
     def test_weak_lexical_only_rank_never_buys_admission(self):
         docs = (doc(1, "Daily life around a motel."),)
@@ -172,7 +192,8 @@ class RetrievalPolicyTests(unittest.TestCase):
                 engine.search(q, eligible_ids=[fid(1)], query_vector=[1, 0, 0])
         for kwargs in ({"query_vector": [1, 0]}, {"query_vector": [True, 0, 1]},
                        {"query_vector": [float("nan"), 0, 1]}, {"mode": "auto-ai"},
-                       {"stage": "unknown"}, {"eligible_ids": ["invalid"]}):
+                       {"stage": "unknown"}, {"eligible_ids": ["invalid"]},
+                       {"mode": []}, {"strategy": []}, {"stage": []}):
             with self.subTest(kwargs=kwargs), self.assertRaises(SemanticError):
                 engine.search("family memory", **{"eligible_ids": [fid(1)], "query_vector": [1, 0, 0], **kwargs})
 

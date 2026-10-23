@@ -148,7 +148,7 @@ def experiment():
         raise SemanticError("historical_artifact_changed")
     files = [Path(__file__), historical.BACKEND / "app/services/retrieval_policy.py"]
     code = {str(p.relative_to(ROOT)): historical.file_hash(p) for p in files}
-    result.update(version="public-retrieval-ablation.diagnostic.v1", policy_version=VERSION,
+    result.update(version="public-retrieval-ablation.diagnostic.v2", policy_version=VERSION,
         policy=asdict(policy), policy_fingerprint=policy.fingerprint,
         experiment_fingerprint=_hash([freeze_id, policy.fingerprint, code, before]),
         original_freeze_id=freeze_id, immutable_inputs_sha256=before, implementation_sha256=code,
@@ -158,7 +158,10 @@ def experiment():
         qrels_status="theme grades provisional; unchanged",
         intent_scope="fixture annotations, NOT automatic intent routing or NLP validation",
         latency_scope="local saved-vector replay only; no network / no new latency measurement of provider",
-        parameter_tuning="single declared v1 policy; no sweeps or qrel/data edits",
+        parameter_tuning="documented structural v2 revision after observed diagnostic v1; unchanged cosine thresholds; no sweeps or qrel/data edits; NOT independent validation",
+        previous_experiment={"implementation_commit": "602c4f2", "report":
+            "docs/evaluations/public-retrieval-ablation-v1.json", "report_sha256":
+            digest(ROOT / "docs/evaluations/public-retrieval-ablation-v1.json")},
         titles={f.id: {"en": f.title_en, "zh": f.title_zh} for f in fixture.films})
     return result
 

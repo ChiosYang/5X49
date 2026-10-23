@@ -15,7 +15,7 @@ from app.contracts.structured_metadata import normalize_metadata_text
 from app.services.semantic_search import (ContentDocument, ProviderSpec, SemanticError,
     _eligible, _hash, _safe, _tokens, _vector, corpus_revision)
 
-VERSION = "retrieval-policy.offline.v1"
+VERSION = "retrieval-policy.offline.v2"
 # Search scaffolding contributes negligibly to ordering, never to admission.
 GENERIC_EN = frozenset("a an the and or of in on with to from at by for as is are was were "
     "be been it its their they them his her this that these those which who how what "
@@ -40,6 +40,7 @@ class RetrievalPolicy:
     clause_coverage: float = .25
     literal_coverage: float = .70
     reference_similarity: float = .45
+    anchor_bundle_bm25: float = 3.
 
     def __post_init__(self):
         if type(self.candidate_k) is not int or not 1 <= self.candidate_k <= 100:
@@ -49,7 +50,7 @@ class RetrievalPolicy:
         for name, value in asdict(self).items():
             if name in {"candidate_k", "rrf_k"}:
                 continue
-            maximum = 3 if name == "k1" else 1
+            maximum = 3 if name in {"k1", "anchor_bundle_bm25"} else 1
             if type(value) not in (float, int) or not math.isfinite(value) or not 0 < value <= maximum:
                 raise SemanticError("invalid_retrieval_policy")
         if self.theme_supported > self.theme_strong:
@@ -193,9 +194,10 @@ class RetrievalIndex:
             return True, "exact_identity"
         meaningful = len(evidence.matched)
         clauses = bool(evidence.clause_coverages) and min(evidence.clause_coverages) >= p.clause_coverage
+        bundle = meaningful >= 2 and evidence.bm25 >= p.anchor_bundle_bm25
         if mode == "reference":
             if strategy == "lexical":
-                ok = evidence.coverage >= p.literal_coverage and meaningful >= 2
+                ok = evidence.coverage >= p.theme_coverage and bundle
             else:
                 ok = cosine is not None and cosine >= p.reference_similarity
             return ok, "reference_content" if ok else "reference_insufficient_evidence"
@@ -203,14 +205,20 @@ class RetrievalIndex:
             if cosine is not None and cosine >= p.theme_strong:
                 return True, "theme_semantic_support"
             if (cosine is not None and cosine >= p.theme_supported
-                    and evidence.coverage >= p.theme_coverage and meaningful):
-                return True, "theme_combined_support"
+                    and evidence.coverage > 0 and meaningful):
+                # Broad themes may be paraphrases: one real lexical anchor plus
+                # semantic support is evidence, not a claim of full fact coverage.
+                return True, "theme_semantic_anchor"
             if evidence.coverage >= p.literal_coverage and meaningful >= 2:
                 return True, "theme_substantive_literal"
+            if bundle and evidence.coverage >= p.theme_coverage:
+                return True, "theme_lexical_anchor_bundle"
             return False, "theme_insufficient_evidence"
         # Literal evidence can stand alone, but rank/one generic token cannot.
         if clauses and meaningful >= 2 and evidence.coverage >= p.literal_coverage:
             return True, "factual_substantive_literal"
+        if clauses and bundle and evidence.coverage >= p.clause_coverage:
+            return True, "factual_lexical_anchor_bundle"
         if (clauses and meaningful >= 2 and evidence.coverage >= p.factual_coverage
                 and cosine is not None and cosine >= p.factual_similarity):
             return True, "factual_combined_support"
@@ -219,9 +227,10 @@ class RetrievalIndex:
     def search(self, question, *, eligible_ids, query_vector=None, reference_id=None,
                mode="factual", strategy="hybrid", stage="admission"):
         question = _safe(question, 600)
-        if mode not in {"factual", "exploratory"} or strategy not in {"dense", "lexical", "hybrid"}:
+        if (not isinstance(mode, str) or mode not in {"factual", "exploratory"}
+                or not isinstance(strategy, str) or strategy not in {"dense", "lexical", "hybrid"}):
             raise SemanticError("invalid_retrieval_mode")
-        if stage not in {"candidates", "lexical", "admission"}:
+        if not isinstance(stage, str) or stage not in {"candidates", "lexical", "admission"}:
             raise SemanticError("invalid_retrieval_stage")
         eligible = _eligible(eligible_ids) & set(self.documents)
         if reference_id is not None:
