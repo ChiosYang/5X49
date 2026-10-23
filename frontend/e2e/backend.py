@@ -64,6 +64,11 @@ discovery_interpreter = AskInterpreter(client_factory=DiscoveryClient)
 discovery_interpreter.configured = lambda: discovery_ai_enabled
 discovery_search_service.ask.interpreter = discovery_interpreter
 
+import semantic_fixture
+import app.api.explore as explore_api_module
+original_evaluation = explore_api_module._evaluation
+explore_api_module._evaluation = lambda: semantic_fixture.runtime or original_evaluation()
+
 from app.services.video_health import video_health
 health_allowed = False
 class ControlledHealthLoad:
@@ -121,7 +126,12 @@ def control(payload: dict, x_e2e_token: str = Header(default='')):
         raise HTTPException(403)
     global health_allowed
     action = payload['action']
-    if action == 'discovery_ai':
+    if action == 'semantic_evaluation':
+        from app.database import engine
+        return semantic_fixture.configure(root, engine, payload)
+    elif action == 'semantic_stats':
+        return {'calls': list(semantic_fixture.calls)}
+    elif action == 'discovery_ai':
         global discovery_ai_enabled, discovery_ai_reply, discovery_ai_failure, discovery_ai_calls
         discovery_ai_enabled = bool(payload.get('enabled'))
         discovery_ai_reply = payload.get('reply', {"status":"clarify","plan":None,"confidence":0.0,"unhandled":[]})

@@ -26,6 +26,7 @@ type ResultStageProps = {
   showMatchedFacts?: boolean;
   hasConditions?: boolean;
   controlsDisabled?: boolean;
+  relevance?: { active: boolean; label: string; onSelect: () => void };
 };
 
 export function ResultStage({
@@ -44,6 +45,7 @@ export function ResultStage({
   showMatchedFacts = true,
   hasConditions,
   controlsDisabled = false,
+  relevance,
 }: ResultStageProps) {
   const t = useTranslations("Explore");
   const total = results?.total ?? 0;
@@ -86,22 +88,24 @@ export function ResultStage({
             ))}
           </div>
           <div role="group" className="inline-flex flex-wrap gap-1 border border-line-strong bg-canvas p-1" aria-label={t("sortLabel")}>
+            {relevance ? <Button type="button" disabled={controlsDisabled} aria-pressed={relevance.active}
+              onClick={relevance.onSelect} size="sm" variant={relevance.active ? "primary" : "ghost"}>{relevance.label}</Button> : null}
             {(["title", "year"] as const).map((sort) => (
               <Button
                 key={sort}
                 type="button"
                 disabled={controlsDisabled}
-                aria-pressed={query.sort === sort}
+                aria-pressed={!relevance?.active && query.sort === sort}
                 onClick={() => onSort(sort)}
                 size="sm"
-                variant={query.sort === sort ? "primary" : "ghost"}
+                variant={!relevance?.active && query.sort === sort ? "primary" : "ghost"}
               >
                 {t(`sorts.${sort}`)}
               </Button>
             ))}
             <IconButton
               variant="ghost"
-              disabled={controlsDisabled}
+              disabled={controlsDisabled || relevance?.active}
               onClick={onDirection}
               aria-label={query.dir === "asc" ? t("ascending") : t("descending")}
               icon={query.dir === "asc" ? <ArrowUp className="h-3.5 w-3.5" /> : <ArrowDown className="h-3.5 w-3.5" />}

@@ -10,7 +10,7 @@ import unicodedata
 
 from pydantic import ValidationError
 
-from app.contracts.search_plan import SearchPlan, SearchPerson
+from app.contracts.bound_search_plan import SearchPlan, SearchPerson
 from app.contracts.structured_metadata import normalize_metadata_text
 from app.services.structured_metadata_vocab import STRUCTURED_METADATA_VOCABULARY as vocabulary
 
@@ -43,7 +43,8 @@ def parse_extended(question: str):
 
 def grounded_extended(plan: SearchPlan, question: str, *, edited=False) -> bool:
     original, leftover, issue = parse_extended(question)
-    return not issue and not leftover and original is not None and (edited or plan == original)
+    return (not issue and not leftover and original is not None
+            and (edited or plan.model_dump() == original.model_dump()))
 
 
 def accepted_interpretation(interpretation, question: str) -> bool:
@@ -70,6 +71,16 @@ def _parse_extended(question: str):
     text = unicodedata.normalize("NFKC", question)
     values: dict = {"version": "search-plan.v2"}
     people = []
+
+    # Explicit reverse credits are complete role clauses, not free-form Person
+    # extraction. Their following year/plot belongs to another clause.
+    reverse = list(re.finditer(r"(?:^|[,;:])\s*(?P<name>[^,;:!?]{1,100}?)\s+directed\s+(?:it|this film|the film)\b", text, re.I))
+    for match in reversed(reverse):
+        name = match.group("name").strip(" '\"“”")
+        if not name:
+            return None, text, "ambiguous_request"
+        people.insert(0, SearchPerson(name=name, role="director"))
+        text = text[:match.start()] + " " + text[match.end():]
 
     # Full Chinese literal names, including 和/日本/剧情 in a person's name.
     chinese_clause = r"([^,;.!?，。；！？]{1,100}?)(执导|导演|主演|出演)(?:的|(?=[,;.!?，。；！？、\s]|$|电影|影片|作品))"
@@ -160,7 +171,7 @@ def _parse_extended(question: str):
             text = text[:match.start()] + " " + text[match.end():]
 
     # Runtime inequalities are stored in seconds via exclusive flags below.
-    durations = list(re.finditer(r"(?:\b(at least|at most|under|over|shorter than|longer than|less than|more than)\s*(\d{1,5})\s*(minutes?|hours?)\b)|(?:(不少于|不超过|少于|超过|短于|长于)\s*(\d{1,5})\s*(分钟|小时))", text, re.I))
+    durations = list(re.finditer(r"(?:\b(at least|at most|under|over|shorter than|longer than|less than|more than)\s*(\d{1,5})\s*(minutes?|hours?)\b)|(?:(?:片长|时长)?\s*(不少于|不超过|少于|超过|短于|长于)\s*(\d{1,5})\s*(分钟|小时))", text, re.I))
     for match in reversed(durations):
         op, number, unit = [part for part in match.groups() if part is not None]
         op, unit = op.casefold(), unit.casefold()

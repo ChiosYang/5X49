@@ -4,17 +4,23 @@ const PLAN_FIELDS = ["genre", "person", "person_role", "country", "decade", "vie
 
 export type DiscoveryStatus = "keyword" | "ready" | "needs_clarification" | "clarify" | "unsupported" | "unavailable" | "needs_ai";
 export interface DiscoveryResolution extends Omit<AskResolution, "version" | "status" | "plan" | "constraints" | "issues"> {
-  version: "discovery.v1" | "discovery.v2";
+  version: "discovery.v1" | "discovery.v2" | "discovery.v3";
   plan: AskPlan | SearchPlan | null;
   people_ids?: Record<string, string>;
-  constraints: Array<{ dimension: "genre" | "person" | "country" | "decade" | "year" | "duration";
+  keyword_query?: string;
+  constraints: Array<{ dimension: "genre" | "person" | "country" | "decade" | "year" | "duration" | "film";
     key: string; label: string; role?: "any" | "actor" | "director"; id?: string; field?: string; index?: number;
     labels?: Record<string, string>; exclude?: boolean; min?: number | null; max?: number | null; min_exclusive?: boolean; max_exclusive?: boolean }>;
-  issues: Array<{ field: string; index?: number; code: "unknown_value" | "choose_person";
-    candidates: AskResolution["issues"][number]["candidates"] }>;
+  issues: Array<{ field: string; index?: number; code: "unknown_value" | "choose_person" | "choose_reference";
+    candidates: Array<{ key: string; label: string; year?: number | null; films?: Array<{ title: string; year: number | null }> }> }>;
   status: DiscoveryStatus;
   source: "local" | "ai";
   reason: string | null;
+  snapshot?: string;
+  edited?: boolean;
+  semantic?: { text: string; evaluation_only: boolean; requires_submit?: boolean; reference_id?: string | null;
+    route?: "semantic" | "hybrid"; mode?: "factual" | "exploratory" | "reference";
+    order?: "relevance" | "title" | "year"; fallback?: string | null; indexed_films?: number; bounded_candidates?: number };
 }
 export interface DiscoveryState {
   plan?: AskPlan | SearchPlan | null;
@@ -25,6 +31,17 @@ export interface DiscoveryState {
   status?: DiscoveryStatus;
   reason?: string | null;
   offset?: number;
+  semanticSnapshot?: string | null;
+  semanticOrder?: "relevance" | "title" | "year";
+}
+export interface DiscoverySubmission {
+  people_ids?: Record<string, string>;
+  reference_id?: string;
+  edited_plan?: SearchPlan;
+  evaluation_only?: boolean;
+}
+export function parseSemanticSnapshot(value?: string) {
+  return value && /^ds_[0-9a-f]{32}$/.test(value) ? value : null;
 }
 
 export function normalizeDiscoverySearch(value?: string | string[] | null) {
@@ -56,6 +73,10 @@ export function discoveryHref(query: string, state: DiscoveryState = {}) {
     if (state.edited) params.set("edited", "1");
     if (state.source === "ai") params.set("source", "ai");
     if (state.offset && state.offset > 0) params.set("offset", String(state.offset));
+    if (state.semanticSnapshot) {
+      params.set("semantic_snapshot", state.semanticSnapshot);
+      if (state.semanticOrder && state.semanticOrder !== "relevance") params.set("order", state.semanticOrder);
+    }
   } else if (state.status && state.status !== "keyword") {
     params.set("state", state.status);
     if (state.reason) params.set("reason", state.reason);
@@ -64,7 +85,8 @@ export function discoveryHref(query: string, state: DiscoveryState = {}) {
 }
 export function resolutionHref(query: string, result: DiscoveryResolution) {
   return discoveryHref(query, { plan: result.plan, personId: result.person_id, peopleIds: result.people_ids, source: result.source,
-    status: result.status, reason: result.reason });
+    status: result.status, reason: result.reason, edited: result.edited,
+    semanticSnapshot: result.snapshot, semanticOrder: result.semantic?.order });
 }
 export function parseDiscoveryPlan(raw: string | undefined): AskPlan | SearchPlan | null {
   try {
@@ -86,7 +108,14 @@ export function parseDiscoveryPlan(raw: string | undefined): AskPlan | SearchPla
 export const DISCOVERY_REASONS = new Set(["non_search", "similarity", "recommendation", "negation", "multiple_values",
   "unsupported_filter", "ambiguous_request", "incomplete_request", "long_keywords", "submit_to_interpret",
   "ask_not_configured", "ask_busy", "ask_timeout", "ask_invalid_response", "ask_provider_unavailable",
-  "ask_private_input", "projection_unavailable", "invalid_request", "unavailable"]);
+  "ask_private_input", "projection_unavailable", "invalid_request", "unavailable",
+  "search_evaluation_disabled", "search_evaluation_config_invalid", "search_not_configured", "search_budget_blocked",
+  "search_provider_unavailable", "search_preflight_unavailable", "search_preflight_required", "search_price_changed",
+  "search_privacy_unverified", "search_public_logging_consent_required", "search_provider_evaluation_only",
+  "search_route_uncertain", "search_reference_choice", "reference_missing_content", "search_cancelled",
+  "search_snapshot_invalid", "search_snapshot_expired", "search_snapshot_stale", "search_snapshot_requires_submit",
+  "search_index_stale", "search_index_invalid", "search_source_changed", "search_input_not_approved", "search_input_outside_scope",
+  "unsupported_content_negation", "unknown_film", "ambiguous_film", "ambiguous_reference"]);
 export function discoveryReason(value: unknown) {
   return typeof value === "string" && DISCOVERY_REASONS.has(value) ? value : "unavailable";
 }
