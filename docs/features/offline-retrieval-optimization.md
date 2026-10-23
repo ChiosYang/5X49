@@ -196,6 +196,22 @@ all ranks/metric values should agree. Original vectors are not recommitted.
   Archived v2 source remains commit `2a3ba44`; neither report was rewritten.
 - Final exact-head CI and parent-coordinated independent review remain pending.
 
+## CI dependency prerequisite
+
+Initial CI `39883010509` on `2a3ba44` stopped its frontend job at `npm audit`:
+the existing Next 16.3.8 became covered by newly published advisories
+[SVG/image RCE](https://github.com/advisories/GHSA-2464-fhr4-w9xw),
+[Server Actions DoS](https://github.com/advisories/GHSA-p3m5-59mp-jv5r) and
+[cache/typed-array RCE](https://github.com/advisories/GHSA-673q-mjm6-r5xr).
+The published patched 16.x minimum is 16.4.1; the audit-recommended 16.4.2 is
+compatible with the existing Node 22 / React 19.2.3 versions.
+
+A separate minimal dependency commit pins Next and eslint-config-next to
+16.4.2, updates the same version-scoped existing tinyglobby override, and
+regenerates the npm lock. No UI/routing source, React version, audit threshold or
+CI bypass changes. Full frontend checks/E2E must pass on the resulting exact
+head; the old failed run cannot satisfy the gate. No deployment is included.
+
 ## Remaining risks
 
 Provisional theme judgments, tiny known corpus, lexical synonym gaps and
