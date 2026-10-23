@@ -8,7 +8,7 @@ import unittest
 from unittest.mock import patch
 
 from app.services.retrieval_policy import (LexicalIndex, RetrievalIndex, RetrievalPolicy,
-    features, substantive)
+    anchor_count, features, substantive)
 from app.services.semantic_search import ContentDocument, ContentSource, ProviderSpec, SemanticError
 
 SPEC = ProviderSpec("synthetic/policy-contract", "v1", 3)
@@ -162,6 +162,33 @@ print(json.dumps([asdict(index.evidence(' '.join('word'+str(n) for n in range(23
         docs = (doc(1, "午夜的灯照着港口。"),)
         engine = index(docs, [.9])
         result = engine.search("木星法庭", eligible_ids=[fid(1)], query_vector=[1, 0, 0])
+        self.assertEqual(result.displayed_ids, [])
+
+    def test_explicit_chinese_conjunction_cannot_drop_a_missing_fact_clause(self):
+        docs = (doc(1, "机器人的记忆被保存。"),
+                doc(2, "机器人的记忆被保存，法庭审判同时举行。"),
+                doc(3, "法庭审判在城市举行。"))
+        engine = index(docs, [.9, .5, .1])
+        for conjunction in ("和", "与", "并且", "以及", "同时", "而且"):
+            question = "机器人的记忆" + conjunction + "法庭审判"
+            result = engine.search(question, eligible_ids=[fid(1), fid(2), fid(3)], query_vector=[1, 0, 0])
+            self.assertEqual(result.displayed_ids, [fid(2)], conjunction)
+        # A conjunction inside an exact trusted title remains a literal identity.
+        title = index((doc(3, "A public story.", "战争与和平"),), [.1])
+        self.assertEqual(title.search("战争与和平", eligible_ids=[fid(3)], strategy="lexical").displayed_ids, [fid(3)])
+
+    def test_overlapping_cjk_bigrams_do_not_manufacture_multiple_literal_anchors(self):
+        self.assertEqual(anchor_count("robot robot robot", {"w:robot"}), 1)
+        self.assertEqual(anchor_count("机器人 机器人", {"b:机器", "b:器人"}), 1)
+        docs = (doc(1, "机器人"), *[doc(n, "法庭审判与普通家庭") for n in range(2, 13)])
+        engine = index(docs, [.5] * len(docs))
+        result = engine.search("机器人法庭审判", eligible_ids=[fid(1)], query_vector=[1, 0, 0])
+        evidence = result.candidates[0].lexical
+        self.assertGreaterEqual(len(evidence.matched), 2)
+        self.assertEqual(evidence.anchors, 1)
+        self.assertGreater(evidence.bm25, 3)
+        self.assertGreater(evidence.coverage, .30)
+        self.assertLess(evidence.coverage, .70)
         self.assertEqual(result.displayed_ids, [])
 
     def test_reference_uses_different_distribution_excludes_self_no_query_vector(self):

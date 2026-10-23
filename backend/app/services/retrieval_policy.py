@@ -15,7 +15,7 @@ from app.contracts.structured_metadata import normalize_metadata_text
 from app.services.semantic_search import (ContentDocument, ProviderSpec, SemanticError,
     _eligible, _hash, _safe, _tokens, _vector, corpus_revision)
 
-VERSION = "retrieval-policy.offline.v2"
+VERSION = "retrieval-policy.offline.v2.1"
 # Search scaffolding contributes negligibly to ordering, never to admission.
 GENERIC_EN = frozenset("a an the and or of in on with to from at by for as is are was were "
     "be been it its their they them his her this that these those which who how what "
@@ -23,7 +23,7 @@ GENERIC_EN = frozenset("a an the and or of in on with to from at by for as is ar
     "film films movie movies story stories about featuring during into through".split())
 GENERIC_ZH = frozenset(("电影", "影片", "故事", "寻找", "搜索", "推荐", "一部", "一些", "一段", "有关", "关于"))
 FUNCTION_ZH = frozenset("的了与和在中里地于以为并而是个这那们着及后前将把让来去")
-SPLIT = re.compile(r"\b(?:and|while|with|where|under|featuring)\b|[，,;；。]|并且|以及|同时", re.I)
+SPLIT = re.compile(r"\b(?:and|while|with|where|under|featuring)\b|[，,;；。]|并且|以及|同时|而且|和|与", re.I)
 
 
 @dataclass(frozen=True)
@@ -99,11 +99,40 @@ def substantive(terms):
     return {term for term in terms if weight(term) >= 1}
 
 
+def anchor_count(query, matched):
+    """Overlapping CJK n-grams are one literal span, not independent evidence."""
+    text = normalize_metadata_text(query)
+    spans = [(m.start(), m.end(), "w:" + _stem(m.group())) for m in re.finditer(r"[a-z0-9]+", text)
+             if "w:" + _stem(m.group()) in matched]
+    for term in matched:
+        if term.startswith("b:"):
+            spans.extend((m.start(), m.start() + len(term[2:]), term) for m in
+                         re.finditer("(?=" + re.escape(term[2:]) + ")", text))
+    groups, end = [], -1
+    for start, stop, term in sorted(spans):
+        if start > end:
+            groups.append(set())
+        groups[-1].add(term)
+        end = max(end, stop)
+    # Repeating an English word or the same CJK span adds no new evidence.
+    independent = []
+    for group in groups:
+        separate = []
+        for old in independent:
+            if old & group:
+                group |= old
+            else:
+                separate.append(old)
+        independent = [*separate, group]
+    return len(independent)
+
+
 @dataclass(frozen=True)
 class LexicalEvidence:
     bm25: float
     coverage: float
     matched: tuple[str, ...]
+    anchors: int
     clause_coverages: tuple[float, ...]
     exact_identity: bool
 
@@ -136,8 +165,9 @@ class LexicalIndex:
                     (actual[t] + normalization) for t in wanted if actual[t])
         clauses = [features(part) for part in SPLIT.split(query)]
         clauses = [part for part in clauses if substantive(part)]
+        matched = tuple(sorted(substantive(wanted) & set(actual)))
         return LexicalEvidence(value, self.coverage(wanted, set(actual)),
-            tuple(sorted(substantive(wanted) & set(actual))),
+            matched, anchor_count(query, matched),
             tuple(self.coverage(part, set(actual)) for part in clauses),
             normalize_metadata_text(query) in self.identities[key])
 
@@ -196,7 +226,7 @@ class RetrievalIndex:
             return True, "exact_identity"
         meaningful = len(evidence.matched)
         clauses = bool(evidence.clause_coverages) and min(evidence.clause_coverages) >= p.clause_coverage
-        bundle = meaningful >= 2 and evidence.bm25 >= p.anchor_bundle_bm25
+        bundle = evidence.anchors >= 2 and evidence.bm25 >= p.anchor_bundle_bm25
         if mode == "reference":
             if strategy == "lexical":
                 ok = evidence.coverage >= p.theme_coverage and bundle
@@ -221,7 +251,7 @@ class RetrievalIndex:
             return True, "factual_substantive_literal"
         if clauses and bundle and evidence.coverage >= p.clause_coverage:
             return True, "factual_lexical_anchor_bundle"
-        if (clauses and meaningful >= 2 and evidence.coverage >= p.factual_coverage
+        if (clauses and evidence.anchors >= 2 and evidence.coverage >= p.factual_coverage
                 and cosine is not None and cosine >= p.factual_similarity):
             return True, "factual_combined_support"
         return False, "factual_incomplete_evidence"

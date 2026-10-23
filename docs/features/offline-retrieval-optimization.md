@@ -88,7 +88,8 @@ V2 is archived separately, including the v1 report hash and both code hashes.
 - [x] Pure-rule tests: BM25/IDF, CJK, short exact names, generic-only evidence,
   strict clause coverage, reference exclusion, bounded recall, hard IDs and guards.
 - [x] Frozen inputs/history/receipts unchanged; saved-vector-only full ablation.
-- [ ] Targeted and full backend checks; final exact-head CI and independent review.
+- [x] Targeted and full backend checks.
+- [ ] Final exact-head CI and independent review.
 - [x] Publish comparison and limitations separately from historical results.
 
 ## Measured v2 diagnostic result
@@ -181,7 +182,7 @@ Missing/mismatched vectors stop, with no automatic inference or credential looku
 Timing and experiment hashes may differ across byte/line-ending environments;
 all ranks/metric values should agree. Original vectors are not recommitted.
 
-- 89 targeted offline tests passed in 58.294s (22 new rule/report tests plus 67
+- 91 targeted offline tests passed in 30.401s (24 new rule/report tests plus 67
   historical provider/core/public regressions). Handwritten unit vectors test
   contracts only; the recorded ablation uses the 38 real saved vectors.
 - Both actual ablations ran with HTTP/socket entry points blocked. New model,
@@ -195,6 +196,48 @@ all ranks/metric values should agree. Original vectors are not recommitted.
   per-stage/method ranked lists and ranking metrics match the archived v2 exactly.
   Archived v2 source remains commit `2a3ba44`; neither report was rewritten.
 - Final exact-head CI and parent-coordinated independent review remain pending.
+
+## Correctness guards after archived v2
+
+Policy `retrieval-policy.offline.v2.1` adds generic correctness guards, without
+altering numeric thresholds, documents or judgments:
+
+- Explicit Chinese conjunctions (`和`, `与`, `并且`, `以及`, `同时`, `而且`) split
+  factual coverage clauses. Missing one side cannot be hidden by high cosine or
+  strong words on the other side. Exact full trusted identities retain precedence,
+  including a title containing a conjunction.
+- Overlapping/touching CJK bigrams form one literal span. Repeated English words
+  or the same CJK span also add no independent evidence. An anchor bundle and the
+  factual combined path need at least two independent anchors, rather than merely
+  two overlapping n-gram features. Character fallback remains weak evidence.
+- The version/fingerprint distinguishes these guards from the archived v2.
+  This remains literal evidence checking, not arbitrary semantic truth verification
+  or a replacement for the upstream validated hard-query contract.
+
+`docs/evaluations/public-retrieval-guards-v1.json` preserves code/input hashes and
+the regression comparison against the untouched archived v2. All **192**
+stage/method/case candidate/display lists and ranking metrics agree. The new
+rules use synthetic contract examples, not new semantic-quality questions or
+invented model vectors. This is known-corpus regression evidence, not an unseen
+test or a new claim of generalization. SHA256:
+`d580ebc41ce9573f2e6ef02bf844824f70fa2bcde073ac44b7898d0c28158d9e`.
+
+Local verification now also includes139 frontend unit tests (canonical Windows
+TEMP / normal loopback access), audit0, lint/type/build, and109 related browser
+tests (4.5m): EN/ZH,320px, exact search, Collection identity, mutations,41-to-40
+page shrink, cancellation, delayed navigation, Back/Return and no reinference.
+The initial sandbox proxy failure and8.3 TEMP/glob failures were diagnosed with
+the same assertions under normal loopback access and canonical TEMP; no test or
+application workaround was introduced. CI39883732227 fully passed on preceding
+head8496cab (including272 E2E); that cannot clear CI/review for a subsequent head.
+
+Final v2.1 source validation:559 backend tests passed in284.716s (3 Windows
+skips), byte-verified isolated tracked-source snapshot
+`3dc99e7c664b78c659f6c50cffde412acaacd91290ebf7023da68b86cf8f818d`,
+with blank provider keys and owned temporary databases/media. The final91-case
+focused suite and compilation also passed. Subsequent edits only record these
+completed checks; final same-head CI and incremental independent review remain
+required before merge.
 
 ## CI dependency prerequisite
 
