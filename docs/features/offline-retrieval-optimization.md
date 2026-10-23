@@ -181,13 +181,20 @@ Missing/mismatched vectors stop, with no automatic inference or credential looku
 Timing and experiment hashes may differ across byte/line-ending environments;
 all ranks/metric values should agree. Original vectors are not recommitted.
 
-- 88 targeted offline tests passed in 23.080s (21 new rule/report tests plus 67
+- 89 targeted offline tests passed in 58.294s (22 new rule/report tests plus 67
   historical provider/core/public regressions). Handwritten unit vectors test
   contracts only; the recorded ablation uses the 38 real saved vectors.
 - Both actual ablations ran with HTTP/socket entry points blocked. New model,
   Decision, reranker and accounting calls: zero. Seven historical input/result/
   receipt hashes matched before/after each replay.
-- Final full-suite/CI and parent-coordinated independent review remain pending.
+- First complete local backend at `2a3ba44`: 556 tests in 295.667s, 3 Windows
+  skips, using a byte-verified isolated tracked-source snapshot with blank keys.
+  Same-head CI backend: 556 tests, 1 Linux skip, compile and all 15 tooling tests.
+- A subsequent reproducibility fix sorts IDF coverage terms before arithmetic.
+  Three process hash seeds produce identical evidence; all 192 diagnostic
+  per-stage/method ranked lists and ranking metrics match the archived v2 exactly.
+  Archived v2 source remains commit `2a3ba44`; neither report was rewritten.
+- Final exact-head CI and parent-coordinated independent review remain pending.
 
 ## Remaining risks
 

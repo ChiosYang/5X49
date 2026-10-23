@@ -1,6 +1,9 @@
 """Rule/algorithm regressions. Handwritten vectors test contracts, NOT model quality."""
 from dataclasses import replace
 import math
+import os
+import subprocess
+import sys
 import unittest
 from unittest.mock import patch
 
@@ -55,6 +58,20 @@ class RetrievalPolicyTests(unittest.TestCase):
         once = lex.evidence("observatory", "a").bm25
         self.assertLess(lex.evidence("observatory", "b").bm25, once * 3)
         self.assertGreater(once, lex.evidence("observatory", "c").bm25)
+
+    def test_coverage_is_reproducible_across_process_hash_seeds(self):
+        script = '''
+from dataclasses import asdict
+import json
+from app.services.retrieval_policy import LexicalIndex,RetrievalPolicy
+texts={str(i): ' '.join('word'+str(n) for n in range(i+1)) for i in range(20)}
+index=LexicalIndex(texts,{key:set() for key in texts},RetrievalPolicy())
+print(json.dumps([asdict(index.evidence(' '.join('word'+str(n) for n in range(23)),key)) for key in texts],sort_keys=True))
+'''
+        results = [subprocess.check_output([sys.executable, "-X", "utf8", "-c", script],
+                    env={**os.environ, "PYTHONHASHSEED": str(seed)}) for seed in (1, 19, 997)]
+        self.assertEqual(results[0], results[1])
+        self.assertEqual(results[0], results[2])
 
     def test_cjk_bigrams_character_fallback_and_fullwidth_normalization(self):
         terms = features("陪伴与记忆ＡＩ")

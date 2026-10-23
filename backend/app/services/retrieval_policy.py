@@ -123,8 +123,10 @@ class LexicalIndex:
 
     def coverage(self, wanted, actual):
         wanted = substantive(wanted)
-        denominator = sum(self.idf(t) for t in wanted)
-        return sum(self.idf(t) for t in wanted & actual) / denominator if denominator else 0.
+        # Stable arithmetic across process hash seeds, especially at admission
+        # boundaries; set iteration must not make .25 flip by a rounding bit.
+        denominator = sum(self.idf(t) for t in sorted(wanted))
+        return sum(self.idf(t) for t in sorted(wanted & actual)) / denominator if denominator else 0.
 
     def evidence(self, query, key):
         wanted, actual = features(query), self.terms[key]
