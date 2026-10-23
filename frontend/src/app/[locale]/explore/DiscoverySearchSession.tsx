@@ -4,14 +4,14 @@ import { createContext, useCallback, useContext, useEffect, useLayoutEffect, use
 import { useSearchParams } from "next/navigation";
 import { usePathname, useRouter } from "@/i18n/routing";
 import { API } from "@/lib/api";
-import { discoveryHref, discoveryReason, hasPrivateDiscoveryInput, normalizeDiscoverySearch, resolutionHref, type DiscoveryResolution } from "@/lib/discovery-search";
+import { discoveryHref, discoveryReason, discoveryRequestId, hasPrivateDiscoveryInput, normalizeDiscoverySearch, resolutionHref, type DiscoveryResolution, type DiscoverySubmission } from "@/lib/discovery-search";
 
 interface Session {
   draft: string | null; error: string; pending: boolean;
   change: (value: string) => void;
   cancel: (reset?: boolean, cancelNavigation?: boolean) => void;
   clear: () => void;
-  submit: (value: string, locale: string) => Promise<void>;
+  submit: (value: string, locale: string, options?: DiscoverySubmission) => Promise<void>;
 }
 const Context = createContext<Session | null>(null);
 const NavigationContext = createContext<(Pick<Session, "pending" | "cancel"> & { browseHref: string }) | null>(null);
@@ -35,6 +35,7 @@ export default function DiscoverySearchSession({ children }: { children: ReactNo
   const [browseHref, setBrowseHref] = useState("/explore");
   if (pathname === "/explore" && browseHref !== href) setBrowseHref(href);
   const ticket = useRef(0), controller = useRef<AbortController | null>(null);
+  const requestId = useRef<string | null>(null);
   const [draft, setDraft] = useState<string | null>(null), [error, setError] = useState("");
   const [previousHref, setPreviousHref] = useState(href), [submittedHref, setSubmittedHref] = useState<string | null>(null);
   const [requesting, setRequesting] = useState(false), [navigating, startNavigation] = useTransition();
@@ -49,7 +50,14 @@ export default function DiscoverySearchSession({ children }: { children: ReactNo
     current.current = href;
     if (navigation.current === href) navigation.current = null;
   }, [href, pathname]);
-  const abort = useCallback(() => { ticket.current++; controller.current?.abort(); controller.current = null; }, []);
+  const abort = useCallback(() => {
+    ticket.current++;
+    const owner = requestId.current;
+    requestId.current = null;
+    if (owner) void fetch(`${API.baseUrl}/explore/search/cancel`, { method: "POST", keepalive: true,
+      headers: { "Content-Type": "application/json" }, body: JSON.stringify({ request_id: owner }) }).catch(() => {});
+    controller.current?.abort(); controller.current = null;
+  }, []);
   const cancel = useCallback((reset = false, cancelNavigation = false) => {
     abort(); setRequesting(false); setError(""); setSubmittedHref(null);
     if (reset) setDraft(null);
@@ -74,7 +82,7 @@ export default function DiscoverySearchSession({ children }: { children: ReactNo
     document.addEventListener("click", leave, true); window.addEventListener("popstate", history);
     return () => { abort(); document.removeEventListener("click", leave, true); window.removeEventListener("popstate", history); };
   }, [abort, cancel]);
-  async function submit(value: string, locale: string) {
+  async function submit(value: string, locale: string, options: DiscoverySubmission = {}) {
     cancel(false, true);
     const question = normalizeDiscoverySearch(value); setDraft(question);
     if (!question) { setDraft(null); navigate(browseHref); return; }
@@ -82,8 +90,9 @@ export default function DiscoverySearchSession({ children }: { children: ReactNo
     const requestTicket = ++ticket.current;
     const request = new AbortController(); controller.current = request; setRequesting(true);
     try {
+      const owner = discoveryRequestId(); requestId.current = owner;
       const response = await fetch(`${API.baseUrl}/explore/search/interpret`, { method: "POST", signal: request.signal,
-        headers: { "Content-Type": "application/json" }, body: JSON.stringify({ question, locale, allow_ai: true }) });
+        headers: { "Content-Type": "application/json" }, body: JSON.stringify({ question, locale, allow_ai: true, ...options, request_id: owner }) });
       const result = await response.json().catch(() => null);
       if (request.signal.aborted || ticket.current !== requestTicket) return;
       if (!response.ok) {
@@ -95,7 +104,7 @@ export default function DiscoverySearchSession({ children }: { children: ReactNo
     } catch {
       if (!request.signal.aborted && ticket.current === requestTicket) setError("unavailable");
     } finally {
-      if (ticket.current === requestTicket) { setRequesting(false); controller.current = null; }
+      if (ticket.current === requestTicket) { setRequesting(false); controller.current = null; requestId.current = null; }
     }
   }
   const pending = requesting || navigating;

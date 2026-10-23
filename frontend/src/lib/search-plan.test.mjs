@@ -4,6 +4,21 @@ import { emptySearchPlan, formatSearchRange, isSearchPlan, parsePeopleIds, remov
 import { discoveryHref, parseDiscoveryPlan, resolutionHref } from "./discovery-search.ts";
 
 const id = value => `person_${value.repeat(32)}`;
+test("locally bound film IDs preserve old v2 URLs and removable inclusion/exclusion chips", () => {
+  const first = `film_${"a".repeat(32)}`, second = `film_${"b".repeat(32)}`;
+  assert.equal(isSearchPlan(emptySearchPlan), true);
+  const plan = {...emptySearchPlan, film_ids:[first], exclude_film_ids:[second], year_min:1990};
+  assert.equal(isSearchPlan(plan), true);
+  const url = new URL(resolutionHref("Silver Road, after 1989, not the original film", {plan,source:"local"}), "https://local.test");
+  assert.deepEqual(parseDiscoveryPlan(url.searchParams.get("p")), plan);
+  assert.deepEqual(removeSearchCondition(plan,"film_ids",0).film_ids, []);
+  assert.deepEqual(removeSearchCondition(plan,"exclude_film_ids",0).exclude_film_ids, []);
+  assert.equal(removeSearchCondition(plan,"exclude_film_ids",0).year_min, 1990);
+  for (const value of [null, [first, first], [id("a")], ["https://outside.test"], Array(9).fill(first)]) {
+    assert.equal(isSearchPlan({...emptySearchPlan,film_ids:value}), false);
+    assert.equal(isSearchPlan({...emptySearchPlan,exclude_film_ids:value}), false);
+  }
+});
 test("range labels preserve exclusive and inclusive bounds", () => {
   assert.equal(formatSearchRange({min:60,max:90,min_exclusive:true,max_exclusive:true}),"> 60 · < 90");
   assert.equal(formatSearchRange({min:60,max:90,max_exclusive:true}),"≥ 60 · < 90");

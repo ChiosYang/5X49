@@ -30,7 +30,7 @@ function LegacyConditionResults({ query, resolution, state, locale, pending, nav
   const results = resolution.results;
   const offset = state.offset ?? 0;
   const view = parseExploreQuery({ view: plan.view, sort: plan.sort, dir: plan.direction, offset: String(offset) });
-  for (const condition of resolution.constraints) if (condition.dimension !== "year" && condition.dimension !== "duration") view[condition.dimension].push(condition.key);
+  for (const condition of resolution.constraints) if (condition.dimension === "genre" || condition.dimension === "person" || condition.dimension === "country" || condition.dimension === "decade") view[condition.dimension].push(condition.key);
   const href = (next: AskPlan, personId = resolution.person_id, nextOffset = 0, edited = true) => discoveryHref(query,
     { plan: next, personId, offset: nextOffset, edited, source: state.source });
   function edit(next: AskPlan, personId = resolution.person_id) {
@@ -71,7 +71,7 @@ function LegacyConditionResults({ query, resolution, state, locale, pending, nav
       {resolution.issues.map(issue => <div key={issue.field} className="space-y-3">
         <p className="text-sm text-ink-muted">{t(issue.code === "choose_person" ? "choosePerson" : "unknownValue")}</p>
         {issue.candidates.map(person => <Button key={person.key} className="h-auto min-h-11 w-full justify-start whitespace-normal py-3 text-left normal-case"
-          onClick={() => navigate(href(plan, person.key, 0, !!state.edited))}>{person.label} · {person.films.map(film => `${film.title}${film.year ? ` (${film.year})` : ""}`).join(" / ")}</Button>)}
+          onClick={() => navigate(href(plan, person.key, 0, !!state.edited))}>{person.label} · {person.films?.map(film => `${film.title}${film.year ? ` (${film.year})` : ""}`).join(" / ")}</Button>)}
       </div>)}
     </section> : results ? <ResultStage query={view} results={results} pending={pending} locale={locale} localizeCountries={localized}
       sectionRef={section} headingRef={heading} onView={value => edit({ ...plan, view: value })}
