@@ -133,7 +133,11 @@ for(const locale of ['en','zh'] as const)test(`${locale} bound-title sort and ch
   const copy=locale==='zh'?zh:en;
   const fixture=await control(request,'semantic_evaluation',{enabled:true,queries:[]});
   const films=fixture.films as {id:string,title:string,year:number}[];
-  const film=films.find(item=>films.filter(other=>other.title===item.title).length===1)!;
+  // The indexed fixture is capped at 12 films; a same-title Film may be outside
+  // that subset. Identity uniqueness is a property of the complete local library.
+  const response=await request.get(`${backend}/library/films`);expect(response.ok()).toBeTruthy();
+  const library=await response.json() as {id:string,title:string}[];
+  const film=films.find(item=>library.filter(other=>other.title===item.title).length===1)!;
   expect(film).toBeTruthy();
   for(const q of locale==='zh'?[`《${film.title}》，2100年以前`,`只找《${film.title}》，不要相似推荐。`]:
     [`"${film.title}", before 2100`,`"${film.title}", exact film only, no substitutes.`]){

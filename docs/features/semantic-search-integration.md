@@ -580,3 +580,15 @@ additional provider calls, rather than only the disappearance of a banner.
 The original-head CI passed Frontend and 283 E2E tests; Backend timed out during
 Ubuntu package download before running any tests. The correction head requires
 its own complete CI and independent incremental review.
+
+Correction-head CI `39930937426` passed 661 backend tests (one skip), compile,
+15 RC tests and all frontend checks (146 unit tests, audit zero). E2E completed
+with 287 passes and one test-precondition failure: the unique-title picker looked
+only at the capped 12-film index fixture. Its selected title had a second Film
+outside that subset; the saved trace correctly returned both distinct IDs.
+The test now checks uniqueness against the complete local library, retaining all
+one-film, sort, removal, history and zero-call assertions. No product code changed.
+All 15 semantic browser regressions, lint and typecheck passed after this repair;
+the runner also rebuilt the production frontend successfully. The failing trace
+and archive (SHA256 `2042031f653f04cc455e392554a1e4e27ec1978b28364bbda4a949f31450865e`)
+remain preserved locally. A fresh correction-head CI is still required.
