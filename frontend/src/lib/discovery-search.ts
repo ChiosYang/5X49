@@ -33,6 +33,7 @@ export interface DiscoveryState {
   offset?: number;
   semanticSnapshot?: string | null;
   semanticOrder?: "relevance" | "title" | "year";
+  semanticRemoved?: boolean;
 }
 export interface DiscoverySubmission {
   people_ids?: Record<string, string>;
@@ -42,6 +43,15 @@ export interface DiscoverySubmission {
 }
 export function parseSemanticSnapshot(value?: string) {
   return value && /^ds_[0-9a-f]{32}$/.test(value) ? value : null;
+}
+
+// getRandomValues is available on HTTP LAN origins too. Cancellation IDs are
+// bearer capabilities, so never replace secure entropy with time/Math.random.
+export function discoveryRequestId(): string | null {
+  try {
+    const bytes = globalThis.crypto.getRandomValues(new Uint8Array(16));
+    return `rq_${Array.from(bytes, byte => byte.toString(16).padStart(2, "0")).join("")}`;
+  } catch { return null; } // Optional owner: ordinary search still works.
 }
 
 export function normalizeDiscoverySearch(value?: string | string[] | null) {
@@ -75,6 +85,7 @@ export function discoveryHref(query: string, state: DiscoveryState = {}) {
     if (state.offset && state.offset > 0) params.set("offset", String(state.offset));
     if (state.semanticSnapshot) {
       params.set("semantic_snapshot", state.semanticSnapshot);
+      if (state.semanticRemoved) params.set("semantic_removed", "1");
       if (state.semanticOrder && state.semanticOrder !== "relevance") params.set("order", state.semanticOrder);
     }
   } else if (state.status && state.status !== "keyword") {

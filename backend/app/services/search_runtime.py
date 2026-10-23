@@ -212,6 +212,16 @@ class EvaluationRuntime:
         if not isinstance(request.plan, SearchPlan):
             raise SemanticError("search_snapshot_invalid")
         with self.search() as search:
+            if request.semantic_removed:
+                # The raw question remains for display/history, while this
+                # explicit edit removes content matching only. The opaque token
+                # still proves the validated original request; every retained
+                # factual condition and identity goes through current strict SQL.
+                payload, hard = search.restored_plan(request.question, request.semantic_snapshot,
+                    plan=request.plan, edited=request.edited)
+                if payload["revision"] != self.current_revision():
+                    raise SemanticError("search_snapshot_stale")
+                return self.local.executor.query(hard, people_ids=request.people_ids, offset=request.offset)
             return search.resume(request.question, request.semantic_snapshot, plan=request.plan,
                 people_ids=request.people_ids, offset=request.offset, order=request.semantic_order, edited=request.edited)
 

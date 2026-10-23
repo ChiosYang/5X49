@@ -1,10 +1,33 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { readFileSync } from "node:fs";
-import { discoveryHref, discoveryFailure, discoveryKeywords, discoveryReason, hasPrivateDiscoveryInput, normalizeDiscoverySearch, parseDiscoveryPlan, parseSemanticSnapshot, resolutionHref } from "./discovery-search.ts";
+import { discoveryHref, discoveryFailure, discoveryKeywords, discoveryReason, discoveryRequestId, hasPrivateDiscoveryInput, normalizeDiscoverySearch, parseDiscoveryPlan, parseSemanticSnapshot, resolutionHref } from "./discovery-search.ts";
 import { emptySearchPlan } from "./search-plan.ts";
 
 const plan = { genre:null,person:"Shared Person",person_role:"director",country:"JP",decade:1990,view:"unwatched",sort:"year",direction:"desc" };
+test("HTTP-safe cancellation capabilities use secure entropy without randomUUID", t => {
+  const crypto = globalThis.crypto;
+  t.mock.getter(globalThis, "crypto", () => ({ getRandomValues: crypto.getRandomValues.bind(crypto) }));
+  const ids = new Set(Array.from({ length: 100 }, () => discoveryRequestId()));
+  assert.equal(ids.size, 100);
+  for (const id of ids) assert.match(id, /^rq_[0-9a-f]{32}$/);
+});
+test("missing or failing crypto leaves the optional cancellation capability absent", t => {
+  t.mock.getter(globalThis, "crypto", () => undefined);
+  assert.equal(discoveryRequestId(), null);
+  t.mock.restoreAll();
+  t.mock.getter(globalThis, "crypto", () => ({ getRandomValues() { throw Error("Unavailable"); } }));
+  assert.equal(discoveryRequestId(), null);
+});
+test("content removal keeps its original question and proof through further local edits", () => {
+  const token = `ds_${"a".repeat(32)}`, raw = "Japanese films about a family reunion";
+  const url = new URL(discoveryHref(raw, {plan:emptySearchPlan,edited:true,semanticSnapshot:token,semanticRemoved:true}), "http://local.test");
+  assert.equal(url.searchParams.get("q"), raw);
+  assert.equal(url.searchParams.get("semantic_snapshot"), token);
+  assert.equal(url.searchParams.get("semantic_removed"), "1");
+  assert.equal(url.searchParams.get("edited"), "1");
+  assert.equal(new URL(discoveryHref(raw, {plan,semanticRemoved:true}), "http://local.test").searchParams.has("semantic_removed"), false);
+});
 test("unsupported content exclusions and identity ambiguities retain specific bilingual reasons", () => {
   for (const locale of ["en", "zh"]) {
     const copy = JSON.parse(readFileSync(new URL(`../../messages/${locale}.json`, import.meta.url), "utf8"));

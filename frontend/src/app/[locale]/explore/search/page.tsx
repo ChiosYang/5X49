@@ -20,18 +20,20 @@ export default async function ExploreSearchPage({ params, searchParams }: {
   const plan = parseDiscoveryPlan(first(search.p));
   const peopleIds = parsePeopleIds(first(search.people_ids));
   const semanticSnapshot = parseSemanticSnapshot(first(search.semantic_snapshot));
+  const semanticRemoved = first(search.semantic_removed) === "1";
   const order = first(search.order);
   const state: DiscoveryState = { plan, personId: first(search.person_id), edited: first(search.edited) === "1",
-    peopleIds: peopleIds ?? {}, semanticSnapshot, semanticOrder: order === "title" || order === "year" ? order : "relevance",
+    peopleIds: peopleIds ?? {}, semanticSnapshot, semanticRemoved, semanticOrder: order === "title" || order === "year" ? order : "relevance",
     offset: parseExploreQuery({ offset: search.offset }).offset, source: first(search.source) === "ai" ? "ai" : "local" };
   const explicitKeyword = first(search.mode) === "keyword" && query.length <= 200;
   let resolution: DiscoveryResolution | null = null;
   if (query && !explicitKeyword) {
     if (search.p !== undefined && !plan || peopleIds === null
-      || search.semantic_snapshot !== undefined && (!semanticSnapshot || !plan)) resolution = discoveryFailure("invalid_request");
+      || search.semantic_snapshot !== undefined && (!semanticSnapshot || !plan)
+      || search.semantic_removed !== undefined && (!semanticRemoved || !semanticSnapshot || !state.edited)) resolution = discoveryFailure("invalid_request");
     else if (plan) resolution = await getDiscoveryResolution(query, locale, { plan, person_id: state.personId ?? null,
       people_ids: state.peopleIds, edited: state.edited, offset: state.offset,
-      semantic_snapshot: semanticSnapshot, semantic_order: state.semanticOrder });
+      semantic_snapshot: semanticSnapshot, semantic_order: state.semanticOrder, semantic_removed: semanticRemoved });
     else if (["unsupported", "clarify", "unavailable", "needs_ai"].includes(first(search.state) ?? "")) {
       resolution = { ...discoveryFailure(discoveryReason(first(search.reason))), status: first(search.state) as DiscoveryResolution["status"] };
     } else resolution = await getDiscoveryResolution(query, locale);

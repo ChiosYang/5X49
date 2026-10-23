@@ -27,7 +27,7 @@ export default function ExtendedConditionResults({ query, resolution, state, loc
   const view = parseExploreQuery({ view: plan.view, sort: plan.sort, dir: plan.direction, offset: String(offset) });
   const href = (next = plan, peopleIds = ids, nextOffset = 0, edited = true, order = semanticOrder) =>
     discoveryHref(query, { plan: next, peopleIds, offset: nextOffset, edited, source: state.source,
-      semanticSnapshot: resolution.snapshot ?? state.semanticSnapshot, semanticOrder: order });
+      semanticSnapshot: resolution.snapshot ?? state.semanticSnapshot, semanticOrder: order, semanticRemoved: state.semanticRemoved });
   function navigateExclusive(target: string) {
     if (pending || editing.current) return false;
     editing.current = true;
@@ -62,7 +62,8 @@ export default function ExtendedConditionResults({ query, resolution, state, loc
       <h2 id="discovery-conditions-title" className="type-label text-ink-muted">{t(state.edited ? "adjusted" : "conditions")}</h2>
       <div className="flex flex-wrap gap-2">
         {semantic ? <button type="button" disabled={pending} aria-label={t("remove", { condition: semantic.text })}
-          onClick={() => navigateExclusive(discoveryHref(query, { plan, peopleIds: ids, edited: true, source: "local" }))}
+          onClick={() => navigateExclusive(discoveryHref(query, { plan, peopleIds: ids, edited: true, source: "local",
+            semanticSnapshot: resolution.snapshot ?? state.semanticSnapshot, semanticRemoved: true }))}
           className="focus-ring inline-flex min-h-11 max-w-full items-center gap-2 rounded-pill border border-line-strong bg-surface-raised px-3 py-2 text-sm">
           <span className="min-w-0 break-words">{t("contentCondition", { value: semantic.text })}</span><X className="h-3.5 w-3.5 shrink-0" aria-hidden />
         </button> : null}

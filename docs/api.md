@@ -192,6 +192,17 @@ limited to 100. Expired/stale/configuration failures retain ordinary keyword
 search and explain the problem; rerank failures explicitly disclose cached
 local ranking. A snapshot can never fall through to legacy chat interpretation.
 
+Removing the content chip sends `semantic_removed:true` with `edited:true` and
+the original `semantic_snapshot`. The token stays in the URL as proof, but no
+content ranking/banner is retained. The server verifies the question, model,
+policy and corpus binding, then executes all retained conditions through strict
+local SQL. Missing/invalid proof is rejected; `edited` alone never authorizes
+discarding arbitrary content. Bound-title edits similarly revalidate the complete
+original literal request before executing the explicitly corrected plan.
+Cancellation owners use 128 bits from browser `crypto.getRandomValues`, including
+HTTP LAN origins without `randomUUID`; if secure entropy is unavailable, the
+optional request ID is null and abort/disconnect cancellation still applies.
+
 `POST /explore/search/index` is disabled outside that host configuration. Its
 body is `{action:"begin"|"status"|"step"|"resume"|"cancel",job_id:null|"idx_<32 hex>"}`.
 Begin/status/cancel/resume are local. Only an explicit step encodes a batch of at

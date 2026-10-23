@@ -200,6 +200,33 @@ class LiteralSQLTests(unittest.TestCase):
             changed = old.model_copy(update={"film_ids": [self.films["Beta"]]})
             self.assertEqual(service.query(DiscoveryQuery(question="films in 1994", plan=changed))["status"], "unsupported")
 
+    def test_bound_title_edits_keep_results_and_revalidate_the_complete_original(self):
+        from app.contracts.discovery_search import DiscoveryQuery
+        from app.services.discovery_search import DiscoverySearchService
+        with patch.object(ask_module, "engine", self.engine):
+            service = DiscoverySearchService()
+            for question in ("Alpha, before 1999", "Alpha, exact film only, no substitutes.", "只找《Alpha》，不要相似推荐。"):
+                original = SearchPlan.model_validate(self.local.interpret(question)["plan"])
+                for changes in ({"sort": "year", "direction": "desc"}, {"year_max": None}, {"view": "all"}):
+                    plan = original.model_copy(update=changes)
+                    result = service.query(DiscoveryQuery(question=question, plan=plan, edited=True))
+                    self.assertEqual(result["status"], "ready", result)
+                    self.assertEqual([row["film"]["id"] for row in result["results"]["items"]], [self.films["Alpha"]])
+                removed = original.model_copy(update={"film_ids": [], "year_max": None})
+                self.assertEqual(service.query(DiscoveryQuery(question=question, plan=removed, edited=True))["results"]["total"], 3)
+            for question in ("Alpha, produced by Shared Person", "Alpha, in French", "Alpha, before 1999 without violence",
+                             "Japanese films about a family reunion", "只找《Unknown》，不要相似推荐。"):
+                result = service.query(DiscoveryQuery(question=question, plan=original, edited=True))
+                self.assertEqual(result["status"], "unsupported", (question, result))
+                self.assertIsNone(result["results"])
+            unedited = original.model_copy(update={"film_ids": [self.films["Beta"]]})
+            self.assertEqual(service.query(DiscoveryQuery(question="Alpha, exact film only, no substitutes.",
+                plan=unedited))["status"], "unsupported")
+            unknown = original.model_copy(update={"film_ids": ["film_" + "f" * 32]})
+            result = service.query(DiscoveryQuery(question="Alpha, before 1999", plan=unknown, edited=True))
+            self.assertEqual(result["status"], "needs_clarification")
+            self.assertIsNone(result["results"])
+
 
 class NaturalReferenceTests(unittest.TestCase):
     setUp = integration.IntegratedSearchTests.setUp

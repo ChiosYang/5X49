@@ -69,20 +69,92 @@ for(const locale of ['en','zh'] as const)for(const width of [1440,320]){
   });
 }
 
-test('content and hard chips restore locally; removing content never runs a model',async({page,request})=>{
-  const q='Japanese films about a family reunion';
+for(const locale of ['en','zh'] as const)test(`${locale} removing content retains strict SQL results through edits, refresh and Back`,async({page,request})=>{
+  const copy=locale==='zh'?zh:en;
+  const q=locale==='zh'?'日本电影，关于家庭团聚':'Japanese films about a family reunion';
   await control(request,'semantic_evaluation',{enabled:true,queries:[q]});
-  await page.goto('/en/explore');await submit(page,q);
+  await page.goto(`/${locale}/explore`);await submit(page,q,locale);
   const token=new URL(page.url()).searchParams.get('semantic_snapshot');
   const count=(await control(request,'semantic_stats')).calls.length;
-  const remove=page.getByRole('button',{name:en.Discovery.remove.replace('{condition}','a family reunion'),exact:true});
+  const remove=page.getByRole('button',{name:copy.Discovery.remove.replace('{condition}',locale==='zh'?'家庭团聚':'a family reunion'),exact:true});
   await expect(remove).toBeVisible();
-  await page.getByRole('button',{name:en.Explore.views.unwatched,exact:true}).click();
+  await page.getByRole('button',{name:copy.Explore.views.unwatched,exact:true}).click();
   await expect.poll(()=>JSON.parse(new URL(page.url()).searchParams.get('p')!).view).toBe('unwatched');
   expect(new URL(page.url()).searchParams.get('semantic_snapshot')).toBe(token);
-  await remove.click();await expect.poll(()=>new URL(page.url()).searchParams.has('semantic_snapshot')).toBe(false);
-  await expect(page.getByText(en.Discovery.semanticEvaluation,{exact:true})).toHaveCount(0);
+  await remove.click();await expect.poll(()=>new URL(page.url()).searchParams.get('semantic_removed')).toBe('1');
+  expect(new URL(page.url()).searchParams.get('semantic_snapshot')).toBe(token);
+  const plan=JSON.parse(new URL(page.url()).searchParams.get('p')!);
+  expect(plan.countries).toEqual(['JP']);expect(plan.view).toBe('unwatched');
+  const expected=await request.post(`${backend}/explore/search/query`,{data:{question:'Japanese films',plan,edited:true}});
+  const expectedData=await expected.json();expect(expectedData.status).toBe('ready');
+  const expectedIds=expectedData.results.items.map((item:{film:{id:string}})=>`film-link-${item.film.id}`).sort();
+  expect(expectedIds.length).toBeGreaterThan(0);
+  const assertResults=async()=>{
+    await expect(cards(page)).toHaveCount(expectedIds.length);
+    expect((await cards(page).evaluateAll(nodes=>nodes.map(node=>node.id))).sort()).toEqual(expectedIds);
+    await expect(page.getByText(copy.Discovery.semanticEvaluation,{exact:true})).toHaveCount(0);
+    await expect(field(page,locale)).toHaveValue(q);
+  };
+  await assertResults();await page.reload();await assertResults();
+  await page.getByRole('button',{name:copy.Explore.sorts.year,exact:true}).click();
+  await expect.poll(()=>JSON.parse(new URL(page.url()).searchParams.get('p')!).sort).toBe('year');
+  await assertResults();
+  const source=page.url();
+  await page.locator('.library-card-title').first().click();
+  await expect(page).toHaveURL(/\/library\/film_[a-f0-9]{32}$/);
+  await page.getByRole('button',{name:copy.FilmDetail.return,exact:true}).click();
+  await expect(page).toHaveURL(source);await assertResults();
+  await page.goBack();await expect(page).toHaveURL(/\/library\/film_[a-f0-9]{32}$/);
+  await page.goBack();await expect(page).toHaveURL(source);await assertResults();
   expect((await control(request,'semantic_stats')).calls.length).toBe(count);
+});
+
+for(const missing of ['randomUUID','allEntropy'] as const)test(`HTTP search works when ${missing} is unavailable, including evaluation-disabled mode`,async({page,request})=>{
+  const fixture=await control(request,'semantic_evaluation',{enabled:true,queries:[]});
+  const film=fixture.films[0];
+  await control(request,'semantic_evaluation',{enabled:false});
+  await page.addInitScript(value=>{
+    Object.defineProperty(window.crypto,'randomUUID',{value:undefined,configurable:true});
+    if(value==='allEntropy')Object.defineProperty(window.crypto,'getRandomValues',{value:undefined,configurable:true});
+  },missing);
+  const errors:string[]=[];page.on('pageerror',error=>errors.push(error.message));
+  await page.goto('/en/explore');expect(new URL(page.url()).protocol).toBe('http:');
+  expect(await page.evaluate(()=>typeof crypto.randomUUID)).toBe('undefined');
+  const submitted=page.waitForRequest(r=>r.url().endsWith('/api/explore/search/interpret'));
+  await field(page).fill(film.title);await field(page).press('Enter');
+  const body=(await submitted).postDataJSON();
+  if(missing==='randomUUID')expect(body.request_id).toMatch(/^rq_[a-f0-9]{32}$/);
+  else expect(body.request_id).toBeNull();
+  await expect(page.locator(`#film-link-${film.id}`)).toBeVisible();
+  expect(errors).toEqual([]);expect((await control(request,'semantic_stats')).calls).toEqual([]);
+});
+
+for(const locale of ['en','zh'] as const)test(`${locale} bound-title sort and chip edits return actual films locally`,async({page,request})=>{
+  const copy=locale==='zh'?zh:en;
+  const fixture=await control(request,'semantic_evaluation',{enabled:true,queries:[]});
+  const films=fixture.films as {id:string,title:string,year:number}[];
+  const film=films.find(item=>films.filter(other=>other.title===item.title).length===1)!;
+  expect(film).toBeTruthy();
+  for(const q of locale==='zh'?[`《${film.title}》，2100年以前`,`只找《${film.title}》，不要相似推荐。`]:
+    [`"${film.title}", before 2100`,`"${film.title}", exact film only, no substitutes.`]){
+    await page.goto(`/${locale}/explore`);await field(page,locale).fill(q);await field(page,locale).press('Enter');
+    await expect(cards(page)).toHaveCount(1);await expect(page.locator(`#film-link-${film.id}`)).toBeVisible();
+    await page.getByRole('button',{name:copy.Explore.sorts.year,exact:true}).click();
+    await expect.poll(()=>JSON.parse(new URL(page.url()).searchParams.get('p')!).sort).toBe('year');
+    await expect(cards(page)).toHaveCount(1);await page.reload();await expect(page.locator(`#film-link-${film.id}`)).toBeVisible();
+    if(JSON.parse(new URL(page.url()).searchParams.get('p')!).year_max!==null){
+      await page.getByRole('button',{name:/2099/}).click();
+      await expect.poll(()=>JSON.parse(new URL(page.url()).searchParams.get('p')!).year_max).toBeNull();
+      await expect(cards(page)).toHaveCount(1);await expect(page.locator(`#film-link-${film.id}`)).toBeVisible();
+    }
+    const before=page.url();
+    await page.getByRole('button',{name:copy.Discovery.remove.replace('{condition}',film.title),exact:true}).click();
+    await expect.poll(()=>cards(page).count()).toBeGreaterThan(1);
+    await expect(field(page,locale)).toHaveValue(q);
+    await page.goBack();await expect(page).toHaveURL(before);await expect(cards(page)).toHaveCount(1);
+    await expect(page.locator(`#film-link-${film.id}`)).toBeVisible();
+  }
+  expect((await control(request,'semantic_stats')).calls).toEqual([]);
 });
 
 test('rerank failure is disclosed and cached fallback never retries on refresh',async({page,request})=>{
@@ -95,6 +167,7 @@ test('rerank failure is disclosed and cached fallback never retries on refresh',
 });
 
 test('cancel during Decision prevents embedding, rerank and stale navigation',async({page,request})=>{
+  await page.addInitScript(()=>Object.defineProperty(window.crypto,'randomUUID',{value:undefined,configurable:true}));
   await control(request,'semantic_evaluation',{enabled:true,queries:[questions.en],hold:'decision'});
   await page.goto('/en/explore');await field(page).fill(questions.en);await field(page).press('Enter');
   await expect.poll(async()=>(await control(request,'semantic_stats')).calls).toEqual(['decision']);

@@ -1,7 +1,7 @@
 """Submission-only interpretation; restored searches never perform inference."""
 from typing import Annotated, Literal
 
-from pydantic import Field
+from pydantic import Field, model_validator
 
 from app.contracts.ask import AskContract, AskInterpretation, AskPlan, AskQuestion, AskResolveRequest, Term
 from app.contracts.bound_search_plan import SearchPlan
@@ -29,6 +29,13 @@ class DiscoveryQuery(AskResolveRequest):
     offset: int = Field(default=0, ge=0, le=100_000)
     semantic_snapshot: Annotated[str, Field(pattern=r"^ds_[0-9a-f]{32}$")] | None = None
     semantic_order: Literal["relevance", "title", "year"] = "relevance"
+    semantic_removed: Annotated[bool, Field(strict=True)] = False
+
+    @model_validator(mode="after")
+    def content_removal_requires_snapshot(self):
+        if self.semantic_removed and (not self.edited or not self.semantic_snapshot):
+            raise ValueError("Content removal requires an edited, bound snapshot")
+        return self
 
 
 class DiscoveryIndexAction(AskContract):

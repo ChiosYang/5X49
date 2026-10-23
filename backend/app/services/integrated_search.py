@@ -189,7 +189,8 @@ class IntegratedSearch:
         return replace(broad, candidates=tuple(replace(c, admitted=checked[c.film_id].admitted,
             reason=checked[c.film_id].reason) for c in broad.candidates[:self.policy.candidate_k]))
 
-    def resume(self, question, token, *, plan=None, people_ids=None, offset=0, order="relevance", edited=False):
+    def restored_plan(self, question, token, *, plan=None, edited=False):
+        """Validate the stored origin before either semantic or SQL-only edits."""
         _safe(question, 600)
         payload = self.store.snapshot(token, question)
         try:
@@ -197,13 +198,19 @@ class IntegratedSearch:
                     or payload["mode"] not in {"factual", "exploratory", "reference"}
                     or payload["route"] not in {"semantic", "hybrid"}):
                 raise SemanticError("search_snapshot_requires_submit")
-            _safe(payload["text"], 600)
-            if payload["query_vector"] is not None:
-                payload["query_vector"] = list(_vector(payload["query_vector"], self.spec.dimensions))
             saved_hard = SearchPlan.model_validate(payload["hard"])
             if plan is not None and plan != saved_hard and not edited:
                 raise SemanticError("search_snapshot_invalid")
-            hard = plan or saved_hard
+            return payload, plan or saved_hard
+        except (KeyError, TypeError, ValueError):
+            raise SemanticError("search_snapshot_invalid") from None
+
+    def resume(self, question, token, *, plan=None, people_ids=None, offset=0, order="relevance", edited=False):
+        payload, hard = self.restored_plan(question, token, plan=plan, edited=edited)
+        try:
+            _safe(payload["text"], 600)
+            if payload["query_vector"] is not None:
+                payload["query_vector"] = list(_vector(payload["query_vector"], self.spec.dimensions))
             resolved = self.resolve_hard(hard, people_ids if people_ids is not None else payload["people_ids"])
             if not payload["evaluated"]:
                 # A GET/refresh may reconstruct local choices but cannot finish

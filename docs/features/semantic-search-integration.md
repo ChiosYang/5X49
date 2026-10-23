@@ -548,3 +548,35 @@ uncertain result stops that sequence. Revised seen results cannot replace the
 original independent FAIL. The unexecuted test-library result collector now uses
 the API's resolved `keyword_query`, as the page and offline replay already do,
 instead of reinterpreting the raw input with the older keyword helper.
+
+### PR50 review corrections: HTTP submission and explicit plan edits
+
+Browser cancellation owners now use secure `getRandomValues` entropy, which is
+available on HTTP LAN origins without `randomUUID`. A missing/failing entropy API
+leaves the optional owner absent; it does not prevent ordinary search submission
+or replace an ownership capability with predictable randomness.
+
+Bound-title edits revalidate the complete original literal binding before
+executing the corrected plan. Unsupported qualifiers and unedited substitutions
+still fail; corrected unknown IDs still require clarification. Removing a content
+chip retains the opaque snapshot plus an explicit `semantic_removed` flag. The
+server validates that original binding and executes the remaining plan in local
+SQL. The original text is display/history context, not an unhandled condition or
+an excuse to drop other hard requirements. Further edits and navigation preserve
+this state. The snapshot still expires and invalid proof is rejected.
+
+New regressions assert actual result IDs after sorting/removing title/year/content
+conditions, including EN/ZH refresh/Back/Return. HTTP API-absence tests cover
+ordinary search with evaluation disabled and explicit cancellation with no UUID
+API. This changes restoration behavior only; admission thresholds, model settings,
+the original failed assessment, all replay artifacts and request accounting remain
+unchanged. No new provider request was made.
+
+Review-fix verification passed: 71 backend identity/runtime/integration/discovery
+tests, eight evaluation/replay tests, Python compile, 146 frontend unit tests,
+lint, TypeScript, the production build, and all 15 semantic browser tests.
+These browser assertions check actual result IDs, retained hard filters and zero
+additional provider calls, rather than only the disappearance of a banner.
+The original-head CI passed Frontend and 283 E2E tests; Backend timed out during
+Ubuntu package download before running any tests. The correction head requires
+its own complete CI and independent incremental review.

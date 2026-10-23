@@ -85,6 +85,11 @@ description: 5X49 Fresh Canonical FastAPI 的 Film、LibraryItem、Factual Explo
   mutation, Back/Return and chip edits are entirely local. Unresolved identity
   choices require an explicit interpret POST with people_ids/reference_id;
   GET restoration never infers. No Ask/manual filter form.
+- Content removal is an explicit `semantic_removed:true,edited:true` query with
+  the original opaque snapshot retained as proof. Validate its question/model/
+  policy/corpus binding before executing retained conditions in strict SQL.
+  Missing proof cannot bypass original grounding. Bound-title chip/sort edits
+  revalidate the complete original literal request, then validate corrected IDs.
 - SQL eligibility precedes candidate counts/rerank/display. Reference-Film
   similarity resolves exact identity and uses indexed content, never title-only
   vectors. Unknown/missing hard facts are not assumed to match.

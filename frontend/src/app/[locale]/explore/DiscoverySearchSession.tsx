@@ -4,7 +4,7 @@ import { createContext, useCallback, useContext, useEffect, useLayoutEffect, use
 import { useSearchParams } from "next/navigation";
 import { usePathname, useRouter } from "@/i18n/routing";
 import { API } from "@/lib/api";
-import { discoveryHref, discoveryReason, hasPrivateDiscoveryInput, normalizeDiscoverySearch, resolutionHref, type DiscoveryResolution, type DiscoverySubmission } from "@/lib/discovery-search";
+import { discoveryHref, discoveryReason, discoveryRequestId, hasPrivateDiscoveryInput, normalizeDiscoverySearch, resolutionHref, type DiscoveryResolution, type DiscoverySubmission } from "@/lib/discovery-search";
 
 interface Session {
   draft: string | null; error: string; pending: boolean;
@@ -88,9 +88,9 @@ export default function DiscoverySearchSession({ children }: { children: ReactNo
     if (!question) { setDraft(null); navigate(browseHref); return; }
     if (hasPrivateDiscoveryInput(question)) { setError("ask_private_input"); return; }
     const requestTicket = ++ticket.current;
-    const owner = `rq_${crypto.randomUUID().replaceAll("-", "")}`; requestId.current = owner;
     const request = new AbortController(); controller.current = request; setRequesting(true);
     try {
+      const owner = discoveryRequestId(); requestId.current = owner;
       const response = await fetch(`${API.baseUrl}/explore/search/interpret`, { method: "POST", signal: request.signal,
         headers: { "Content-Type": "application/json" }, body: JSON.stringify({ question, locale, allow_ai: true, ...options, request_id: owner }) });
       const result = await response.json().catch(() => null);

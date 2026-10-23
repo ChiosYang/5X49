@@ -283,8 +283,12 @@ class DiscoverySearchService:
             raise AskError("ask_private_input", 422)
         if isinstance(request.plan, SearchPlan):
             from app.services.search_local import LocalSearch
-            literal = LocalSearch(ask_module.engine).literal_request(request.question) if not request.edited else None
-            bound = literal is not None and literal.get("plan") == request.plan.model_dump()
+            literal = LocalSearch(ask_module.engine).literal_binding(request.question)
+            # Re-validate the complete original identity request even for edits.
+            # Explicit chip/sort changes may alter its plan, never excuse an
+            # unsupported qualifier or an unresolved original identity.
+            bound = (literal is not None and not literal.issue and literal.plan is not None
+                     and (request.edited or literal.plan == request.plan))
             if not bound and not grounded_extended(request.plan, request.question, edited=request.edited):
                 return self.state("unsupported", "incomplete_request")
             if request.person_id:

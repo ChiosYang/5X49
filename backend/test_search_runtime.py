@@ -153,6 +153,52 @@ class RuntimeTests(unittest.TestCase):
         self.assertEqual(runtime.index(DiscoveryIndexAction(action="resume", job_id=job["id"]))["state"], "pending")
         self.factory.assert_not_called()
 
+    def test_explicit_content_removal_uses_bound_snapshot_and_current_strict_sql(self):
+        runtime = self.runtime()
+        vector = self.prepare(runtime)
+        for question in ("Japanese films about a family reunion", "日本电影，关于家庭团聚"):
+            with runtime.search() as search:
+                search.decision = SimpleNamespace(decide=lambda _: RouteDecision("hybrid", .99, "exploratory"))
+                search.embedding = SimpleNamespace(embed=lambda *_a, **_k: [vector])
+                search.reranker = SimpleNamespace(rank=lambda _q, docs: [.95] * len(docs))
+                result = search.submit(question)
+            self.assertEqual(result["status"], "ready", result)
+            plan = SearchPlan.model_validate(result["plan"])
+            self.assertEqual(plan.countries, ["JP"])
+            request = DiscoveryQuery(question=question, plan=plan, edited=True,
+                semantic_snapshot=result["snapshot"], semantic_removed=True)
+            restored = runtime.query(request)
+            self.assertEqual(restored["status"], "ready")
+            self.assertNotIn("semantic", restored)
+            expected = runtime.local.executor.query(plan)
+            self.assertEqual(restored["results"], expected["results"])
+            self.assertEqual(restored["results"]["total"], 2)  # More than the one indexed match.
+            plan.view = "unwatched"
+            plan.sort = "year"
+            plan.direction = "desc"
+            request.plan = plan
+            self.assertEqual(runtime.query(request)["results"], runtime.local.executor.query(plan)["results"])
+            self.assertGreater(runtime.query(request)["results"]["total"], 0)
+            # Original URL can still restore the semantic result after Back.
+            self.assertIn("semantic", runtime.query(request.model_copy(update={"semantic_removed": False})))
+            for change in ({"question": "a different question"}, {"semantic_snapshot": "ds_" + "f" * 32}):
+                with self.assertRaises(SemanticError):
+                    runtime.query(request.model_copy(update=change))
+            unknown = plan.model_copy(update={"film_ids": ["film_" + "f" * 32]})
+            invalid = runtime.query(request.model_copy(update={"plan": unknown}))
+            self.assertEqual(invalid["status"], "needs_clarification")
+            self.assertIsNone(invalid["results"])
+            for change in ({"semantic_snapshot": None}, {"edited": False}, {"semantic_removed": "true"}):
+                with self.assertRaises(ValueError):
+                    DiscoveryQuery.model_validate({**request.model_dump(), **change})
+            app = FastAPI()
+            app.include_router(router)
+            with TestClient(app) as client, patch("app.api.explore._evaluation", return_value=runtime):
+                response = client.post("/explore/search/query", json=request.model_dump())
+                self.assertEqual(response.status_code, 200)
+                self.assertEqual(response.json()["results"], runtime.local.executor.query(plan)["results"])
+        self.factory.assert_not_called()
+
     def test_disabled_api_never_falls_back_to_chat_for_snapshot_or_evaluation_selection(self):
         app = FastAPI()
         app.include_router(router)
