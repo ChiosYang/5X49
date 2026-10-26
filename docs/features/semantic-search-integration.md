@@ -725,3 +725,28 @@ offline tests passed, including the new Windows-key and path-boundary regression
 compile and whitespace checks passed. Preparation with the original local input
 also succeeded without provider requests, ledger activation or source changes.
 Live execution remains subject to independent review of this correction.
+
+### Explicit public-corpus identity overlays
+
+The evaluation import layer can derive a separate corpus version from a sealed
+parent and an explicitly reviewed cross-source person-ID map. It never matches
+people by name or edits the parent, existing projection, persistent library or
+query labels. Each local person ID must map to an authoritative ID already in
+the corpus, with source-backed director-credit evidence covering every affected
+film. Unknown IDs, duplicate/conflicting links, missing credits and attempts to
+rewrite authoritative IDs are rejected. External claim evidence still needs
+source review; schema validation does not certify the claim itself.
+
+The derived payload retains original source IDs, manifest hash and per-film
+provenance. Document text, titles and Film IDs are unchanged, so their exact
+vectors remain reusable. Corrected SQL eligibility is a data-version result,
+not a new model-quality result; changed candidates cannot inherit an unrelated
+recorded rerank response. Historical reports and the failed assessment remain
+separate. No default runtime, production migration or model call is added.
+
+Verification: 54 related offline tests passed, including real SQL coverage,
+same-name/different-ID clarification and rejected incomplete crosswalks. The
+full backend suite passed 705 tests (three platform skips), with the established
+short-path harness and unchanged Gate B assertions/source hash. Python compile
+and diff checks passed. Actual source records, crosswalks and evaluation outputs
+remain local; no private evaluation evidence is published with this code.
