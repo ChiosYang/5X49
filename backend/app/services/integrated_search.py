@@ -34,7 +34,7 @@ class IntegratedSearchPolicy:
 
     @property
     def fingerprint(self):
-        return _hash(["integrated-search.v3-reference-focus", asdict(self), RetrievalPolicy(candidate_k=self.candidate_k).fingerprint])
+        return _hash(["integrated-search.v3.1-reference-focus", asdict(self), RetrievalPolicy(candidate_k=self.candidate_k).fingerprint])
 
 
 class IntegratedSearch:

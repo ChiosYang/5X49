@@ -271,6 +271,57 @@ class NaturalReferenceTests(unittest.TestCase):
                 self.assertEqual(result['status'], 'ready', result)
                 self.assertEqual(self.reranker.rank.call_args.args[0], self.docs[0].chunks[0])
 
+    def test_polite_reference_scaffolding_is_not_a_comparison_aspect(self):
+        for ending in ('please', ', thanks a lot!', ', thank you very much.',
+                       ' please and thank you', ' other films, please',
+                       ' if possible', '，谢谢', '的电影，谢谢您！', '，麻烦了', '，拜托了'):
+            for prefix in ('films like "Public Film 1"', '类似《Public Film 1》'):
+                question = prefix + ' ' + ending
+                with self.subTest(question=question):
+                    request = split_content_request(question)
+                    self.assertIsNone(request.issue, request)
+                    self.assertIsNone(request.reference_focus)
+                    result = self.engine.submit(question)
+                    self.assertEqual(result['status'], 'ready', result)
+                    self.assertEqual(self.reranker.rank.call_args.args[0], self.docs[0].chunks[0])
+        self.decision.decide.assert_not_called()
+        self.assertEqual(self.embedding.calls, [])
+
+    def test_polite_reference_fallback_keeps_plain_reference_results(self):
+        from app.services.semantic_search import SemanticError
+        self.reranker.rank.side_effect = SemanticError('search_replay_missing_response')
+        plain = self.engine.submit('films like "Public Film 1"')
+        expected = [item['film']['id'] for item in plain['results']['items']]
+        self.assertTrue(expected)
+        for question in ('films like "Public Film 1" please',
+                         'films like "Public Film 1", other films, thank you!',
+                         '类似《Public Film 1》的电影，谢谢您！',
+                         '像《Public Film 1》那样的电影，麻烦了。'):
+            with self.subTest(question=question):
+                result = self.engine.submit(question)
+                self.assertEqual(result['semantic']['fallback'], 'search_replay_missing_response')
+                self.assertEqual([item['film']['id'] for item in result['results']['items']], expected)
+                self.assertNotIn(self.docs[0].film_id, expected)
+                count = self.reranker.rank.call_count
+                self.assertEqual(self.engine.resume(question, result['snapshot'])['results'], result['results'])
+                self.assertEqual(self.reranker.rank.call_count, count)
+        self.decision.decide.assert_not_called()
+        self.assertEqual(self.embedding.calls, [])
+
+    def test_real_aspect_with_politeness_or_similar_words_is_not_discarded(self):
+        for focus in ('about families who struggle to please each other',
+                      'about family obligations, please',
+                      '关于家庭责任，谢谢', '关于一个为了道谢而旅行的人'):
+            question = 'films like "Public Film 1" ' + focus
+            with self.subTest(focus=focus):
+                request = split_content_request(question)
+                self.assertIsNone(request.issue, request)
+                self.assertEqual(request.reference_focus, focus.replace('，', ','))
+                self.engine.submit(question)
+                self.assertEqual(self.reranker.rank.call_args.args[0], request.reference_focus)
+        for focus in ('please, without violence', '谢谢，但不要暴力', 'in French, please'):
+            self.assertIsNotNone(split_content_request('films like "Public Film 1" ' + focus).issue)
+
     def test_focused_local_fallback_cannot_use_reference_similarity_alone(self):
         from app.services.semantic_search import SemanticError
         self.reranker.rank.side_effect = SemanticError('search_replay_missing_response')
@@ -307,11 +358,13 @@ class NaturalReferenceTests(unittest.TestCase):
         question = 'films like "Public Film 1" about family obligations'
         result = self.engine.submit(question)
         saved = self.store.snapshot(result['snapshot'], question)
-        saved['policy'] = _hash(['integrated-search.v2-seen-regression', asdict(self.engine.policy),
-                                RetrievalPolicy(candidate_k=self.engine.policy.candidate_k).fingerprint])
-        token = self.store.save_snapshot(question, saved)
-        with self.assertRaisesRegex(SemanticError, 'search_snapshot_requires_submit'):
-            self.engine.resume(question, token)
+        for revision in ('integrated-search.v2-seen-regression', 'integrated-search.v3-reference-focus'):
+            with self.subTest(revision=revision):
+                saved['policy'] = _hash([revision, asdict(self.engine.policy),
+                                        RetrievalPolicy(candidate_k=self.engine.policy.candidate_k).fingerprint])
+                token = self.store.save_snapshot(question, saved)
+                with self.assertRaisesRegex(SemanticError, 'search_snapshot_requires_submit'):
+                    self.engine.resume(question, token)
 
     def test_natural_reference_is_bound_and_excluded_before_rerank_and_after_restore(self):
         self.engine.title_mentions = self.mentions

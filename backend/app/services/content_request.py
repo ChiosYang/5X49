@@ -47,12 +47,14 @@ _OTHER = re.compile(r"\b(?:other|else|similar|recommend|like)\b|其他|别的|�
 _QUOTED = re.compile(r"""《([^》]+)》|“([^”]+)”|"([^"]+)"|'([^']+)'""")
 
 
-# Only complete recommendation scaffolding is empty focus. Do not remove words
+# Only complete recommendation/courtesy scaffolding is empty focus. Do not remove words
 # from a substantive comparison, negation or unsupported hard requirement.
 _REFERENCE_SCAFFOLD = re.compile(
-    r"(?:films?|movies?|other (?:films?|movies?)|(?:similar|other) recommendations?|"
+    r"(?:(?:films?|movies?|other (?:films?|movies?)|(?:similar|other) recommendations?|"
     r"(?:what|something) else(?: can I (?:watch|see))?|"
-    r"(?:类似|相似|其他|别的)(?:的)?(?:电影|影片)|还有什么(?:电影|影片)?|还能看什么)", re.I)
+    r"please(?: and thank you)?|thanks(?: a lot)?|thank you(?: very much)?|if possible|"
+    r"(?:类似|相似|其他|别的)?(?:的)?(?:电影|影片)|还有什么(?:电影|影片)?|还能看什么|"
+    r"谢谢(?:你|您)?|麻烦了|拜托(?:了)?)(?:[\s,，。；.!?！？]+|$))+", re.I)
 
 
 def _reference_focus(aspect, tail):

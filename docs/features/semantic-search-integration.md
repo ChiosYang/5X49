@@ -632,8 +632,10 @@ Reference search still binds and excludes the reference Film before forming a
 bounded candidate set from its content vector. When the user supplies a specific
 comparison aspect before or after the title, that aspect is the rerank query.
 Whole-reference plot text is used only for a plain similarity request. Only
-complete recommendation scaffolding is treated as empty focus; hard clauses,
-unsupported negation and ambiguous identities retain their existing validation.
+complete recommendation or courtesy scaffolding is treated as empty focus,
+including combinations separated by punctuation. Courtesy words inside a
+substantive comparison do not erase that aspect. Hard clauses, unsupported
+negation and ambiguous identities retain their existing validation.
 
 If focused rerank is unavailable, local fallback requires substantive literal
 evidence for the aspect as well as reference-content support. Reference cosine
@@ -649,3 +651,16 @@ regressions passed, including the build and EN/ZH desktop/narrow viewports. The
 full local backend run encountered an unrelated Gate B backup-manifest temporary
 path error at 261 characters on Windows; its failure is retained and is not
 reported as a passing full suite. Linux CI remains a separate required check.
+
+Follow-up verification reproduced that Gate B failure with a long temporary run
+basename, then passed the original test with a shorter unique basename under
+the same validated run root. Its assertions and source hash were unchanged;
+the longest observed temporary file path was 253 characters. The same local
+harness completed all 678 backend tests (three platform skips). After adding
+the polite-reference fallback regression, the final 56 focused tests also passed,
+including whole-reference rerank input, unchanged fallback results, substantive
+EN/ZH comparison aspects, retained unsupported-condition rejection and obsolete
+snapshot rejection. All 15 semantic browser regressions and their production
+build passed again. No application filesystem limit, assertion or system
+security setting was relaxed. The follow-up commit still requires its own CI
+and independent review.
