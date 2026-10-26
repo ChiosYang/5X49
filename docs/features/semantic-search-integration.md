@@ -523,7 +523,9 @@ The final test-library keyword-collection alignment was then covered by the
 58-test targeted backend suite and compile check, both successful. No runtime
 ranking, model configuration or frozen replay output changed in that alignment.
 
-### Proposed bounded recovery (not executed)
+### Original bounded recovery proposal
+
+This section records the pre-authorization proposal, not the latest run status.
 
 The reviewed persistent-library manifest contains 14 documents and 14 chunks.
 With the existing four-chunk batch limit, completing its index requires four
@@ -592,3 +594,34 @@ All 15 semantic browser regressions, lint and typecheck passed after this repair
 the runner also rebuilt the production frontend successfully. The failing trace
 and archive (SHA256 `2042031f653f04cc455e392554a1e4e27ec1978b28364bbda4a949f31450865e`)
 remain preserved locally. A fresh correction-head CI is still required.
+
+### Bounded validation resumption tooling
+
+The explicit evaluation runner can append a supplemental, expiring grant to the
+same receipt ledger after separately approved recovery. It binds the unchanged
+historical receipts and metadata, the exact interrupted batch and each remaining
+document batch. It preserves the original grant and halt; the ordinary runtime
+does not inherit this supplemental permission. The repeated batch must have both
+a settled zero-price receipt and durable cached vectors before any later phase.
+
+Document, test-library query and missing seen-regression stages have separate
+limits under the shared total. A new uncertain response, including an HTTP 429
+without billing evidence, stops every later stage. Restarting the runner cannot
+retry it, erase its receipt, read a credential or construct a provider after that
+stop. Successful batches and saved query outputs are reused without dispatch.
+
+The source library is opened read-only; vectors, snapshots and immutable run
+evidence remain in the task's ignored evaluation directory. Missing seen stages
+first attempt exact recorded request/response matching, then use only the
+explicitly bounded live allowance. A model failure with local fallback and an
+unexecuted query remain distinguishable from successful model validation.
+This tooling neither revises the original independent assessment nor enables
+production search. Actual validation results and reconciliation evidence stay
+in the local run artifacts, separate from this implementation description.
+
+Verification: 92 offline backend tests passed, covering the supplemental ledger,
+recovery, providers, exact replay, runtime, index, integration and concurrency.
+Python compile and diff whitespace checks passed. The initial restricted Windows
+run stopped in asyncio's loopback socket-pair initialization; the diagnostic log
+is retained. The same suite passed with local loopback permitted and blank model
+credentials. No frontend or production-search behavior changed in this increment.
