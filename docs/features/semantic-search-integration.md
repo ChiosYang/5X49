@@ -625,3 +625,27 @@ Python compile and diff whitespace checks passed. The initial restricted Windows
 run stopped in asyncio's loopback socket-pair initialization; the diagnostic log
 is retained. The same suite passed with local loopback permitted and blank model
 credentials. No frontend or production-search behavior changed in this increment.
+
+### Explicit reference comparison focus
+
+Reference search still binds and excludes the reference Film before forming a
+bounded candidate set from its content vector. When the user supplies a specific
+comparison aspect before or after the title, that aspect is the rerank query.
+Whole-reference plot text is used only for a plain similarity request. Only
+complete recommendation scaffolding is treated as empty focus; hard clauses,
+unsupported negation and ambiguous identities retain their existing validation.
+
+If focused rerank is unavailable, local fallback requires substantive literal
+evidence for the aspect as well as reference-content support. Reference cosine
+alone cannot prove that the requested aspect matches. This is conservative and
+can abstain on paraphrases. Candidate generation and native score thresholds are
+unchanged; a response for a previous whole-plot query is not reusable for the new
+focus query. The policy fingerprint invalidates earlier snapshots, while refresh
+of a current snapshot remains model-free. Missing exact recorded responses remain
+unverified; this correction does not itself establish retrieval quality.
+
+Verification: 141 affected offline backend tests and 15 semantic-search browser
+regressions passed, including the build and EN/ZH desktop/narrow viewports. The
+full local backend run encountered an unrelated Gate B backup-manifest temporary
+path error at 261 characters on Windows; its failure is retained and is not
+reported as a passing full suite. Linux CI remains a separate required check.

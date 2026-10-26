@@ -34,7 +34,7 @@ class IntegratedSearchPolicy:
 
     @property
     def fingerprint(self):
-        return _hash(["integrated-search.v2-seen-regression", asdict(self), RetrievalPolicy(candidate_k=self.candidate_k).fingerprint])
+        return _hash(["integrated-search.v3-reference-focus", asdict(self), RetrievalPolicy(candidate_k=self.candidate_k).fingerprint])
 
 
 class IntegratedSearch:
@@ -97,6 +97,7 @@ class IntegratedSearch:
                    "hard": hard.model_dump(), "people_ids": people_ids or {},
                    "route": "hybrid", "mode": "factual", "scores": {}, "fallback": None,
                    "evaluated": False, "reference_text": request.reference,
+                   "reference_focus": request.reference_focus,
                    "edited": edited_plan is not None}
         if request.reference:
             candidates = self.reference_candidates(request.reference)
@@ -145,7 +146,10 @@ class IntegratedSearch:
             retrieval = self.measured("retrieval_ms", lambda: self._retrieve(index, payload, resolved))
             candidates = retrieval.candidates[:self.policy.candidate_k]
             if candidates and self.reranker is not None:
-                query = (index.documents[payload["reference_id"]].chunks[0]
+                # The reference vector retrieves content neighbours. When the
+                # user names a comparison aspect, rerank those neighbours for
+                # that aspect instead of silently asking for whole-plot overlap.
+                query = ((payload["reference_focus"] or index.documents[payload["reference_id"]].chunks[0])
                          if payload["reference_id"] else request.text)
                 texts = [index.documents[c.film_id].chunks[0] for c in candidates]
                 try:
@@ -184,6 +188,15 @@ class IntegratedSearch:
             strategy="dense" if payload["route"] == "semantic" else "hybrid")
         broad = index.search(payload["text"], stage="lexical", **options)
         checked = {c.film_id: c for c in index.search(payload["text"], stage="admission", **options).candidates}
+        if payload.get("reference_focus"):
+            # No focus vector is fabricated and no extra provider is called.
+            # A local fallback must support the explicit aspect as well as the
+            # reference; reference cosine alone is not evidence of that aspect.
+            focus_ids = set(index.search(payload["reference_focus"], eligible_ids=allowed,
+                strategy="lexical", mode="factual", stage="admission").displayed_ids)
+            checked = {key: replace(c, admitted=c.admitted and key in focus_ids,
+                reason=c.reason if key in focus_ids else "reference_focus_insufficient_evidence")
+                for key, c in checked.items()}
         # Admission never reorders or narrows the candidate set seen by native
         # rerank. It remains an independent guard for a disclosed local fallback.
         return replace(broad, candidates=tuple(replace(c, admitted=checked[c.film_id].admitted,

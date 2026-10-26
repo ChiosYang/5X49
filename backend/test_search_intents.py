@@ -235,6 +235,84 @@ class NaturalReferenceTests(unittest.TestCase):
         return [{"title": m.group(), "start": m.start(), "end": m.end()}
                 for d in self.docs for m in re.finditer(re.escape(d.title), text, re.I)]
 
+    def test_explicit_focus_before_or_after_reference_reaches_rerank_unchanged(self):
+        self.engine.title_mentions = self.mentions
+        cases = (
+            ('films like "Public Film 1" in exploring family obligations', 'in exploring family obligations'),
+            ('I enjoyed the uneasy family relationships in "Public Film 1". What else can I watch?', 'the uneasy family relationships in'),
+            ('像《Public Film 1》那样探讨家庭责任，还有什么电影？', '探讨家庭责任,还有什么电影'),
+        )
+        for question, focus in cases:
+            with self.subTest(question=question):
+                parsed = split_content_request(question, mentions=self.mentions)
+                self.assertIsNone(parsed.issue)
+                self.assertEqual(parsed.reference_focus, focus)
+                result = self.engine.submit(question)
+                self.assertEqual(result['status'], 'ready', result)
+                self.assertEqual(self.reranker.rank.call_args.args[0], focus)
+                self.assertNotIn(self.docs[0].chunks[0], self.reranker.rank.call_args.args[1])
+                count = self.reranker.rank.call_count
+                restored = self.engine.resume(question, result['snapshot'])
+                self.assertEqual(restored['results'], result['results'])
+                self.assertEqual(self.reranker.rank.call_count, count)
+        self.decision.decide.assert_not_called()
+        self.assertEqual(self.embedding.calls, [])
+
+    def test_plain_reference_scaffolding_keeps_whole_content_comparison(self):
+        self.engine.title_mentions = self.mentions
+        for question in ('films like "Public Film 1"',
+                         'I liked "Public Film 1". What else can I watch?',
+                         '《Public Film 1》类似的电影', '类似《Public Film 1》的电影'):
+            with self.subTest(question=question):
+                request = split_content_request(question, mentions=self.mentions)
+                self.assertIsNone(request.issue)
+                self.assertIsNone(request.reference_focus)
+                result = self.engine.submit(question)
+                self.assertEqual(result['status'], 'ready', result)
+                self.assertEqual(self.reranker.rank.call_args.args[0], self.docs[0].chunks[0])
+
+    def test_focused_local_fallback_cannot_use_reference_similarity_alone(self):
+        from app.services.semantic_search import SemanticError
+        self.reranker.rank.side_effect = SemanticError('search_replay_missing_response')
+        for focus, nonempty in (('family reconnects at a gathering', True),
+                                ('a courtroom dispute over a stolen painting', False)):
+            question = 'films like "Public Film 1" about ' + focus
+            with self.subTest(focus=focus):
+                result = self.engine.submit(question)
+                self.assertEqual(result['semantic']['fallback'], 'search_replay_missing_response')
+                self.assertEqual(result['results']['total'] > 0, nonempty)
+                self.assertNotIn(self.docs[0].film_id, [i['film']['id'] for i in result['results']['items']])
+                self.assertEqual(self.engine.resume(question, result['snapshot'])['results'], result['results'])
+        self.decision.decide.assert_not_called()
+        self.assertEqual(self.embedding.calls, [])
+
+    def test_reference_focus_keeps_hard_tail_and_rejects_unsupported_requirements(self):
+        question = 'films like "Public Film 1" about family obligations, before 2000'
+        result = self.engine.submit(question)
+        self.assertEqual(result['status'], 'ready', result)
+        self.assertEqual(result['plan']['year_max'], 1999)
+        self.assertEqual(self.reranker.rank.call_args.args[0], 'about family obligations')
+        self.assertIn(self.docs[0].film_id, self.hard_calls[-1].exclude_film_ids)
+        self.reranker.reset_mock()
+        for question in ('films like "Public Film 1" without violence',
+                         'films like "Public Film 1" in French',
+                         'films like "Public Film 1" with a rating of five stars'):
+            self.assertEqual(self.engine.submit(question)['status'], 'clarify')
+        self.reranker.rank.assert_not_called()
+
+    def test_reference_focus_revision_does_not_reuse_old_snapshot_semantics(self):
+        from dataclasses import asdict
+        from app.services.retrieval_policy import RetrievalPolicy
+        from app.services.semantic_search import SemanticError, _hash
+        question = 'films like "Public Film 1" about family obligations'
+        result = self.engine.submit(question)
+        saved = self.store.snapshot(result['snapshot'], question)
+        saved['policy'] = _hash(['integrated-search.v2-seen-regression', asdict(self.engine.policy),
+                                RetrievalPolicy(candidate_k=self.engine.policy.candidate_k).fingerprint])
+        token = self.store.save_snapshot(question, saved)
+        with self.assertRaisesRegex(SemanticError, 'search_snapshot_requires_submit'):
+            self.engine.resume(question, token)
+
     def test_natural_reference_is_bound_and_excluded_before_rerank_and_after_restore(self):
         self.engine.title_mentions = self.mentions
         for question in ("我喜欢《Public Film 1》的家庭主题，找其他电影。",

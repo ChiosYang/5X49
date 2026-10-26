@@ -20,6 +20,7 @@ class ContentRequest:
     reference: str | None = None
     issue: str | None = None
     is_content: bool = True
+    reference_focus: str | None = None
 
 
 _HARD_TAIL = re.compile(
@@ -44,6 +45,20 @@ _TOPIC = re.compile(r"\b(?:with a story about|whose story is about|about)\s+|关
 _REF_CUE = re.compile(r"\b(?:similar to|more like|like|liked|enjoyed|loved)\b|类似|像|我喜欢|我喜爱|看完", re.I)
 _OTHER = re.compile(r"\b(?:other|else|similar|recommend|like)\b|其他|别的|还可以|还有|类似|那样|那种|这样", re.I)
 _QUOTED = re.compile(r"""《([^》]+)》|“([^”]+)”|"([^"]+)"|'([^']+)'""")
+
+
+# Only complete recommendation scaffolding is empty focus. Do not remove words
+# from a substantive comparison, negation or unsupported hard requirement.
+_REFERENCE_SCAFFOLD = re.compile(
+    r"(?:films?|movies?|other (?:films?|movies?)|(?:similar|other) recommendations?|"
+    r"(?:what|something) else(?: can I (?:watch|see))?|"
+    r"(?:类似|相似|其他|别的)(?:的)?(?:电影|影片)|还有什么(?:电影|影片)?|还能看什么)", re.I)
+
+
+def _reference_focus(aspect, tail):
+    parts = [part.strip(" 的,，。；.!?！？") for part in (aspect, tail)]
+    parts = [part for part in parts if part and not _REFERENCE_SCAFFOLD.fullmatch(part)]
+    return " ".join(parts) or None
 
 
 def short_keyword(question):
@@ -121,13 +136,15 @@ def split_content_request(question, *, lookup=None, mentions=None):
         focus = after[:split.start()] if split else after
         suffix = after[split.end():] if split else ""
         focus = re.sub(r"^(?:那样|那种|这样|一样|的电影|的影片|电影|影片)", "", focus).strip(" 的,。；.!?！？")
-        content = (aspect + " " + focus).strip(" ,。；.!?！？") if focus else ref["title"]
+        reference_focus = _reference_focus(aspect, focus)
+        content = reference_focus or ref["title"]
         parsed = _parsed(prefix, content, suffix, lookup, ref["title"])
         # Years or role-like words inside the known reference title are literal.
-        if not focus and parsed.issue in {"incomplete_request", "unsupported_filter"}:
+        if not reference_focus and parsed.issue in {"incomplete_request", "unsupported_filter"}:
             plan, issue = hard_plan(prefix + " " + suffix, lookup)
             return ContentRequest(plan, ref["title"], ref["title"], issue)
-        return parsed
+        return ContentRequest(parsed.hard, parsed.text, parsed.reference, parsed.issue,
+                              parsed.is_content, reference_focus)
     topic = _TOPIC.search(text)
     if topic:
         tail = text[topic.end():]
