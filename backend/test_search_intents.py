@@ -308,6 +308,102 @@ class NaturalReferenceTests(unittest.TestCase):
         self.decision.decide.assert_not_called()
         self.assertEqual(self.embedding.calls, [])
 
+    def test_complete_recommendation_questions_keep_plain_reference_semantics(self):
+        from app.services.semantic_search import SemanticError
+        self.engine.title_mentions = self.mentions
+        self.engine.reference_candidates = lambda title: [
+            {'key': d.film_id, 'label': d.title} for d in self.docs if d.title == title]
+        templates = (
+            'I liked "{}". What other films should I watch?',
+            'I enjoyed "{}". Which movies would you suggest next?',
+            'I loved "{}". Could you recommend something similar for me, please?',
+            'I liked "{}". Any more recommendations?',
+            'I enjoyed "{}". What else could we see?',
+            'I liked "{}". What’s another movie I can watch next?',
+            'films like "{}", can you give me some suggestions?',
+            'films similar to "{}", anything else to try?',
+            '我喜欢《{}》，还有哪些电影可以看？',
+            '我喜欢《{}》。请给我推荐几部类似的电影吧，谢谢！',
+            '看完《{}》，有没有其它相似的推荐呢？',
+            '类似《{}》的片子，麻烦你再推荐一些。',
+            '像《{}》那样的电影，我接下来还可以看点什么？',
+            '我喜欢《{}》，能不能再推荐一部？',
+        )
+        for reference in self.docs[:2]:
+            for native in (True, False):
+                self.reranker.rank.side_effect = ((lambda query, documents:
+                    [.9 if 'family' in text else .001 for text in documents]) if native
+                    else SemanticError('search_replay_missing_response'))
+                plain = self.engine.submit(f'films like "{reference.title}"')
+                expected = [item['film']['id'] for item in plain['results']['items']]
+                self.assertTrue(expected)
+                for template in templates:
+                    question = template.format(reference.title)
+                    with self.subTest(question=question, native=native):
+                        parsed = split_content_request(question, mentions=self.mentions)
+                        self.assertIsNone(parsed.issue, parsed)
+                        self.assertIsNone(parsed.reference_focus, parsed)
+                        result = self.engine.submit(question)
+                        self.assertEqual(result['status'], 'ready', result)
+                        self.assertEqual(self.reranker.rank.call_args.args[0], reference.chunks[0])
+                        self.assertEqual([item['film']['id'] for item in result['results']['items']], expected)
+                        self.assertNotIn(reference.film_id, expected)
+                        calls = self.reranker.rank.call_count
+                        self.assertEqual(self.engine.resume(question, result['snapshot'])['results'], result['results'])
+                        self.assertEqual(self.reranker.rank.call_count, calls)
+        self.decision.decide.assert_not_called()
+        self.assertEqual(self.embedding.calls, [])
+
+    def test_recommendation_question_content_is_never_removed_word_by_word(self):
+        cases = (
+            ('I liked "Public Film 1". What other films explore family obligations?',
+             'What other films explore family obligations'),
+            ('I enjoyed the restrained style in "Public Film 1". Which films should I watch next?',
+             'the restrained style in'),
+            ('films like "Public Film 1", could you recommend movies with a similar plot?',
+             'could you recommend movies with a similar plot'),
+            ('films like "Public Film 1", about films that please their audiences',
+             'about films that please their audiences'),
+            ('我喜欢《Public Film 1》，推荐哪些探讨家庭责任的电影？', '推荐哪些探讨家庭责任的电影'),
+            ('像《Public Film 1》那样冷静克制的风格，还有什么推荐？', '冷静克制的风格,还有什么推荐'),
+            ('类似《Public Film 1》，剧情也是一次家庭聚会，请推荐。', '剧情也是一次家庭聚会,请推荐'),
+            ('films like "Public Film 1", what other films have a watchmaker?',
+             'what other films have a watchmaker'),
+        )
+        for question, focus in cases:
+            with self.subTest(question=question):
+                parsed = split_content_request(question, mentions=self.mentions)
+                self.assertIsNone(parsed.issue, parsed)
+                self.assertEqual(parsed.reference_focus, focus)
+                result = self.engine.submit(question)
+                self.assertEqual(result['status'], 'ready', result)
+                self.assertEqual(self.reranker.rank.call_args.args[0], focus)
+        # Unknown Chinese content after repeated scaffold remains intact and the
+        # classifier has no ambiguous repeated-regex backtracking to consume it.
+        focus = '还有' * 200 + '亲情'
+        self.assertEqual(split_content_request('类似《Public Film 1》' + focus).reference_focus, focus)
+
+    def test_recommendation_scaffolding_never_erases_constraints_or_private_text(self):
+        from app.services.semantic_search import SemanticError
+        for question in ('I liked "Public Film 1". What other films should I watch, before 2000?',
+                         '类似《Public Film 1》，还有哪些电影可以看，2000年以前？'):
+            with self.subTest(question=question):
+                parsed = split_content_request(question, mentions=self.mentions)
+                self.assertIsNone(parsed.issue, parsed)
+                self.assertIsNone(parsed.reference_focus)
+                self.assertEqual(parsed.hard.year_max, 1999)
+        for tail in ('What other films can I watch without violence?',
+                     'Could you recommend other movies in French?',
+                     '还有什么相似电影，但不要暴力？', '还可以推荐哪些法语电影？'):
+            with self.subTest(tail=tail):
+                result = self.engine.submit('films like "Public Film 1". ' + tail)
+                self.assertEqual(result['status'], 'clarify', result)
+        with self.assertRaises(SemanticError):
+            self.engine.submit('films like "Public Film 1", please use Movies//private.mkv')
+        self.decision.decide.assert_not_called()
+        self.reranker.rank.assert_not_called()
+        self.assertEqual(self.embedding.calls, [])
+
     def test_real_aspect_with_politeness_or_similar_words_is_not_discarded(self):
         for focus in ('about families who struggle to please each other',
                       'about family obligations, please',
@@ -358,7 +454,8 @@ class NaturalReferenceTests(unittest.TestCase):
         question = 'films like "Public Film 1" about family obligations'
         result = self.engine.submit(question)
         saved = self.store.snapshot(result['snapshot'], question)
-        for revision in ('integrated-search.v2-seen-regression', 'integrated-search.v3-reference-focus'):
+        for revision in ('integrated-search.v2-seen-regression', 'integrated-search.v3-reference-focus',
+                         'integrated-search.v3.1-reference-focus'):
             with self.subTest(revision=revision):
                 saved['policy'] = _hash([revision, asdict(self.engine.policy),
                                         RetrievalPolicy(candidate_k=self.engine.policy.candidate_k).fingerprint])

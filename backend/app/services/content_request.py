@@ -43,23 +43,38 @@ _LANGUAGE_CONDITION = re.compile(rf"\bin\s+(?:{_LANGUAGES})\b|\b(?:{_LANGUAGES})
     r"\b(?:languages?|dubbed|dubbing|audio)\b|日语|法语|英语|韩语|中文|汉语|国语|德语|意大利语|西班牙语|粤语|配音", re.I)
 _TOPIC = re.compile(r"\b(?:with a story about|whose story is about|about)\s+|关于|讲述|主题为|有关|围绕", re.I)
 _REF_CUE = re.compile(r"\b(?:similar to|more like|like|liked|enjoyed|loved)\b|类似|像|我喜欢|我喜爱|看完", re.I)
-_OTHER = re.compile(r"\b(?:other|else|similar|recommend|like)\b|其他|别的|还可以|还有|类似|那样|那种|这样", re.I)
+_OTHER = re.compile(r"\b(?:other|else|similar|recommend(?:ations?)?|suggest(?:ions?)?|like)\b|其他|别的|还可以|还有|类似|那样|那种|这样|推荐|建议", re.I)
 _QUOTED = re.compile(r"""《([^》]+)》|“([^”]+)”|"([^"]+)"|'([^']+)'""")
 
 
-# Only complete recommendation/courtesy scaffolding is empty focus. Do not remove words
-# from a substantive comparison, negation or unsupported hard requirement.
-_REFERENCE_SCAFFOLD = re.compile(
-    r"(?:(?:films?|movies?|other (?:films?|movies?)|(?:similar|other) recommendations?|"
-    r"(?:what|something) else(?: can I (?:watch|see))?|"
-    r"please(?: and thank you)?|thanks(?: a lot)?|thank you(?: very much)?|if possible|"
-    r"(?:类似|相似|其他|别的)?(?:的)?(?:电影|影片)|还有什么(?:电影|影片)?|还能看什么|"
-    r"谢谢(?:你|您)?|麻烦了|拜托(?:了)?)(?:[\s,，。；.!?！？]+|$))+", re.I)
+# Closed recommendation vocabulary, not a stop-word remover. A whole segment
+# must contain only these words; ANY unknown/content/constraint word keeps the
+# complete segment as a focus. Theme, style, plot and negation are deliberately
+# absent. Token boundaries prevent partial matches inside substantive words.
+_REFERENCE_SCAFFOLD_EN = frozenset("""
+    a an the any some another other others more else something anything similar
+    film films movie movies recommendation recommendations suggestion suggestions
+    what which what's can could would should may will i i'd me my you your we us
+    watch see try recommend suggest find give get have is are be do to for next
+    please thanks thank very much lot if possible and
+""".split())
+_REFERENCE_SCAFFOLD_ZH = re.compile(
+    r"电影|影片|片子|推荐|建议|类似|相似|其他|其它|别的|还有|有没有|"
+    r"什么|哪些|能不能|能否|可否|可以|接下来|接着|一些|一部|几部|观看|看看|"
+    r"谢谢|多谢|麻烦|拜托|我|你|您|有|还|能|看|找|给|再|点|的|请|吗|呢|吧|了")
+_REFERENCE_SCAFFOLD_TOKENS = re.compile(
+    r"[a-z]+(?:'[a-z]+)?|[\u3400-\u9fff]+|[^\s,.;:!?，。；：！？—–-]")
+
+
+def _reference_scaffold(text):
+    tokens = _REFERENCE_SCAFFOLD_TOKENS.findall(text.casefold().replace("’", "'"))
+    return bool(tokens) and all(word in _REFERENCE_SCAFFOLD_EN
+                               or not _REFERENCE_SCAFFOLD_ZH.sub("", word) for word in tokens)
 
 
 def _reference_focus(aspect, tail):
     parts = [part.strip(" 的,，。；.!?！？") for part in (aspect, tail)]
-    parts = [part for part in parts if part and not _REFERENCE_SCAFFOLD.fullmatch(part)]
+    parts = [part for part in parts if part and not _reference_scaffold(part)]
     return " ".join(parts) or None
 
 
@@ -80,7 +95,7 @@ def _reference(text, mentions):
         if re.search(r"(?:\b(?:excluding|except|not)|排除|不要)\s*$", before, re.I):
             continue
         if (re.search(r"(?:\b(?:similar to|more like|like)\s*|类似(?:于)?\s*|像\s*)$", before, re.I)
-                or _REF_CUE.search(before) and (_OTHER.search(after) or re.search(r"(?:电影|影片|films?|movies?)\s*[.。!?！？]*$", after, re.I))
+                or _REF_CUE.search(before) and (_OTHER.search(after) or _reference_scaffold(after))
                 or re.match(r"(?:那样|那种|这样|这样的电影|类似的电影|相似的电影)", after)):
             relevant.append(row)
     if len(relevant) > 1:

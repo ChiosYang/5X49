@@ -632,10 +632,14 @@ Reference search still binds and excludes the reference Film before forming a
 bounded candidate set from its content vector. When the user supplies a specific
 comparison aspect before or after the title, that aspect is the rerank query.
 Whole-reference plot text is used only for a plain similarity request. Only
-complete recommendation or courtesy scaffolding is treated as empty focus,
-including combinations separated by punctuation. Courtesy words inside a
-substantive comparison do not erase that aspect. Hard clauses, unsupported
-negation and ambiguous identities retain their existing validation.
+complete recommendation or courtesy scaffolding is treated as empty focus.
+A bounded English/Chinese vocabulary classifies the whole segment, including
+recommendation questions and punctuation-separated courtesy phrases. It never
+removes individual words from substantive content: any unknown word retains the
+complete comparison aspect. Theme, style, plot and negation words are excluded
+from this scaffolding vocabulary. A recommendation cue after a known reference
+also preserves a substantive comparison that follows it. Hard clauses,
+unsupported negation and ambiguous identities retain their existing validation.
 
 If focused rerank is unavailable, local fallback requires substantive literal
 evidence for the aspect as well as reference-content support. Reference cosine
@@ -664,3 +668,15 @@ snapshot rejection. All 15 semantic browser regressions and their production
 build passed again. No application filesystem limit, assertion or system
 security setting was relaxed. The follow-up commit still requires its own CI
 and independent review.
+
+The complete-question follow-up passed 59 focused backend tests. Its new cases
+cover 14 English/Chinese recommendation templates with two reference identities,
+both native-rerank and local-fallback paths, substantive theme/style/plot wording,
+hard conditions, private-path rejection and obsolete-snapshot invalidation.
+All 682 backend tests passed with the same short-path harness (three platform
+skips), as did 146 frontend unit tests, lint, typecheck, Python compilation and
+the production build. The first browser run retained a JavaScript resource
+`ERR_NO_BUFFER_SPACE` failure before hydration; after the backend run finished,
+the unchanged 15-test browser suite passed in isolation. Earlier restricted
+temporary-directory/loopback failures remain recorded rather than counted as
+passes. No threshold, transport limit or test assertion was relaxed.
