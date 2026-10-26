@@ -62,6 +62,46 @@ description: 5X49 Fresh Canonical FastAPI 的 Film、LibraryItem、Factual Explo
   fallback remains. No real model call, download or quality claim is authorized.
   No Ask workspace/manual form is reintroduced. See docs/api.md for full limits.
 
+### Native semantic evaluation
+
+- Literal requests may return `keyword_query` separately from the original input.
+  Preserve full known title punctuation before consuming complete wrappers.
+  Optional v2 `film_ids`/`exclude_film_ids` bind exact local identities, at most
+  eight unique IDs each; unknown IDs stop execution. Restore must re-ground the
+  original unedited plan. Reference IDs are excluded before ranking and again
+  during restoration; leftover hard conditions cannot be silently discarded.
+- Opt-in only: host `SEARCH_INTERNAL_EVALUATION=1` plus an absolute reviewed
+  `SEARCH_EVALUATION_MANIFEST`. Free NVIDIA adapters are evaluation-only, with
+  explicit approved public inputs/logging consent; never production/private
+  fallback. Default startup, local keywords and complete SQL rules make no call.
+- Native APIs: Mammoth SystemOne (`baseten/mammoth-1:free`, only `baseten`),
+  NVIDIA query/passage embeddings and native rerank (the fixed Nemotron 3.5
+  `:free` IDs, only `nvidia/bf16`). Preflight active/zero-price/privacy; no paid
+  or provider fallback. One expiring, durable 320-POST grant across all three.
+  Keep response evidence before billing validation; uncertainty stops dispatch.
+- `discovery.v3` adds an opaque question/model/policy/corpus-bound snapshot and
+  honest semantic/evaluation/fallback metadata. Query POST adds
+  `semantic_snapshot`, `semantic_order` relevance/title/year. Restore, sorting,
+  mutation, Back/Return and chip edits are entirely local. Unresolved identity
+  choices require an explicit interpret POST with people_ids/reference_id;
+  GET restoration never infers. No Ask/manual filter form.
+- Content removal is an explicit `semantic_removed:true,edited:true` query with
+  the original opaque snapshot retained as proof. Validate its question/model/
+  policy/corpus binding before executing retained conditions in strict SQL.
+  Missing proof cannot bypass original grounding. Bound-title chip/sort edits
+  revalidate the complete original literal request, then validate corrected IDs.
+- SQL eligibility precedes candidate counts/rerank/display. Reference-Film
+  similarity resolves exact identity and uses indexed content, never title-only
+  vectors. Unknown/missing hard facts are not assumed to match.
+- `POST /explore/search/index`: explicit begin/status/step/resume/cancel with
+  idx_ ID, at most four chunks per step. Separate cache only, cancellation and
+  exact provider/mode/text reuse; no source metadata write. Historical scalar
+  provenance needs reviewed public-field hashes, not a blanket TMDB flag.
+- Missing/expired/stale index or provider failures preserve ordinary search.
+  Internal-evaluation real contract checks are not independent semantic quality
+  or production acceptance; PR28 and earlier Qwen accounting stay separate.
+  Full limits and response shapes are in docs/api.md.
+
 ## Addressable local collections
 
 - `GET /explore/catalog`: optional `category=all|director|country|decade`, literal

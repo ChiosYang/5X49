@@ -7,7 +7,7 @@ from sqlalchemy import case, func
 from sqlmodel import Session, select
 
 from app.canonical_models import Concept, ExploreFacetReadModel, ExploreFilmReadModel, LibraryFilmReadModel
-from app.contracts.search_plan import SearchPlan
+from app.contracts.bound_search_plan import SearchPlan
 from app.services import ask as ask_module
 from app.services.ask import AskError
 from app.services.explore_query import ExploreQueryService, EXPLORE_VISIBILITY_POLICY, EXPLORE_PROJECTION_VERSION
@@ -16,13 +16,30 @@ from app.services.structured_metadata_vocab import STRUCTURED_METADATA_VOCABULAR
 
 
 class SearchPlanExecutor:
+    def __init__(self, database_engine=None):
+        self.database_engine = database_engine
+
+    def _engine(self):
+        return self.database_engine if self.database_engine is not None else ask_module.engine
+
     def resolve(self, plan: SearchPlan, people_ids=None):
+        plan = SearchPlan.model_validate(plan.model_dump())
         selections = people_ids or {}
         if set(selections) - {str(i) for i in range(len(plan.people))}:
             raise AskError("ask_invalid_selection", 422)
         constraints, issues, chosen = [], [], {}
-        with Session(ask_module.engine) as session:
+        with Session(self._engine()) as session:
             ExploreQueryService._require(session)
+            for field in ("film_ids", "exclude_film_ids"):
+                for index, identifier in enumerate(getattr(plan, field)):
+                    row = session.exec(select(LibraryFilmReadModel).where(
+                        LibraryFilmReadModel.film_id == identifier, LibraryFilmReadModel.visible.is_(True))).first()
+                    if row is None:
+                        issues.append({"field": field, "index": index, "code": "unknown_value", "candidates": []})
+                    else:
+                        constraints.append({"id": f"{field}:{index}", "field": field, "index": index,
+                            "dimension": "film", "key": identifier, "label": row.payload.get("title", identifier),
+                            "exclude": field.startswith("exclude_")})
             for field, dimension in (("genres", "genre"), ("countries", "country"),
                     ("exclude_genres", "genre"), ("exclude_countries", "country")):
                 for index, value in enumerate(getattr(plan, field)):
@@ -81,13 +98,18 @@ class SearchPlanExecutor:
         return self.query(plan, people_ids=people_ids, _ids_limit=maximum)
 
     def query(self, plan: SearchPlan, *, people_ids=None, offset=0, _ids_limit=None):
+        plan = SearchPlan.model_validate(plan.model_dump())
         result = self.resolve(plan, people_ids)
         if result["status"] != "ready":
             return result
         facet, film, library = ExploreFacetReadModel, ExploreFilmReadModel, LibraryFilmReadModel
         conditions = [library.visible.is_(True)]
+        if plan.film_ids:
+            conditions.append(film.film_id.in_(plan.film_ids))
+        if plan.exclude_film_ids:
+            conditions.append(film.film_id.not_in(plan.exclude_film_ids))
         positive = {"genre": [], "country": [], "person": [], "decade": []}
-        with Session(ask_module.engine) as session:
+        with Session(self._engine()) as session:
             ExploreQueryService._require(session)
             ProjectionReader._require(session, "library")
             # Positive alternatives are OR within a dimension; all dimensions,

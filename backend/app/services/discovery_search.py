@@ -10,7 +10,7 @@ from sqlmodel import Session, select
 
 from app.contracts.ask import AskPlan, AskQueryRequest, AskResolveRequest
 from app.contracts.discovery_search import DiscoveryQuestion, DiscoveryQuery
-from app.contracts.search_plan import SearchPlan
+from app.contracts.bound_search_plan import SearchPlan
 from app.canonical_models import FilmSearchReadModel, LibraryFilmReadModel
 from app.contracts.structured_metadata import normalize_metadata_text
 from app.services import ask as ask_module
@@ -224,6 +224,10 @@ class DiscoverySearchService:
         question = request.question
         if has_private_input(question):
             raise AskError("ask_private_input", 422)
+        from app.services.search_local import LocalSearch
+        literal = LocalSearch(ask_module.engine).literal_request(question)
+        if literal is not None:
+            return literal
         # A known literal title wins even if it contains condition words or years.
         term = keyword_text(question)
         if len(term) <= 200:
@@ -278,7 +282,14 @@ class DiscoverySearchService:
         if has_private_input(request.question):
             raise AskError("ask_private_input", 422)
         if isinstance(request.plan, SearchPlan):
-            if not grounded_extended(request.plan, request.question, edited=request.edited):
+            from app.services.search_local import LocalSearch
+            literal = LocalSearch(ask_module.engine).literal_binding(request.question)
+            # Re-validate the complete original identity request even for edits.
+            # Explicit chip/sort changes may alter its plan, never excuse an
+            # unsupported qualifier or an unresolved original identity.
+            bound = (literal is not None and not literal.issue and literal.plan is not None
+                     and (request.edited or literal.plan == request.plan))
+            if not bound and not grounded_extended(request.plan, request.question, edited=request.edited):
                 return self.state("unsupported", "incomplete_request")
             if request.person_id:
                 raise AskError("ask_invalid_selection", 422)

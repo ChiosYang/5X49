@@ -1,18 +1,42 @@
 from __future__ import annotations
 
 import re
+import asyncio
+import time
+from threading import Event, Lock
+from collections import OrderedDict
 from typing import Literal
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Request
+from starlette.concurrency import run_in_threadpool
 
-from app.contracts.discovery_search import DiscoveryQuestion, DiscoveryQuery
+from app.contracts.discovery_search import DiscoveryCancel, DiscoveryIndexAction, DiscoveryQuestion, DiscoveryQuery
 from app.services.ask import AskError
 from app.services.discovery_search import discovery_search_service
+from app.services.integrated_search import IntegratedSearch
+from app.services.search_runtime import configured_evaluation
+from app.services.semantic_search import SemanticError
 from app.services.explore_query import EXPLORE_DIMENSIONS, explore_query_service
 from app.utils.security import validate_resource_id
 
 
 router = APIRouter()
+_search_lock = Lock()
+_search_owners = {}
+_cancelled_owners = OrderedDict()
+
+
+def _begin_search(identifier):
+    event = Event()
+    if identifier is None:
+        return event
+    with _search_lock:
+        if len(_search_owners) >= 32 or identifier in _search_owners:
+            raise SemanticError("search_busy")
+        if identifier in _cancelled_owners:
+            event.set()
+        _search_owners[identifier] = event
+    return event
 
 
 def _discovery_call(callback):
@@ -20,16 +44,77 @@ def _discovery_call(callback):
         return callback()
     except AskError as exc:
         raise HTTPException(exc.status, detail={"code": exc.code}) from None
+    except SemanticError as exc:
+        code = "ask_private_input" if exc.code == "private_input" else exc.code
+        raise HTTPException(422 if code in {"ask_private_input", "search_snapshot_invalid"} else 503,
+                            detail={"code": code}) from None
+
+
+def _evaluation():
+    from app.services import ask as ask_module
+    return configured_evaluation(ask_module.engine)
+
+
+async def _cancellable_search(http_request, runtime, request):
+    cancelled = _discovery_call(lambda: _begin_search(request.request_id))
+    task = asyncio.create_task(run_in_threadpool(lambda: _discovery_call(
+        lambda: runtime.interpret(request, cancelled=cancelled.is_set))))
+    try:
+        while not task.done():
+            await asyncio.wait((task,), timeout=.1)
+            if await http_request.is_disconnected():
+                cancelled.set()
+        return await task
+    finally:
+        cancelled.set()
+        if not task.done():
+            task.cancel()
+        if request.request_id is not None:
+            with _search_lock:
+                _search_owners.pop(request.request_id, None)
+
+
+@router.post("/explore/search/cancel")
+def cancel_discovery(request: DiscoveryCancel):
+    # Explicit cancellation also crosses buffered/proxied HTTP hops. No model,
+    # key, index or question is involved. Random request IDs are owner capabilities.
+    with _search_lock:
+        event = _search_owners.get(request.request_id)
+        if event is not None:
+            event.set()
+        now = time.monotonic()
+        while _cancelled_owners and (len(_cancelled_owners) >= 256
+                or next(iter(_cancelled_owners.values())) < now - 120):
+            _cancelled_owners.popitem(last=False)
+        _cancelled_owners[request.request_id] = now
+    return {"cancelled": True}
 
 
 @router.post("/explore/search/interpret")
-def interpret_discovery(request: DiscoveryQuestion):
-    return _discovery_call(lambda: discovery_search_service.interpret(request))
+async def interpret_discovery(request: DiscoveryQuestion, http_request: Request):
+    runtime = _discovery_call(_evaluation)
+    if runtime is not None:
+        return await _cancellable_search(http_request, runtime, request)
+    if request.evaluation_only or request.edited_plan is not None or request.reference_id:
+        return IntegratedSearch.failure("search_evaluation_disabled")
+    return await run_in_threadpool(lambda: _discovery_call(lambda: discovery_search_service.interpret(request)))
 
 
 @router.post("/explore/search/query")
 def query_discovery(request: DiscoveryQuery):
+    if request.semantic_snapshot:
+        runtime = _discovery_call(_evaluation)
+        return (_discovery_call(lambda: runtime.query(request)) if runtime is not None
+                else IntegratedSearch.failure("search_evaluation_disabled"))
     return _discovery_call(lambda: discovery_search_service.query(request))
+
+
+@router.post("/explore/search/index")
+def index_discovery(request: DiscoveryIndexAction):
+    runtime = _discovery_call(_evaluation)
+    if runtime is None:
+        raise HTTPException(503, detail={"code": "search_evaluation_disabled"})
+    return _discovery_call(lambda: runtime.index(request))
 
 
 @router.get("/explore")

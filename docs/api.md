@@ -10,7 +10,9 @@ zero retries, only text/static schema, confidence >=0.9, literal grounding, comp
 JSON and local entity validation. Typing, restoration and refresh never infer.
 
 Responses are `{version:"discovery.v1"|"discovery.v2",status,source:"local"|"ai",reason,plan,
-person_id,constraints,issues,results}`. Statuses: `keyword`, `ready`,
+person_id,constraints,issues,results}`. Literal bindings may additionally return
+`keyword_query`, the effective local term; the original question remains unchanged.
+Statuses: `keyword`, `ready`,
 `needs_clarification`, `clarify`, `unsupported`, `unavailable`, `needs_ai`. Plans use
 Ask v1's single genre/person/role/country/decade, viewing state and sort remain
 compatible. Extended local requests use the explicit v2 contract below. Literal
@@ -77,6 +79,13 @@ Discovery v2 plans require `version:"search-plan.v2"` and expose:
   clauses. Every clause combines with AND, including two roles for one identity.
   Exact canonical names or reliable aliases resolve locally. Partial/duplicate
   names require a choice. No unsupported producer/writer role is reinterpreted.
+- `film_ids`, `exclude_film_ids`: optional, default empty; at most eight unique
+  canonical Film IDs each. Exact local title/alias bindings supply these, never
+  model output. Missing IDs require clarification before SQL executes. Positive
+  IDs combine with all other requirements; negative IDs are strictly excluded.
+  Old v2 URLs without either array retain their meaning. Restored unedited plans
+  must equal the complete locally grounded request; explicit chip edits may remove
+  an identity constraint.
 - `year_min/max`: strict integers 1870–2100, inclusive, nullable.
 - `duration_min/max`: strict integer minutes 1–10000, nullable;
   `duration_min_exclusive/max_exclusive` are strict booleans, default false.
@@ -113,9 +122,97 @@ the existing guarded v1 AI fallback is unchanged. No real-model quality, accurac
 cost or latency has been validated for the extension. Enabling that model path
 requires a separately authorized live-quality evaluation; the PR28 hold is intact.
 Restored v1/v2 plans, corrections, paging, refresh and Back/Return never infer.
+
+Complete title wrappers and sentence terminators are resolved against local
+identities before content routing. The full literal is checked first, preserving
+punctuation-bearing titles. Unknown quoted/exact-only titles remain ordinary
+literal searches, not semantic substitutes. Unconsumed qualifiers are not dropped.
+Inside the opt-in semantic evaluation, v2 metadata clauses are segmented from
+content before the legacy v1 guard. Supported reference expressions bind a local
+Film ID and exclude it before retrieval/rerank and again on snapshot restoration.
+Unresolved reference identities, unsupported content negation and incomplete
+hard clauses produce specific clarification reasons rather than partial results.
 Condition edits and identity choices serialize while their navigation is pending;
 typing and explicit page navigation remain available, without stale plan overwrites.
 See `docs/features/enhanced-search-phase-one.md` for exact verification evidence.
+
+### Native semantic search: internal evaluation only
+
+Ordinary instances retain the local/v1 behavior above. Both host settings
+`SEARCH_INTERNAL_EVALUATION=1` and an absolute `SEARCH_EVALUATION_MANIFEST` must
+explicitly enable the new runtime. There is no startup indexing, credential
+lookup or model request. The selected free NVIDIA APIs permit internal
+evaluation, not production or confidential/personal input. No setting silently
+relaxes privacy or switches to paid/alternate providers.
+
+The host manifest pins the public corpus or independently reviewed public scalar
+values from the persistent test library, exact document/query hashes, separate
+index/receipt databases, model revisions and an expiring shared authorization.
+Question text and approved public excerpts are the only model inputs. File paths,
+metadata overrides, personal notes, ratings and viewing history are excluded.
+Historical automatic overview values require their own public-source review;
+an edition-level TMDB flag does not establish field-level provenance. A changed
+approved scalar invalidates its whitelist until reviewed again.
+
+In this runtime, explicit `POST /explore/search/interpret` submission may use:
+
+- `baseten/mammoth-1:free`, fixed `baseten`, native `/api/v1/systemone`:
+  finite keyword/semantic/hybrid/clarify route and factual/exploratory mode.
+- `nvidia/nemotron-3.5-embed-8b:free`, fixed `nvidia/bf16`, native embeddings
+  with query/passage input type and 4096 dimensions.
+- `nvidia/nemotron-3.5-rerank-8b:free`, fixed `nvidia/bf16`, native reranking
+  of at most 20 candidates. No chat substitute or decision-generated SQL.
+
+Every endpoint must pass active/zero-price/privacy preflight, with zero-price
+ceilings and no fallback. NVIDIA logging consent is scoped to this evaluation.
+One durable ledger counts all three APIs against the approved 320-POST maximum.
+Unknown billing, malformed usage, changed routing/price or interrupted transport
+halts dispatch. IDs/model/provider evidence is saved before usage validation;
+known local cancellation/missing key before dispatch records `not_sent`.
+
+Local exact identities and complete factual rules bypass the models. Explicit
+EN/ZH content-clause boundaries preserve and execute all hard predicates through
+the existing SQL executor. Unsupported/ambiguous hard requirements never become
+an approximate positive-only query. Similarity first resolves an exact reference
+Film, then compares its indexed content, excluding the reference itself.
+
+The v3 envelope adds `snapshot:"ds_<32 hex>"`, `edited` and `semantic` with
+`text,reference_id,route,mode,order,fallback,evaluation_only,indexed_films,
+bounded_candidates`. Unevaluated identity choices also set `requires_submit`;
+reference issues use `field:"reference",code:"choose_reference"` and bounded
+local Film candidates. A choice is an explicit interpret POST with optional
+`people_ids`, `reference_id`, `edited_plan` and `evaluation_only:true`.
+
+Restore uses the existing query POST with `semantic_snapshot` and
+`semantic_order:"relevance"|"title"|"year"`. It only reads cached vectors/scores,
+reapplies current SQL eligibility and clamps a shrinking page. Filter edits,
+watching mutations, refresh, Back/Return and sort never rerun a model. Snapshots
+are question/model/policy/corpus bound, expire after at most 24 hours and are
+limited to 100. Expired/stale/configuration failures retain ordinary keyword
+search and explain the problem; rerank failures explicitly disclose cached
+local ranking. A snapshot can never fall through to legacy chat interpretation.
+
+Removing the content chip sends `semantic_removed:true` with `edited:true` and
+the original `semantic_snapshot`. The token stays in the URL as proof, but no
+content ranking/banner is retained. The server verifies the question, model,
+policy and corpus binding, then executes all retained conditions through strict
+local SQL. Missing/invalid proof is rejected; `edited` alone never authorizes
+discarding arbitrary content. Bound-title edits similarly revalidate the complete
+original literal request before executing the explicitly corrected plan.
+Cancellation owners use 128 bits from browser `crypto.getRandomValues`, including
+HTTP LAN origins without `randomUUID`; if secure entropy is unavailable, the
+optional request ID is null and abort/disconnect cancellation still applies.
+
+`POST /explore/search/index` is disabled outside that host configuration. Its
+body is `{action:"begin"|"status"|"step"|"resume"|"cancel",job_id:null|"idx_<32 hex>"}`.
+Begin/status/cancel/resume are local. Only an explicit step encodes a batch of at
+most four approved chunks. Returned vectors are durable before cancellation;
+publish the new active generation only when complete. Provider/model/text hashes
+control reuse, and the canonical database is never written by the indexer.
+
+These contracts and real interface checks do not establish unseen quality or
+production readiness. See `docs/features/semantic-search-integration.md` for
+the frozen configuration, independent validation and outstanding restrictions.
 
 ## Multiple media roots and scan coverage
 
