@@ -680,3 +680,39 @@ the production build. The first browser run retained a JavaScript resource
 the unchanged 15-test browser suite passed in isolation. Earlier restricted
 temporary-directory/loopback failures remain recorded rather than counted as
 passes. No threshold, transport limit or test assertion was relaxed.
+
+### Sealed reference-focus validation supplement
+
+An explicit evaluation-only tool can prepare a local plan for the five missing
+focus reranks identified by a current zero-network replay. Preparation reads the
+public corpus, projection and cached vectors without changing them. It recomputes
+each reference binding, ordered candidate texts and native request body using the
+current search pipeline. Source, code, plan and request hashes must all agree;
+ordinary queries, plain references, changed candidates and additional stages are
+rejected. The plan and all output evidence stay in the ignored evaluation root.
+
+Live execution requires a separate reviewed action and appends a bounded grant
+to the same ledger. It preserves every earlier receipt, unknown charge and halt.
+Only the exact ordered rerank requests can reserve once each, under both the
+supplemental and original shared caps. Ordinary and previous budget views remain
+blocked. The provider is fixed to the approved free NVIDIA rerank endpoint with
+no fallback; unauthenticated metadata checks also verify the cached embedding
+revision, without issuing an embedding request. No Decision request, index
+rebuild, private-library read or production routing is added.
+
+Timeout, rate limit, nonzero or unknown billing, malformed response, missing key,
+changed configuration or incomplete durable output stops the supplement. Restart
+may reuse a completed output but cannot resend it or discard a pending/unknown
+attempt. Historical rows are protected from capture/settlement/failure writes.
+Per-case local evidence binds the receipt, candidate IDs and original retrieval
+scores, native scores, final result and stage timings. These are seen regression
+outputs; the original failed assessment and independent labels remain intact.
+
+Verification: 107 affected offline backend tests passed, including 16 new
+synthetic authorization/capture/execution regressions. The full backend suite
+passed all 698 tests with three platform skips using the established short-path
+test harness; its original Gate B test assertions and source hash were unchanged.
+Python compilation and whitespace checks passed. These checks used no real
+provider requests and do not establish retrieval quality. This increment adds
+no frontend/runtime/API changes and still requires independent review before
+any explicitly authorized live validation.
