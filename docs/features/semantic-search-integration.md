@@ -716,3 +716,12 @@ Python compilation and whitespace checks passed. These checks used no real
 provider requests and do not establish retrieval quality. This increment adds
 no frontend/runtime/API changes and still requires independent review before
 any explicitly authorized live validation.
+
+Portable preparation normalizes report-relative source keys only for hash
+comparison, accepting forward/backslashes without rewriting the sealed report.
+Absolute paths, drive/UNC paths, traversal, ambiguous separators and normalized
+key collisions are rejected before cache access or plan creation. All 56 affected
+offline tests passed, including the new Windows-key and path-boundary regressions;
+compile and whitespace checks passed. Preparation with the original local input
+also succeeded without provider requests, ledger activation or source changes.
+Live execution remains subject to independent review of this correction.

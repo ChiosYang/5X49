@@ -282,6 +282,48 @@ class FocusBudgetTests(unittest.TestCase):
         self.assertEqual(runner.digest(self.path), before)
         self.assertIsNone(self.budget._value(PREFIX + "grant")); self.unchanged()
 
+    def test_windows_report_keys_prepare_without_rewriting_sealed_report_or_ledger(self):
+        source = self.offline_plan_fixture()
+        report = json.loads(source.read_text(encoding="utf8"))
+        report["read_only_sources"] = {k.replace("/", "\\"): v for k, v in report["read_only_sources"].items()}
+        source.write_text(json.dumps(report), encoding="utf8")
+        original_report, original_ledger = runner.digest(source), runner.digest(self.path)
+        plan = runner.prepare(self.root, source)
+        self.assertEqual([c["id"] for c in plan["configuration"]["cases"]], [f"SYN{i}" for i in range(5)])
+        self.assertEqual(runner.verify_plan(self.root, plan)[-1]["id"], "SYN4")
+        self.assertEqual(runner.digest(source), original_report)
+        self.assertEqual(runner.digest(self.path), original_ledger)
+        self.assertIsNone(self.budget._value(PREFIX + "grant")); self.unchanged()
+
+    def test_source_key_normalization_is_comparison_only_and_rejects_unsafe_aliases(self):
+        original = {"one/two.db": "a", "three\\four.db": "b", "five\\six/seven.db": "c"}
+        expected = {"one/two.db": "a", "three/four.db": "b", "five/six/seven.db": "c"}
+        saved = deepcopy(original)
+        self.assertEqual(runner.source_hashes(original), expected)
+        self.assertEqual(original, saved)
+        invalid = ("", "/absolute.db", "\\absolute.db", "C:/file.db", "C:\\file.db", "C:file.db",
+                   "//server/share/file.db", "\\\\server\\share\\file.db", "\\\\?\\C:\\file.db",
+                   "../file.db", "..\\file.db", "one/../file.db", "one\\..\\file.db", "one/..\\file.db",
+                   "./file.db", "one/./file.db", "one//file.db", "one\\\\file.db", "one/file.db:stream", "one/\0file.db")
+        for key in invalid:
+            with self.subTest(key=key), self.assertRaises(SemanticError): runner.source_hashes({key: "a"})
+        with self.assertRaises(SemanticError): runner.source_hashes({"one/two.db": "a", "one\\two.db": "a"})
+        for invalid_value in (None, [], {1: "a"}):
+            with self.assertRaises(SemanticError): runner.source_hashes(invalid_value)
+
+    def test_unsafe_or_colliding_report_keys_stop_before_cache_and_no_plan_is_written(self):
+        source = self.offline_plan_fixture()
+        original = json.loads(source.read_text(encoding="utf8"))
+        for key in ("/absolute.db", "C:relative.db", "../file.db", "holdout\\public-library.sqlite3"):
+            report = deepcopy(original); report["read_only_sources"][key] = "same"
+            source.write_text(json.dumps(report), encoding="utf8")
+            before = runner.digest(self.path)
+            with patch.object(runner, "context") as cache:
+                with self.assertRaises(SemanticError): runner.prepare(self.root, source)
+                cache.assert_not_called()
+            self.assertFalse((self.root / runner.DIRECTORY / "plan.json").exists())
+            self.assertEqual(runner.digest(self.path), before)
+
     def test_plan_rejects_changed_scope_sources_code_and_new_input_even_if_rehashed(self):
         source = self.offline_plan_fixture(); plan = runner.prepare(self.root, source)
         changed = deepcopy(plan); changed["configuration"]["cases"][0]["body"]["query"] = "a different focus"

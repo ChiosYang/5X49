@@ -36,6 +36,21 @@ def digest(path):
     return sha256(path.read_bytes()).hexdigest()
 
 
+def source_hashes(value):
+    """Compare report-relative keys portably without rewriting sealed evidence."""
+    if not isinstance(value, dict):
+        raise SemanticError("search_focus_source_keys_invalid")
+    normalized = {}
+    for name, fingerprint in value.items():
+        if not isinstance(name, str) or ":" in name or "\0" in name:
+            raise SemanticError("search_focus_source_keys_invalid")
+        key = name.replace("\\", "/")
+        if any(part in {"", ".", ".."} for part in key.split("/")) or key in normalized:
+            raise SemanticError("search_focus_source_keys_invalid")
+        normalized[key] = fingerprint
+    return normalized
+
+
 def code_revision():
     backend = Path(__file__).resolve().parents[2]
     names = ("app/evaluation/search_focus_budget.py", "app/evaluation/search_focus_validation.py",
@@ -153,8 +168,9 @@ def prepare(root, replay_report):
     if (report.get("configuration") != source_configuration() or report.get("new_requests") != 0
             or not report.get("seen_regression_only") or report.get("independent_acceptance") is not False):
         raise SemanticError("search_focus_report_changed")
+    sources = source_hashes(report["read_only_sources"])
     for name in FILES[1:]:
-        if digest(root / name) != report["read_only_sources"].get(name):
+        if digest(root / name) != sources.get(name):
             raise SemanticError("search_focus_source_changed")
     missing = [r for r in report["results"] if r["unverified"]]
     if (len(missing) != MAX_REQUESTS or any(len(r["events"]) != 1 or r["events"][0]["purpose"] != "rerank"
@@ -173,7 +189,7 @@ def prepare(root, replay_report):
     # Refuse preparing a second plan after any supplement/attempt. The bound
     # original replay also commits to the exact initial ledger bytes.
     if (any(k.startswith("focus_validation_v1_") for k in meta)
-            or digest(root / "shared-budget.sqlite3") != report["read_only_sources"]["shared-budget.sqlite3"]):
+            or digest(root / "shared-budget.sqlite3") != sources.get("shared-budget.sqlite3")):
         raise SemanticError("search_focus_baseline_changed")
     now = int(time.time())
     config = {"version": "focus-validation-plan.v1", "code_revision": code_revision(),
