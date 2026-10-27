@@ -109,6 +109,83 @@ class MetadataEnrichmentTests(unittest.TestCase):
             with Session(self.engine) as session:
                 apply_enrichment(session,fixture.FILM_ID,self.payload,self.people,observed_at=fixture.T2)
 
+    def test_fresh_id_never_certifies_a_cross_film_shared_provisional_person(self):
+        self.prepare()
+        # Both NFO observations share the same local source/person key. Only
+        # the first film's public data corroborates this name; the second is not proof.
+        with Session(self.engine) as session:
+            self.sync.sync(session,film_id=self.second,library_item_id=None,
+                observation=fixture.StructuredMetadataRuntimeTests._observation('nfo','nfo:cross-film',credits=[CreditObservation('Local Actor 0','Acting','Actor',character='Role 0',billing_order=0)]))
+            self.sync.sync(session,film_id=fixture.FILM_ID,library_item_id=None,
+                observation=fixture.StructuredMetadataRuntimeTests._observation('nfo','nfo:single-film',credits=[CreditObservation('Local Actor 0','Acting','Actor',character='Role 0',billing_order=0)]))
+            session.commit()
+            person=session.exec(select(Person).where(Person.canonical_name=='Local Actor 0')).one()
+            provisional=person.id
+            before=[(c.id,c.film_id,c.person_id) for c in session.exec(select(Credit).where(Credit.person_id==provisional)).all()]
+            self.assertEqual(len(before),2)
+            apply_enrichment(session,fixture.FILM_ID,self.payload,self.people,observed_at=fixture.T2);session.commit()
+            self.assertEqual(session.get(Person,provisional).resolution_status,'provisional')
+            self.assertIsNone(session.exec(select(ExternalIdentity).where(ExternalIdentity.entity_id==provisional,ExternalIdentity.provider=='tmdb.person')).first())
+            self.assertEqual(before,[(c.id,c.film_id,c.person_id) for c in session.exec(select(Credit).where(Credit.person_id==provisional)).all()])
+
+    def test_fresh_id_preserves_curated_alias_assertion_and_other_provider_evidence(self):
+        from app.canonical_models import PersonAlias, Assertion, AssertionPredicate, CreditProvenance
+        from app.services.metadata_enrichment import _can_link_single_context
+        self.prepare()
+        with Session(self.engine) as session:
+            self.sync.sync(session,film_id=fixture.FILM_ID,library_item_id=None,
+                observation=fixture.StructuredMetadataRuntimeTests._observation('nfo','nfo:fresh',credits=[CreditObservation('Local Actor 0','Acting','Actor',character='Role 0',billing_order=0)]))
+            session.commit()
+            person=session.exec(select(Person).where(Person.canonical_name=='Local Actor 0')).one()
+            credit=session.exec(select(Credit).where(Credit.person_id==person.id)).one()
+            identity=session.exec(select(ExternalIdentity).where(ExternalIdentity.entity_id==person.id)).one()
+            self.assertTrue(_can_link_single_context(session,person,credit,fixture.FILM_ID))
+            identity.provenance_kind='curated';session.add(identity);session.flush()
+            self.assertFalse(_can_link_single_context(session,person,credit,fixture.FILM_ID))
+            identity.provenance_kind='nfo';session.add(identity)
+            alias=PersonAlias(id='person_alias_'+'a'*32,person_id=person.id,film_id=fixture.FILM_ID,
+                identity_id=identity.id,locale='und',name='User Alias',normalized_name='user alias',
+                origin_kind='curated',origin_ref='user:alias',observed_at=fixture.T1)
+            session.add(alias);session.flush()
+            self.assertFalse(_can_link_single_context(session,person,credit,fixture.FILM_ID))
+            session.delete(alias);session.flush()
+            curated=CreditProvenance(id='credit_provenance_'+'c'*32,credit_id=credit.id,
+                origin_kind='curated',origin_ref='user:credit',observed_at=fixture.T1)
+            session.add(curated);session.flush()
+            self.assertFalse(_can_link_single_context(session,person,credit,fixture.FILM_ID))
+            session.delete(curated);session.flush()
+            session.add(AssertionPredicate(key='SYNTHETIC_PERSON_CONTEXT',vocabulary_version='synthetic.v1',
+                subject_entity_type='person',object_entity_type='film',evidence_policy='optional'))
+            session.flush()
+            assertion=Assertion(subject_entity_id=person.id,object_entity_id=fixture.FILM_ID,
+                predicate='SYNTHETIC_PERSON_CONTEXT',qualifier_hash='c'*64,assertion_key='d'*64,
+                source_scope='curated',first_seen_at=fixture.T1,last_seen_at=fixture.T1)
+            session.add(assertion);session.flush()
+            self.assertFalse(_can_link_single_context(session,person,credit,fixture.FILM_ID))
+            session.delete(assertion);session.flush()
+            other=ExternalIdentity(id='identity_'+'b'*32,entity_id=person.id,provider='other.person',external_id='known-other',provenance_kind='nfo',provenance_ref='nfo:other')
+            session.add(other);session.flush()
+            self.assertFalse(_can_link_single_context(session,person,credit,fixture.FILM_ID))
+            apply_enrichment(session,fixture.FILM_ID,self.payload,self.people,observed_at=fixture.T2);session.commit()
+            self.assertIsNone(session.exec(select(ExternalIdentity).where(ExternalIdentity.entity_id==person.id,ExternalIdentity.provider=='tmdb.person')).first())
+
+    def test_two_conflicting_credit_contexts_never_use_the_last_public_candidate(self):
+        self.prepare()
+        self.payload['credits']['cast']=[
+            {'id':200,'name':'Shared Actor','original_name':'Shared Actor','character':'Role One','order':0},
+            {'id':201,'name':'Shared Actor','original_name':'Shared Actor','character':'Role Two','order':1}]
+        with Session(self.engine) as session:
+            self.sync.sync(session,film_id=fixture.FILM_ID,library_item_id=None,
+                observation=fixture.StructuredMetadataRuntimeTests._observation('nfo','nfo:conflicting-roles',credits=[
+                    CreditObservation('Shared Actor','Acting','Actor',character='Role One',billing_order=0),
+                    CreditObservation('Shared Actor','Acting','Actor',character='Role Two',billing_order=1)]))
+            session.commit()
+            provisional=session.exec(select(Person).where(Person.canonical_name=='Shared Actor')).one().id
+            report=apply_enrichment(session,fixture.FILM_ID,self.payload,self.people,observed_at=fixture.T2);session.commit()
+            self.assertGreaterEqual(report['unresolved_contexts'],2)
+            self.assertEqual(session.get(Person,provisional).resolution_status,'provisional')
+            self.assertIsNone(session.exec(select(ExternalIdentity).where(ExternalIdentity.entity_id==provisional,ExternalIdentity.provider=='tmdb.person')).first())
+
     def test_missing_credit_roles_preserve_each_other(self):
         self.payload['spoken_languages']=[{'iso_639_1':'en'}]
         self.apply=coverage.MetadataCoverageTests.apply.__get__(self)

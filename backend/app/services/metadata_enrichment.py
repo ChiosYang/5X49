@@ -18,6 +18,38 @@ def _names(person):
     if not isinstance(name,str) or not name.strip() or len(name)>100:raise ValueError('Invalid person name')
     return {x.strip() for x in [name,*names]}
 
+def _can_link_single_context(session, person, credit, film_id):
+    """A provisional person key can be shared across films; never certify it globally.
+
+    A fresh provider ID is safe here only for one active local identity context,
+    one credit on this film and no user-owned or independent identity evidence.
+    Other cases stay unresolved instead of borrowing this movie's proof.
+    """
+    if person.lifecycle_status != "active" or person.resolution_status != "provisional":
+        return False
+    identities = session.exec(select(ExternalIdentity).where(
+        ExternalIdentity.entity_id == person.id)).all()
+    if not identities or any(identity.provider != "local.person"
+            or identity.identity_status != "active"
+            or identity.provenance_kind in {"curated", "user"}
+            for identity in identities):
+        return False
+    credits = session.exec(select(Credit).where(Credit.person_id == person.id)).all()
+    if len(credits) != 1 or credits[0].id != credit.id or credits[0].film_id != film_id:
+        return False
+    if session.exec(select(PersonAlias.id).where(PersonAlias.person_id == person.id)).first():
+        return False
+    if session.exec(select(Assertion.id).where(or_(
+            Assertion.subject_entity_id == person.id,
+            Assertion.object_entity_id == person.id))).first():
+        return False
+    if session.exec(select(CreditProvenance.id).where(
+            CreditProvenance.credit_id == credit.id,
+            CreditProvenance.origin_kind == "curated")).first():
+        return False
+    return True
+
+
 def _redirect_provisional_director(session,old_id,target_id,film_id,provider_identity,observed_at):
     """Only a locally provisional, single-film director with no curated facts.
 
@@ -69,7 +101,8 @@ def _redirect_provisional_director(session,old_id,target_id,film_id,provider_ide
 def apply_enrichment(session:Session,film_id,details,people,*,observed_at):
     """Caller owns transaction, backup, public-ID whitelist and final commit.
 
-    Provisional IDs are linked only by unique film+role source context: actors
+    Fresh IDs require a single-film, single-credit local identity with no manual
+    or independent identity evidence. Provisional IDs then require unique source context: actors
     require exact name, character and billing; directors also require the
     official person-ID alias snapshot. Two verified IDs are never merged; a uniquely verified local-only director
     may be redirected with a retained identity/history and an audit event.
@@ -96,6 +129,8 @@ def apply_enrichment(session:Session,film_id,details,people,*,observed_at):
         existing=session.exec(select(ExternalIdentity).where(ExternalIdentity.entity_id==person.id,
             ExternalIdentity.provider=='tmdb.person')).all()
         if existing or person.resolution_status!='provisional':continue
+        if not _can_link_single_context(session,person,old,film_id):
+            unresolved+=1;continue
         local=session.exec(select(ExternalIdentity).where(ExternalIdentity.entity_id==person.id,
             ExternalIdentity.provider=='local.person',ExternalIdentity.identity_status=='active')).first()
         if local is None:continue
@@ -109,11 +144,15 @@ def apply_enrichment(session:Session,film_id,details,people,*,observed_at):
                 names={normalize_metadata_text(candidate.get(k) or '') for k in ('name','original_name')}
                 matches=(name in names and bool(old.character) and normalize_metadata_text(old.character)==normalize_metadata_text(candidate.get('character') or '') and old.billing_order is not None and old.billing_order==candidate.get('order'))
             if matches:possible.add(pid)
-        if len(possible)==1:proposals[person.id]=next(iter(possible))
+        if len(possible)==1:proposals.setdefault(person.id,set()).update(possible)
         else:unresolved+=1
     linked=0;redirected=0
-    for old_id,pid in proposals.items():
-        if list(proposals.values()).count(pid)!=1:
+    for old_id,candidates in proposals.items():
+        # Never last-wins: contradictory contexts cannot certify a person.
+        if len(candidates)!=1:
+            unresolved+=1;continue
+        pid=next(iter(candidates))
+        if sum(pid in values for values in proposals.values())!=1:
             unresolved+=1;continue
         conflict=session.exec(select(ExternalIdentity).where(ExternalIdentity.provider=='tmdb.person',ExternalIdentity.external_id==str(pid))).first()
         if conflict is not None:

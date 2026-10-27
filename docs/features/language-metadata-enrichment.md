@@ -34,7 +34,10 @@ in the existing search box. Ordinary factual searches remain local.
   film's existing public movie ID. Director aliases require the matching official
   person ID, movie credit and role. Alias and translated-title snapshots retract
   only names owned by that source. It performs no network or commit itself.
-- Provisional local identities may be linked using unique film/role evidence:
+- Fresh provider IDs require a single-film, single-credit local provisional
+  identity without aliases, graph assertions, curated evidence or other providers.
+  Shared cross-film provisional IDs remain unresolved. Within that boundary,
+  identity links require unique film/role evidence:
   actors require exact name, nonempty character and billing position; directors
   require official person-ID aliases. A local-only single-film director can be
   redirected to an existing verified identity only with that evidence and no
@@ -69,8 +72,10 @@ This deterministic regression work does not establish semantic search quality.
 - Browser tests exercise EN/ZH, 320/1440px, actual local API filtering, unknown
   exclusion, chip removal, refresh and Back with provider requests blocked.
 - `python -X utf8 -m unittest discover -s . -p "test_*.py" -q`:
-  734 tests, success with 3 Windows/platform skips, isolated database and normalized
-  temporary directory. Focused language/enrichment suite: 17 passed.
+  Baseline full suite before linkage hardening: 734 tests, success with 3
+  Windows/platform skips, isolated database and normalized temporary directory.
+  Revised linkage/language suite: 20 passed; related source/projection suite: 22 passed.
+  Same-head CI runs the complete suite again.
 - Frontend: 148 unit tests; lint, typecheck and production build passed.
 - Browser: `language-search.spec.ts enhanced-search.spec.ts`: 20 passed.
 - Local Docker Compose checks could not execute because Docker is absent; CI
