@@ -78,6 +78,7 @@ This deterministic regression work does not establish semantic search quality.
   Same-head CI runs the complete suite again.
 - Frontend: 148 unit tests; lint, typecheck and production build passed.
 - Browser: `language-search.spec.ts enhanced-search.spec.ts`: 20 passed.
+  Unified-search language/country and unsupported-role regression: 2 passed.
 - Local Docker Compose checks could not execute because Docker is absent; CI
   supplies the Linux/Docker environment. No container/runtime configuration changed.
 
