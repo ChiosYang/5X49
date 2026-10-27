@@ -117,7 +117,7 @@ class TMDBClient:
             params={
                 "api_key": api_key,
                 "language": language,
-                "append_to_response": "credits,external_ids,images",
+                "append_to_response": "credits,external_ids,images,alternative_titles",
                 "include_image_language": self._image_languages(language, artwork_language),
             },
         )

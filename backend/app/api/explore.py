@@ -92,6 +92,26 @@ def cancel_discovery(request: DiscoveryCancel):
 
 @router.post("/explore/search/interpret")
 async def interpret_discovery(request: DiscoveryQuestion, http_request: Request):
+    # Complete deterministic requests do not depend on optional evaluation
+    # configuration, cache readiness, provider availability or credentials.
+    # Special evaluation/edit/reference submissions still require their proof.
+    if not (request.evaluation_only or request.edited_plan is not None or request.reference_id or request.people_ids):
+        local = await run_in_threadpool(lambda: _discovery_call(lambda:
+            discovery_search_service.interpret(request.model_copy(update={"allow_ai": False}))))
+        if local["status"] in {"ready", "needs_clarification"}:
+            return local
+        if local["status"] == "keyword":
+            from app.services.search_local import LocalSearch
+            from app.services.content_request import short_keyword
+            from app.services.discovery_search import keyword_text
+            from app.services import ask as ask_module
+            # The legacy keyword status also covers long descriptive sentences.
+            # Preserve that semantic path when there is no literal local hit.
+            text = local.get("keyword_query") or keyword_text(request.question)
+            direct = (not request.allow_ai or short_keyword(text) or await run_in_threadpool(
+                lambda: LocalSearch(ask_module.engine).has_keyword_matches(text)))
+            if direct:
+                return local
     runtime = _discovery_call(_evaluation)
     if runtime is not None:
         return await _cancellable_search(http_request, runtime, request)

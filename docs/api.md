@@ -42,6 +42,36 @@ Explore; legacy Ask APIs remain compatible (`/ask/status` now reports
 `form_available:false`). PR28 is not integrated, merged or closed; its held live
 evaluation remains separate. Jev is deferred; no new credential/provider dependency.
 
+
+### Imported metadata search coverage
+
+Complete local keyword/condition requests run before optional semantic runtime
+configuration is loaded. Invalid evaluation configuration cannot block them;
+explicit evaluation/edit/reference submissions retain their existing guards.
+
+Local keyword lookup includes the effective synopsis as literal text, in addition
+to existing titles and credited names. It does not infer themes, preferences or
+hard metadata from synopsis words. Exact title/alias priority remains available
+through `rank_exact=true`; strict role/country/year/runtime SQL is unchanged.
+Search projection `film-search.v3` rebuilds from canonical data on normal startup
+and refreshes transactionally after source edits; no provider request is needed.
+
+Structured NFO/TMDB import retains the supplied cast beyond preview limits;
+existing small actor previews remain unchanged. Kodi typed `uniqueid` tags can
+supplement missing legacy TMDB/IMDb fields; ambiguous or unknown types are never
+guessed. Existing explicit legacy IDs retain precedence.
+
+Future explicit TMDB detail requests append alternative titles to that same
+request. Source-backed alternatives use unknown language (`und`), never a
+country-to-language guess. A valid complete alternative-title list replaces that
+source's alternative snapshot; absent/malformed blocks preserve previous names,
+and an explicit empty list retracts them. Other localized titles keep their
+existing per-language lifecycle. No translation, name-based person merge, bulk
+scrape, AI call, semantic-index rebuild or egress permission is introduced.
+
+Older truncated source imports cannot be reconstructed from projections: the
+missing cast/titles become available only on an ordinary explicit source refresh.
+
 ### Reliable names and extended local plans
 
 Schema v11 adds source-backed `PersonAlias` records, linked to a stable active
@@ -66,7 +96,7 @@ title selection retains its existing behavior.
 `GET /library/films/page` adds optional `rank_exact=false`. Explore sets it true
 to prioritize exact title/alias matches before broad literal matches. Existing
 Library sorting stays unchanged by default. Source changes refresh the shared
-search projection (`film-search.v2`); the new schema rebuilds it locally. Database
+search projection (`film-search.v3`); the new schema rebuilds it locally. Database
 backups preserve aliases. The existing portable JSON v1 export still exports only
 its documented subset and does not gain Person aliases or an import capability.
 

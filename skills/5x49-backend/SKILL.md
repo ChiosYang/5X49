@@ -28,13 +28,43 @@ description: 5X49 Fresh Canonical FastAPI 的 Film、LibraryItem、Factual Explo
   exact Explore URL meanings. Ask UI redirects to Explore; old APIs stay compatible.
   PR28 and live-budget/review gates remain separate. No Jev dependency is added.
 
+
+### Imported metadata search coverage
+
+Complete local keyword/condition requests run before optional semantic runtime
+configuration is loaded. Invalid evaluation configuration cannot block them;
+explicit evaluation/edit/reference submissions retain their existing guards.
+
+Local keyword lookup includes the effective synopsis as literal text, in addition
+to existing titles and credited names. It does not infer themes, preferences or
+hard metadata from synopsis words. Exact title/alias priority remains available
+through `rank_exact=true`; strict role/country/year/runtime SQL is unchanged.
+Search projection `film-search.v3` rebuilds from canonical data on normal startup
+and refreshes transactionally after source edits; no provider request is needed.
+
+Structured NFO/TMDB import retains the supplied cast beyond preview limits;
+existing small actor previews remain unchanged. Kodi typed `uniqueid` tags can
+supplement missing legacy TMDB/IMDb fields; ambiguous or unknown types are never
+guessed. Existing explicit legacy IDs retain precedence.
+
+Future explicit TMDB detail requests append alternative titles to that same
+request. Source-backed alternatives use unknown language (`und`), never a
+country-to-language guess. A valid complete alternative-title list replaces that
+source's alternative snapshot; absent/malformed blocks preserve previous names,
+and an explicit empty list retracts them. Other localized titles keep their
+existing per-language lifecycle. No translation, name-based person merge, bulk
+scrape, AI call, semantic-index rebuild or egress permission is introduced.
+
+Older truncated source imports cannot be reconstructed from projections: the
+missing cast/titles become available only on an ordinary explicit source refresh.
+
 ### Enhanced search phase one
 
 - Exact known Film/Person names take precedence over request words. Shared Film
   search includes active source-backed FilmTitle names and credited Person aliases;
   NFKC/case/whitespace normalization, stable IDs, no translation or fuzzy merge.
   `GET /library/films/page?rank_exact=true` gives exact title/alias priority;
-  default Library sorting is preserved. Schema v11 and film-search.v2 rebuild locally.
+  default Library sorting is preserved. Schema v11 and film-search.v3 rebuild locally.
 - New plans require `version:"search-plan.v2"`: genre/country include and exclude
   arrays (<=10 each), people clauses (<=8, literal name + any/actor/director +
   exclude), inclusive year_min/max 1870..2100, duration_min/max integer minutes

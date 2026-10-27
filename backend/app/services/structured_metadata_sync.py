@@ -248,6 +248,14 @@ class StructuredMetadataSynchronizer:
             # Canonical/original retain their existing current-source selection.
             # A localized response cannot retract another language's reliable
             # localized/alternative search names. An und/NFO snapshot is complete.
+            # TMDB alternatives are not localized response titles. Only a
+            # complete alternative-title payload owns their withdrawal.
+            if (observation.origin_kind == "tmdb" and existing.title_type == "alternative"
+                    and existing.locale == "und"):
+                if getattr(observation, "alternative_titles_complete", False) and key not in desired:
+                    existing.superseded_at = now
+                    session.add(existing)
+                continue
             if (observation.locale != "und" and existing.title_type in {"localized", "alternative"}
                     and existing.locale.casefold() != observation.locale.casefold()):
                 continue

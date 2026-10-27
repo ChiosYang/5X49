@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+from dataclasses import dataclass
 from typing import Any
 
 from app.contracts.structured_metadata import (
@@ -11,6 +12,12 @@ from app.contracts.structured_metadata import (
     StructuredMetadataObservation,
     TitleObservation,
 )
+
+
+@dataclass(frozen=True)
+class TMDBMetadataObservation(StructuredMetadataObservation):
+    # Provider-specific completeness never changes the frozen shared contract.
+    alternative_titles_complete: bool = False
 
 
 def tmdb_structured_metadata_observation(
@@ -32,6 +39,18 @@ def tmdb_structured_metadata_observation(
     if original_title:
         titles.append(TitleObservation(original_title, "original", original_locale))
 
+    # Alternative titles are an independent, language-neutral snapshot.
+    # An absent or malformed optional block cannot retract previously imported
+    # aliases; an explicitly valid empty list can. Country is not language.
+    alternative = details.get("alternative_titles")
+    alternative_complete = (isinstance(alternative, dict)
+        and isinstance(alternative.get("titles"), list)
+        and all(isinstance(item, dict) and (name := _text(item.get("title")))
+                and len(name) <= 300 for item in alternative["titles"]))
+    if alternative_complete:
+        titles.extend(TitleObservation(item["title"].strip(), "alternative", "und")
+                      for item in alternative["titles"])
+
     countries = tuple(
         CountryObservation(value)
         for item in details.get("production_countries", [])
@@ -42,6 +61,8 @@ def tmdb_structured_metadata_observation(
 
     credits: list[CreditObservation] = []
     issues: list[ObservationIssue] = []
+    if alternative is not None and not alternative_complete:
+        issues.append(ObservationIssue("title", "title_invalid", {"field": "alternative_titles"}))
     for index, item in enumerate(details.get("credits", {}).get("crew", [])):
         if not isinstance(item, dict) or item.get("job") != "Director":
             continue
@@ -50,7 +71,7 @@ def tmdb_structured_metadata_observation(
             issues.append(ObservationIssue("credit", "credit_invalid", {"kind": "director", "index": index}))
         else:
             credits.append(credit)
-    for index, item in enumerate(details.get("credits", {}).get("cast", [])[:10]):
+    for index, item in enumerate(details.get("credits", {}).get("cast", [])):
         if not isinstance(item, dict):
             issues.append(ObservationIssue("credit", "credit_invalid", {"kind": "actor", "index": index}))
             continue
@@ -78,10 +99,11 @@ def tmdb_structured_metadata_observation(
             continue
         genres.append(GenreObservation(value=name, tmdb_id=provider_id, locale=locale))
 
-    return StructuredMetadataObservation(
+    return TMDBMetadataObservation(
         origin_kind="tmdb",
         origin_ref=f"tmdb.movie:{int(tmdb_id)}",
         locale=locale,
+        alternative_titles_complete=bool(alternative_complete),
         source_instance_id="tmdb.api",
         observed_at=observed_at or datetime.now(timezone.utc).isoformat(),
         titles=tuple(titles),
