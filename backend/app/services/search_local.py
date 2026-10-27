@@ -34,6 +34,17 @@ class LocalSearch:
             return [{"key": row.film_id, "label": row.payload.get("title", ""),
                      "year": row.release_year} for row in rows]
 
+    def has_keyword_matches(self, text):
+        """Existing literal projection evidence, not inferred semantic relevance."""
+        term = normalize_metadata_text(text)
+        if not term or len(term) > 200:
+            return False
+        with Session(self.engine) as session:
+            return session.exec(select(FilmSearchReadModel.film_id).join(LibraryFilmReadModel,
+                FilmSearchReadModel.film_id == LibraryFilmReadModel.film_id).where(
+                LibraryFilmReadModel.visible.is_(True),
+                FilmSearchReadModel.search_text.contains(term, autoescape=True)).limit(1)).first() is not None
+
     def known_literal(self, text):
         binding = self.literal_binding(text)
         return binding is not None and binding.keyword is not None

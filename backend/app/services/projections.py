@@ -54,7 +54,7 @@ PROJECTION_VERSIONS = {
     "cinema_dna": "cinema-dna-film.v1",
     "library": "library-film.v2",
     "detail": "film-detail.v2",
-    "search": "film-search.v2",
+    "search": "film-search.v3",
     "explore_films": "factual-explore-film.v1",
     "explore_facets": "factual-explore-facet.v1",
     "graph_nodes": "graph-node.v1",
@@ -293,7 +293,7 @@ class ProjectionCoordinator:
             .where(PersonAlias.person_id.in_(people), PersonAlias.superseded_at.is_(None),
                 Person.lifecycle_status == "active", ExternalIdentity.identity_status == "active")).all()
         searchable = [
-            *titles, *names, *aliases,
+            *titles, *names, *aliases, detail.get("overview"),
             *(detail.get("countries") or []),
             *(detail.get("genres") or []),
             *(detail.get("directors") or []),

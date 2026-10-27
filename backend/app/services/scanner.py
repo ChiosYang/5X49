@@ -181,6 +181,20 @@ class NFOScanner:
             year = int(root.findtext('year') or 0)
             tmdb_id = root.findtext('tmdbid')
             imdb_id = root.findtext('id')
+            # Kodi's typed unique IDs supplement legacy TMM scalar tags. Never
+            # infer a provider from an untyped ID or replace an explicit scalar.
+            typed_ids = {'tmdb': set(), 'imdb': set()}
+            for identity in root.findall('uniqueid'):
+                provider = (identity.get('type') or '').casefold()
+                value = (identity.text or '').strip()
+                if provider == 'tmdb' and value.isascii() and value.isdigit() and int(value) > 0:
+                    typed_ids[provider].add(str(int(value)))
+                elif provider == 'imdb' and re.fullmatch(r'tt[0-9]+', value):
+                    typed_ids[provider].add(value)
+            if not tmdb_id and len(typed_ids['tmdb']) == 1:
+                tmdb_id = next(iter(typed_ids['tmdb']))
+            if not imdb_id and len(typed_ids['imdb']) == 1:
+                imdb_id = next(iter(typed_ids['imdb']))
             plot = root.findtext('plot') or root.findtext('outline') or ""
             runtime = int(root.findtext('runtime') or 0)
             
@@ -331,7 +345,7 @@ class NFOScanner:
     ) -> tuple[list[CreditObservation], list[ObservationIssue]]:
         actors: list[CreditObservation] = []
         issues: list[ObservationIssue] = []
-        for index, element in enumerate(root.findall("actor")[:10]):
+        for index, element in enumerate(root.findall("actor")):
             name = (element.findtext("name") or "").strip()
             if not name:
                 issues.append(

@@ -57,6 +57,9 @@ for(const locale of ['en','zh'] as const)for(const width of [1440,320]){
     await page.goBack();
     await expect(page).toHaveURL(/\/library\/film_[a-f0-9]{32}$/);
     await expect(page.getByRole('button',{name:copy.FilmDetail.return,exact:true})).toBeVisible();
+    // SSR can expose the disabled Return control before the detail route is
+    // ready. Finish the intervening navigation before exercising Forward.
+    await expect(page.getByRole('button',{name:copy.FilmDetail.return,exact:true})).toBeEnabled();
     await page.goForward();
     await expect(page).toHaveURL(before);
     await expect(cards(page).first()).toBeVisible();
