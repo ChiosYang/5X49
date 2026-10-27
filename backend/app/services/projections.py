@@ -52,8 +52,8 @@ from app.services.film_metadata import effective_film, display_sources
 
 PROJECTION_VERSIONS = {
     "cinema_dna": "cinema-dna-film.v1",
-    "library": "library-film.v2",
-    "detail": "film-detail.v2",
+    "library": "library-film.v3",
+    "detail": "film-detail.v3",
     "search": "film-search.v3",
     "explore_films": "factual-explore-film.v1",
     "explore_facets": "factual-explore-facet.v1",
@@ -127,10 +127,12 @@ class ProjectionCoordinator:
         else:
             resolved = provenance_resolver.resolve_film(session, film_id)
             sources = display_sources(session, film_id, resolved.public_sources())
-            detail = self._safe_payload({**detail, "resolved_sources": sources})
+            from app.services.language_metadata import resolved_languages
+            languages = resolved_languages(session, film_id)
+            detail = self._safe_payload({**detail, **languages, "resolved_sources": sources})
             summary_payload = summary or {key: value for key, value in detail.items() if key != "editions"}
             summary_payload = self._safe_payload(
-                {**summary_payload, "resolved_sources": sources}
+                {**summary_payload, **languages, "resolved_sources": sources}
             )
             self._upsert_library(session, film_id, summary_payload, visible=summary is not None)
             self._upsert_detail(session, film_id, detail)

@@ -25,6 +25,9 @@ _STOP = (rf"\s+(?:and\s+)?(?:(?:{_PEOPLE})\b|from\b|released\b|in\b|between\b|"
 
 def is_extended_request(question: str) -> bool:
     text = normalize_metadata_text(question)
+    from app.services.language_rules import has_language_request
+    if has_language_request(text):
+        return True
     from app.services.discovery_search import _UNWATCHED
     text = re.sub(_UNWATCHED, " ", text, flags=re.I)
     text = re.sub(r"(?<!\d)\d{4}\s*年代", " ", text)
@@ -123,6 +126,10 @@ def _parse_extended(question: str):
             people.insert(0, SearchPerson(name=name.strip(" '’\""), role=role, exclude=bool(match.group("neg"))))
         text = text[:match.start()] + " " + text[match.end():]
     values["people"] = people
+    from app.services.language_rules import strip_language_clauses
+    text, values["languages"] = strip_language_clauses(text)
+    if values["languages"]:
+        text=re.sub(r"^\s*(?:我想看|我想找|想看|想找|只看|只要|仅看|仅要|只|仅|看)\s*"," ",text)
 
     # The guard runs after literal names have been protected; unsupported roles,
     # languages and semantic requirements cannot be reinterpreted as facets.

@@ -203,7 +203,24 @@ class ProvenanceResolver:
                         ),
                     )
                 )
-        return self._select_collection(values)
+        selected=self._select_collection(values)
+        if selected.source_kind=="curated":return selected
+        from app.metadata_source_models import FilmMetadataSourceSnapshot
+        snapshots=session.exec(select(FilmMetadataSourceSnapshot).where(
+            FilmMetadataSourceSnapshot.film_id==film_id,FilmMetadataSourceSnapshot.field_kind=="cast",
+            FilmMetadataSourceSnapshot.origin_kind=="tmdb")).all()
+        owners={r.origin_ref for r in snapshots}
+        supplemental=[v for v in values if v.source_kind=="tmdb" and v.source_ref in owners
+            and any(c.id==v.value and (c.department,c.job)==("Acting","Actor") for c in credits)]
+        if not supplemental:return selected
+        # Preserve NFO facts and every curated set. A complete provider cast can
+        # supplement the old short NFO list, never replace its director facts.
+        identifiers=list(selected.value)
+        for value in sorted(supplemental,key=lambda v:(v.order,v.stable_id)):
+            if value.value not in identifiers:identifiers.append(value.value)
+        return ResolvedValue(tuple(identifiers),"tmdb" if selected.source_kind=="tmdb" else "mixed",
+            max([x for x in [selected.observed_at,*[r.observed_at for r in snapshots]] if x],default=None),
+            policy_version="complete-source-cast.v1",conflicted=selected.conflicted)
 
     def selected_credit_names(
         self,

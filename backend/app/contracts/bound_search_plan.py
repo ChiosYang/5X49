@@ -8,11 +8,13 @@ from typing import Annotated
 from pydantic import Field, model_serializer, model_validator
 
 from app.contracts.search_plan import SearchPerson, SearchPlan as FactualSearchPlan
+from app.contracts.languages import LanguageCondition
 
 FilmKey = Annotated[str, Field(strict=True, pattern=r"^film_[0-9a-f]{32}$")]
 
 
 class SearchPlan(FactualSearchPlan):
+    languages: list[LanguageCondition] = Field(default_factory=list, max_length=8)
     film_ids: list[FilmKey] = Field(default_factory=list, max_length=8)
     exclude_film_ids: list[FilmKey] = Field(default_factory=list, max_length=8)
 
@@ -21,13 +23,16 @@ class SearchPlan(FactualSearchPlan):
         for values in (self.film_ids, self.exclude_film_ids):
             if len(values) != len(set(values)):
                 raise ValueError("Duplicate film identities")
+        keys=[(x.kind,x.code,x.exclude) for x in self.languages]
+        if len(keys)!=len(set(keys)) or any((k,c,not e) in keys for k,c,e in keys):
+            raise ValueError('Duplicate or contradictory language conditions')
         return self
 
     @model_serializer(mode="wrap")
     def compatible_payload(self, handler):
         payload = handler(self)
         # Preserve existing v2 payloads when no local film binding was needed.
-        for field in ("film_ids", "exclude_film_ids"):
+        for field in ("film_ids", "exclude_film_ids", "languages"):
             if not payload.get(field):
                 payload.pop(field, None)
         return payload

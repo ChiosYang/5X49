@@ -464,6 +464,7 @@
     "basedOn": "基于 A24 设计系统"
   },
   "Discovery": {
+    "languageUnknown": "部分影片的语言资料缺失或有冲突，未纳入本次筛选。",
     "label": "搜索探索",
     "placeholder": "搜索或描述",
     "description": "用关键词或完整的找片需求，搜索本地片库。",

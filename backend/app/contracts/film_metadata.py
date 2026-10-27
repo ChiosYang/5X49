@@ -2,13 +2,13 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, StrictInt, StrictStr, model_validator
 
-MetadataField = Literal["title", "original_title", "year", "overview"]
+MetadataField = Literal["title", "original_title", "year", "overview", "original_language", "spoken_languages"]
 
 
 class MetadataChange(BaseModel):
     model_config = ConfigDict(extra="forbid")
     action: Literal["set", "reset"]
-    value: StrictStr | StrictInt | None = None
+    value: StrictStr | StrictInt | list[StrictStr] | None = None
 
     @model_validator(mode="after")
     def explicit_value(self):
@@ -21,7 +21,7 @@ class MetadataUpdate(BaseModel):
     model_config = ConfigDict(extra="forbid")
     revision: str = Field(pattern=r"^[0-9a-f]{64}$")
     idempotency_key: str = Field(pattern=r"^[A-Za-z0-9_-]{16,64}$")
-    changes: dict[MetadataField, MetadataChange] = Field(min_length=1, max_length=4)
+    changes: dict[MetadataField, MetadataChange] = Field(min_length=1, max_length=6)
 
     @model_validator(mode="after")
     def valid_fields(self):
@@ -29,6 +29,16 @@ class MetadataUpdate(BaseModel):
             if change.action == "reset":
                 continue
             value = change.value
+            if key in {"original_language", "spoken_languages"}:
+                from app.contracts.languages import language_code
+                if value is not None:
+                    if key=="original_language":
+                        change.value=language_code(value)
+                    else:
+                        if not isinstance(value,list) or len(value)>30 or len(value)!=len(set(value)):
+                            raise ValueError("Invalid spoken languages")
+                        change.value=sorted(language_code(x) for x in value)
+                continue
             if key == "year":
                 if value is not None and (type(value) is not int or not 1870 <= value <= 2100):
                     raise ValueError("year must be null or an integer from 1870 to 2100")

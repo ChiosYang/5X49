@@ -11,7 +11,8 @@ from app.migrations.versions.v0009_viewing_reviews import MIGRATION as V0009
 
 from app.migrations.versions.v0010_video_health import MIGRATION as V0010
 from app.migrations.versions.v0011_search_names import MIGRATION as V0011
+from app.migrations.versions.v0012_metadata_source_snapshots import MIGRATION as V0012
 
-MIGRATIONS: tuple[Migration, ...] = (V0001, V0002, V0003, V0004, V0005, V0006, V0007, V0008, V0009, V0010, V0011)
+MIGRATIONS: tuple[Migration, ...] = (V0001, V0002, V0003, V0004, V0005, V0006, V0007, V0008, V0009, V0010, V0011, V0012)
 
 __all__ = ["MIGRATIONS"]

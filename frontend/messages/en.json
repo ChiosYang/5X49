@@ -464,6 +464,7 @@
     "basedOn": "Based on A24 Design System"
   },
   "Discovery": {
+    "languageUnknown": "Some films have missing or conflicting language information and are excluded from this filter.",
     "label": "Search Explore",
     "placeholder": "Search or describe",
     "description": "Search your local library with keywords or a complete film-finding request.",

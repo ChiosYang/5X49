@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any
 
 from app.contracts.structured_metadata import (
@@ -18,6 +18,9 @@ from app.contracts.structured_metadata import (
 class TMDBMetadataObservation(StructuredMetadataObservation):
     # Provider-specific completeness never changes the frozen shared contract.
     alternative_titles_complete: bool = False
+    language_snapshots: dict[str, tuple[str, ...]] = field(default_factory=dict)
+    complete_cast: bool = False
+    complete_credit_roles: frozenset[tuple[str,str]] = frozenset()
 
 
 def tmdb_structured_metadata_observation(
@@ -59,11 +62,22 @@ def tmdb_structured_metadata_observation(
         if value
     )
 
+    block=details.get("credits")
+    block=block if isinstance(block,dict) else {}
+    crew=block.get("crew");cast=block.get("cast")
+    cast_complete=(isinstance(cast,list) and all(isinstance(x,dict)
+        and _tmdb_credit(x,"Acting","Actor",i) is not None
+        for i,x in enumerate(cast)))
+    crew_complete=(isinstance(crew,list) and all(isinstance(x,dict) and (x.get("job")!="Director" or
+        _tmdb_credit(x,"Directing","Director",i) is not None)
+        for i,x in enumerate(crew)))
+    complete_roles=frozenset(({("Acting","Actor")} if cast_complete else set())
+        | ({("Directing","Director")} if crew_complete else set()))
     credits: list[CreditObservation] = []
     issues: list[ObservationIssue] = []
     if alternative is not None and not alternative_complete:
         issues.append(ObservationIssue("title", "title_invalid", {"field": "alternative_titles"}))
-    for index, item in enumerate(details.get("credits", {}).get("crew", [])):
+    for index, item in enumerate(crew if crew_complete else []):
         if not isinstance(item, dict) or item.get("job") != "Director":
             continue
         credit = _tmdb_credit(item, "Directing", "Director", index)
@@ -71,7 +85,7 @@ def tmdb_structured_metadata_observation(
             issues.append(ObservationIssue("credit", "credit_invalid", {"kind": "director", "index": index}))
         else:
             credits.append(credit)
-    for index, item in enumerate(details.get("credits", {}).get("cast", [])):
+    for index, item in enumerate(cast if cast_complete else []):
         if not isinstance(item, dict):
             issues.append(ObservationIssue("credit", "credit_invalid", {"kind": "actor", "index": index}))
             continue
@@ -99,11 +113,16 @@ def tmdb_structured_metadata_observation(
             continue
         genres.append(GenreObservation(value=name, tmdb_id=provider_id, locale=locale))
 
+    from app.contracts.languages import tmdb_language_snapshots
     return TMDBMetadataObservation(
         origin_kind="tmdb",
         origin_ref=f"tmdb.movie:{int(tmdb_id)}",
         locale=locale,
         alternative_titles_complete=bool(alternative_complete),
+        language_snapshots=tmdb_language_snapshots(details),
+        complete_cast=cast_complete and all(_positive_int(x.get("id")) is not None for x in cast),
+        complete_credit_roles=complete_roles,
+        complete_fields=frozenset({"titles","countries","genres"} | ({"credits"} if complete_roles else set())),
         source_instance_id="tmdb.api",
         observed_at=observed_at or datetime.now(timezone.utc).isoformat(),
         titles=tuple(titles),

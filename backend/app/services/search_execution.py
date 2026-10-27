@@ -80,6 +80,14 @@ class SearchPlanExecutor:
                     constraints.append({"id": f"people:{index}", "field": "people", "index": index,
                         "dimension": "person", "key": selected["key"], "label": selected["label"],
                         "role": person.role, "exclude": person.exclude})
+        from app.contracts.languages import LANGUAGE_LABELS
+        for index, language in enumerate(plan.languages):
+            en,zh=LANGUAGE_LABELS.get(language.code,(language.code,language.code))
+            constraints.append({"id":f"languages:{index}","field":"languages","index":index,
+                "dimension":"language","kind":language.kind,"code":language.code,
+                "key":language.code,"label":en,
+                "labels":{"en":("Original language: " if language.kind=="original" else "Spoken language: ")+en,
+                          "zh":("原始语言：" if language.kind=="original" else "片中语言：")+zh},"exclude":language.exclude})
         for field in ("year", "duration"):
             lower, upper = getattr(plan, field + "_min"), getattr(plan, field + "_max")
             if lower is not None or upper is not None:
@@ -150,6 +158,20 @@ class SearchPlanExecutor:
                     conditions.append(value > lower * factor if getattr(plan, field + "_min_exclusive", False) else value >= lower * factor)
                 if upper is not None:
                     conditions.append(value < upper * factor if getattr(plan, field + "_max_exclusive", False) else value <= upper * factor)
+            language_coverage={}
+            for kind in sorted({x.kind for x in plan.languages}):
+                state=func.coalesce(library.payload["language_coverage"][kind].as_string(),"unknown")
+                counts={name:session.exec(select(func.count()).select_from(film).join(library,
+                    film.film_id==library.film_id).where(*conditions,state==name)).one()
+                    for name in ("unknown","conflicted")}
+                language_coverage[kind]=counts
+            for language in plan.languages:
+                known=library.payload["language_coverage"][language.kind].as_string()=="known"
+                if language.kind=="original":
+                    matches=library.payload["original_language"].as_string()==language.code
+                else:
+                    matches=library.payload["spoken_languages"].as_string().contains('"'+language.code+'"')
+                conditions.extend((known, ~matches if language.exclude else matches))
             base = select(film).join(library, film.film_id == library.film_id).where(*conditions)
             if _ids_limit is not None:
                 ids = session.exec(base.with_only_columns(film.film_id).order_by(
@@ -171,7 +193,7 @@ class SearchPlanExecutor:
             "active_filters": {**positive, "view": plan.view, "sort": plan.sort, "dir": plan.direction, "person_match": "all"},
             "filters": [{"dimension": c["dimension"], "key": c["key"], "label": c["label"]}
                 for c in result["constraints"] if c["dimension"] in positive and not c.get("exclude")],
-            "unresolved_filters": [], "items": [
+            "unresolved_filters": [], "language_coverage": language_coverage, "items": [
                 {"film": json.loads(json.dumps(summaries[row.film_id], ensure_ascii=False)),
                  "matched_facts": matches.get(row.film_id, [])} for row in rows],
             "total": total, "limit": limit, "offset": offset,

@@ -58,6 +58,8 @@ export default function ExtendedConditionResults({ query, resolution, state, loc
       <p>{t("semanticEvaluation")}</p>
       {semantic.fallback ? <p>{t("semanticFallback")}</p> : null}
     </div> : null}
+    {Object.values(results?.language_coverage ?? {}).some(c => c.unknown > 0 || c.conflicted > 0)
+      ? <p role="status" className="text-sm text-ink-muted">{t("languageUnknown")}</p> : null}
     <section aria-labelledby="discovery-conditions-title" aria-busy={pending} className="space-y-3 border-b border-line pb-5">
       <h2 id="discovery-conditions-title" className="type-label text-ink-muted">{t(state.edited ? "adjusted" : "conditions")}</h2>
       <div className="flex flex-wrap gap-2">
@@ -72,6 +74,9 @@ export default function ExtendedConditionResults({ query, resolution, state, loc
           if (condition.dimension === "year" || condition.dimension === "duration") {
             const bounds = formatSearchRange(condition);
             label = t(condition.dimension === "year" ? "yearCondition" : "durationCondition", { value: bounds });
+          } else if (condition.dimension === "language") {
+            label = condition.labels?.[locale] ?? condition.label;
+            if (condition.exclude) label = t("excludedCondition", { value: label });
           } else if (condition.dimension === "film") {
             label = condition.label;
             if (condition.exclude) label = t("excludedCondition", { value: label });

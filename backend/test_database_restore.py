@@ -226,7 +226,7 @@ class FreshCanonicalRestoreTests(unittest.TestCase):
             code = backup_module.main(["--database", str(self.database_path), "--backup-dir", str(destination)])
         self.assertEqual(code, 0)
         payload = json.loads(output.getvalue())
-        self.assertEqual(payload["schema_version"], 11)
+        self.assertEqual(payload["schema_version"], 12)
         self.assertNotIn(str(self.root), output.getvalue())
         verify_backup_manifest(destination / payload["manifest_file"])
         self.assertEqual(self.database_path.read_bytes(), before)

@@ -66,3 +66,25 @@ test("identity selections accept only bounded internal Person IDs", () => {
   for(const value of [null,[],{8:id("a")},{0:"https://outside.test"},{0:id("a"),sql:id("b")},"bad json"])
     assert.equal(parsePeopleIds(JSON.stringify(value)),null);
 });
+
+
+test("language conditions round-trip and remove independently from other hard filters", () => {
+  const plan = {...emptySearchPlan, year_min:2000, languages:[
+    {kind:"original",code:"en",exclude:false}, {kind:"spoken",code:"ja",exclude:true}]};
+  const url = new URL(discoveryHref("original English, not in Japanese", {plan,edited:true}),"https://local.test");
+  assert.deepEqual(parseDiscoveryPlan(url.searchParams.get("p")),plan);
+  const next=removeSearchCondition(plan,"languages",0);
+  assert.deepEqual(next.languages,[plan.languages[1]]);
+  assert.equal(next.year_min,2000);
+  assert.equal(plan.languages.length,2);
+});
+test("language URL input rejects malformed, contradictory and unbounded conditions", () => {
+  for(const languages of [null, [{kind:"country",code:"en",exclude:false}],
+    [{kind:"spoken",code:"English",exclude:false}], [{kind:"spoken",code:"zz",exclude:false}],
+    [{kind:"spoken",code:"en",exclude:"false"}], [{kind:"spoken",code:"en",exclude:false,sql:"x"}],
+    [{kind:"spoken",code:"en",exclude:false},{kind:"spoken",code:"en",exclude:false}],
+    [{kind:"spoken",code:"en",exclude:false},{kind:"spoken",code:"en",exclude:true}],
+    Array(9).fill({kind:"spoken",code:"en",exclude:false})]){
+    assert.equal(isSearchPlan({...emptySearchPlan,languages}),false);
+  }
+});

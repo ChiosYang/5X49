@@ -135,19 +135,29 @@ class DiscoverySearchTests(unittest.TestCase):
         self.interpreter.interpret_search.assert_not_called()
 
     def test_language_requests_are_not_production_countries(self):
-        questions = ("films in French", "movies in Japanese", "films in Korean",
-                     "French-language films", "films dubbed in English",
-                     "日语电影", "法语电影", "韩语电影", "中文电影", "日本电影，法语配音")
+        supported = ("films in French", "movies in Japanese", "films in Korean",
+                     "French-language films", "日语电影", "法语电影", "韩语电影", "中文电影")
+        unsupported = ("films dubbed in English", "日本电影，法语配音")
         with patch.object(self.ask, "resolve", side_effect=AssertionError("must not resolve language as country")), \
              patch.object(self.ask, "query", side_effect=AssertionError("must not execute language as country")):
-            for question in questions:
+            for question in supported:
+                with self.subTest(question=question):
+                    result = self.interpret(question, allow_ai=True)
+                    self.assertEqual(result["status"], "ready")
+                    self.assertEqual(result["plan"].get("countries"), [])
+                    self.assertEqual(len(result["plan"]["languages"]), 1)
+                    queried = self.service.query(DiscoveryQuery(question=question,plan=result["plan"]))
+                    self.assertEqual(queried["status"],"ready")
+                    self.assertEqual(queried["results"]["total"], 0)  # No sourced language facts in this fixture.
+            for question in unsupported:
                 with self.subTest(question=question):
                     result = self.interpret(question, allow_ai=True)
                     self.assertEqual(result["status"], "unsupported")
                     self.assertIsNone(result["plan"])
-                    restored = self.service.query(DiscoveryQuery(question=question, plan=AskPlan(country="FR"), edited=True))
-                    self.assertEqual(restored["status"], "unsupported")
-                    self.assertIsNone(restored["results"])
+            for question in supported + unsupported:
+                restored = self.service.query(DiscoveryQuery(question=question, plan=AskPlan(country="FR"), edited=True))
+                self.assertEqual(restored["status"], "unsupported")
+                self.assertIsNone(restored["results"])
         self.interpreter.interpret_search.assert_not_called()
 
     def test_production_country_phrases_remain_supported_without_a_model(self):
