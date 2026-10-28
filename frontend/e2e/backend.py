@@ -376,6 +376,13 @@ def control(payload: dict, x_e2e_token: str = Header(default='')):
                                 'Other Search Actor' if actor_id == '990003' else 'Delta Actor', 'Acting', 'Actor',
                                 provider='tmdb.person', external_id=actor_id))))
             session.commit()
+        from app.metadata_source_models import FilmMetadataSourceSnapshot
+        with Session(engine) as session:
+            for title,original,spoken in [('Search Alpha','ja',['ja','en']),('Search Beta','fr',['fr']),('Search Gamma','en',['en'])]:
+                for field,values in [('original_language',[original]),('spoken_languages',spoken)]:
+                    session.add(FilmMetadataSourceSnapshot(film_id=films[title],field_kind=field,
+                        origin_kind='nfo',origin_ref='e2e.language:'+films[title],values=values))
+            session.commit()
         return {title: films[title] for title in films if title.startswith('Search ')}
     elif action == 'catalog_pagination_fixture':
         from app.services.library_sync import library_sync_service

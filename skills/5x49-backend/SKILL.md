@@ -628,3 +628,27 @@ Settings/密钥、Job/Workflow/Event、Read Model 或模型原始内容。v1 没
   provider access. Health operational rows are omitted from downloadable backups
   and portable export, and cascade on deep reset. See docs/api.md and
   docs/features/video-health.md for limitations and full API contracts.
+
+
+### Source-backed language search
+
+Extended `search-plan.v2` optionally accepts `languages`, at most eight objects
+`{kind:"original"|"spoken",code:<ISO639-1 or yue>,exclude:<strict bool>}`.
+Different clauses combine with AND. Repeated/contradictory clauses fail validation.
+Old plans continue to omit the empty field. Local EN/ZH examples: `films in Japanese`,
+`original language English`, `原始语言为英语的电影`, `不要日语电影`.
+Bare nationality clauses retain country semantics. Unknown or conflicting facts
+are excluded from positive and negative filters. Query `results.language_coverage`
+reports unknown/conflicted counts per requested kind after other hard filters.
+Language chips survive URL restoration and remove only their own clause.
+
+Film detail/library projections add `original_language`, `spoken_languages`,
+`language_coverage` and `language_sources`. These are film metadata, independent
+of edition audio/dubbing. Schema v12 and library/detail projection v3 build locally;
+missing historical language data stays unknown, without automatic provider fetch.
+
+The existing Film metadata endpoint also supports `original_language` (code/null)
+and `spoken_languages` (unique code list/null, max30). Set/clear/reset retain
+revision, idempotency and source ownership; automatic updates never override manual
+values. See `docs/features/language-metadata-enrichment.md` for cast completeness,
+source-specific aliases and the explicit ID-bound enrichment helper.

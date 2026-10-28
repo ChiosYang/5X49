@@ -7,6 +7,7 @@ from uuid import uuid4
 
 from sqlmodel import Session, select
 
+from app.services.language_metadata import sync_languages
 from app.canonical_models import (
     Concept,
     ConceptAlias,
@@ -119,6 +120,7 @@ class StructuredMetadataSynchronizer:
         if session.get(Film, film_id) is None:
             raise ValueError("structured metadata Film does not exist")
         self.ensure_genre_vocabulary(session)
+        sync_languages(session, film_id, observation)
         current_review_keys: set[str] = set()
 
         if "titles" in observation.complete_fields:
@@ -431,6 +433,14 @@ class StructuredMetadataSynchronizer:
                 session.add(provenance)
 
         now = self._now()
+        complete_roles=getattr(observation,"complete_credit_roles",None)
+        def has_untouched_role(person_id):
+            if complete_roles is None:return False
+            pairs=session.exec(select(Credit.department,Credit.job).join(CreditProvenance,
+                CreditProvenance.credit_id==Credit.id).where(Credit.person_id==person_id,
+                Credit.film_id==film_id,CreditProvenance.origin_kind==observation.origin_kind,
+                CreditProvenance.origin_ref==observation.origin_ref,CreditProvenance.superseded_at.is_(None))).all()
+            return any(tuple(pair) not in complete_roles for pair in pairs)
         for alias in session.exec(select(PersonAlias).where(PersonAlias.film_id == film_id,
                 PersonAlias.origin_kind == observation.origin_kind,
                 PersonAlias.origin_ref == observation.origin_ref,
@@ -438,6 +448,7 @@ class StructuredMetadataSynchronizer:
             # A language refresh retracts only its own literal names. Removing
             # or changing the credited identity retracts every language from
             # this source, so old names cannot migrate to a different person.
+            if has_untouched_role(alias.person_id):continue
             if (alias.person_id not in observed_people or alias.locale in {"und", alias_locale}
                     and (alias.person_id, alias.normalized_name, alias.locale) not in desired_aliases):
                 alias.superseded_at = now
@@ -450,6 +461,7 @@ class StructuredMetadataSynchronizer:
         ).all()
         for provenance in provenance_rows:
             credit = session.get(Credit, provenance.credit_id)
+            if credit is not None and complete_roles is not None and (credit.department,credit.job) not in complete_roles:continue
             if credit is not None and credit.film_id == film_id and credit.semantic_key not in desired_keys:
                 provenance.superseded_at = now
                 session.add(provenance)
@@ -593,7 +605,12 @@ class StructuredMetadataSynchronizer:
                     )
                 )
                 return None
-            if self.source_rank(observation.origin_kind) <= self.source_rank(identity.provenance_kind):
+            # Adding a verified provider ID must not silently replace an existing
+            # NFO/curated canonical name. Public aliases carry alternate spelling.
+            owners=session.exec(select(ExternalIdentity).where(ExternalIdentity.entity_id==person.id,
+                ExternalIdentity.identity_status=="active")).all()
+            name_rank=min((self.source_rank(x.provenance_kind) for x in owners),default=self.source_rank(identity.provenance_kind))
+            if self.source_rank(observation.origin_kind) <= name_rank:
                 normalized_name = normalize_metadata_text(credit.name)
                 if person.canonical_name != credit.name.strip() or person.normalized_name != normalized_name:
                     person.canonical_name = credit.name.strip()

@@ -1,4 +1,5 @@
 from app.health_models import VideoHealth  # noqa: F401
+from app.metadata_source_models import FilmMetadataSourceSnapshot  # noqa: F401
 from datetime import datetime, timezone
 from typing import Optional
 from uuid import uuid4

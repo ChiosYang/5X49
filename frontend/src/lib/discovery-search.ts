@@ -8,7 +8,10 @@ export interface DiscoveryResolution extends Omit<AskResolution, "version" | "st
   plan: AskPlan | SearchPlan | null;
   people_ids?: Record<string, string>;
   keyword_query?: string;
-  constraints: Array<{ dimension: "genre" | "person" | "country" | "decade" | "year" | "duration" | "film";
+  results?: (NonNullable<AskResolution["results"]> & {
+    language_coverage?: Record<string, {unknown: number; conflicted: number}>;
+  }) | null;
+  constraints: Array<{ dimension: "genre" | "person" | "country" | "decade" | "year" | "duration" | "film" | "language";
     key: string; label: string; role?: "any" | "actor" | "director"; id?: string; field?: string; index?: number;
     labels?: Record<string, string>; exclude?: boolean; min?: number | null; max?: number | null; min_exclusive?: boolean; max_exclusive?: boolean }>;
   issues: Array<{ field: string; index?: number; code: "unknown_value" | "choose_person" | "choose_reference";

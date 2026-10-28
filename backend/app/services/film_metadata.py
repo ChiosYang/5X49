@@ -41,6 +41,11 @@ def metadata_view(session: Session, film_id: str) -> dict:
     overrides = row.values if row else {}
     automatic = {key: getattr(film, attribute) for key, attribute in FIELD_ATTRIBUTES.items()}
     sources = provenance_resolver.resolve_film(session, film_id).public_sources()
+    from app.services.language_metadata import resolved_languages
+    languages=resolved_languages(session,film_id,ignore_manual=True)
+    for kind,field in (("original","original_language"),("spoken","spoken_languages")):
+        automatic[field]=languages[field]
+        sources[field]=languages["language_sources"][kind]
     # Historical scalar columns have no per-field provenance. Do not infer an
     # NFO/TMDB owner from a preferred edition or overwrite source history.
     fields = {}

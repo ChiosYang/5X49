@@ -144,14 +144,27 @@ class EnhancedSearchTests(unittest.TestCase):
     def test_no_partial_execution_for_unsupported_or_mixed_requirements(self):
         for question in ("Japanese or under 90 minutes films", "Japanese films under 90 minutes about growing up",
                 "films produced and directed by Shared Person between 1990 and 2000",
-                "films in French under 90 minutes", "films under 90 minutes rated 4 stars",
+                "films under 90 minutes rated 4 stars",
                 "1994 or 1999 films", "films starring Shared Person or Other Person",
                 "Japanese or French action and drama films", "films excluding Japanese horror",
-                "未看日本治愈电影，少于90分钟", "1994到1999年法语电影", "日本或法国电影，不要某个主题"):
+                "未看日本治愈电影，少于90分钟", "日本或法国电影，不要某个主题"):
             with self.subTest(question=question):
                 result = self.search(question)
                 self.assertIn(result["status"], ("unsupported", "clarify"))
                 self.assertIsNone(result["results"])
+        self.interpreter.interpret_search.assert_not_called()
+
+    def test_supported_language_combinations_keep_all_hard_conditions(self):
+        for question in ["films in French under 90 minutes", "1994到1999年法语电影"]:
+            with self.subTest(question=question):
+                result=self.search(question)
+                self.assertEqual(result["status"],"ready")
+                self.assertEqual(result["plan"]["languages"],[{"kind":"spoken","code":"fr","exclude":False}])
+                self.assertEqual(result["results"]["total"],0)  # Unknown is never treated as a match.
+                if "90" in question:self.assertEqual(result["plan"]["duration_max"],90)
+                else:
+                    self.assertEqual(result["plan"]["year_min"],1994)
+                    self.assertEqual(result["plan"]["year_max"],1999)
         self.interpreter.interpret_search.assert_not_called()
 
     def test_role_conjunction_is_per_clause_even_for_same_identity(self):

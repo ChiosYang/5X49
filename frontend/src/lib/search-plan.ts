@@ -1,10 +1,12 @@
 /** Explicit v2 plans stay in the URL; restoring them never performs inference. */
 export interface SearchPerson { name: string; role: "any" | "actor" | "director"; exclude: boolean }
+export interface SearchLanguage { kind: "original" | "spoken"; code: string; exclude: boolean }
 export interface SearchPlan {
   version: "search-plan.v2";
   genres: string[]; countries: string[]; exclude_genres: string[]; exclude_countries: string[];
   people: SearchPerson[];
   film_ids?: string[]; exclude_film_ids?: string[];
+  languages?: SearchLanguage[];
   year_min: number | null; year_max: number | null;
   duration_min: number | null; duration_max: number | null;
   duration_min_exclusive: boolean; duration_max_exclusive: boolean;
@@ -15,12 +17,13 @@ export const emptySearchPlan: SearchPlan = { version: "search-plan.v2", genres: 
   exclude_genres: [], exclude_countries: [], people: [], year_min: null, year_max: null,
   duration_min: null, duration_max: null, duration_min_exclusive: false, duration_max_exclusive: false,
   view: "all", sort: "title", direction: "asc" };
+const languageCodes = new Set("aa ab ae af ak am an ar as av ay az ba be bg bh bi bm bn bo br bs ca ce ch co cr cs cu cv cy da de dv dz ee el en eo es et eu fa ff fi fj fo fr fy ga gd gl gn gu gv ha he hi ho hr ht hu hy hz ia id ie ig ii ik io is it iu ja jv ka kg ki kj kk kl km kn ko kr ks ku kv kw ky la lb lg li ln lo lt lu lv mg mh mi mk ml mn mr ms mt my na nb nd ne ng nl nn no nr nv ny oc oj om or os pa pi pl ps pt qu rm rn ro ru rw sa sc sd se sg si sk sl sm sn so sq sr ss st su sv sw ta te tg th ti tk tl tn to tr ts tt tw ty ug uk ur uz ve vi vo wa wo xh yi yo yue za zh zu".split(" "));
 const fields = Object.keys(emptySearchPlan);
 const term = (v: unknown): v is string => typeof v === "string" && v.trim().length > 0 && v.length <= 100;
 export function isSearchPlan(value: unknown): value is SearchPlan {
   if (!value || typeof value !== "object" || Array.isArray(value)) return false;
   const p = value as SearchPlan;
-  if (fields.some(k => !Object.hasOwn(p, k)) || Object.keys(p).some(k => !fields.includes(k) && !["film_ids", "exclude_film_ids"].includes(k))
+  if (fields.some(k => !Object.hasOwn(p, k)) || Object.keys(p).some(k => !fields.includes(k) && !["film_ids", "exclude_film_ids", "languages"].includes(k))
     || p.version !== "search-plan.v2" || !["all", "watched", "unwatched"].includes(p.view)
     || !["title", "year"].includes(p.sort) || !["asc", "desc"].includes(p.direction)) return false;
   for (const field of ["genres", "countries", "exclude_genres", "exclude_countries"] as const) {
@@ -32,6 +35,13 @@ export function isSearchPlan(value: unknown): value is SearchPlan {
     if (ids !== undefined && (!Array.isArray(ids) || ids.length > 8
       || ids.some(id => typeof id !== "string" || !/^film_[0-9a-f]{32}$/.test(id))
       || new Set(ids).size !== ids.length)) return false;
+  }
+  if (p.languages !== undefined) {
+    if (!Array.isArray(p.languages) || p.languages.length > 8 || p.languages.some(v => !v || typeof v !== "object"
+      || Object.keys(v).sort().join(",") !== "code,exclude,kind" || !["original", "spoken"].includes(v.kind)
+      || typeof v.code !== "string" || !languageCodes.has(v.code) || typeof v.exclude !== "boolean")) return false;
+    const keys=p.languages.map(v=>`${v.kind}:${v.code}:${v.exclude}`);
+    if (new Set(keys).size!==keys.length || p.languages.some(v=>keys.includes(`${v.kind}:${v.code}:${!v.exclude}`))) return false;
   }
   if (!Array.isArray(p.people) || p.people.length > 8 || p.people.some(v => !v || typeof v !== "object"
     || Object.keys(v).length !== 3 || !term(v.name) || !["any", "actor", "director"].includes(v.role)
@@ -58,6 +68,7 @@ export function parsePeopleIds(raw?: string): Record<string, string> | null {
   } catch { return null; }
 }
 export function removeSearchCondition(plan: SearchPlan, field: string, index?: number): SearchPlan {
+  if (field === "languages") return { ...plan, languages: (plan.languages ?? []).filter((_, i) => i !== index) };
   if (field === "film_ids" || field === "exclude_film_ids")
     return { ...plan, [field]: (plan[field] ?? []).filter((_, i) => i !== index) };
   if (["genres", "countries", "exclude_genres", "exclude_countries", "people"].includes(field)) {

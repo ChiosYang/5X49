@@ -130,15 +130,26 @@ for(const locale of ['en','zh']){
     await page.goBack();await expect(cards(page)).toHaveCount(5);await expect(input(page,locale)).toHaveValue(title);
     expect((await control(request,'discovery_ai_stats')).calls).toBe(0);
   });
-  test(locale+' unsupported roles and language conditions never execute partial country or director results',async({page,request})=>{
+  test(locale+' unsupported roles stay blocked and language filters never substitute country facts',async({page,request})=>{
     const copy=locale==='zh'?zh:en;await control(request,'discovery_ai',{enabled:true});
     await page.goto('/'+locale+'/explore');
-    const questions=locale==='zh'?['由Director 4监制并执导的日本电影','由Director 4编剧的日本电影','日语电影','法语电影']:
-      ['films produced by Director 4','films produced and directed by Director 4','films in French','movies in Japanese'];
+    const questions=locale==='zh'?['由Director 4监制并执导的日本电影','由Director 4编剧的日本电影']:
+      ['films produced by Director 4','films produced and directed by Director 4'];
     for(const question of questions){
       await submit(page,question,locale);
       await expect(page.getByRole('heading',{name:copy.Discovery.states.unsupported,exact:true})).toBeVisible();
       await expect(page.locator('#explore-results-title')).toHaveCount(0);await expect(input(page,locale)).toHaveValue(question);
+    }
+    const languages=locale==='zh'?['日语电影','法语电影']:['films in French','movies in Japanese'];
+    for(const question of languages){
+      await submit(page,question,locale);
+      const applied=JSON.parse(new URL(page.url()).searchParams.get('p')!);
+      expect(applied.countries).toEqual([]);expect(applied.people).toEqual([]);
+      expect(applied.languages).toEqual([{kind:'spoken',exclude:false,
+        code:question.includes('French')||question.includes('法语')?'fr':'ja'}]);
+      await expect(page.getByText(copy.Discovery.languageUnknown,{exact:true})).toBeVisible();
+      await expect(cards(page)).toHaveCount(0);
+      await expect(page.getByRole('heading',{name:copy.Discovery.states.unsupported,exact:true})).toHaveCount(0);
     }
     await submit(page,'films produced in Japan',locale);await expect(cards(page)).toHaveCount(2);
     expect((await control(request,'discovery_ai_stats')).calls).toBe(0);

@@ -169,7 +169,7 @@ class ViewingReviewStorageTests(unittest.TestCase):
             before = [dict(row) for row in connection.execute(text("SELECT * FROM viewing ORDER BY id")).mappings()]
             profile_before = dict(connection.execute(text("SELECT * FROM film_profile_state")).mappings().one())
         self.assertNotIn("rating", {column["name"] for column in inspect(self.engine).get_columns("viewing")})
-        self.assertEqual(self.upgrade().applied_versions, (9, 10, 11))
+        self.assertEqual(self.upgrade().applied_versions, (9, 10, 11, 12))
         self.assertEqual(self.upgrade().applied_versions, ())
         with self.engine.connect() as connection:
             after = [dict(row) for row in connection.execute(text("SELECT * FROM viewing ORDER BY id")).mappings()]
