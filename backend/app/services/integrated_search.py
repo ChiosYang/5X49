@@ -14,6 +14,7 @@ import time
 from app.contracts.bound_search_plan import SearchPlan
 from app.services.content_request import short_keyword, split_content_request
 from app.services.retrieval_policy import RetrievalIndex, RetrievalPolicy
+from app.services.rerank_admission import LEGACY_MODEL, admitted_ids, profile
 from app.services.semantic_search import SemanticError, _hash, _safe, _vector
 
 
@@ -25,16 +26,20 @@ class IntegratedSearchPolicy:
     exploratory_min: float = .04
     reference_min: float = .06
     candidate_k: int = 20
+    max_results: int = 5
+    rerank_model: str = LEGACY_MODEL
 
     def __post_init__(self):
         if (type(self.candidate_k) is not int or not 1 <= self.candidate_k <= 20
+                or type(self.max_results) is not int or not 1 <= self.max_results <= 20
+                or not isinstance(self.rerank_model, str) or not self.rerank_model or len(self.rerank_model) > 200
                 or any(type(v) not in (int, float) or not math.isfinite(v) or not 0 < v < 1
                        for v in (self.factual_min, self.exploratory_min, self.reference_min))):
             raise SemanticError("search_policy_invalid")
 
     @property
     def fingerprint(self):
-        return _hash(["integrated-search.v3.2-reference-focus", asdict(self), RetrievalPolicy(candidate_k=self.candidate_k).fingerprint])
+        return _hash(["integrated-search.v4-score-contract", asdict(self), RetrievalPolicy(candidate_k=self.candidate_k).fingerprint])
 
 
 class IntegratedSearch:
@@ -67,6 +72,14 @@ class IntegratedSearch:
         index = RetrievalIndex(documents, vectors, self.spec, RetrievalPolicy(candidate_k=self.policy.candidate_k))
         return index, revision
 
+    def _reference_options(self, title, alternatives=(), year=None):
+        rows = {}
+        for name in alternatives or (title,):
+            for row in self.reference_candidates(name):
+                if year is None or row.get("year") == year:
+                    rows[row["key"]] = row
+        return list(rows.values())
+
     def submit(self, question, *, people_ids=None, reference_id=None, edited_plan=None, cancelled=lambda: False):
         self.timings = {}
         _safe(question, 600)
@@ -98,11 +111,12 @@ class IntegratedSearch:
                    "route": "hybrid", "mode": "factual", "scores": {}, "fallback": None,
                    "evaluated": False, "reference_text": request.reference,
                    "reference_focus": request.reference_focus,
+                   "reference_year": request.reference_year, "reference_choices": request.choice_titles,
                    "edited": edited_plan is not None}
         if request.reference:
-            candidates = self.reference_candidates(request.reference)
+            candidates = self._reference_options(request.reference, request.choice_titles, request.reference_year)
             chosen = next((row for row in candidates if row["key"] == reference_id), None)
-            if chosen is None and reference_id is None and len(candidates) == 1:
+            if chosen is None and reference_id is None and len(candidates) == 1 and not request.choice_titles:
                 chosen = candidates[0]
             if chosen is None:
                 token = self.store.save_snapshot(question, payload)
@@ -122,6 +136,10 @@ class IntegratedSearch:
                                  "requires_submit": True, "evaluation_only": True}}
         payload["people_ids"] = resolved.get("people_ids", {})
         try:
+            declared_model = getattr(self.reranker, "model_id", None)
+            if (profile(self.policy.rerank_model) != "legacy-native.v1"
+                    or isinstance(declared_model, str) and declared_model != self.policy.rerank_model):
+                return self.failure("search_rerank_uncalibrated")
             if cancelled():
                 return self.failure("search_cancelled")
             if not request.reference:
@@ -235,7 +253,7 @@ class IntegratedSearch:
                 if payload.get("reference_text") and not payload["reference_id"]:
                     result.update(status="needs_clarification", reason="search_reference_choice", results=None,
                         issues=[{"field": "reference", "code": "choose_reference",
-                                 "candidates": self.reference_candidates(payload["reference_text"])}])
+                                 "candidates": self._reference_options(payload["reference_text"], payload.get("reference_choices", ()), payload.get("reference_year"))}])
                 elif resolved["status"] == "ready":
                     result.update(status="clarify", reason="search_snapshot_requires_submit", results=None)
                 return result
@@ -264,11 +282,10 @@ class IntegratedSearch:
             raise SemanticError("search_snapshot_invalid")
         threshold = getattr(self.policy, payload["mode"] + "_min")
         candidates = {c.film_id: c for c in retrieval.candidates}
-        ranked = [
-            c.film_id for c in retrieval.candidates if c.film_id != payload["reference_id"]
-            and c.film_id not in hard.exclude_film_ids and (not hard.film_ids or c.film_id in hard.film_ids)
-            if (scores[c.film_id] >= threshold if c.film_id in scores else c.admitted)]
-        ranked.sort(key=lambda key: (key not in scores, -scores.get(key, 0), -candidates[key].rrf, key))
+        safe_candidates = [c for c in retrieval.candidates if c.film_id != payload["reference_id"]
+            and c.film_id not in hard.exclude_film_ids and (not hard.film_ids or c.film_id in hard.film_ids)]
+        ranked = admitted_ids(safe_candidates, scores, model=self.policy.rerank_model,
+                              threshold=threshold, maximum=self.policy.max_results)
         summaries = self.summaries(ranked)
         ranked = [key for key in ranked if key in summaries]
         if order != "relevance":
@@ -286,7 +303,8 @@ class IntegratedSearch:
                 "route": payload["route"], "mode": payload["mode"], "order": order,
                 "fallback": payload["fallback"] or ("search_cached_local_ranking" if uncovered else None),
                 "evaluation_only": True, "indexed_films": len(index.documents),
-                "bounded_candidates": self.policy.candidate_k},
+                "bounded_candidates": self.policy.candidate_k, "result_cap": self.policy.max_results,
+                "rerank_model": self.policy.rerank_model, "admission_profile": profile(self.policy.rerank_model)},
             "results": {"visibility_policy": "strict-current-sql", "strict": True,
                 "projection_version": "semantic-search.v1", "projection_versions": {},
                 "active_filters": {"genre": [], "person": [], "country": [], "decade": [],

@@ -23,7 +23,7 @@ export interface DiscoveryResolution extends Omit<AskResolution, "version" | "st
   edited?: boolean;
   semantic?: { text: string; evaluation_only: boolean; requires_submit?: boolean; reference_id?: string | null;
     route?: "semantic" | "hybrid"; mode?: "factual" | "exploratory" | "reference";
-    order?: "relevance" | "title" | "year"; fallback?: string | null; indexed_films?: number; bounded_candidates?: number };
+    order?: "relevance" | "title" | "year"; fallback?: string | null; indexed_films?: number; bounded_candidates?: number; result_cap?: number; rerank_model?: string; admission_profile?: string };
 }
 export interface DiscoveryState {
   plan?: AskPlan | SearchPlan | null;
@@ -126,7 +126,7 @@ export const DISCOVERY_REASONS = new Set(["non_search", "similarity", "recommend
   "search_evaluation_disabled", "search_evaluation_config_invalid", "search_not_configured", "search_budget_blocked",
   "search_provider_unavailable", "search_preflight_unavailable", "search_preflight_required", "search_price_changed",
   "search_privacy_unverified", "search_public_logging_consent_required", "search_provider_evaluation_only",
-  "search_route_uncertain", "search_reference_choice", "reference_missing_content", "search_cancelled",
+  "search_rerank_uncalibrated", "search_route_uncertain", "search_reference_choice", "reference_missing_content", "search_cancelled",
   "search_snapshot_invalid", "search_snapshot_expired", "search_snapshot_stale", "search_snapshot_requires_submit",
   "search_index_stale", "search_index_invalid", "search_source_changed", "search_input_not_approved", "search_input_outside_scope",
   "unsupported_content_negation", "unknown_film", "ambiguous_film", "ambiguous_reference"]);

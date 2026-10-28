@@ -324,8 +324,10 @@ def embedding_spec(model_created=1792591666):
 
 
 class RerankProvider:
-    def __init__(self, client: SearchProviderClient):
-        self.client = client
+    def __init__(self, client: SearchProviderClient, *, model_id=RERANK.model):
+        # Score contract only; this does not change endpoint/model routing.
+        # Explicit alternate adapters must declare their actual validated model.
+        self.client, self.model_id = client, model_id
 
     def rank(self, query, documents):
         _safe(query, 600)

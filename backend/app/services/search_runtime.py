@@ -42,6 +42,8 @@ class EvaluationRuntime:
         self.local = LocalSearch(engine)
         self.spec = embedding_spec(manifest.get("embedding_created", 1792591666))
         self.policy = IntegratedSearchPolicy(**manifest.get("policy", {}))
+        if self.policy.rerank_model != RERANK.model:
+            raise SemanticError("search_evaluation_config_invalid")
         self.documents = tuple(decode_document(json.dumps(doc, ensure_ascii=False)) for doc in manifest["documents"])
         if (not self.documents or len(self.documents) > (64 if manifest["scope"] == "public-evaluation.v2" else 15)
                 or corpus_revision(self.documents) != manifest["revision"]):
