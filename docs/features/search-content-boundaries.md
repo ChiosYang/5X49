@@ -68,7 +68,7 @@ URLs or error messages.
 
 ## Verification
 
-- Current targeted parsing/integration/runtime/provider suite: 114 passed.
+- Current targeted parsing/integration/runtime/provider suite: 118 passed.
   Expanded targeted suite including media-path boundaries: 120 passed.
 - Frontend: 148 unit tests passed; lint, typecheck and build passed. The existing
   cross-drive temporary-directory tests require a same-drive process-local temp
@@ -95,6 +95,14 @@ URLs or error messages.
   country/genre/source negation. Numeric title/year mentions are separated before
   reference classification, using real local SQL title projections in tests.
   Multiple uncertainty declarations clarify instead of overwriting choices.
+- Follow-up review: optional-clause scanning and residual user-condition checks
+  share mandatory vocabulary but respect clause scope. A 216-case conjunction /
+  whitespace matrix covers only/must and Chinese equivalents. Narrative modals
+  remain content. Referential plot contrast requires an event in that same clause
+  and rejects metadata descriptions in both languages. Known preceding factual
+  clauses remain bound when a later sentence introduces an `about` topic.
+- Latest complete protected-resource checkpoint before these follow-up edits:
+  812 tests passed, three skipped; current-head full verification is still required.
 - Actual diagnostic inputs/labels/results remain outside Git. Any cached
   replay is development regression, never fresh blind-quality acceptance.
 - No model requests, intentional library updates or credential/config changes

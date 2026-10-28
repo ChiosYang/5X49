@@ -11,7 +11,7 @@ from app.contracts.bound_search_plan import SearchPlan
 from app.services.discovery_search import _LANGUAGES, unsupported_reason
 from app.services.search_literals import hard_plan
 from app.services.semantic_search import _safe
-from app.services.content_clauses import guard_text, partition, reference_tail, parts, constraint_plan
+from app.services.content_clauses import guard_text, partition, reference_tail, parts, constraint_plan, unconsumed_mandatory
 
 
 @dataclass(frozen=True)
@@ -37,11 +37,10 @@ _HARD_TAIL = re.compile(
 _HARD_CUE = re.compile(
     r"\b(?:unwatched|watched|unseen|starring|directed|excluding|exclude|except|without|not|"
     r"minutes?|hours?|runtime|duration|produced|written|dubbed|rating|rated|resolution)\b|"
-    r"\bmust\s+(?:be|have|include|exclude|not|released|directed)\b|"
     r"\b(?:before|after|since|through|between|under|over|at least|at most)\s+\d|"
     r"(?<!\d)(?:18|19|20|21)\d{2}(?:s\b|年|年代|\b)|"
     r"未看|已看|没看|看过|执导|导演|主演|出演|排除|不要(?!求)|不含|片长|分钟|小时|"
-    r"制片|编剧|配音|语言为|语言是|评分|字幕|分辨率|必须|只能|不得|一定要", re.I)
+    r"制片|编剧|配音|语言为|语言是|评分|字幕|分辨率", re.I)
 _SEMANTIC_NEGATION = re.compile(r"\b(?:without|except|excluding|not|never|no)\b|不要(?!求)|不是|并非|不含|没有|不涉及|不包含|排除", re.I)
 _LANGUAGE_CONDITION = re.compile(rf"\bin\s+(?:{_LANGUAGES})\b|\b(?:{_LANGUAGES})[- ](?:language|speaking)\b|"
     r"\b(?:languages?|dubbed|dubbing|audio)\b|日语|法语|英语|韩语|中文|汉语|国语|德语|意大利语|西班牙语|粤语|配音", re.I)
@@ -133,15 +132,39 @@ def _reference(text, mentions):
 
 
 def _content_issue(content, context=None):
-    if re.match(r"^(?:(?:但|而且|且)\s*)?(?:必须|只能|不得|一定要)|^(?:must|only)\s+(?:be|not|have|include|exclude|released|directed)\b", content.strip(), re.I):
-        return "incomplete_request"
     guarded = guard_text(content, context)
+    if unconsumed_mandatory(guarded):
+        return "incomplete_request"
     if _SEMANTIC_NEGATION.search(guarded):
         return "unsupported_content_negation"
     if _LANGUAGE_CONDITION.search(guarded) or re.fullmatch(r"in\s+[A-Z][A-Za-z-]+", guarded.strip()):
         return "unsupported_filter"
     if _HARD_CUE.search(guarded):
         return "incomplete_request"
+
+
+def _protected_topic_prefix(prefix, context, lookup):
+    # A later "about" can follow a complete narrative contrast sentence. Only
+    # proven contrast/soft clauses, complete hard plans and closed introduction
+    # scaffolds can precede it; unknown factual fragments stay hard errors.
+    clauses = list(parts(prefix))
+    changed = False
+    for clause in clauses:
+        if not clause:
+            continue
+        guarded = guard_text(clause, context)
+        if guarded != clause:
+            if _content_issue(clause, context):
+                return False
+            changed = True
+            continue
+        plan, issue = hard_plan(clause, lookup, allow_languages=True)
+        if plan is not None and not issue:
+            continue
+        if re.fullmatch(r"(?:I mean|I am looking for|I'm looking for) (?:a|the) (?:story|film|movie)", clause, re.I):
+            continue
+        return False
+    return changed
 
 
 def _parsed(prefix, content, suffix, lookup, reference=None):
@@ -239,6 +262,14 @@ def split_content_request(question, *, lookup=None, mentions=None):
                               parsed.is_content, parsed.text if reference_focus else None, reference_year)
     topic = _TOPIC.search(text)
     if topic:
+        if _protected_topic_prefix(text[:topic.start()].strip(), text, lookup):
+            segmented = partition(text, lookup, _content_issue)
+            if segmented is not None:
+                hard, content, issue = segmented
+                if issue:
+                    return ContentRequest(None, text, issue=issue)
+                return _parsed(hard, content, "", lookup)
+            return _parsed("", text, "", lookup)
         tail = text[topic.end():]
         split = _HARD_TAIL.search(tail)
         content = (tail[:split.start()] if split else tail).strip(" 的,。；.!?！？")

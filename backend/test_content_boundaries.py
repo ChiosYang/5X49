@@ -86,6 +86,44 @@ class ClauseBoundaryTests(unittest.TestCase):
                 # soft model input; a future supported plan may bind them fully.
                 self.assertIsNotNone(parsed.issue, parsed)
 
+    def test_optional_scope_and_residual_hard_check_share_boundaries(self):
+        for soft in ("不要求温馨结局", "不必同演员"):
+            for conjunction in ("但是", "并且", "而且", "但", "且"):
+                for whitespace in ("", " ", "\t", "\n"):
+                    for mandatory in ("必须没有暴力", "只要日本电影", "只能是未知类型"):
+                        question = "想看家庭故事，"+soft+conjunction+whitespace+mandatory
+                        with self.subTest(question=question):
+                            self.assertIsNotNone(split_content_request(question).issue)
+        for soft in ("not necessarily scary", "not merely scenery"):
+            for conjunction in ("and", "but", "also", "however"):
+                for whitespace in (" ", "  ", "\t", "\n"):
+                    for mandatory in ("must be Japanese films", "only Japanese films", "must not include unknown material"):
+                        question = "films about family, "+soft+" "+conjunction+whitespace+mandatory
+                        with self.subTest(question=question):
+                            self.assertIsNotNone(split_content_request(question).issue)
+
+    def test_narrative_modals_are_not_user_filter_requirements(self):
+        for question in (
+            "想看一个人必须独自抚养孩子的故事",
+            "films about a spy who must be rescued",
+            "想看一个只能靠记忆辨认朋友的人",
+            "films about a spy who fails and must be rescued",
+            "想看一个人失去工作并且必须独自照顾家人的故事",
+        ):
+            with self.subTest(question=question):
+                parsed = split_content_request(question)
+                self.assertIsNone(parsed.issue, parsed)
+                self.assertEqual(parsed.hard.countries, [])
+                self.assertEqual(parsed.hard.people, [])
+        for question in (
+            "films about a spy, must be Japanese films",
+            "films about a spy, but only Japanese films",
+            "想看家庭故事，不要求温馨结局但只要日本电影",
+            "想看家庭故事，不要求温馨结局但是 必须没有暴力",
+        ):
+            with self.subTest(question=question):
+                self.assertIsNotNone(split_content_request(question).issue)
+
     def test_story_context_does_not_prove_a_negated_clause_is_plot_contrast(self):
         for question in (
             "想看家庭故事，不是来自亚特兰蒂斯",
@@ -98,6 +136,41 @@ class ClauseBoundaryTests(unittest.TestCase):
             with self.subTest(question=question):
                 parsed = split_content_request(question)
                 self.assertIsNotNone(parsed.issue, parsed)
+
+    def test_referential_syntax_requires_local_narrative_not_metadata_evidence(self):
+        for negative in (
+            "不是日本的那部", "不是科幻的那部", "不是亚特兰蒂斯拍摄的那部",
+            "并非某国制作的那部", "不是主演来自亚特兰蒂斯的那部",
+        ):
+            with self.subTest(negative=negative):
+                self.assertIsNotNone(split_content_request("想看家庭故事，"+negative).issue)
+        for negative in (
+            "the country is Atlantis", "the genre is science fiction",
+            "it was filmed in Atlantis", "a man discovers the country is Atlantis",
+        ):
+            question = "Not the film where "+negative+". I mean a story of a family."
+            with self.subTest(question=question):
+                self.assertIsNotNone(split_content_request(question).issue)
+        for question in (
+            "想看一个人失去声音的故事，不是老师逼他练习的那部",
+            "想看一个人离家的故事，不是母亲寻找孩子的那部",
+            "Not the film where a teacher demands perfect music. I mean a story of a family.",
+            "Not the movie in which a mother searches for a child. I mean a story about a reunion.",
+        ):
+            with self.subTest(question=question):
+                parsed = split_content_request(question)
+                self.assertIsNone(parsed.issue, parsed)
+                self.assertEqual(parsed.hard.exclude_countries, [])
+                self.assertEqual(parsed.hard.exclude_genres, [])
+
+    def test_later_topic_does_not_discard_preceding_factual_clauses(self):
+        contrast = "Not the movie in which a mother searches for a child. I mean a story about a reunion."
+        parsed = split_content_request("Japanese films. "+contrast)
+        self.assertIsNone(parsed.issue, parsed)
+        self.assertEqual(parsed.hard.countries, ["JP"])
+        for unknown in ("Atlantis films", "films produced by Unknown Person", "films in Elvish"):
+            with self.subTest(unknown=unknown):
+                self.assertIsNotNone(split_content_request(unknown+". "+contrast).issue)
 
     def test_hard_exclusion_preserves_full_title_punctuation(self):
         names = {"Night!": "film_"+"1"*32, "Night": "film_"+"2"*32}

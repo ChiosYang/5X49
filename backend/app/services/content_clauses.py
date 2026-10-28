@@ -19,13 +19,61 @@ _LOCAL = re.compile(
     r"没有(?:匹配)?(?:就)?(?:不要|不用)推荐(?:其他|其它|新|旧)?片|"
     r"(?:search|look|find) (?:only )?in (?:this|the local) (?:library|collection)|"
     r"(?:no|without) (?:substitutes|relaxation)|(?:if none|no matches?)[ ,]*(?:return nothing|say so))", re.I)
-_PREFERENCE = re.compile(
-    r"(?:^|[,;。])\s*(?:(?:但|也|并|而)?(?:不要求|不追求|不一定(?:要)?|不必|不限于|不只(?:是)?|不是(?:只要|只|单纯))|"
-    r"(?:but )?(?:not (?:necessarily|merely|simply|just|only)|(?:i )?don['’]t (?:need|require)))"
-    r"(?:(?!(?:但是|并且|而且|但|且)(?:必须|只能|只要|不得|一定要)|\b(?:and|but|also|however)\s+(?:must|only)\b)[^,;。])*(?=$|[,;。]|(?:但是|并且|而且|但|且)(?:必须|只能|只要|不得|一定要)|\b(?:and|but|also|however)\s+(?:must|only)\b)", re.I)
+_PREFERENCE_START = re.compile(
+    r"(?:^|[,;。])\s*(?:(?:(?:但是|并且|而且|但|且|也|并|而)\s*)?"
+    r"(?:不要求|不追求|不一定(?:要)?|不必|不限于|不只(?:是)?|不是(?:只要|只|单纯))|"
+    r"(?:(?:and|but|also|however)\s+)?(?:not (?:necessarily|merely|simply|just|only)|(?:i )?don['’]t (?:need|require)))", re.I)
+# Shared vocabulary, two explicit scopes: an inline connector can terminate a
+# soft preference, but residual hard requirements must start a user clause.
+# "a spy who must be rescued" is narrative, not a metadata requirement.
+_MANDATORY_WORD = r"(?:必须|只能|只要|不得|一定要|(?:must|only)\b)"
+_CONDITION_JOIN = r"(?:但是|并且|而且|但|且|\b(?:and|but|also|however)\b)"
+_CLAUSE_START = r"(?:^\s*|[,;。:]\s*)"
+_MANDATORY = re.compile(rf"(?:{_CLAUSE_START}(?:{_CONDITION_JOIN}\s*)?|{_CONDITION_JOIN}\s*){_MANDATORY_WORD}", re.I)
+_MANDATORY_CLAUSE = re.compile(rf"{_CLAUSE_START}(?:{_CONDITION_JOIN}\s*)?{_MANDATORY_WORD}", re.I)
+
+
+def unconsumed_mandatory(text):
+    return _MANDATORY_CLAUSE.search(text) is not None
+
+
+def _soft_preferences(text):
+    pieces, cursor = [], 0
+    for match in _PREFERENCE_START.finditer(text):
+        if match.start() < cursor:
+            continue
+        delimiter = re.search(r"[,;。]", text[match.end():])
+        end = match.end() + delimiter.start() if delimiter else len(text)
+        mandatory = _MANDATORY.search(text, match.end(), end)
+        if mandatory:
+            end = mandatory.start()
+        # Guard-only separator preserves the user-condition boundary after an
+        # optional clause; original retrieval/model text is never rewritten.
+        pieces.extend((text[cursor:match.start()], "; "))
+        cursor = end
+    return "".join(pieces) + text[cursor:]
+
+
 _CONTENT = re.compile(r"\b(?:plot|story|theme|mood|about|stories)\b|想看|想找|找的是|故事|剧情|重点|讲述|探讨|感觉|记忆|感知|(?:一个|有一部|有部).{4}", re.I)
 _CONTRAST_EN = re.compile(r"\b(?:not|isn['’]t)(?=\s+the\s+(?:one|film|movie)\s+(?:where|in which)\b)", re.I)
 _CONTRAST = re.compile(r"(?:不是|并非)(?=[^,;。]+)")
+# Bounded narrative evidence must occur IN the negated clause. Referential
+# syntax alone cannot turn country/genre/production facts into soft content.
+_CONTRAST_METADATA = re.compile(
+    r"来自|制作|拍摄|出品|国家|语言|类型|题材|导演|执导|主演|出演|配音|年份|上映|片长|评分|分钟|"
+    r"\b(?:country|nationality|genre|language|produced|production|filmed|made|directed|starring|runtime|rating|released)\b", re.I)
+_PLOT_EVENT_ZH = re.compile(r"(?:逼迫|逼|追求|失去|寻找|照顾|调查|发现|逃离|重逢|失忆|恢复|记起|照料|拯救|帮助|开始|决定).{1,40}")
+_PLOT_EVENT_EN = re.compile(
+    r"\b(?:loses?|lost|finds?|found|search(?:es|ed)?|seeks?|escapes?|demands?|forces?|cares?|discovers?|struggles?|returns?|helps?)\b", re.I)
+
+
+def _narrative_contrast(tail, *, english=False):
+    if _QUOTED.search(tail) or _CONTRAST_METADATA.search(tail):
+        return False
+    if english:
+        return _PLOT_EVENT_EN.search(tail) is not None
+    return bool(re.search(r"的(?:那|这)(?:一)?部$", tail) and _PLOT_EVENT_ZH.search(tail))
+
 _STABLE = re.compile(r"(年份|条件)(?:都)?(?:不能|不得|不要)(?:放宽|更改)|不要换(导演|演员)凑数")
 
 
@@ -43,24 +91,19 @@ def parts(text):
 def guard_text(text, context=None):
     # Soft preference scope stops at a new mandatory clause. The original text
     # is retained for retrieval/rerank; this string is only a guard input.
-    value = _PREFERENCE.sub(" ", text)
+    value = _soft_preferences(text)
     if _CONTENT.search(context or text):
         def contrast(match):
             tail = re.split(r"[,;。]", value[match.start():], maxsplit=1)[0]
             plan, _ = hard_plan(tail, allow_languages=True)
             if plan is not None and plan != SearchPlan(version="search-plan.v2"):
                 return match[0]
-            # A story cue outside this clause proves nothing about its negation.
-            # Only a closed referential plot contrast may bypass this guard.
-            # Role/facet/source facts or quoted identities still need strict
-            # binding, even when the clause ends with "that film".
-            if (re.search(r"的(?:那|这)(?:一)?部$", tail)
-                    and not _QUOTED.search(tail)
-                    and not re.search(r"来自|制作|出品|国家|语言|类型|题材|导演|执导|主演|出演|配音|年份|上映|片长|评分|分钟", tail)):
-                return " "
-            return match[0]
+            return " " if _narrative_contrast(tail) else match[0]
         value = _CONTRAST.sub(contrast, value)
-        value = _CONTRAST_EN.sub(" ", value)
+        def english_contrast(match):
+            tail = re.split(r"[,;。.!?]", value[match.end():], maxsplit=1)[0]
+            return " " if _narrative_contrast(tail, english=True) else match[0]
+        value = _CONTRAST_EN.sub(english_contrast, value)
     return value
 
 
