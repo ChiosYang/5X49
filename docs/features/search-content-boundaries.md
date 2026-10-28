@@ -73,9 +73,15 @@ URLs or error messages.
 - Frontend: 148 unit tests passed; lint, typecheck and build passed. The existing
   cross-drive temporary-directory tests require a same-drive process-local temp
   path on Windows; their assertions and dependencies were unchanged.
-- Full backend verification is running. The initial run exposed legacy language
-  expectations that are now replaced by exact strict-language plan assertions,
-  plus temporary short-name path aliases; final full-suite outcome is pending.
+- Full backend: 808 tests passed, three skipped. The initial run exposed legacy
+  language expectations now replaced by exact strict-language plan assertions,
+  and temporary short-name aliases resolved by a canonical process-local temp path.
+- Verification also found pre-existing fixture isolation gaps: edition/identity
+  scan receipts used the default database, and lifecycle tests left backup/health
+  workers unmocked. Fixtures now bind the shared database module to their own
+  disposable engine, assert receipt persistence there, and mock both workers.
+  The affected 51 tests passed. A final guarded full rerun additionally forbids
+  network and real-database connections and checks the real file hash.
 - Module compilation passed. Scripts: 15 executed, two Docker Compose checks
   blocked by the absent Docker executable, one platform check skipped. CI must
   independently execute these environment-dependent checks.
@@ -85,8 +91,9 @@ URLs or error messages.
   restoration, score ties and affine/no-answer invariants.
 - Actual diagnostic inputs/labels/results remain outside Git. Any cached
   replay is development regression, never fresh blind-quality acceptance.
-- No model calls, library updates, service starts or credential/config changes
-  are part of this development task.
+- No model requests, intentional library updates or credential/config changes
+  are part of the implementation. Lifecycle workers are isolated in tests; local
+  verification protection is separate from search quality acceptance.
 
 ## Remaining risks
 
