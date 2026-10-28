@@ -70,3 +70,32 @@ does not substitute for the runtime checks or pixel review.
 
 The pre-existing merged-alias deep-reset DELETE/RESTRICT defect is outside scope.
 Backup/restore fixtures use fresh databases and never depend on clear_all_data.
+
+## Backup test worker completion (2026-10-28)
+
+A terminal receipt reports the package outcome, while the generator can still
+own `generation.lock` during staging cleanup. A different request correctly
+receives `backup_busy` in that window. The fixture previously returned on the
+receipt alone, so a sequential replacement or cleanup assertion could race the
+worker's `finally` block.
+
+The fixture now tracks and joins the actual worker within its original 15-second
+deadline, and joins workers before removing their temporary directory. Event-gated
+regressions hold both successful and failed staging cleanup: same-ID replay stays
+valid, different-ID generation remains busy, and the helper must wait for cleanup
+and lease release before the next generation. Separate checks cover a worker
+deadline failure, lock release on exceptions, and a timed-out contender preserving
+the current owner's lock. Product locking, API behavior and existing assertions
+are unchanged; no timing sleep, deadline increase or request retry was added.
+
+Local controlled validation: the new event-gated test fails in both success and
+failure cases when run with the original helper; all 15 backup tests pass with
+the fix. Thirty repetitions each of the original replacement test, gated worker
+test and failed-generation cleanup test pass (90 test executions).
+
+The teardown also collects every worker's completion result, always attempts
+client/route-patch/engine cleanup, and reports accumulated failures afterwards.
+A live or unknown worker preserves its fixture directory. A synthetic live-worker
+regression covers normal and failing client close, verifies later workers are
+joined and routes restored, and fails with the initial early-assert teardown.
+Twenty repetitions of that regression pass without hiding the timeout failure.

@@ -10,10 +10,10 @@ import time
 import unittest
 import zipfile
 from concurrent.futures import ThreadPoolExecutor
-from contextlib import closing, redirect_stdout
+from contextlib import closing, nullcontext, redirect_stdout
 from datetime import timedelta
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 from uuid import uuid4
 
 from fastapi import FastAPI
@@ -83,6 +83,16 @@ class MaintenanceBackupTests(unittest.TestCase):
         projection_coordinator.bootstrap(self.engine)
         self.engine.dispose()
         self.service = MaintenanceBackups(self.source)
+        self.workers = {}
+        generate = self.service._generate
+
+        def track_worker(identifier, lease):
+            self.workers[identifier] = threading.current_thread()
+            generate(identifier, lease)
+
+        self.worker_patch = patch.object(self.service, "_generate", track_worker)
+        self.worker_patch.start()
+        self.addCleanup(self.worker_patch.stop)
         self.patch = patch.object(routes, "maintenance_backups", self.service)
         self.patch.start()
         app = FastAPI()
@@ -90,17 +100,43 @@ class MaintenanceBackupTests(unittest.TestCase):
         self.client = TestClient(app)
 
     def tearDown(self):
-        self.client.close()
-        self.patch.stop()
-        self.service.stop()
-        self.engine.dispose()
-        self.temp.cleanup()
+        errors = []
+        alive = []
+
+        def cleanup(label, action):
+            try:
+                action()
+            except Exception as exc:
+                errors.append(f"{label}: {type(exc).__name__}")
+
+        cleanup("stop service", self.service.stop)
+        for identifier, worker in list(self.workers.items()):
+            cleanup(f"join {identifier}", lambda: worker.join(15))
+            try:
+                if worker.is_alive():
+                    alive.append(identifier)
+            except Exception as exc:
+                alive.append(identifier)  # Unknown completion must preserve the directory too.
+                errors.append(f"worker state {identifier}: {type(exc).__name__}")
+        cleanup("close client", self.client.close)
+        cleanup("restore routes", self.patch.stop)
+        cleanup("dispose engine", self.engine.dispose)
+        if alive:
+            errors.append("backup worker still owns the test directory: " + ", ".join(alive))
+        else:
+            cleanup("remove fixture", self.temp.cleanup)
+        self.assertFalse(errors, "; ".join(errors))
 
     def wait(self, identifier):
         deadline = time.monotonic() + 15
         while time.monotonic() < deadline:
             record = self.service.get(identifier)
             if record["status"] != "generating":
+                # The receipt precedes staging cleanup and generation-lock release.
+                # Sequential fixture operations need the actual worker to finish.
+                worker = self.workers[identifier]
+                worker.join(max(0, deadline - time.monotonic()))
+                self.assertFalse(worker.is_alive(), "generation worker did not finish")
                 return record
             time.sleep(.02)
         self.fail("generation did not finish")
@@ -264,6 +300,129 @@ class MaintenanceBackupTests(unittest.TestCase):
         self.service.status()
         self.assertFalse(self.service.archive(previous).exists())
         self.assertTrue(self.service.archive(current).exists())
+
+    def test_wait_includes_terminal_cleanup_before_next_generation(self):
+        for outcome in ("succeeded", "failed"):
+            with self.subTest(outcome=outcome):
+                entered = threading.Event()
+                release = threading.Event()
+                joining = threading.Event()
+                identifier = uuid4().hex
+                stage = self.service.directory / f"stage-{identifier}"
+                remove = module.shutil.rmtree
+
+                def hold_cleanup(path, *args, **kwargs):
+                    if Path(path) == stage:
+                        entered.set()
+                        if not release.wait(10):
+                            raise RuntimeError("test did not release staging cleanup")
+                    return remove(path, *args, **kwargs)
+
+                failure = (patch.object(module, "sanitize_snapshot", side_effect=OSError("synthetic failure"))
+                           if outcome == "failed" else nullcontext())
+                with failure, patch.object(module.shutil, "rmtree", hold_cleanup):
+                    try:
+                        self.service.create(identifier)
+                        self.assertTrue(entered.wait(5), "worker did not reach staging cleanup")
+                        self.assertEqual(self.service.get(identifier)["status"], outcome)
+                        self.assertEqual(self.service.create(identifier)["status"], outcome)
+                        # A terminal receipt is replayable while a different ID is still busy.
+                        busy = self.client.post("/maintenance/backups", json={"request_id": uuid4().hex})
+                        self.assertEqual(busy.status_code, 409)
+                        self.assertEqual(busy.json()["detail"]["code"], "backup_busy")
+                        worker = self.workers[identifier]
+                        join = worker.join
+
+                        def observe_join(timeout=None):
+                            joining.set()
+                            return join(timeout)
+
+                        with patch.object(worker, "join", observe_join), ThreadPoolExecutor(max_workers=1) as pool:
+                            waiting = pool.submit(self.wait, identifier)
+                            try:
+                                self.assertTrue(joining.wait(5), "wait returned before worker completion")
+                                self.assertFalse(waiting.done(), "cleanup gate is still held")
+                            finally:
+                                release.set()
+                            self.assertEqual(waiting.result(timeout=5)["status"], outcome)
+                    finally:
+                        release.set()
+                self.assertFalse(stage.exists())
+                with module.file_lock(self.service.directory / "generation.lock", wait=False):
+                    pass
+                self.generate()  # No retry: a fresh generation must now be accepted.
+
+    def test_wait_fails_when_terminal_worker_does_not_finish_within_original_deadline(self):
+        identifier = uuid4().hex
+        worker = Mock()
+        worker.is_alive.return_value = True
+        self.workers[identifier] = worker
+        try:
+            with patch.object(self.service, "get", return_value={"status": "succeeded"}), \
+                    patch.object(time, "monotonic", side_effect=[100, 101, 115]):
+                with self.assertRaisesRegex(AssertionError, "generation worker did not finish"):
+                    self.wait(identifier)
+            worker.join.assert_called_once_with(0)
+        finally:
+            del self.workers[identifier]
+
+    def test_teardown_timeout_cleans_shared_resources_and_joins_every_worker(self):
+        for close_fails in (False, True):
+            with self.subTest(close_fails=close_fails), tempfile.TemporaryDirectory() as directory:
+                original_service = routes.maintenance_backups
+                case = MaintenanceBackupTests()
+                case.service = Mock()
+                case.client = Mock()
+                if close_fails:
+                    case.client.close.side_effect = RuntimeError("synthetic client failure")
+                case.engine = Mock()
+                case.temp = Mock()
+                marker = Path(directory) / "worker-owned"
+                marker.write_text("synthetic worker state", encoding="utf-8")
+                case.temp.cleanup.side_effect = marker.unlink
+                live, finished = Mock(), Mock()
+                live.is_alive.return_value = True
+                finished.is_alive.return_value = False
+                case.workers = {"alive-fixture": live, "finished-fixture": finished}
+                case.patch = patch.object(routes, "maintenance_backups", case.service)
+                case.patch.start()
+                try:
+                    with self.assertRaisesRegex(AssertionError, "backup worker still owns the test directory") as failure:
+                        case.tearDown()
+                    self.assertIs(routes.maintenance_backups, original_service)
+                    case.service.stop.assert_called_once_with()
+                    case.client.close.assert_called_once_with()
+                    case.engine.dispose.assert_called_once_with()
+                    live.join.assert_called_once_with(15)
+                    finished.join.assert_called_once_with(15)
+                    case.temp.cleanup.assert_not_called()
+                    self.assertTrue(marker.is_file())
+                    if close_fails:
+                        self.assertIn("close client: RuntimeError", str(failure.exception))
+                finally:
+                    case.patch.stop()
+
+    def test_file_lock_releases_after_exception_and_wait_timeout_preserves_owner(self):
+        path = self.root / "boundary.lock"
+        with self.assertRaisesRegex(RuntimeError, "synthetic protected work"):
+            with module.file_lock(path, wait=False):
+                raise RuntimeError("synthetic protected work")
+        with module.file_lock(path, wait=False):
+            with self.assertRaisesRegex(BackupError, "backup_busy"):
+                with module.file_lock(path, wait=False):
+                    self.fail("a competing lock must not be acquired")
+            with patch.object(time, "monotonic", side_effect=[100, 100, 105]), \
+                    patch.object(time, "sleep") as sleep:
+                with self.assertRaisesRegex(BackupError, "backup_busy"):
+                    with module.file_lock(path):
+                        self.fail("a timed-out contender must not acquire ownership")
+                sleep.assert_called_once_with(.02)
+            # A failed contender must not release the original owner's lock.
+            with self.assertRaisesRegex(BackupError, "backup_busy"):
+                with module.file_lock(path, wait=False):
+                    self.fail("the original owner must remain locked")
+        with module.file_lock(path, wait=False):
+            pass
 
     def test_invalid_identifiers_unknown_receipts_and_status_storage_failure(self):
         self.assertEqual(self.client.post("/maintenance/backups", json={"request_id": "../private"}).status_code, 422)
