@@ -89,6 +89,13 @@ the current owner's lock. Product locking, API behavior and existing assertions
 are unchanged; no timing sleep, deadline increase or request retry was added.
 
 Local controlled validation: the new event-gated test fails in both success and
-failure cases when run with the original helper; all 14 backup tests pass with
+failure cases when run with the original helper; all 15 backup tests pass with
 the fix. Thirty repetitions each of the original replacement test, gated worker
 test and failed-generation cleanup test pass (90 test executions).
+
+The teardown also collects every worker's completion result, always attempts
+client/route-patch/engine cleanup, and reports accumulated failures afterwards.
+A live or unknown worker preserves its fixture directory. A synthetic live-worker
+regression covers normal and failing client close, verifies later workers are
+joined and routes restored, and fails with the initial early-assert teardown.
+Twenty repetitions of that regression pass without hiding the timeout failure.

@@ -100,14 +100,32 @@ class MaintenanceBackupTests(unittest.TestCase):
         self.client = TestClient(app)
 
     def tearDown(self):
-        self.service.stop()
-        for worker in self.workers.values():
-            worker.join(15)
-            self.assertFalse(worker.is_alive(), "backup worker still owns the test directory")
-        self.client.close()
-        self.patch.stop()
-        self.engine.dispose()
-        self.temp.cleanup()
+        errors = []
+        alive = []
+
+        def cleanup(label, action):
+            try:
+                action()
+            except Exception as exc:
+                errors.append(f"{label}: {type(exc).__name__}")
+
+        cleanup("stop service", self.service.stop)
+        for identifier, worker in list(self.workers.items()):
+            cleanup(f"join {identifier}", lambda: worker.join(15))
+            try:
+                if worker.is_alive():
+                    alive.append(identifier)
+            except Exception as exc:
+                alive.append(identifier)  # Unknown completion must preserve the directory too.
+                errors.append(f"worker state {identifier}: {type(exc).__name__}")
+        cleanup("close client", self.client.close)
+        cleanup("restore routes", self.patch.stop)
+        cleanup("dispose engine", self.engine.dispose)
+        if alive:
+            errors.append("backup worker still owns the test directory: " + ", ".join(alive))
+        else:
+            cleanup("remove fixture", self.temp.cleanup)
+        self.assertFalse(errors, "; ".join(errors))
 
     def wait(self, identifier):
         deadline = time.monotonic() + 15
@@ -347,6 +365,42 @@ class MaintenanceBackupTests(unittest.TestCase):
             worker.join.assert_called_once_with(0)
         finally:
             del self.workers[identifier]
+
+    def test_teardown_timeout_cleans_shared_resources_and_joins_every_worker(self):
+        for close_fails in (False, True):
+            with self.subTest(close_fails=close_fails), tempfile.TemporaryDirectory() as directory:
+                original_service = routes.maintenance_backups
+                case = MaintenanceBackupTests()
+                case.service = Mock()
+                case.client = Mock()
+                if close_fails:
+                    case.client.close.side_effect = RuntimeError("synthetic client failure")
+                case.engine = Mock()
+                case.temp = Mock()
+                marker = Path(directory) / "worker-owned"
+                marker.write_text("synthetic worker state", encoding="utf-8")
+                case.temp.cleanup.side_effect = marker.unlink
+                live, finished = Mock(), Mock()
+                live.is_alive.return_value = True
+                finished.is_alive.return_value = False
+                case.workers = {"alive-fixture": live, "finished-fixture": finished}
+                case.patch = patch.object(routes, "maintenance_backups", case.service)
+                case.patch.start()
+                try:
+                    with self.assertRaisesRegex(AssertionError, "backup worker still owns the test directory") as failure:
+                        case.tearDown()
+                    self.assertIs(routes.maintenance_backups, original_service)
+                    case.service.stop.assert_called_once_with()
+                    case.client.close.assert_called_once_with()
+                    case.engine.dispose.assert_called_once_with()
+                    live.join.assert_called_once_with(15)
+                    finished.join.assert_called_once_with(15)
+                    case.temp.cleanup.assert_not_called()
+                    self.assertTrue(marker.is_file())
+                    if close_fails:
+                        self.assertIn("close client: RuntimeError", str(failure.exception))
+                finally:
+                    case.patch.stop()
 
     def test_file_lock_releases_after_exception_and_wait_timeout_preserves_owner(self):
         path = self.root / "boundary.lock"
