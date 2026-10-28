@@ -218,6 +218,22 @@ class DiagnosticScoringTests(unittest.TestCase):
         run["human_clarification_score"] = 2
         with self.assertRaises(p.InvalidInput):d.score(self.package, self.data)
 
+    def test_contract_invalid_clarification_is_preview_only(self):
+        for failure in ("failed_stage", "duplicate_candidate"):
+            with self.subTest(failure=failure):
+                data=copy.deepcopy(self.data)
+                run=next(r for r in data["runs"] if r["query_id"]=="toy-plot-8")
+                if failure=="failed_stage":run["stage_status"]={"fused_ids":"error"}
+                else:run["fused_ids"].append(run["fused_ids"][0])
+                report=d.score(self.package,data)
+                row=self.row(report,"toy-plot-8")
+                self.assertFalse(row["contract_valid"])
+                self.assertEqual(row["clarification_score"],2)
+                self.assertEqual(report["clarification"]["reviewed_or_structurally_failed"],2)
+                self.assertIsNone(report["clarification"]["total"])
+                self.assertEqual(report["clarification"]["partial_total"],4)
+                self.assertFalse(report["diagnostic_complete"])
+
     def test_behavior_empty_with_ids_is_invalid(self):
         self.ranked()["observed_behavior"] = "empty"
         r = d.score(self.package, self.data)

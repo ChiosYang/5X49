@@ -234,6 +234,7 @@ def score(package: Package, data: dict) -> dict:
     ranked = aggregate(rows, "ranked", METRICS)
     empty = aggregate(rows, "empty", ("noanswer_false_positive", "noanswer_correct"))
     clarify = [r for r in rows if r["expected_behavior"] == "clarify"]
+    valid_clarify = [r for r in clarify if r["contract_valid"] and r["clarification_score"] is not None]
     stage_summary = {}
     for stage in STAGES:
         values = [r["stage_evidence"]["stages"][stage]["recall_at_20"] for r in rows
@@ -252,9 +253,9 @@ def score(package: Package, data: dict) -> dict:
                 "Null judgments and missing/error runs are not zero-relevance or correct empty answers"],
             "ranking": ranked, "empty": empty,
             "by_category": {c: aggregate([r for r in rows if r["category"] == c], "ranked", METRICS) for c in sorted({r["category"] for r in rows})},
-            "clarification": {"expected": len(clarify), "reviewed_or_structurally_failed": sum(r["clarification_score"] is not None for r in clarify),
-                "total": sum(r["clarification_score"] for r in clarify) if all(r["clarification_score"] is not None for r in clarify) else None,
-                "partial_total": sum(r["clarification_score"] for r in clarify if r["clarification_score"] is not None), "maximum": len(clarify) * 2},
+            "clarification": {"expected": len(clarify), "reviewed_or_structurally_failed": len(valid_clarify),
+                "total": sum(r["clarification_score"] for r in valid_clarify) if not errors and len(valid_clarify) == len(clarify) else None,
+                "partial_total": sum(r["clarification_score"] for r in valid_clarify), "maximum": len(clarify) * 2},
             "hard_constraint_violation_count": sum(len(r["hard_constraint_violations"]) for r in rows),
             "stage_summary": stage_summary, "review_summary": review_register(package)["summary"], "cases": rows}
 

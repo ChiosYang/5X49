@@ -94,7 +94,9 @@ The six conditional-empty controls separately report false positives and correct
 empty behavior. An empty clarification is not a correct empty response. Runtime
 errors and missing runs contribute neither correct empties nor zero-relevance
 judgments. The three clarification cases report each supplied/structural score,
-pending support and total/6. No empty-set recall/nDCG=1 substitution is made.
+pending support and total/6. Contract-invalid rows retain a per-case preview but
+do not enter valid clarification support or partial totals; a complete total
+requires a contract-valid run set. No empty-set recall/nDCG=1 substitution is made.
 
 Known ineligible films and excluded references retain their original display
 positions with zero gain. Known duplicates likewise occupy their original slots,
@@ -128,7 +130,8 @@ not actual retrieval quality.
 
 ## Verification and remaining work
 
-- Targeted synthetic unittest suite: 41 tests passed locally.
+- Targeted synthetic unittest suite: 42 tests passed locally (including two
+  contract-invalid clarification subcases).
 - Additional RC tooling suite: 15 discovered; 12 passed, one platform skip,
   two Compose checks could not execute because this Windows environment has no
   `docker` executable. This is an environment limitation, not a waived CI check.
