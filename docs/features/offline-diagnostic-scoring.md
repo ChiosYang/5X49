@@ -128,7 +128,7 @@ not actual retrieval quality.
 
 ## Verification and remaining work
 
-- Targeted synthetic unittest suite: 40 tests passed locally.
+- Targeted synthetic unittest suite: 41 tests passed locally.
 - Additional RC tooling suite: 15 discovered; 12 passed, one platform skip,
   two Compose checks could not execute because this Windows environment has no
   `docker` executable. This is an environment limitation, not a waived CI check.

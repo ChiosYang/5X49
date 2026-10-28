@@ -148,6 +148,16 @@ class DiagnosticScoringTests(unittest.TestCase):
                 self.assertIsNone(r["ranking"]["macro"])
                 self.assertIn(mode + "_query", [e["code"] for e in r["contract_errors"]])
 
+    def test_extra_unknown_question_invalidates_complete_macros(self):
+        extra=copy.deepcopy(self.data["runs"][0]);extra["query_id"]="extraneous"
+        self.data["runs"].append(extra)
+        report=d.score(self.package,self.data)
+        self.assertFalse(report["diagnostic_complete"])
+        self.assertIsNone(report["ranking"]["macro"])
+        self.assertIsNone(report["empty"]["macro"])
+        self.assertEqual(report["ranking"]["measured"],15)
+        self.assertEqual(report["ranking"]["partial_macro"]["ndcg_at_5"],1)
+
     def test_illegal_scores_and_nonfinite_values(self):
         for value in (float("nan"), float("inf"), -float("inf"), True, "0.7"):
             with self.subTest(value=value):

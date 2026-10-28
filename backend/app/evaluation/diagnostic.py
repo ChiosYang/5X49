@@ -227,8 +227,9 @@ def score(package: Package, data: dict) -> dict:
         population = [r for r in subset if r["expected_behavior"] == kind]
         measured = [r for r in population if r["metrics"] is not None and r["contract_valid"]]
         partial = {k: sum(r["metrics"][k] for r in measured) / len(measured) if measured else None for k in keys}
-        return {"expected": len(population), "measured": len(measured), "complete": len(measured) == len(population),
-                "macro": partial if len(measured) == len(population) else None, "partial_macro": partial,
+        complete = not errors and len(measured) == len(population)
+        return {"expected": len(population), "measured": len(measured), "complete": complete,
+                "macro": partial if complete else None, "partial_macro": partial,
                 "numerators": {k: sum(r["metrics"][k] for r in measured) for k in keys if k not in {"recall_at_20", "precision_at_5", "p5_ceiling_normalized", "ndcg_at_5"}}}
     ranked = aggregate(rows, "ranked", METRICS)
     empty = aggregate(rows, "empty", ("noanswer_false_positive", "noanswer_correct"))
