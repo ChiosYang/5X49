@@ -68,20 +68,21 @@ URLs or error messages.
 
 ## Verification
 
-- Current targeted parsing/integration/runtime/provider suite: 110 passed.
+- Current targeted parsing/integration/runtime/provider suite: 114 passed.
   Expanded targeted suite including media-path boundaries: 120 passed.
 - Frontend: 148 unit tests passed; lint, typecheck and build passed. The existing
   cross-drive temporary-directory tests require a same-drive process-local temp
   path on Windows; their assertions and dependencies were unchanged.
-- Full backend: 808 tests passed, three skipped. The initial run exposed legacy
+- Pre-review full backend checkpoint: 808 tests passed, three skipped. The initial run exposed legacy
   language expectations now replaced by exact strict-language plan assertions,
   and temporary short-name aliases resolved by a canonical process-local temp path.
 - Verification also found pre-existing fixture isolation gaps: edition/identity
   scan receipts used the default database, and lifecycle tests left backup/health
   workers unmocked. Fixtures now bind the shared database module to their own
   disposable engine, assert receipt persistence there, and mock both workers.
-  The affected 51 tests passed. A final guarded full rerun additionally forbids
-  network and real-database connections and checks the real file hash.
+  The affected 51 tests passed. The guarded full checkpoint also passed 808
+  tests, three skipped, with zero external-network or real-database connection
+  attempts and an unchanged protected file hash. Current-head CI remains required.
 - Module compilation passed. Scripts: 15 executed, two Docker Compose checks
   blocked by the absent Docker executable, one platform check skipped. CI must
   independently execute these environment-dependent checks.
@@ -89,6 +90,11 @@ URLs or error messages.
   years and choices, unknown-language positive/negative SQL, actual empty SQL,
   unknown-person clarification, model/profile mismatch, bounded display,
   restoration, score ties and affine/no-answer invariants.
+- Independent review regressions: mandatory conjunctions terminate soft scope
+  and remaining hard intent is checked; a story cue cannot soften an unknown
+  country/genre/source negation. Numeric title/year mentions are separated before
+  reference classification, using real local SQL title projections in tests.
+  Multiple uncertainty declarations clarify instead of overwriting choices.
 - Actual diagnostic inputs/labels/results remain outside Git. Any cached
   replay is development regression, never fresh blind-quality acceptance.
 - No model requests, intentional library updates or credential/config changes

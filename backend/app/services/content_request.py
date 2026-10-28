@@ -37,10 +37,11 @@ _HARD_TAIL = re.compile(
 _HARD_CUE = re.compile(
     r"\b(?:unwatched|watched|unseen|starring|directed|excluding|exclude|except|without|not|"
     r"minutes?|hours?|runtime|duration|produced|written|dubbed|rating|rated|resolution)\b|"
+    r"\bmust\s+(?:be|have|include|exclude|not|released|directed)\b|"
     r"\b(?:before|after|since|through|between|under|over|at least|at most)\s+\d|"
     r"(?<!\d)(?:18|19|20|21)\d{2}(?:s\b|年|年代|\b)|"
     r"未看|已看|没看|看过|执导|导演|主演|出演|排除|不要(?!求)|不含|片长|分钟|小时|"
-    r"制片|编剧|配音|语言为|语言是|评分|字幕|分辨率|必须(?:是|为)|只能是", re.I)
+    r"制片|编剧|配音|语言为|语言是|评分|字幕|分辨率|必须|只能|不得|一定要", re.I)
 _SEMANTIC_NEGATION = re.compile(r"\b(?:without|except|excluding|not|never|no)\b|不要(?!求)|不是|并非|不含|没有|不涉及|不包含|排除", re.I)
 _LANGUAGE_CONDITION = re.compile(rf"\bin\s+(?:{_LANGUAGES})\b|\b(?:{_LANGUAGES})[- ](?:language|speaking)\b|"
     r"\b(?:languages?|dubbed|dubbing|audio)\b|日语|法语|英语|韩语|中文|汉语|国语|德语|意大利语|西班牙语|粤语|配音", re.I)
@@ -92,6 +93,16 @@ def _reference(text, mentions):
               for m in _QUOTED.finditer(text)]
     candidates = quoted + ([m for m in mentions(text) if not any(m["start"] < q["end"] and q["start"] < m["end"] for q in quoted)]
                            if mentions else [])
+    # Qualify title identity before classifying references. A numeric local
+    # title can also match the adjacent parenthesized year; that span is not a
+    # second film mention. Other title mentions keep their ambiguity guards.
+    year_spans = []
+    for row in candidates:
+        match = re.match(r"\s*\(((?:18|19|20)\d{2}|2100)\)", text[row["end"]:])
+        if match:
+            year_spans.append((row["end"] + match.start(), row["end"] + match.end()))
+    candidates = [row for row in candidates if not any(
+        left <= row["start"] and row["end"] <= right for left, right in year_spans)]
     relevant = []
     for row in candidates:
         before, after = text[:row["start"]], text[row["end"]:]
@@ -177,6 +188,10 @@ def _alternative_request(text, lookup, mentions):
             # semantic reference selection or a guessed recommendation.
             return ContentRequest(None, text, issue="ambiguous_film")
         parsed = split_content_request(body, lookup=lookup, mentions=mentions)
+        if parsed.choice_titles:
+            # Independent uncertainty declarations cannot overwrite each other,
+            # even if a recursively parsed declaration was otherwise valid.
+            return ContentRequest(None, text, issue="ambiguous_reference")
         if parsed.reference and not parsed.issue:
             return replace(parsed, choice_titles=names)
         return ContentRequest(None, text, issue="ambiguous_reference")

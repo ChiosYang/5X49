@@ -65,9 +65,39 @@ class ClauseBoundaryTests(unittest.TestCase):
                          "想看家庭的故事，但不要暴力。", "films produced by Unknown Person about family",
                          "films about family, 不要亚特兰蒂斯电影",
                          "想看家庭，不必同演员但必须是2001年以后的电影",
-                         "想看家庭故事，但必须不是未知内容", "films about family, must not have unknown material"):
+                         "想看家庭故事，但必须不是未知内容", "films about family, must not have unknown material",
+                         "films about ambition, not necessarily a comedy and must be in Elvish",
+                         "films about ambition, not necessarily a comedy but must not include unknown material",
+                         "想看家庭故事，不要求温馨结局而且只能是未知类型"):
             with self.subTest(question=question):
                 self.assertIsNotNone(split_content_request(question).issue)
+
+    def test_soft_scope_cannot_consume_a_new_mandatory_clause(self):
+        for question in (
+            "想看家庭故事，不要求温馨结局但是必须没有暴力",
+            "想看家庭故事，不必同演员并且必须由某人主演",
+            "想看家庭故事，不要求喜剧且必须非常温柔",
+            "films about family, not necessarily scary but must be Japanese films",
+            "films about family, not necessarily scary and must be gentle",
+        ):
+            with self.subTest(question=question):
+                parsed = split_content_request(question)
+                # Unsupported requirements must not become unconstrained SQL or
+                # soft model input; a future supported plan may bind them fully.
+                self.assertIsNotNone(parsed.issue, parsed)
+
+    def test_story_context_does_not_prove_a_negated_clause_is_plot_contrast(self):
+        for question in (
+            "想看家庭故事，不是来自亚特兰蒂斯",
+            "想看家庭故事，并非日本制作的",
+            "想看家庭故事，不是恐怖类型",
+            "想看家庭故事，不是来自亚特兰蒂斯的那部",
+            '想看家庭故事，不是《Unknown Exact Title》的那部',
+            "想看家庭故事，不是由未知人物主演的那部",
+        ):
+            with self.subTest(question=question):
+                parsed = split_content_request(question)
+                self.assertIsNotNone(parsed.issue, parsed)
 
     def test_hard_exclusion_preserves_full_title_punctuation(self):
         names = {"Night!": "film_"+"1"*32, "Night": "film_"+"2"*32}
@@ -207,6 +237,52 @@ class StrictSQLBoundaryTests(unittest.TestCase):
     def setUp(self):
         fixture.ExploreQueryTests.setUp(self)
         self.local = LocalSearch(self.engine)
+
+    def _add_literal(self, title, year, key):
+        from app.services.library import library_manager
+        folder = self.root / key
+        folder.mkdir()
+        video = folder / "synthetic.mkv"
+        video.write_bytes(key.encode())
+        library_manager.add_observations([{
+            "title": title, "original_title": title, "year": year,
+            "media_path": str(video.resolve()), "video_file": video.name,
+            "folder_path": str(folder.resolve()), "folder_name": folder.name,
+            "file_size": video.stat().st_size, "file_mtime": video.stat().st_mtime,
+            "library_status": "available", "metadata_source": "filename",
+            "scrape_status": "pending", "last_seen_at": fixture.NOW,
+            "source_item_key": key,
+        }])
+
+    def test_numeric_reference_year_is_not_a_second_real_local_title_mention(self):
+        self._add_literal("1984", 1984, "numeric-reference")
+        for question in ('films like "1984" (1984), recommend other films',
+                         '像《1984》(1984)那样的电影'):
+            with self.subTest(question=question):
+                self.assertEqual(len(self.local.title_mentions(question)), 2)
+                parsed = split_content_request(question, lookup=self.local.reference_candidates,
+                    mentions=self.local.title_mentions)
+                self.assertIsNone(parsed.issue, parsed)
+                self.assertEqual(parsed.reference, "1984")
+                self.assertEqual(parsed.reference_year, 1984)
+                self.assertIsNone(parsed.hard.year_min)
+        ambiguous = split_content_request('films like "1984" or "Beta", recommend other films',
+            lookup=self.local.reference_candidates, mentions=self.local.title_mentions)
+        self.assertEqual(ambiguous.issue, "ambiguous_reference")
+
+    def test_multiple_real_title_uncertainty_declarations_never_overwrite(self):
+        for index, title in enumerate(("Amber", "Birch", "Cedar", "Dune")):
+            self._add_literal(title, 1990+index, "choice-"+str(index))
+        for question in (
+            'films like "Shared Label", not sure whether Amber or Birch, not sure whether Cedar or Dune',
+            '像《Shared Label》那样的电影；英文名我记不清是 Amber 还是 Birch；英文名我记不清是 Cedar 还是 Dune',
+        ):
+            with self.subTest(question=question):
+                self.assertEqual(len(self.local.title_mentions(question)), 4)
+                parsed = split_content_request(question, lookup=self.local.reference_candidates,
+                    mentions=self.local.title_mentions)
+                self.assertEqual(parsed.issue, "ambiguous_reference", parsed)
+                self.assertEqual(parsed.choice_titles, ())
 
     def test_unknown_language_cannot_satisfy_positive_or_negative_requirement(self):
         for question in ("films about a family, in French", "films in French about a reunion",

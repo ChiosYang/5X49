@@ -22,7 +22,7 @@ _LOCAL = re.compile(
 _PREFERENCE = re.compile(
     r"(?:^|[,;。])\s*(?:(?:但|也|并|而)?(?:不要求|不追求|不一定(?:要)?|不必|不限于|不只(?:是)?|不是(?:只要|只|单纯))|"
     r"(?:but )?(?:not (?:necessarily|merely|simply|just|only)|(?:i )?don['’]t (?:need|require)))"
-    r"(?:(?!但(?:必须|只要)|而且必须|\bbut (?:must|only)\b)[^,;。])*(?=$|[,;。]|但(?:必须|只要)|而且必须|\bbut (?:must|only)\b)", re.I)
+    r"(?:(?!(?:但是|并且|而且|但|且)(?:必须|只能|只要|不得|一定要)|\b(?:and|but|also|however)\s+(?:must|only)\b)[^,;。])*(?=$|[,;。]|(?:但是|并且|而且|但|且)(?:必须|只能|只要|不得|一定要)|\b(?:and|but|also|however)\s+(?:must|only)\b)", re.I)
 _CONTENT = re.compile(r"\b(?:plot|story|theme|mood|about|stories)\b|想看|想找|找的是|故事|剧情|重点|讲述|探讨|感觉|记忆|感知|(?:一个|有一部|有部).{4}", re.I)
 _CONTRAST_EN = re.compile(r"\b(?:not|isn['’]t)(?=\s+the\s+(?:one|film|movie)\s+(?:where|in which)\b)", re.I)
 _CONTRAST = re.compile(r"(?:不是|并非)(?=[^,;。]+)")
@@ -50,10 +50,15 @@ def guard_text(text, context=None):
             plan, _ = hard_plan(tail, allow_languages=True)
             if plan is not None and plan != SearchPlan(version="search-plan.v2"):
                 return match[0]
-            # Unknown metadata-like negatives are not softened by a story cue.
-            if re.search(r"(?:电影|影片|片|语言|国家|导演)$", tail) and not re.search(r"那(?:一)?部$", tail):
-                return match[0]
-            return " "
+            # A story cue outside this clause proves nothing about its negation.
+            # Only a closed referential plot contrast may bypass this guard.
+            # Role/facet/source facts or quoted identities still need strict
+            # binding, even when the clause ends with "that film".
+            if (re.search(r"的(?:那|这)(?:一)?部$", tail)
+                    and not _QUOTED.search(tail)
+                    and not re.search(r"来自|制作|出品|国家|语言|类型|题材|导演|执导|主演|出演|配音|年份|上映|片长|评分|分钟", tail)):
+                return " "
+            return match[0]
         value = _CONTRAST.sub(contrast, value)
         value = _CONTRAST_EN.sub(" ", value)
     return value
