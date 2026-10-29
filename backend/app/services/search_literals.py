@@ -108,10 +108,18 @@ def title_exclusions(text, lookup):
     return text, sorted(set(excluded)), None
 
 
-def hard_plan(text, lookup=None):
+def hard_plan(text, lookup=None, *, allow_languages=False):
     from app.services.search_rules import parse_extended
-    value = normalize_negative_years(text).strip(" ,;，；。.!?")
-    if re.search(r"\b(?:audio|languages?|dubbed|dubbing)\b|\b(?:French|Japanese|English|Korean|Chinese|German|Italian|Spanish|Hindi|Arabic|Russian|Portuguese|Cantonese|Mandarin)[- ](?:language|speaking)\b|"
+    value = normalize_negative_years(text).strip(" ,;，；")
+    excluded = []
+    if lookup:
+        # Check complete literal punctuation before grammar removes sentence
+        # terminators, metadata words or filler inside a title.
+        value, excluded, issue = title_exclusions(value, lookup)
+        if issue:
+            return None, issue
+    value = value.strip(" ,;，；。.!?")
+    if not allow_languages and re.search(r"\b(?:audio|languages?|dubbed|dubbing)\b|\b(?:French|Japanese|English|Korean|Chinese|German|Italian|Spanish|Hindi|Arabic|Russian|Portuguese|Cantonese|Mandarin)[- ](?:language|speaking)\b|"
                  r"\bin\s+(?:French|Japanese|English|Korean|Chinese|German|Italian|Spanish|Hindi|Arabic|Russian|Portuguese|Cantonese|Mandarin)\b|"
                  r"日语|法语|英语|韩语|中文|汉语|国语|德语|意大利语|西班牙语|粤语|配音", value, re.I):
         return None, "unsupported_filter"
@@ -123,11 +131,6 @@ def hard_plan(text, lookup=None):
         return None, "unsupported_filter"
     # Clause connectors at a boundary, never characters inside a literal name.
     value = re.sub(r"^(?:and|but)\s+|^(?:但是|但)(?=排除|不要|由|\d)", "", value, flags=re.I)
-    excluded = []
-    if lookup:
-        value, excluded, issue = title_exclusions(value, lookup)
-        if issue:
-            return None, issue
     plan, leftover, issue = parse_extended(value or "films")
     if issue or leftover or plan is None:
         return None, issue or "incomplete_request"

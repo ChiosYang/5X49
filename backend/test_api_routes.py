@@ -81,6 +81,16 @@ REMOVED_ROUTES.update({
 
 
 class ApplicationLifespanTests(unittest.TestCase):
+    def setUp(self):
+        # These are lifecycle call-order tests, not live backup/decoder tests.
+        # Every worker must be mocked, including workers added after this suite.
+        self.background = {}
+        for worker in ("maintenance_backups", "video_health"):
+            for method in ("start", "stop"):
+                guard = patch(f"app.main.{worker}.{method}")
+                self.background[f"{worker}.{method}"] = guard.start()
+                self.addCleanup(guard.stop)
+
     def test_lifespan_disposes_engine_after_normal_shutdown(self):
         async def exercise():
             shutdown = MagicMock()
@@ -101,6 +111,8 @@ class ApplicationLifespanTests(unittest.TestCase):
                     create_database.assert_called_once_with()
                     start_jobs.assert_called_once_with()
                     start_watcher.assert_not_called()
+                    self.background["maintenance_backups.start"].assert_called_once_with()
+                    self.background["video_health.start"].assert_called_once_with()
 
                 self.assertEqual(
                     shutdown.mock_calls,

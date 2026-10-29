@@ -652,3 +652,23 @@ and `spoken_languages` (unique code list/null, max30). Set/clear/reset retain
 revision, idempotency and source ownership; automatic updates never override manual
 values. See `docs/features/language-metadata-enrichment.md` for cast completeness,
 source-specific aliases and the explicit ID-bound enrichment helper.
+
+
+### Bounded semantic clauses and score contracts
+
+Content segmentation preserves soft contrast/preferences while consuming only
+complete v2 hard clauses. Supported language clauses around content are strict
+original/spoken-language conditions, independently of country; unknown facts
+do not satisfy either inclusion or exclusion. Unsupported leftovers clarify.
+A parenthesized reference year qualifies the reference identity, not the
+recommendations. Explicit uncertain alternatives use exact local identity
+choices; no choice or a third ID cannot execute a partial recommendation.
+
+Semantic result metadata optionally includes `result_cap` (default 5),
+`rerank_model` and `admission_profile`. SQL and reference exclusions precede the
+cap. Absolute thresholds belong to the existing fixed native model only.
+`search_rerank_uncalibrated` is an unavailable state, not a correct empty answer;
+unknown score scales stop before provider dispatch. No paid provider is enabled.
+Snapshot policy v4 binds model/cap; older snapshots require explicit resubmit,
+while restore/navigation remain local. See
+`docs/features/search-content-boundaries.md` for offline proposal limitations.

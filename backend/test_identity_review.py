@@ -10,6 +10,7 @@ from fastapi.testclient import TestClient
 from sqlalchemy import event, text
 from sqlmodel import Session, create_engine, select
 
+from app import database
 from app.api import identity_review as api_module
 from app.database import configure_sqlite_engine
 from app.main import app
@@ -39,7 +40,7 @@ class IdentityReviewTests(unittest.TestCase):
         self.engine = create_engine(f"sqlite:///{self.path}")
         configure_sqlite_engine(self.engine)
         run_migrations(self.engine, self.path, backup_required=False)
-        self.patches = [patch.object(module, "engine", self.engine) for module in (library_module, api_module, snapshots_module)]
+        self.patches = [patch.object(module, "engine", self.engine) for module in (database, library_module, api_module, snapshots_module)]
         self.patches.append(patch.object(api_module, "get_media_dirs", return_value=[str(self.root)]))
         for item in self.patches:
             item.start()

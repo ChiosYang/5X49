@@ -527,6 +527,7 @@
       "search_not_configured": "The selected search models are not configured. Use ordinary keyword search.",
       "search_budget_blocked": "The evaluation request limit or receipt check stopped model access. Use ordinary keyword search.",
       "search_provider_unavailable": "The search provider is unavailable. Your input is preserved.",
+      "search_rerank_uncalibrated": "Relevance filtering has not been validated for this ranking model. Use ordinary keyword search; this is not a no-match answer.",
       "search_route_uncertain": "The search intent is uncertain. Try a more specific film, person or content request.",
       "search_reference_choice": "Select an exact reference film before searching for related content.",
       "reference_missing_content": "The reference film has no approved content in this index. Try a different film or keywords.",

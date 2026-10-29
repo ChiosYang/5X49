@@ -4,9 +4,10 @@ from pathlib import Path
 from unittest.mock import patch
 
 from sqlmodel import Session, create_engine, select
+from app import database
 import app.services.library as library_module
 import app.services.event_store as event_module
-from app.canonical_models import FilmProfileState, LibraryItem, LibraryItemLocatorHistory, MediaAsset
+from app.canonical_models import FilmProfileState, LibraryItem, LibraryItemLocatorHistory, MediaAsset, Setting
 from app.database import configure_sqlite_engine
 from app.migrations.runner import run_migrations
 from app.services.library import library_manager, LibraryManager
@@ -27,7 +28,7 @@ class LibraryEditionTests(unittest.TestCase):
         self.engine = create_engine(f"sqlite:///{path}")
         configure_sqlite_engine(self.engine)
         run_migrations(self.engine, path, backup_required=False)
-        self.patches = [patch.object(module, "engine", self.engine) for module in (library_module, event_module)]
+        self.patches = [patch.object(module, "engine", self.engine) for module in (database, library_module, event_module)]
         for item in self.patches: item.start()
         self.probe = patch("app.services.scanner.video_probe_service.probe", return_value={})
         self.probe.start()
@@ -63,6 +64,12 @@ class LibraryEditionTests(unittest.TestCase):
         second = library_sync_service.reconcile(str(self.root))
         self.assertEqual((second["added"],second["missing"]), (0,0))
         self.assertEqual({item["id"] for item in library_manager.get_film(film["id"])["editions"]}, ids)
+        # Scan receipts must use this fixture database too, never the developer
+        # default database behind app.database.engine.
+        with Session(self.engine) as session:
+            receipt = session.get(Setting, "media_scan_status")
+            self.assertIsNotNone(receipt)
+            self.assertEqual(receipt.value["last_result"], second)
 
     def test_matching_nfo_does_not_leak_to_other_video(self):
         first = self.video("Crash.1996.mkv")

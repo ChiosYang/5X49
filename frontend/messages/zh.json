@@ -527,6 +527,7 @@
       "search_not_configured": "尚未配置所选搜索模型，可使用普通关键词搜索。",
       "search_budget_blocked": "评估请求限额或收据检查已暂停模型访问，可使用普通关键词搜索。",
       "search_provider_unavailable": "搜索服务暂不可用，已保留输入。",
+      "search_rerank_uncalibrated": "这个重排模型的相关性筛选尚未验证。可使用普通关键词搜索；这不表示片库没有匹配影片。",
       "search_route_uncertain": "搜索意图尚不明确，请输入更具体的片名、人物或内容需求。",
       "search_reference_choice": "请先选择确切的参考影片，再查找相关内容。",
       "reference_missing_content": "此索引中没有参考影片的已批准内容，请换一部影片或使用关键词。",

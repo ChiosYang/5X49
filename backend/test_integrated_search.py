@@ -47,7 +47,7 @@ class ContentRequestTests(unittest.TestCase):
 
     def test_unsupported_roles_and_content_negation_never_execute_positive_half(self):
         for question in ("films produced by Shared Person about family", "films about family without violence",
-                         "关于家庭但不要暴力的电影", "films in Japanese about family"):
+                         "关于家庭但不要暴力的电影"):
             with self.subTest(question=question):
                 self.assertIsNotNone(split_content_request(question).issue)
 
@@ -61,10 +61,21 @@ class ContentRequestTests(unittest.TestCase):
     def test_language_conditions_never_become_soft_content_or_country_filters(self):
         for language in ("French", "Japanese", "English", "Korean", "Chinese", "German", "Italian",
                          "Spanish", "Hindi", "Arabic", "Russian", "Portuguese", "Cantonese", "Mandarin"):
-            for query in (f"films in {language}", f"{language}-language movies",
-                          f"films about a family, in {language}", f"films with {language} audio"):
+            for query in (f"films in {language}", f"{language}-language movies", f"films with {language} audio"):
                 with self.subTest(query=query):
                     self.assertEqual(split_content_request(query).issue, "unsupported_filter")
+            # The protected-content v2 path now supports a complete explicit
+            # language clause; assert its exact strict plan instead of removing
+            # the old safety assertion or allowing it to become a soft keyword.
+            codes = {"French":"fr", "Japanese":"ja", "English":"en", "Korean":"ko", "Chinese":"zh",
+                     "German":"de", "Italian":"it", "Spanish":"es", "Hindi":"hi", "Arabic":"ar",
+                     "Russian":"ru", "Portuguese":"pt", "Cantonese":"yue", "Mandarin":"zh"}
+            request = split_content_request(f"films about a family, in {language}")
+            self.assertIsNone(request.issue, request)
+            self.assertEqual(request.text, "a family")
+            self.assertEqual(request.hard.countries, [])
+            self.assertEqual(request.hard.genres, [])
+            self.assertEqual([(x.kind,x.code,x.exclude) for x in request.hard.languages], [("spoken",codes[language],False)])
         for query in ("语言学家在山村寻找失踪的兄弟。", "A person hides a letter under a bridge."):
             self.assertIsNone(split_content_request(query).issue)
 

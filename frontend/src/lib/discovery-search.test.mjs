@@ -31,7 +31,7 @@ test("content removal keeps its original question and proof through further loca
 test("unsupported content exclusions and identity ambiguities retain specific bilingual reasons", () => {
   for (const locale of ["en", "zh"]) {
     const copy = JSON.parse(readFileSync(new URL(`../../messages/${locale}.json`, import.meta.url), "utf8"));
-    for (const reason of ["unsupported_content_negation", "unknown_film", "ambiguous_film", "ambiguous_reference"]) {
+    for (const reason of ["unsupported_content_negation", "unknown_film", "ambiguous_film", "ambiguous_reference", "search_rerank_uncalibrated"]) {
       assert.equal(discoveryReason(reason), reason);
       assert.equal(typeof copy.Discovery.reasons[reason], "string");
       assert.notEqual(copy.Discovery.reasons[reason], copy.Discovery.reasons.unavailable);
