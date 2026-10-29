@@ -39,7 +39,7 @@ class IntegratedSearchPolicy:
 
     @property
     def fingerprint(self):
-        return _hash(["integrated-search.v4-score-contract", asdict(self), RetrievalPolicy(candidate_k=self.candidate_k).fingerprint])
+        return _hash(["integrated-search.v5-hard-empty-proof", asdict(self), RetrievalPolicy(candidate_k=self.candidate_k).fingerprint])
 
 
 class IntegratedSearch:
@@ -136,12 +136,20 @@ class IntegratedSearch:
                                  "requires_submit": True, "evaluation_only": True}}
         payload["people_ids"] = resolved.get("people_ids", {})
         try:
-            declared_model = getattr(self.reranker, "model_id", None)
-            if (profile(self.policy.rerank_model) != "legacy-native.v1"
-                    or isinstance(declared_model, str) and declared_model != self.policy.rerank_model):
-                return self.failure("search_rerank_uncalibrated")
             if cancelled():
                 return self.failure("search_cancelled")
+            declared_model = getattr(self.reranker, "model_id", None)
+            uncalibrated = (profile(self.policy.rerank_model) != "legacy-native.v1"
+                           or isinstance(declared_model, str) and declared_model != self.policy.rerank_model)
+            # A complete resolved SQL scope can prove no confirmed candidates
+            # without an unavailable score contract. Keep existing calibrated
+            # snapshot/vector recovery behavior unchanged.
+            if uncalibrated:
+                if self.measured("sql_eligibility_ms", lambda: self._eligible_ids(hard, payload)):
+                    return self.failure("search_rerank_uncalibrated")
+                payload.update(evaluated=True, sql_empty=True)
+                token = self.store.save_snapshot(question, payload)
+                return self.measured("final_page_ms", lambda: self._page(question, token, payload, hard, resolved, index))
             if not request.reference:
                 if self.decision is None or self.embedding is None:
                     return self.failure("search_not_configured")
@@ -190,17 +198,26 @@ class IntegratedSearch:
         except SemanticError as exc:
             return self.failure(exc.code)
 
-    def _retrieve(self, index, payload, resolved):
-        hard = SearchPlan.model_validate(payload["hard"])
+    def _eligible_ids(self, hard, payload):
         if payload["reference_id"]:
             hard = hard.model_copy(update={"exclude_film_ids": sorted(set(hard.exclude_film_ids + [payload["reference_id"]]))})
         allowed = self.eligible(hard, payload["people_ids"])
         if isinstance(allowed, dict):
-            allowed = allowed["eligible_ids"]
+            if allowed.get("status", "ready") != "ready":
+                raise SemanticError("search_snapshot_requires_submit")
+            allowed = allowed.get("eligible_ids")
+        if (not isinstance(allowed, (list, tuple, set, frozenset)) or len(allowed) > 5000
+                or any(not isinstance(value, str) or not value for value in allowed)):
+            raise SemanticError("search_snapshot_invalid")
         # Defense in depth for injected callers, cached/native rank data and
         # restorations: a reference can never become its own recommendation.
         allowed = [identifier for identifier in allowed if identifier != payload["reference_id"]
                    and identifier not in hard.exclude_film_ids and (not hard.film_ids or identifier in hard.film_ids)]
+        return allowed
+
+    def _retrieve(self, index, payload, resolved):
+        hard = SearchPlan.model_validate(payload["hard"])
+        allowed = self._eligible_ids(hard, payload)
         options = dict(eligible_ids=allowed, query_vector=payload["query_vector"],
             reference_id=payload["reference_id"], mode="exploratory" if payload["mode"] == "exploratory" else "factual",
             strategy="dense" if payload["route"] == "semantic" else "hybrid")
@@ -275,6 +292,8 @@ class IntegratedSearch:
             raise SemanticError("search_snapshot_stale")
         if type(offset) is not int or offset < 0 or offset > 1000000 or order not in {"relevance", "title", "year"}:
             raise SemanticError("search_page_invalid")
+        if payload.get("sql_empty") is True and self._eligible_ids(hard, payload):
+            raise SemanticError("search_snapshot_requires_submit")
         retrieval = self._retrieve(index, payload, resolved)
         scores = payload["scores"]
         if (not isinstance(scores, dict) or any(key not in index.documents or type(score) not in (int, float)
@@ -284,8 +303,15 @@ class IntegratedSearch:
         candidates = {c.film_id: c for c in retrieval.candidates}
         safe_candidates = [c for c in retrieval.candidates if c.film_id != payload["reference_id"]
             and c.film_id not in hard.exclude_film_ids and (not hard.film_ids or c.film_id in hard.film_ids)]
-        ranked = admitted_ids(safe_candidates, scores, model=self.policy.rerank_model,
-                              threshold=threshold, maximum=self.policy.max_results)
+        if payload.get("sql_empty") is True:
+            # Re-evaluate on every restore/edit. New metadata or relaxed chips
+            # cannot silently reuse an old empty proof to hide eligible films.
+            if self._eligible_ids(hard, payload):
+                raise SemanticError("search_snapshot_requires_submit")
+            ranked = []
+        else:
+            ranked = admitted_ids(safe_candidates, scores, model=self.policy.rerank_model,
+                                  threshold=threshold, maximum=self.policy.max_results)
         summaries = self.summaries(ranked)
         ranked = [key for key in ranked if key in summaries]
         if order != "relevance":
@@ -297,7 +323,7 @@ class IntegratedSearch:
         offset = min(offset, max(0, (total - 1) // limit * limit))
         page_ids = ranked[offset:offset + limit]
         uncovered = any(c.film_id not in scores for c in retrieval.candidates)
-        result = {**resolved, "version": "discovery.v3", "status": "ready", "source": "ai", "snapshot": token,
+        result = {**resolved, "version": "discovery.v3", "status": "ready", "source": "local" if payload.get("sql_empty") else "ai", "snapshot": token,
             "edited": bool(payload.get("edited")),
             "semantic": {"text": payload["text"], "reference_id": payload["reference_id"],
                 "route": payload["route"], "mode": payload["mode"], "order": order,
@@ -313,4 +339,6 @@ class IntegratedSearch:
                 "items": [{"film": summaries[key], "matched_facts": []} for key in page_ids],
                 "total": total, "limit": limit, "offset": offset,
                 "next_offset": offset + len(page_ids) if offset + len(page_ids) < total else None}}
+        if payload.get("sql_empty") is True:
+            result["semantic"]["no_match_basis"] = "strict_metadata_eligibility"
         return result

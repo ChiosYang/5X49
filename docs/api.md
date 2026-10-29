@@ -1417,3 +1417,17 @@ unknown score scales stop before provider dispatch. No paid provider is enabled.
 Snapshot policy v4 binds model/cap; older snapshots require explicit resubmit,
 while restore/navigation remain local. See
 `docs/features/search-content-boundaries.md` for offline proposal limitations.
+
+
+### Model-independent strict no-match evidence
+
+For a fully parsed content request, resolved identities and a completed reference
+choice, an unavailable model contract does not prevent current strict SQL from
+establishing zero confirmed candidates without Decision/embedding/rerank.
+Existing calibrated-model snapshot recovery retains its prior behavior. Such discovery.v3 results are ready,
+source local, and empty, with semantic.no_match_basis set to
+strict_metadata_eligibility. Unknown/conflicted metadata is still not assumed to
+match; an empty confirmed set is not an assertion about unknown real facts.
+Provider errors and uncalibrated scores remain unavailable, never correct empty.
+Saved empty proofs are rechecked on restore/edits; a newly eligible scope requires
+a new explicit submission. Ordinary literal/SQL search remains model-free.

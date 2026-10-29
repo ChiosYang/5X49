@@ -67,14 +67,31 @@ _PLOT_EVENT_EN = re.compile(
     r"\b(?:loses?|lost|finds?|found|search(?:es|ed)?|seeks?|escapes?|demands?|forces?|cares?|discovers?|struggles?|returns?|helps?)\b", re.I)
 
 
-def _narrative_contrast(tail, *, english=False):
-    if _QUOTED.search(tail) or _CONTRAST_METADATA.search(tail):
+# Referential role phrases describe story participants, not credited actors or
+# production countries. Only a complete "that film" contrast is consumed, and
+# explicit metadata words still win. Bare country/genre fragments stay unsafe.
+_STORY_AGENT_ZH = re.compile(r"警察|侦探|医生|律师|教师|老师|记者|士兵|军官|厨师|工程师|科学家|消防员|宇航员|运动员|商人|工人|学生")
+_FOCUS_FRAME_ZH = re.compile(r"重点(?:是|在|关注)|主要(?:是|关注|靠)")
+_PLOT_FOCUS_ZH = re.compile(r"(?:不是|并非)(?:只|单纯)?(?:追凶|破案|解谜|逃亡|谋杀|追逐|冒险|打斗|枪战|复仇)+(?:故事|情节|套路|戏)?$")
+_BACKGROUND_FOCUS_ZH = re.compile(r"(?:不是|并非)(?:仅仅|只是|单纯)?(?:背景|陪衬|点缀|装饰|噱头)$")
+
+
+def _narrative_contrast(tail, *, english=False, context="", subject=""):
+    if _QUOTED.search(tail) or _CONTRAST_METADATA.search(tail + subject):
         return False
     if english:
         return _PLOT_EVENT_EN.search(tail) is not None
-    return bool(re.search(r"的(?:那|这)(?:一)?部$", tail) and _PLOT_EVENT_ZH.search(tail))
+    if re.search(r"(?:的)?(?:那|这)(?:一)?部$", tail):
+        return bool(_PLOT_EVENT_ZH.search(tail) or _STORY_AGENT_ZH.search(tail))
+    # Narrow positive-focus corrections cannot erase arbitrary content bans.
+    # Only the outer negation token is hidden from the guard; inner mandatory
+    # or negative facts are still checked in the unchanged remainder.
+    if _FOCUS_FRAME_ZH.search(context) and _PLOT_FOCUS_ZH.fullmatch(tail):
+        return True
+    return bool(subject.strip() and _BACKGROUND_FOCUS_ZH.fullmatch(tail)
+                and re.search(r"而是", context))
 
-_STABLE = re.compile(r"(年份|条件)(?:都)?(?:不能|不得|不要)(?:放宽|更改)|不要换(导演|演员)凑数")
+_STABLE = re.compile(r"(?:(?:也|但|并且|而且)\s*)?(?:(年份|条件)(?:都)?(?:不能|不得|不要)(?:放宽|更改)|不要换(导演|演员)凑数)")
 
 
 def parts(text):
@@ -98,7 +115,8 @@ def guard_text(text, context=None):
             plan, _ = hard_plan(tail, allow_languages=True)
             if plan is not None and plan != SearchPlan(version="search-plan.v2"):
                 return match[0]
-            return " " if _narrative_contrast(tail) else match[0]
+            subject = re.split(r"[,;。]", value[:match.start()])[-1]
+            return " " if _narrative_contrast(tail, context=context or text, subject=subject) else match[0]
         value = _CONTRAST.sub(contrast, value)
         def english_contrast(match):
             tail = re.split(r"[,;。.!?]", value[match.end():], maxsplit=1)[0]
