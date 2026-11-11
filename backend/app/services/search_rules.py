@@ -32,7 +32,7 @@ def is_extended_request(question: str) -> bool:
     text = re.sub(_UNWATCHED, " ", text, flags=re.I)
     text = re.sub(r"(?<!\d)\d{4}\s*年代", " ", text)
     return bool(re.search(rf"\b(?:minutes?|hours?|runtime|duration|between|excluding|exclude|except|without|or|co-starring)\b|\d\s*(?:minutes?|hours?)\b|"
-        rf"\bnot\b|不要|排除|不包括|不包含|不是|非日本|或(?:者|是)?|分钟|小时|\b{_YEAR}\b(?!s)|{_YEAR}年", text)
+        rf"\bnot\b|不要|排除|不包括|不包含|不是|非日本|或(?:者|是)?|分钟|小时|\b{_YEAR}\b(?!s)|{_YEAR}\s*年", text)
         or len(re.findall(rf"\b(?:{_PEOPLE})\b|执导|导演|主演|出演", text)) > 1
         or re.search(rf"\b(?:{_PEOPLE})\s+.+?\s+and\s+", text))
 
@@ -203,7 +203,7 @@ def _parse_extended(question: str):
         values["duration_min_exclusive" if lower else "duration_max_exclusive"] = match.group(3) in ("不到", "以外")
         text = text[:match.start()] + " " + text[match.end():]
 
-    year_bounds = list(re.finditer(rf"\b(before|after|since|through)\s+({_YEAR})\b|({_YEAR})年(之前|以前|之后|以后|起|及以前|及以后)", text, re.I))
+    year_bounds = list(re.finditer(rf"\b(before|after|since|through)\s+({_YEAR})\b|({_YEAR})\s*年\s*(之前|以前|之后|以后|起|及以前|及以后)", text, re.I))
     for match in reversed(year_bounds):
         op = (match.group(1) or match.group(4)).casefold()
         value = int(match.group(2) or match.group(3))

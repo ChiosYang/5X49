@@ -467,7 +467,7 @@
     "languageUnknown": "Some films have missing or conflicting language information and are excluded from this filter.",
     "label": "Search Explore",
     "placeholder": "Search or describe",
-    "description": "Search your local library with keywords or a complete film-finding request.",
+    "description": "Enter a title, set conditions, or describe a plot detail you remember.",
     "submit": "Search",
     "searching": "Searching…",
     "cancel": "Cancel search",
@@ -489,6 +489,9 @@
     "unknownValue": "A name or value could not be resolved locally. Edit the search above to correct it.",
     "keywordFallback": "Search these words as keywords",
     "keywordOnly": "Ordinary keyword results. The request has not been applied as interpreted conditions.",
+    "plotResults": "Films matching your description",
+    "plotExcerpt": "From the synopsis",
+    "plotEmpty": "No matching passage in your library’s synopses. Try another plot detail.",
     "states": {
       "unsupported": "This request cannot be applied completely",
       "clarify": "Make the request more specific",

@@ -1,13 +1,15 @@
 import type { AskPlan, AskResolution } from "./ask";
+import type { LibraryFilmSummary } from "@/types/movie";
 import { isSearchPlan, type SearchPlan } from "./search-plan.ts";
 const PLAN_FIELDS = ["genre", "person", "person_role", "country", "decade", "view", "sort", "direction"];
 
-export type DiscoveryStatus = "keyword" | "ready" | "needs_clarification" | "clarify" | "unsupported" | "unavailable" | "needs_ai";
+export type DiscoveryStatus = "keyword" | "plot" | "ready" | "needs_clarification" | "clarify" | "unsupported" | "unavailable" | "needs_ai";
 export interface DiscoveryResolution extends Omit<AskResolution, "version" | "status" | "plan" | "constraints" | "issues"> {
   version: "discovery.v1" | "discovery.v2" | "discovery.v3";
   plan: AskPlan | SearchPlan | null;
   people_ids?: Record<string, string>;
   keyword_query?: string;
+  plot_matches?: Array<{ film: LibraryFilmSummary; excerpt: string }>;
   results?: (NonNullable<AskResolution["results"]> & {
     language_coverage?: Record<string, {unknown: number; conflicted: number}>;
   }) | null;

@@ -321,6 +321,8 @@ def control(payload: dict, x_e2e_token: str = Header(default='')):
             video.write_bytes(('filter-fixture-' + title).encode())
             observations.append(dict(title=title, folder_name=title, media_path=str(video),
                 year=year, runtime=runtime, video_duration=seconds, scrape_status='matched'))
+            if title == 'Orbit Echo':
+                observations[-1]['overview'] = 'A sailor takes shelter in a lighthouse during a storm. 暴雨中，一名水手在海岛的灯塔里过夜。'
         library_manager.add_observations(observations)
         films = {film['title']: film['id'] for film in library_manager.list_films()}
         for title in ('Orbit Dawn', 'Orbit Echo', 'Orbit Else'):

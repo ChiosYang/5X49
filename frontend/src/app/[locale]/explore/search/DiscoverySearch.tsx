@@ -16,6 +16,7 @@ import ConditionSearchResults from "./ConditionSearchResults";
 import { useDiscoveryNavigation } from "../DiscoverySearchSession";
 
 export interface DiscoverySnapshot {
+  keywords: string;
   films: LibraryFilmPage;
   people: ExploreFacetPage;
   collections: CollectionCatalog;
@@ -59,7 +60,14 @@ export default function DiscoverySearch({ snapshot, resolution, state, explicitK
       <UnifiedSearchInput query={query} />
     </header>
     {resolution ? <div className="pt-8">
-      {resolution.plan ? <ConditionSearchResults query={query} resolution={resolution} state={state} locale={locale}
+      {resolution.status === "plot" ? <section aria-labelledby="plot-results-title">
+        <h2 id="plot-results-title" className="font-serif text-2xl">{unifiedT("plotResults")}</h2>
+        {resolution.plot_matches?.length ? <div className="mt-5 grid grid-cols-2 gap-x-3 gap-y-6 sm:grid-cols-3 lg:grid-cols-4">
+          {resolution.plot_matches.map(({ film, excerpt }) => <div key={film.id} className="min-w-0">
+            <LibraryMovieCard movie={film} /><SynopsisExcerpt text={excerpt} />
+          </div>)}
+        </div> : <p className="mt-3 text-sm text-ink-muted">{unifiedT("plotEmpty")}</p>}
+      </section> : resolution.plan ? <ConditionSearchResults query={query} resolution={resolution} state={state} locale={locale}
         pending={pending || searchSession.pending || activeHref !== href} navigate={navigate} replace={target => startTransition(() => { beginRead(target); setActiveHref(target); router.replace(target, { scroll: false }); })} />
         : <section aria-live="polite" className="max-w-2xl space-y-4">
           <h2 className="font-serif text-2xl">{unifiedT(`states.${resolution.status}`)}</h2>
@@ -70,7 +78,10 @@ export default function DiscoverySearch({ snapshot, resolution, state, explicitK
       {explicitKeyword ? <p className="max-w-2xl text-sm text-ink-muted" role="status">{unifiedT("keywordOnly")}</p> : null}
       <section aria-labelledby="search-films-title">
         <h2 id="search-films-title" className="font-serif text-2xl">{t("filmCount", { count: snapshot.films.total })}</h2>
-        {snapshot.films.items.length ? <div className="mt-5 grid grid-cols-2 gap-x-3 gap-y-6 sm:grid-cols-3 lg:grid-cols-4">{snapshot.films.items.map(film => <LibraryMovieCard key={film.id} movie={film} />)}</div>
+        {snapshot.films.items.length ? <div className="mt-5 grid grid-cols-2 gap-x-3 gap-y-6 sm:grid-cols-3 lg:grid-cols-4">{snapshot.films.items.map(film => {
+          const excerpt = literalExcerpt(film.overview, snapshot.keywords);
+          return <div key={film.id} className="min-w-0"><LibraryMovieCard movie={film} />{excerpt && <SynopsisExcerpt text={excerpt} />}</div>;
+        })}</div>
           : snapshot.films.total > 0 ? <Spinner className="my-10" /> : <p className="mt-3 text-sm text-ink-muted">{searchT("empty", { query })}</p>}
         <SearchPages label={t("filmPages")} previous={page > 1 ? discoverySearchHref(query, page - 1, peopleOffset, collectionOffset) : null}
           next={snapshot.films.offset + snapshot.films.items.length < snapshot.films.total ? discoverySearchHref(query, page + 1, peopleOffset, collectionOffset) : null} navigate={navigate} />
@@ -92,6 +103,22 @@ export default function DiscoverySearch({ snapshot, resolution, state, explicitK
       </section>
     </div>}
   </div>;
+}
+
+function literalExcerpt(overview: string | null | undefined, term: string) {
+  if (!overview || !term) return null;
+  const index = overview.toLowerCase().indexOf(term.toLowerCase());
+  if (index < 0) return null;
+  const start = Math.max(0, index - 30);
+  return overview.slice(start, Math.max(start + 150, index + term.length));
+}
+
+function SynopsisExcerpt({ text }: { text: string }) {
+  const t = useTranslations("Discovery");
+  return <figure className="mt-3 border-l border-line pl-3">
+    <figcaption className="text-xs text-ink-muted">{t("plotExcerpt")}</figcaption>
+    <blockquote className="mt-1 break-words text-sm leading-6">{text}</blockquote>
+  </figure>;
 }
 
 function SearchPages({ label, previous, next, navigate }: { label: string; previous: string | null; next: string | null; navigate: (href: string) => void }) {

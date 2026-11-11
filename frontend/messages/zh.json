@@ -467,7 +467,7 @@
     "languageUnknown": "部分影片的语言资料缺失或有冲突，未纳入本次筛选。",
     "label": "搜索探索",
     "placeholder": "搜索或描述",
-    "description": "用关键词或完整的找片需求，搜索本地片库。",
+    "description": "输入片名、筛选条件，或用自己的话描述你记得的情节。",
     "submit": "搜索",
     "searching": "搜索中…",
     "cancel": "取消搜索",
@@ -489,6 +489,9 @@
     "unknownValue": "有名称或条件无法在本地确认，请修改上方搜索文字。",
     "keywordFallback": "按这些文字进行普通关键词搜索",
     "keywordOnly": "当前为普通关键词结果，未将需求作为识别条件应用。",
+    "plotResults": "剧情匹配的影片",
+    "plotExcerpt": "简介原文",
+    "plotEmpty": "片库现有的简介里没有找到匹配片段。可以换一个情节细节再试试。",
     "states": {
       "unsupported": "暂时无法完整应用这个需求",
       "clarify": "请补充更明确的需求",

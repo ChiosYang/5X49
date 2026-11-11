@@ -21,11 +21,12 @@ import { buildExploreContextSearchParams, buildExploreSearchParams, type Explore
 import { getBackendUrl as backendUrl } from "@/lib/backend-proxy";
 import { discoveryFailure, discoveryReason, type DiscoveryResolution } from "@/lib/discovery-search";
 
-export async function getDiscoveryResolution(question: string, locale: string, restored?: object): Promise<DiscoveryResolution> {
+export async function getDiscoveryResolution(question: string, locale: string, restored?: object | "plot"): Promise<DiscoveryResolution> {
   try {
-    const response = await fetch(`${backendUrl()}/explore/search/${restored ? "query" : "interpret"}`, {
+    const endpoint = restored === "plot" ? "plot" : restored ? "query" : "interpret";
+    const response = await fetch(`${backendUrl()}/explore/search/${endpoint}`, {
       method: "POST", cache: "no-store", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(restored ? { question, ...restored } : { question, locale, allow_ai: false }),
+      body: JSON.stringify(restored === "plot" ? { question, locale } : restored ? { question, ...restored } : { question, locale, allow_ai: false }),
     });
     const result = await response.json().catch(() => null);
     return response.ok ? result as DiscoveryResolution : discoveryFailure(discoveryReason(result?.detail?.code));

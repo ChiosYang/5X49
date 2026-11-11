@@ -13,8 +13,11 @@ description: 5X49 Fresh Canonical FastAPI 的 Film、LibraryItem、Factual Explo
 - `POST /explore/search/query`: `{question,plan,person_id:null,edited:false,offset:0}`;
   always local, 40/page. Ask v1 remains compatible; exact roles and strict missing/conflict
   handling. Edited conditions reflect explicit user corrections, never partial AI.
+- For `status:"plot"`, POST the original `{question,locale}` to
+  `/explore/search/plot`. The local read returns up to five `plot_matches`
+  with a film summary and a verbatim `excerpt` from its current synopsis.
 - Envelope: discovery.v1, status, source, reason, plan, person_id, constraints,
-  issues, results. Status keyword/ready/needs_clarification/clarify/unsupported/
+  issues, results. Status keyword/plot/ready/needs_clarification/clarify/unsupported/
   unavailable/needs_ai. Partial/duplicate identity needs a choice; unsupported/low-confidence/
   ungrounded/malformed interpretations never run a partial query. Safe errors only.
 - Preserve literal Person names before filler/facet parsing. Unsupported roles
