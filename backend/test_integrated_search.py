@@ -107,6 +107,32 @@ class ContentRequestTests(unittest.TestCase):
                 self.assertIsNone(request.issue)
                 self.assertEqual(request.reference, "生之欲")
 
+    def test_reference_aspect_cannot_consume_an_unknown_constraint(self):
+        for question in ('films rated five stars, with a mood like "Copper Bell"',
+                         '只要有字幕的，氛围像《铜钟》的电影'):
+            with self.subTest(question=question):
+                self.assertIsNotNone(split_content_request(question).issue)
+
+    def test_plot_with_an_explicit_film_exclusion_and_year(self):
+        film_id = 'film_' + 'a' * 32
+        lookup = lambda title: [{'key': film_id}] if title == 'Copper Bell' else []
+        for question, year in (
+            ('Two old friends meet again, but do not recommend Copper Bell.', None),
+            ('A story about two old friends, excluding Copper Bell, and not anything released before 1998.', 1998),
+            ('A film about two old friends, excluding Copper Bell and anything released before 1998.', 1998),
+        ):
+            with self.subTest(question=question):
+                request = split_content_request(question, lookup=lookup)
+                self.assertIsNone(request.issue, request)
+                self.assertIn('old friends', request.text.lower())
+                self.assertNotIn('Copper Bell', request.text)
+                self.assertEqual(request.hard.exclude_film_ids, [film_id])
+                self.assertEqual((request.hard.year_min, request.hard.year_max), (year, None))
+        for question in ('A story about old friends, but do not recommend "Missing Film".',
+                         'A film about old friends, excluding Copper Bell and anything starring an unknown role without subtitles.'):
+            with self.subTest(question=question):
+                self.assertIsNotNone(split_content_request(question, lookup=lookup).issue)
+
 
 class IntegratedSearchTests(unittest.TestCase):
     def setUp(self):
@@ -160,6 +186,23 @@ class IntegratedSearchTests(unittest.TestCase):
         self.assertEqual(self.hard_calls[-1].countries, ["JP"])
         self.assertEqual(self.hard_calls[-1].duration_max, 90)
         self.assertEqual(self.decision.decide.call_args.args, ("a family reunion",))
+
+    def test_comparison_aspect_reaches_reranker_alongside_strict_filters(self):
+        for question, aspect in (
+            ('films before 1998, under 2 hours, with a mood like "Public Film 1"', 'mood'),
+            ('找 1998 年以前、不到两小时、氛围像《Public Film 1》的电影', '氛围'),
+        ):
+            with self.subTest(question=question):
+                result = self.engine.submit(question)
+                self.assertEqual(result['status'], 'ready', result)
+                hard = self.hard_calls[-1]
+                self.assertEqual((hard.year_max, hard.duration_max, hard.duration_max_exclusive), (1997, 120, True))
+                self.assertEqual(hard.people, [])
+                focus, documents = self.reranker.rank.call_args.args
+                self.assertEqual(focus, aspect)
+                self.assertNotIn(self.docs[0].chunks[0], documents)
+                self.decision.decide.assert_not_called()
+                self.assertEqual(self.embedding.calls, [])
 
     def test_restore_filter_edit_mutation_and_shrinking_offset_never_call_models(self):
         result = self.engine.submit("Japanese films about a family reunion")

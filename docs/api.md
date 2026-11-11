@@ -206,6 +206,13 @@ the existing SQL executor. Unsupported/ambiguous hard requirements never become
 an approximate positive-only query. Similarity first resolves an exact reference
 Film, then compares its indexed content, excluding the reference itself.
 
+In a reference query, a separate comparison phrase such as
+`with a mood like "Example Film"` or `氛围像《示例影片》` supplies the rerank focus.
+Year and runtime restrictions remain local SQL conditions (`不到两小时` means
+strictly less than 120 minutes). In a plot query, `excluding X and anything
+released before 1998` excludes the exact Film X and keeps releases **from**
+1998, including 1998. An unresolved exclusion cannot silently broaden results.
+
 The v3 envelope adds `snapshot:"ds_<32 hex>"`, `edited` and `semantic` with
 `text,reference_id,route,mode,order,fallback,evaluation_only,indexed_films,
 bounded_candidates`. Unevaluated identity choices also set `requires_submit`;

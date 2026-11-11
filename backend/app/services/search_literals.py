@@ -18,7 +18,7 @@ _QUOTE = re.compile(r'''^(?:《([^》]+)》|“([^”]+)”|"([^"]+)"|'([^']+)')
 _ONLY = re.compile(r"^(?:(?:exact (?:film|movie) only|(?:the )?(?:film|movie) only|only|no substitutes|"
                    r"no similar (?:films|movies|recommendations)|不(?:要|用)相似推荐|只要(?:这部|这一部)|这部电影|这部影片|这部片|这部|的电影)"
                    r"[\s,;.!?，。；！？]*)+$", re.I)
-_NEGATIVE = re.compile(r"\b(?:but not|do not recommend|excluding|exclude|except|not)\s+|(?:但)?(?:排除|不要|不包括|不包含)\s*", re.I)
+_NEGATIVE = re.compile(r"\b(?:but\s+)?(?:do not recommend|excluding|exclude|except|not)\s+|(?:但)?(?:排除|不要|不包括|不包含)\s*", re.I)
 _EXACT_ONLY = re.compile(r"\b(?:only|no substitutes|no similar)\b|不(?:要|用)相似推荐|只要(?:这部|这一部)", re.I)
 
 
@@ -103,7 +103,15 @@ def title_exclusions(text, lookup):
             finish = next_start + size
         if len(excluded) > 8:
             return text, [], "incomplete_request"
-        text = text[:match.start()] + " " + text[finish:]
+        tail = text[finish:]
+        # A second object of the exclusion shares its polarity: excluding X
+        # and anything released before Y allows Y and later, never before Y.
+        shared_year = re.match(r"\s+and\s+anything\s+released\s+(before|after)\s+"
+                               r"((?:18|19|20)\d{2}|2100)(?=\s*[,;.!?]|\s*$)", tail, re.I)
+        if shared_year:
+            bound = "since" if shared_year[1].lower() == "before" else "through"
+            tail = f" {bound} {shared_year[2]} " + tail[shared_year.end():]
+        text = text[:match.start()] + " " + tail
         cursor = match.start() + 1
     return text, sorted(set(excluded)), None
 

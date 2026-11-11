@@ -664,6 +664,11 @@ A parenthesized reference year qualifies the reference identity, not the
 recommendations. Explicit uncertain alternatives use exact local identity
 choices; no choice or a third ID cannot execute a partial recommendation.
 
+A separated `with a mood like …` / `氛围像…` phrase specifies the reference
+comparison aspect, not a credited person. Year/runtime constraints still
+apply. Excluding a named Film and anything released before a year preserves
+both the Film exclusion and the inclusive lower year bound.
+
 Semantic result metadata optionally includes `result_cap` (default 5),
 `rerank_model` and `admission_profile`. SQL and reference exclusions precede the
 cap. Absolute thresholds belong to the existing fixed native model only.
