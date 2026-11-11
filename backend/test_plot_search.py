@@ -42,6 +42,12 @@ class SynopsisRankingTests(unittest.TestCase):
             self.assertIn(excerpt, text)
             self.assertLessEqual(len(excerpt), 240)
 
+    def test_two_sentence_quote_starts_at_the_matching_language(self):
+        source = "伊拉的午餐被误送给另一名职员。两人交换纸条，建立了友谊。"
+        overview = "A lunch delivery takes an unexpected turn. " + source
+        self.assertEqual(rank_synopses("想看因为送错午饭而成为朋友的故事", [("film", overview)]),
+                         [("film", source)])
+
 
 class LocalPlotRouteTests(unittest.TestCase):
     _seed_library = fixture.ExploreQueryTests._seed_library

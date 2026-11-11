@@ -52,10 +52,14 @@ def _passages(text):
     # overlapping windows so evidence on a window boundary is still visible.
     for paragraph in re.finditer(r"[^\r\n]+", text):
         value = paragraph.group().strip()
+        previous = None
         for sentence in re.finditer(r"[^.!?。！？]+[.!?。！？]*", value):
             segment = sentence.group().strip()
             if segment != value and len(segment) <= 240:
                 yield segment
+            if previous is not None and sentence.end() - previous <= 240:
+                yield value[previous:sentence.end()].strip()
+            previous = sentence.start()
         for start in range(0, len(value), 120):
             yield value[start:start + 240].strip()
             if start + 240 >= len(value):
