@@ -178,11 +178,12 @@ def _parse_extended(question: str):
             text = text[:match.start()] + " " + text[match.end():]
 
     # Runtime inequalities are stored in seconds via exclusive flags below.
-    durations = list(re.finditer(r"(?:\b(at least|at most|under|over|shorter than|longer than|less than|more than)\s*(\d{1,5})\s*(minutes?|hours?)\b)|(?:(?:片长|时长)?\s*(不少于|不超过|少于|超过|短于|长于)\s*(\d{1,5})\s*(分钟|小时))", text, re.I))
+    durations = list(re.finditer(r"(?:\b(at least|at most|under|over|shorter than|longer than|less than|more than)\s*(\d{1,5})\s*(minutes?|hours?)\b)|(?:(?:片长|时长)?\s*(不少于|不超过|不到|少于|超过|短于|长于)\s*(\d{1,5}|[一二两三四五六七八九十])\s*(分钟|小时))", text, re.I))
     for match in reversed(durations):
         op, number, unit = [part for part in match.groups() if part is not None]
         op, unit = op.casefold(), unit.casefold()
-        value = int(number) * (60 if unit in ("hour", "hours", "小时") else 1)
+        amount = int(number) if number.isdecimal() else "一二三四五六七八九十".index(number.replace("两", "二")) + 1
+        value = amount * (60 if unit in ("hour", "hours", "小时") else 1)
         lower = op in ("at least", "over", "longer than", "more than", "不少于", "超过", "长于")
         field = "duration_min" if lower else "duration_max"
         if field in values:

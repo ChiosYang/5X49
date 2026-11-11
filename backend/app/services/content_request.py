@@ -48,6 +48,11 @@ _TOPIC = re.compile(r"\b(?:with a story about|whose story is about|about)\s+|关
 _REF_CUE = re.compile(r"\b(?:similar to|more like|like|liked|enjoyed|loved)\b|类似|像|我喜欢|我喜爱|喜欢|看完|想延续|吸引我|相近|相似|(?:想|请)?找(?:和|与)", re.I)
 _OTHER = re.compile(r"\b(?:other|else|similar|recommend(?:ations?)?|suggest(?:ions?)?|like)\b|其他|别的|还可以|还有|类似|那样|那种|这样|推荐|建议|相近|相似|想找.{0,80}(?:片|电影)", re.I)
 _QUOTED = re.compile(r"""《([^》]+)》|“([^”]+)”|"([^"]+)"|'([^']+)'""")
+# Only a named comparison aspect immediately before the reference cue can
+# leave the hard prefix. Keep all preceding conditions for strict parsing.
+_PREFIX_ASPECT = re.compile(
+    r"\bwith (?:a|an|the) (mood|atmosphere|tone|visual style|pacing)\s*$|"
+    r"(氛围|气氛|基调|视觉风格|节奏)\s*$", re.I)
 
 
 # Closed recommendation vocabulary, not a stop-word remover. A whole segment
@@ -240,6 +245,13 @@ def split_content_request(question, *, lookup=None, mentions=None):
         cues = list(_REF_CUE.finditer(before))
         prefix = before[:cues[-1].start()] if cues else before
         aspect = before[cues[-1].end():] if cues else ""
+        if cues and (named := _PREFIX_ASPECT.search(prefix)):
+            lead = prefix[:named.start()].rstrip()
+            # Do not truncate a person's name or an unquoted excluded Film
+            # whose title itself ends in one of these words.
+            if not lead or lead.endswith((",", ";", ":", "、")) or _reference_scaffold(lead):
+                prefix = lead.rstrip(" ,;:、")
+                aspect = " ".join(filter(None, (named[1] or named[2], aspect.strip())))
         if _HARD_CUE.search(guard_text(aspect)) or _LANGUAGE_CONDITION.search(guard_text(aspect)):
             return ContentRequest(None, text, issue="incomplete_request")
         if re.fullmatch(r"\s*(?:I|我|Something|More)\s*", prefix, re.I) or _reference_scaffold(prefix):
@@ -274,7 +286,12 @@ def split_content_request(question, *, lookup=None, mentions=None):
         split = _HARD_TAIL.search(tail)
         content = (tail[:split.start()] if split else tail).strip(" 的,。；.!?！？")
         suffix = tail[split.end():] if split else ""
-        return _parsed(text[:topic.start()], content, suffix, lookup)
+        prefix = text[:topic.start()]
+        # "A story about ..." introduces the plot; "a romance about ..."
+        # still specifies a genre, and an unknown qualifier must not vanish.
+        if re.fullmatch(r"\s*(?:a|the) (?:story|plot)\s*", prefix, re.I):
+            prefix = ""
+        return _parsed(prefix, content, suffix, lookup)
     # Only a complete factual prefix establishes a comma/colon boundary.
     for boundary in re.finditer(r"[,;:，；：]", text):
         prefix, tail = text[:boundary.start()], text[boundary.end():].strip()

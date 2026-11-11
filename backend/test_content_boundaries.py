@@ -357,6 +357,27 @@ class StrictSQLBoundaryTests(unittest.TestCase):
                 self.assertEqual(parsed.issue, "ambiguous_reference", parsed)
                 self.assertEqual(parsed.choice_titles, ())
 
+    def test_named_exclusion_and_shared_year_polarity_reach_sql(self):
+        for clause, expected in (
+            ('excluding Gamma and anything released before 1999', 'Beta'),
+            ('excluding Alpha and anything released after 1999', 'Beta'),
+            ('excluding Beta, after 1999', 'Gamma'),
+        ):
+            with self.subTest(clause=clause):
+                parsed = split_content_request('A film about a lighthouse, ' + clause + '.',
+                    lookup=self.local.reference_candidates, mentions=self.local.title_mentions)
+                self.assertIsNone(parsed.issue, parsed)
+                result = self.local.executor.eligible_ids(parsed.hard, people_ids={})
+                self.assertEqual(result['eligible_ids'], [self.films[expected]])
+
+    def test_aspect_word_inside_an_excluded_title_keeps_the_full_identity(self):
+        self._add_literal("Alpha With A Mood", 1998, "aspect-title")
+        parsed = split_content_request('excluding Alpha With A Mood like "Beta"',
+            lookup=self.local.reference_candidates, mentions=self.local.title_mentions)
+        self.assertIsNone(parsed.issue, parsed)
+        self.assertIsNone(parsed.reference_focus)
+        self.assertEqual(parsed.hard.exclude_film_ids, [self.local.reference_candidates("Alpha With A Mood")[0]["key"]])
+
     def test_unknown_language_cannot_satisfy_positive_or_negative_requirement(self):
         for question in ("films about a family, in French", "films in French about a reunion",
                          "films about a family, not in French"):
