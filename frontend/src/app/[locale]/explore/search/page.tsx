@@ -34,9 +34,13 @@ export default async function ExploreSearchPage({ params, searchParams }: {
     else if (plan) resolution = await getDiscoveryResolution(query, locale, { plan, person_id: state.personId ?? null,
       people_ids: state.peopleIds, edited: state.edited, offset: state.offset,
       semantic_snapshot: semanticSnapshot, semantic_order: state.semanticOrder, semantic_removed: semanticRemoved });
+    else if (first(search.state) === "plot") resolution = await getDiscoveryResolution(query, locale, "plot");
     else if (["unsupported", "clarify", "unavailable", "needs_ai"].includes(first(search.state) ?? "")) {
       resolution = { ...discoveryFailure(discoveryReason(first(search.reason))), status: first(search.state) as DiscoveryResolution["status"] };
-    } else resolution = await getDiscoveryResolution(query, locale);
+    } else {
+      resolution = await getDiscoveryResolution(query, locale);
+      if (resolution.status === "plot") resolution = await getDiscoveryResolution(query, locale, "plot");
+    }
     if (resolution.plan && !plan) {
       state.plan = resolution.plan; state.personId = resolution.person_id;
       state.peopleIds = resolution.people_ids ?? {};
@@ -55,7 +59,7 @@ export default async function ExploreSearchPage({ params, searchParams }: {
         getLibraryFilmPage(new URLSearchParams({ q: keywords, rank_exact: "true", limit: String(FILM_PAGE_SIZE), offset: String((page - 1) * FILM_PAGE_SIZE) })),
         getLocalPeople(keywords, peopleOffset), getCollectionCatalog({ query: keywords, offset: collectionOffset, limit: 12 }),
       ]);
-      snapshot = { films, people, collections }; resolution = null;
+      snapshot = { films, people, collections, keywords }; resolution = null;
     } catch { resolution = discoveryFailure("unavailable"); }
   }
   return <DiscoverySearch key={query} snapshot={snapshot} resolution={resolution} state={state} explicitKeyword={explicitKeyword}

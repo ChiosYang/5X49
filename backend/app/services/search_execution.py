@@ -105,7 +105,7 @@ class SearchPlanExecutor:
             raise AskError("search_candidate_limit", 422)
         return self.query(plan, people_ids=people_ids, _ids_limit=maximum)
 
-    def query(self, plan: SearchPlan, *, people_ids=None, offset=0, _ids_limit=None):
+    def query(self, plan: SearchPlan, *, people_ids=None, offset=0, _ids_limit=None, plot_text=None):
         plan = SearchPlan.model_validate(plan.model_dump())
         result = self.resolve(plan, people_ids)
         if result["status"] != "ready":
@@ -172,6 +172,18 @@ class SearchPlanExecutor:
                 else:
                     matches=library.payload["spoken_languages"].as_string().contains('"'+language.code+'"')
                 conditions.extend((known, ~matches if language.exclude else matches))
+            if plot_text is not None:
+                from app.services.plot_search import rank_synopses
+                texts = session.exec(select(film.film_id, library.payload["overview"].as_string())
+                    .join_from(film, library, film.film_id == library.film_id).where(*conditions))
+                ranked = rank_synopses(plot_text, texts)
+                ids = [key for key, _ in ranked]
+                summaries = {row.film_id: row.payload for row in session.exec(select(library)
+                    .join(film, film.film_id == library.film_id).where(*conditions, library.film_id.in_(ids)))}
+                # SQLite readers can see a refresh between these two SELECTs.
+                return {**result, "status": "plot", "plan": None, "plot_matches": [
+                    {"film": summaries[key], "excerpt": excerpt} for key, excerpt in ranked
+                    if key in summaries and excerpt in (summaries[key].get("overview") or "")]}
             base = select(film).join(library, film.film_id == library.film_id).where(*conditions)
             if _ids_limit is not None:
                 ids = session.exec(base.with_only_columns(film.film_id).order_by(

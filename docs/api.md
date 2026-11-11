@@ -12,7 +12,15 @@ JSON and local entity validation. Typing, restoration and refresh never infer.
 Responses are `{version:"discovery.v1"|"discovery.v2",status,source:"local"|"ai",reason,plan,
 person_id,constraints,issues,results}`. Literal bindings may additionally return
 `keyword_query`, the effective local term; the original question remains unchanged.
-Statuses: `keyword`, `ready`,
+Plot descriptions in default Explore return `status:"plot"`, `source:"local"` and
+`plan:null`. Read matches with `POST /explore/search/plot` using the original
+`{question,locale}`. This read reapplies supported hard conditions to visible
+library films and returns `plot_matches:[{film,excerpt}]` in the discovery.v2
+envelope. Each excerpt is a contiguous substring of that film's current overview.
+The list contains up to five lexical matches and may be empty. Submission and
+reload work without model credentials. Explicit evaluation uses its existing route.
+
+Statuses: `keyword`, `plot`, `ready`,
 `needs_clarification`, `clarify`, `unsupported`, `unavailable`, `needs_ai`. Plans use
 Ask v1's single genre/person/role/country/decade, viewing state and sort remain
 compatible. Extended local requests use the explicit v2 contract below. Literal

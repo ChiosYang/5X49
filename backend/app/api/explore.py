@@ -11,9 +11,14 @@ from fastapi import APIRouter, HTTPException, Query, Request
 from starlette.concurrency import run_in_threadpool
 
 from app.contracts.discovery_search import DiscoveryCancel, DiscoveryIndexAction, DiscoveryQuestion, DiscoveryQuery
+from app.contracts.ask import AskQuestion
+from app.services import ask as ask_module
 from app.services.ask import AskError
-from app.services.discovery_search import discovery_search_service
+from app.services.content_request import short_keyword
+from app.services.discovery_search import discovery_search_service, keyword_text
 from app.services.integrated_search import IntegratedSearch
+from app.services.plot_search import plot_request
+from app.services.search_local import LocalSearch
 from app.services.search_runtime import configured_evaluation
 from app.services.semantic_search import SemanticError
 from app.services.explore_query import EXPLORE_DIMENSIONS, explore_query_service
@@ -51,7 +56,6 @@ def _discovery_call(callback):
 
 
 def _evaluation():
-    from app.services import ask as ask_module
     return configured_evaluation(ask_module.engine)
 
 
@@ -95,29 +99,41 @@ async def interpret_discovery(request: DiscoveryQuestion, http_request: Request)
     # Complete deterministic requests do not depend on optional evaluation
     # configuration, cache readiness, provider availability or credentials.
     # Special evaluation/edit/reference submissions still require their proof.
-    if not (request.evaluation_only or request.edited_plan is not None or request.reference_id or request.people_ids):
+    ordinary = not (request.evaluation_only or request.edited_plan is not None or request.reference_id or request.people_ids)
+    parsed = None
+    if ordinary:
+        search = LocalSearch(ask_module.engine)
         local = await run_in_threadpool(lambda: _discovery_call(lambda:
             discovery_search_service.interpret(request.model_copy(update={"allow_ai": False}))))
         if local["status"] in {"ready", "needs_clarification"}:
             return local
         if local["status"] == "keyword":
-            from app.services.search_local import LocalSearch
-            from app.services.content_request import short_keyword
-            from app.services.discovery_search import keyword_text
-            from app.services import ask as ask_module
             # The legacy keyword status also covers long descriptive sentences.
             # Preserve that semantic path when there is no literal local hit.
             text = local.get("keyword_query") or keyword_text(request.question)
-            direct = (not request.allow_ai or short_keyword(text) or await run_in_threadpool(
-                lambda: LocalSearch(ask_module.engine).has_keyword_matches(text)))
-            if direct:
+            if local.get("keyword_query") or await run_in_threadpool(search.has_keyword_matches, text):
                 return local
-    runtime = _discovery_call(_evaluation)
+        parsed = await run_in_threadpool(lambda: _discovery_call(lambda: plot_request(request.question, search)))
+        if local["status"] == "keyword" and not parsed and (not request.allow_ai or short_keyword(text)):
+            return local
+    runtime = None if parsed and not request.allow_ai else _discovery_call(_evaluation)
     if runtime is not None:
         return await _cancellable_search(http_request, runtime, request)
     if request.evaluation_only or request.edited_plan is not None or request.reference_id:
         return IntegratedSearch.failure("search_evaluation_disabled")
+    if parsed:
+        return search.state("plot")
     return await run_in_threadpool(lambda: _discovery_call(lambda: discovery_search_service.interpret(request)))
+
+
+@router.post("/explore/search/plot")
+def query_plot(request: AskQuestion):
+    search = LocalSearch(ask_module.engine)
+    parsed = _discovery_call(lambda: plot_request(request.question, search))
+    if parsed is None:
+        return search.state("unsupported", "incomplete_request")
+    result = _discovery_call(lambda: search.executor.query(parsed.hard, plot_text=parsed.text))
+    return result if result["status"] == "plot" else search.state("clarify", "incomplete_request")
 
 
 @router.post("/explore/search/query")

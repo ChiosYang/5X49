@@ -99,6 +99,27 @@ for(const locale of ['en','zh'])for(const width of [1440,320]){
 }
 
 for(const locale of ['en','zh']){
+  test(locale+' local plot search shows the source synopsis without a key',async({page,request})=>{
+    const copy=locale==='zh'?zh:en;
+    const question=locale==='zh'?'2000 年以后，关于水手在灯塔躲避暴雨的电影':'films after 2000 about a sailor in a lighthouse';
+    await page.setViewportSize({width:390,height:844});
+    await page.goto('/'+locale+'/explore');await submit(page,question,locale);
+    const results=page.getByRole('region',{name:copy.Discovery.plotResults});
+    await expect(results.locator('.library-card-title')).toContainText('Orbit Echo');
+    await expect(cards(page)).toHaveCount(1);
+    await expect(results.getByText(copy.Discovery.plotExcerpt,{exact:true})).toBeVisible();
+    await expect(results.locator('blockquote')).toContainText(locale==='zh'?'水手在海岛的灯塔':'A sailor takes shelter in a lighthouse');
+    await page.reload();await expect(results.locator('blockquote')).toBeVisible();
+    await submit(page,locale==='zh'?'想看宇航员在木星上修理潜艇的故事':'films about an astronaut repairing a submarine',locale);
+    await expect(results.getByText(copy.Discovery.plotEmpty,{exact:true})).toBeVisible();
+    await expect(cards(page)).toHaveCount(0);
+    await page.goBack();await expect(results.locator('.library-card-title')).toContainText('Orbit Echo');
+    const literal=locale==='zh'?'水手在海岛':'takes shelter in a lighthouse';
+    await submit(page,literal,locale);
+    await expect(page.locator('[aria-labelledby="search-films-title"] blockquote')).toContainText(literal);
+    expect((await control(request,'discovery_ai_stats')).calls).toBe(0);
+  });
+
   test(locale+' multiple values explain available recovery without retired Explore filters',async({page,request})=>{
     const copy=locale==='zh'?zh:en;
     const question=locale==='zh'?'日本恐怖剧情电影':'Japanese horror drama films';
