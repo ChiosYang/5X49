@@ -54,14 +54,14 @@ export default function FilmMoreActions({ label, modalOpen, children }: {
         requestAnimationFrame(() => panel.current?.querySelector<HTMLButtonElement>("button:not([disabled])")?.focus());
       }
     }}>
-      <Button ref={trigger} size="sm" className="w-full" aria-expanded={open} aria-controls={id}
-        onClick={() => setOpen((value) => !value)} icon={<MoreHorizontal className="h-4 w-4" />}>
+      <Button ref={trigger} size="sm" className="w-full rounded-pill px-3 sm:px-4" aria-expanded={open} aria-controls={id}
+        onClick={() => setOpen((value) => !value)} icon={<MoreHorizontal className="h-4 w-4 shrink-0" />}>
         {label}
       </Button>
       <div ref={panel} id={id} role="group" aria-label={label} onClick={(event) => {
         if ((event.target as HTMLElement).closest("[data-film-more-close]")) setOpen(false);
       }}
-        className={open ? "z-popover absolute right-0 top-full mt-2 w-[min(20rem,calc(100vw-4rem))] rounded-media border border-line-strong bg-surface-raised p-2 shadow-xl" : "hidden"}>
+        className={open ? "liquid-glass-popover z-popover absolute right-0 top-full mt-2 w-[min(20rem,calc(100vw-4rem))] rounded-media border border-line/80 p-2" : "hidden"}>
         {children}
       </div>
     </div>

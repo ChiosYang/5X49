@@ -39,7 +39,7 @@ export default function MovieAnalysisSection({
   };
 
   return (
-    <section id="film-analysis" tabIndex={-1} className="space-y-8 px-8 py-14 md:px-16 md:py-20">
+    <section id="film-analysis" tabIndex={-1} className="space-y-8 border-b border-line-strong px-8 py-12 md:px-16 md:py-16">
       <div className="flex flex-wrap items-end justify-between gap-6 border-b border-line-strong pb-6">
         <div>
           <h2 className="type-section-title text-ink">{t("title")}</h2>

@@ -104,7 +104,7 @@
     "restore": "Extract the ZIP and follow RESTORE.txt to verify and restore with the existing offline CLI. Test in a new temporary environment first, with the watcher disabled. Reconfigure media directories and API keys afterward. Library paths and personal records remain private data. Diagnostic errors are cleaned; personal content is preserved. File operation undo is unavailable because external manifests are excluded. This database backup is different from the portable business JSON export."
   },
   "FilmMetadata": {
-    "heading": "Basic information", "edit": "Edit basic information",
+    "heading": "Basic information", "archiveHeading": "Archive & File Info", "expandDetails": "Show details", "collapseDetails": "Hide details", "edit": "Edit basic information",
     "help": "Corrections are saved only in 5X49. Scanning and scraping keep them protected; NFO files and film identity are unchanged by editing.",
     "title": "Title", "original_title": "Original title", "year": "Year", "overview": "Synopsis",
     "manual": "Manually corrected · protected", "automatic": "Automatic source",
@@ -945,7 +945,8 @@
     "editionMissing": "Missing",
     "editionIgnoredStatus": "Ignored",
     "sourceLocalFolder": "Local folder",
-    "sourceLocalNfo": "Local NFO"
+    "sourceLocalNfo": "Local NFO",
+    "editionsSummary": "{count, plural, one {# local edition} other {# local editions}}"
   },
   "FilmGraph": {
     "eyebrow": "Cinema Knowledge",

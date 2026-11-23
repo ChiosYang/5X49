@@ -91,7 +91,7 @@ export default function ExploreClient({ collection, basePath, locale, query, res
   }, [basePath, pending, query, reducedMotion]);
 
   return (
-    <div className="page-x min-h-screen bg-canvas pb-24 pt-38 text-ink selection:bg-inverse selection:text-inverse-ink md:pt-44">
+    <div className="page-x min-h-screen bg-canvas pb-24 pt-32 text-ink selection:bg-inverse selection:text-inverse-ink md:pt-36">
       <nav aria-label={c("breadcrumb")} className="mb-5 flex flex-wrap gap-4 text-sm text-ink-muted">
         <Link prefetch={false} href={browseHref} scroll={false} className="focus-ring hover:text-ink">{c("homeTitle")}</Link>
       </nav>
