@@ -15,6 +15,7 @@ import app.services.library as library_module
 import app.services.operation_snapshots as snapshots_module
 import app.services.user_state as user_state_module
 from app.canonical_models import (
+    ExploreFacetReadModel,
     Film,
     FilmDetailReadModel,
     LibraryFilmReadModel,
@@ -129,6 +130,19 @@ class ProjectionTests(unittest.TestCase):
         ):
             self.assertEqual(projection_cli.main(["verify"]), 2)
         self.assertEqual(self.database_path.read_bytes(), before)
+
+    def test_sqlite_summary_matches_full_verification_for_escaped_composite_ids(self):
+        self._seed("Digest")
+        with Session(self.engine) as session:
+            row = session.exec(select(ExploreFacetReadModel)).first()
+            self.assertIsNotNone(row)
+            row.facet_key = '名:"quoted"\nwith\\slashes'
+            row.source_hash = projection_coordinator._expected_hash(row)
+            session.add(row)
+            session.flush()
+            projection_coordinator.refresh_states(session)
+            session.flush()
+            self.assertEqual(projection_coordinator.verify_session(session)["status"], "passed")
 
     def test_cli_rebuild_repairs_corrupt_projection_even_when_startup_would_fail(self):
         film_id = self._seed("Repair")

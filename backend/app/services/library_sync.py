@@ -8,10 +8,13 @@ from app.services.event_store import event_store
 from app.services.library import library_manager
 from app.services.scanner import NFOScanner
 from app.services.settings import get_media_dirs
-from sqlmodel import Session
+from sqlmodel import Session, select
 from app import database
-from app.canonical_models import Setting, canonical_utc_now_iso
+from app.canonical_models import LibraryFilmReadModel, MediaAsset, Setting, canonical_utc_now_iso
 from app.services.media_roots import configured_root, directory_status, root_id, explicitly_absent, safe_path
+
+
+SCAN_BATCH_SIZE = 20
 
 
 class LibrarySyncService:
@@ -69,21 +72,28 @@ class LibrarySyncService:
                 self._check_scan(ctx, root, enforce_config)
                 row.update(scanned=len(observed), errors=len(scanner.errors),
                            skipped_links=scanner.skipped_links)
-                self._progress(ctx, "persist", "Persisting Canonical observations")
-                row["added"] = library_manager.add_observations(
-                    [item.film for item in observed],
-                    structured_observations=[item.structured_metadata for item in observed],
-                    check_observation=(lambda payload: self._validate_observation(payload, root, ctx)) if enforce_config else None)
-                row["state"] = "partial" if scanner.errors else "complete"
                 total["scanned"] += row["scanned"]
-                total["added"] += row["added"]
+                self._progress(ctx, "persist", "Persisting Canonical observations")
+                for offset in range(0, len(observed), SCAN_BATCH_SIZE):
+                    self._check_scan(ctx, root, enforce_config)
+                    batch = observed[offset:offset + SCAN_BATCH_SIZE]
+                    added = library_manager.add_observations(
+                        [item.film for item in batch],
+                        structured_observations=[item.structured_metadata for item in batch],
+                        check_observation=(lambda session, payload: self._validate_observation(
+                            payload, root, ctx, session=session)) if enforce_config else None,
+                    )
+                    row["added"] += added
+                    total["added"] += added
+                row["state"] = "partial" if scanner.errors else "complete"
             self._progress(ctx, "reconcile_missing", "Checking complete scan coverage")
             # Any incomplete root suppresses missing reconciliation for this run.
             if results and all(row["state"] == "complete" for row in results):
                 for root in roots:
                     self._check_scan(ctx, root, enforce_config)
                 total["missing"] = library_manager.mark_missing_not_seen_since(
-                    started_at, roots=roots, check_cancelled=lambda: self._check_roots(ctx, roots, enforce_config))
+                    started_at, roots=roots,
+                    check_cancelled=lambda session: self._check_roots(ctx, roots, enforce_config, session=session))
             total["incomplete_roots"] = sum(row["state"] != "complete" for row in results)
             result = {**total, "roots": results,
                       "complete": bool(results) and all(row["state"] == "complete" for row in results)}
@@ -103,22 +113,25 @@ class LibrarySyncService:
                 last_error=type(exc).__name__, last_result={**total, "roots": results, "complete": False})
             raise
 
-    def _validate_observation(self, payload, root, ctx):
-        self._check_scan(ctx, root, True)
+    def _validate_observation(self, payload, root, ctx, *, session=None):
+        self._check_scan(ctx, root, True, session=session)
         for key in ("media_path", "folder_path", "nfo_path"):
             if payload.get(key):
-                configured_root(Path(payload[key]))
+                safe_path(payload[key], root)
 
-    def _check_scan(self, ctx, root, enforce_config):
+    def _check_scan(self, ctx, root, enforce_config, *, session=None):
         if ctx is not None and hasattr(ctx, "raise_if_cancelled"):
-            ctx.raise_if_cancelled()
-        if enforce_config and Path(root) != configured_root(Path(root)):
+            if session is None:
+                ctx.raise_if_cancelled()
+            else:
+                ctx.raise_if_cancelled(session=session)
+        if enforce_config and Path(root) != configured_root(root, session=session):
             raise ValueError("Media configuration changed during scan")
         safe_path(root, root)
 
-    def _check_roots(self, ctx, roots, enforce_config):
+    def _check_roots(self, ctx, roots, enforce_config, *, session=None):
         for root in roots:
-            self._check_scan(ctx, root, enforce_config)
+            self._check_scan(ctx, root, enforce_config, session=session)
 
     def refresh_item(self, library_item_id: str, *, ctx=None) -> dict:
         """Refresh one local edition from its current video locator."""
@@ -246,25 +259,29 @@ class LibrarySyncService:
             ctx.raise_if_cancelled()
 
     def _video_probe_cache(self) -> dict[str, dict]:
-        cache: dict[str, dict] = {}
-        for film in library_manager.list_operation_contexts():
-            locator = film.get("media_path")
-            if locator:
-                cache[locator] = {
-                    "media_path": locator,
-                    "file_size": film.get("file_size"),
-                    "file_mtime": film.get("file_mtime"),
-                    "video_width": film.get("video_width"),
-                    "video_height": film.get("video_height"),
-                    "video_codec": film.get("video_codec"),
-                    "video_bitrate": film.get("video_bitrate"),
-                    "video_duration": film.get("video_duration"),
-                    "video_fps": film.get("video_fps"),
-                    "video_dynamic_range": film.get("video_dynamic_range"),
-                    "video_bit_depth": film.get("video_bit_depth"),
-                    "audio_tracks": film.get("audio_tracks"),
-                }
-        return cache
+        # The same primary edition and first live video as the operation context,
+        # without constructing the canonical film, profile, credits and artwork.
+        primary = LibraryFilmReadModel
+        first_video = (
+            select(MediaAsset.id)
+            .where(MediaAsset.library_item_id == primary.primary_item_id,
+                   MediaAsset.asset_kind == "video", MediaAsset.availability_status != "retired")
+            .order_by(MediaAsset.id).limit(1).correlate(primary).scalar_subquery()
+        )
+        statement = (
+            select(
+                MediaAsset.locator.label("media_path"), MediaAsset.file_size, MediaAsset.file_mtime,
+                MediaAsset.width.label("video_width"), MediaAsset.height.label("video_height"),
+                MediaAsset.codec.label("video_codec"), MediaAsset.bitrate.label("video_bitrate"),
+                MediaAsset.duration_seconds.label("video_duration"), MediaAsset.fps.label("video_fps"),
+                MediaAsset.dynamic_range.label("video_dynamic_range"), MediaAsset.bit_depth.label("video_bit_depth"),
+                MediaAsset.stream_metadata.label("audio_tracks"),
+            )
+            .select_from(primary).join(MediaAsset, MediaAsset.id == first_video)
+            .where(primary.visible.is_(True)).order_by(primary.film_id)
+        )
+        with Session(database.engine) as session:
+            return {row["media_path"]: dict(row) for row in session.execute(statement).mappings() if row["media_path"]}
 
 
 library_sync_service = LibrarySyncService()

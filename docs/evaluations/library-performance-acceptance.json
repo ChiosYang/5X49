@@ -1,0 +1,720 @@
+{
+  "measuredSource": {
+    "commit": "3daacbe7546e235c098623a7cca08e16bd54be63",
+    "matchedProductAndWorkloadFiles": 428,
+    "sourceManifestSha256": "1b9d7eaf75a2840a88b0de502cd4c70a227baa31d9c9400a4070d9a6dbc9b787"
+  },
+  "officialBaseline": "f9dfbd40e96496c85a0d48a0e37b4a8dc2d24f19",
+  "officialWorkloadSha256": "3185c1000cd5706e791f69ce5d7a3de8c0500000035108a2b2baf0d82fa363f8",
+  "officialComparison": {
+    "write.favorite": {
+      "n": 20,
+      "baselineP95": 350.49,
+      "finalP95": 105.9,
+      "baselineMedian": 331.49,
+      "finalMedian": 100
+    },
+    "write.metadata": {
+      "n": 20,
+      "baselineP95": 360.34,
+      "finalP95": 111.48,
+      "baselineMedian": 331.8,
+      "finalMedian": 100.73
+    },
+    "write.viewing-create": {
+      "n": 20,
+      "baselineP95": 339.11,
+      "finalP95": 108.41,
+      "baselineMedian": 332.36,
+      "finalMedian": 100.01
+    },
+    "api.catalog": {
+      "n": 25,
+      "baselineP95": 177.25,
+      "finalP95": 96.7,
+      "baselineMedian": 91.24,
+      "finalMedian": 66.76
+    },
+    "metadata.confirm-fixture": {
+      "n": 1,
+      "baselineP95": null,
+      "finalP95": null,
+      "baselineMedian": 9737.35,
+      "finalMedian": 380.86
+    },
+    "job.organize-fixture": {
+      "n": 1,
+      "baselineP95": null,
+      "finalP95": null,
+      "baselineMedian": 17829.61,
+      "finalMedian": 1443.71
+    }
+  },
+  "sameMedia": {
+    "files": {
+      ".mp4": 1000,
+      ".nfo": 1000
+    },
+    "sha256": "1c40e5365a7124b4583cd45c511a20712d05c7d3b65e93c65fe39dae201be5b8",
+    "seed": 549,
+    "fixture": "normal/valid",
+    "films": 1000
+  },
+  "scans": {
+    "runs": [
+      {
+        "elapsedMs": 444075.62,
+        "status": "succeeded",
+        "step": "finalize",
+        "visible": 1000,
+        "workflowAndSyncPolls": 1025,
+        "result": {
+          "scanned": 1000,
+          "added": 1000,
+          "missing": 0,
+          "incomplete_roots": 0,
+          "roots": [
+            {
+              "id": "1477080bce83219b3ad4a67d",
+              "state": "complete",
+              "scanned": 1000,
+              "added": 1000,
+              "errors": 0,
+              "skipped_links": 0
+            }
+          ],
+          "complete": true
+        }
+      },
+      {
+        "elapsedMs": 120022.04,
+        "status": "succeeded",
+        "step": "finalize",
+        "visible": 1000,
+        "workflowAndSyncPolls": 412,
+        "result": {
+          "scanned": 1000,
+          "added": 0,
+          "missing": 0,
+          "incomplete_roots": 0,
+          "roots": [
+            {
+              "id": "1477080bce83219b3ad4a67d",
+              "state": "complete",
+              "scanned": 1000,
+              "added": 0,
+              "errors": 0,
+              "skipped_links": 0
+            }
+          ],
+          "complete": true
+        }
+      },
+      {
+        "elapsedMs": 215742.91,
+        "status": "succeeded",
+        "step": "finalize",
+        "visible": 1000,
+        "workflowAndSyncPolls": 498,
+        "result": {
+          "scanned": 1000,
+          "added": 1000,
+          "missing": 0,
+          "incomplete_roots": 0,
+          "roots": [
+            {
+              "id": "1477080bce83219b3ad4a67d",
+              "state": "complete",
+              "scanned": 1000,
+              "added": 1000,
+              "errors": 0,
+              "skipped_links": 0
+            }
+          ],
+          "complete": true
+        }
+      },
+      {
+        "elapsedMs": 140046.34,
+        "status": "succeeded",
+        "step": "finalize",
+        "visible": 1000,
+        "workflowAndSyncPolls": 467,
+        "result": {
+          "scanned": 1000,
+          "added": 0,
+          "missing": 0,
+          "incomplete_roots": 0,
+          "roots": [
+            {
+              "id": "1477080bce83219b3ad4a67d",
+              "state": "complete",
+              "scanned": 1000,
+              "added": 0,
+              "errors": 0,
+              "skipped_links": 0
+            }
+          ],
+          "complete": true
+        }
+      },
+      {
+        "elapsedMs": 197864.61,
+        "status": "succeeded",
+        "step": "finalize",
+        "visible": 1000,
+        "workflowAndSyncPolls": 545,
+        "result": {
+          "scanned": 1000,
+          "added": 1000,
+          "missing": 0,
+          "incomplete_roots": 0,
+          "roots": [
+            {
+              "id": "1477080bce83219b3ad4a67d",
+              "state": "complete",
+              "scanned": 1000,
+              "added": 1000,
+              "errors": 0,
+              "skipped_links": 0
+            }
+          ],
+          "complete": true
+        }
+      },
+      {
+        "elapsedMs": 118583.28,
+        "status": "succeeded",
+        "step": "finalize",
+        "visible": 1000,
+        "workflowAndSyncPolls": 396,
+        "result": {
+          "scanned": 1000,
+          "added": 0,
+          "missing": 0,
+          "incomplete_roots": 0,
+          "roots": [
+            {
+              "id": "1477080bce83219b3ad4a67d",
+              "state": "complete",
+              "scanned": 1000,
+              "added": 0,
+              "errors": 0,
+              "skipped_links": 0
+            }
+          ],
+          "complete": true
+        }
+      },
+      {
+        "elapsedMs": 124323.48,
+        "status": "succeeded",
+        "step": "finalize",
+        "visible": 1000,
+        "workflowAndSyncPolls": 296,
+        "result": {
+          "scanned": 1000,
+          "added": 700,
+          "missing": 0,
+          "incomplete_roots": 0,
+          "roots": [
+            {
+              "id": "1477080bce83219b3ad4a67d",
+              "state": "complete",
+              "scanned": 1000,
+              "added": 700,
+              "errors": 0,
+              "skipped_links": 0
+            }
+          ],
+          "complete": true
+        }
+      }
+    ],
+    "pollErrors": [],
+    "statusPolls": 3639,
+    "inventoryChecks": [
+      {
+        "round": 1,
+        "uniqueFilms": 1000,
+        "uniquePrimaryEditions": 1000,
+        "sameIdsAfterRescan": true,
+        "sha256": "155c725dbcefd61206c06ec9d156df9e4894b545478ee3319d8ee904812d53c7"
+      },
+      {
+        "round": 2,
+        "uniqueFilms": 1000,
+        "uniquePrimaryEditions": 1000,
+        "sameIdsAfterRescan": true,
+        "sha256": "280137febd8202bd78b8c1c70e0e53b2ee4751c5e7d6bf5855f00ceecbcb8eb1"
+      },
+      {
+        "round": 3,
+        "uniqueFilms": 1000,
+        "uniquePrimaryEditions": 1000,
+        "sameIdsAfterRescan": true,
+        "sha256": "a628950475638a9b53ace149366a64ca5e717229f6bd402ba8911208751263d2"
+      }
+    ],
+    "cancel": {
+      "partial": 300,
+      "retryAdded": 700,
+      "finalUnique": 1000,
+      "missingAfterCancel": 0,
+      "missingAfterRetry": 0,
+      "cancelledWorkflow": "wf_43fba7e95c3f4c9eb53c68a9543139f6"
+    },
+    "allFourFinalDatabasesMatchEntireNfoTmdbSet": true
+  },
+  "snapshotComparison": {
+    "base": "0cb429d",
+    "before": {
+      "runs": [
+        {
+          "confirm": 30758.46,
+          "organize": 70581.83
+        },
+        {
+          "confirm": 38014.89,
+          "organize": 62953.14
+        },
+        {
+          "confirm": 34356.3,
+          "organize": 68124.7
+        }
+      ],
+      "pollErrors": [],
+      "catalog": {
+        "limit=24": "48657281cb918c8f07a41d9514c474de0a11c966424590a849cb900b1269b490",
+        "featured=true&limit=6": "a5638a370a46b68d1fc6d03d6e57658a284d747a433be95874308962ea32abea",
+        "offset=2&limit=3": "5ea3699b55979761872fb20de6a04c728a988e982dc902d388085054a6abbf3a",
+        "category=director": "59fedf0a82759e1ce501035a67a071806913cf05b9d4e8d5f14559bb9aa929b2",
+        "category=country": "2f21a8704f62d62d5b44e9ecddfd1ec90e889daa4faa89997dab59e9fbd605f6",
+        "category=decade": "d23136a2ac7412492b4b915fb31063decbfe97134c45491970131b485f5c3f7b",
+        "q=Director": "835c6c9c14cbaacfb00b4a57fe312a990ee5deec64806bca059ae4c7b1b4cfd2",
+        "q=us": "0a4701d0114ade4cf8f492ab96ceb006cad7ffb5de0ad7839cdfce30880e7af5"
+      },
+      "samples": {
+        "catalog": [
+          87.21,
+          144.39,
+          72.96,
+          72.94,
+          72.36,
+          165.98,
+          93.27,
+          98.46,
+          77.86,
+          149.97,
+          83.62,
+          118.21,
+          201.06,
+          94.12,
+          98.57,
+          96.77,
+          173.65,
+          103.19,
+          82.91,
+          92.87,
+          163.77,
+          75.67,
+          94.14,
+          174.37,
+          75.71
+        ],
+        "favorite": [
+          341.74,
+          354.26,
+          355.67,
+          341.27,
+          251.73,
+          350.76,
+          330.81,
+          328.69,
+          383.11,
+          382.11,
+          371.64,
+          329.34,
+          356.85,
+          322.21,
+          352.38,
+          303.35,
+          330.25,
+          261.84,
+          392.94,
+          340.0
+        ],
+        "metadata": [
+          333.49,
+          260.95,
+          354.38,
+          346.64,
+          354.84,
+          325.13,
+          392.98,
+          486.46,
+          412.74,
+          334.0,
+          336.98,
+          343.02,
+          252.87,
+          320.82,
+          462.52,
+          348.76,
+          331.69,
+          350.8,
+          351.9,
+          341.26
+        ],
+        "viewing": [
+          415.36,
+          372.33,
+          340.14,
+          361.78,
+          323.2,
+          329.66,
+          247.69,
+          344.11,
+          330.52,
+          394.9,
+          301.98,
+          358.2,
+          334.8,
+          328.35,
+          334.93,
+          324.97,
+          332.39,
+          342.75,
+          349.28,
+          356.57
+        ]
+      }
+    },
+    "after": {
+      "runs": [
+        {
+          "confirm": 733.54,
+          "organize": 1865.09
+        },
+        {
+          "confirm": 1462.71,
+          "organize": 3415.26
+        },
+        {
+          "confirm": 642.29,
+          "organize": 1070.32
+        }
+      ],
+      "pollErrors": [],
+      "catalog": {
+        "limit=24": "48657281cb918c8f07a41d9514c474de0a11c966424590a849cb900b1269b490",
+        "featured=true&limit=6": "a5638a370a46b68d1fc6d03d6e57658a284d747a433be95874308962ea32abea",
+        "offset=2&limit=3": "5ea3699b55979761872fb20de6a04c728a988e982dc902d388085054a6abbf3a",
+        "category=director": "59fedf0a82759e1ce501035a67a071806913cf05b9d4e8d5f14559bb9aa929b2",
+        "category=country": "2f21a8704f62d62d5b44e9ecddfd1ec90e889daa4faa89997dab59e9fbd605f6",
+        "category=decade": "d23136a2ac7412492b4b915fb31063decbfe97134c45491970131b485f5c3f7b",
+        "q=Director": "835c6c9c14cbaacfb00b4a57fe312a990ee5deec64806bca059ae4c7b1b4cfd2",
+        "q=us": "0a4701d0114ade4cf8f492ab96ceb006cad7ffb5de0ad7839cdfce30880e7af5"
+      },
+      "samples": {
+        "catalog": [
+          82.68,
+          65.49,
+          78.31,
+          71.52,
+          69.13,
+          77.27,
+          202.06,
+          63.03,
+          55.98,
+          76.25,
+          69.59,
+          76.78,
+          72.9,
+          75.65,
+          79.71,
+          60.16,
+          76.11,
+          64.05,
+          66.83,
+          75.74,
+          70.32,
+          69.06,
+          64.32,
+          70.95,
+          66.49
+        ],
+        "favorite": [
+          104.85,
+          109.57,
+          88.71,
+          100.93,
+          94.78,
+          114.21,
+          123.15,
+          99.02,
+          140.95,
+          104.09,
+          119.47,
+          135.24,
+          116.68,
+          136.62,
+          126.55,
+          101.12,
+          123.68,
+          103.72,
+          88.53,
+          126.15
+        ],
+        "metadata": [
+          120.48,
+          101.66,
+          83.61,
+          96.91,
+          113.91,
+          104.08,
+          115.8,
+          133.15,
+          101.49,
+          101.95,
+          117.97,
+          122.6,
+          147.44,
+          113.83,
+          114.91,
+          130.86,
+          106.57,
+          126.16,
+          92.17,
+          131.16
+        ],
+        "viewing": [
+          93.62,
+          96.9,
+          106.85,
+          105.63,
+          121.2,
+          99.36,
+          138.47,
+          127.39,
+          110.57,
+          122.92,
+          107.23,
+          116.19,
+          103.68,
+          101.02,
+          120.36,
+          101.87,
+          116.6,
+          103.66,
+          106.37,
+          123.39
+        ]
+      }
+    },
+    "sixVideoMovesVerified": true,
+    "catalogueHashEncoding": "SHA-256 of sorted-key JSON including full ordered arrays and preview payloads"
+  },
+  "smallLibraryAlternatingWritesMs": {
+    "before": {
+      "favorite": [
+        68.14,
+        61.92,
+        65.69,
+        57.36,
+        68.68,
+        70.74,
+        63.25,
+        70.33,
+        73.15,
+        70.8,
+        81.0,
+        71.06,
+        62.39,
+        66.02,
+        67.89,
+        66.65,
+        68.29,
+        67.63,
+        64.8,
+        73.16
+      ],
+      "viewing": [
+        72.38,
+        81.08,
+        60.18,
+        55.83,
+        83.57,
+        90.94,
+        65.23,
+        63.38,
+        79.11,
+        75.93,
+        90.79,
+        86.68,
+        75.25,
+        68.06,
+        73.58,
+        67.19,
+        79.45,
+        70.53,
+        65.33,
+        69.95
+      ],
+      "metadata": [
+        82.27,
+        71.54,
+        75.57,
+        68.37,
+        57.63,
+        54.4,
+        65.61,
+        58.16,
+        67.17,
+        82.09,
+        70.25,
+        68.62,
+        71.13,
+        80.04,
+        69.43,
+        70.97,
+        66.64,
+        64.04,
+        78.5,
+        58.52
+      ]
+    },
+    "after": {
+      "favorite": [
+        53.68,
+        101.29,
+        67.99,
+        69.21,
+        59.59,
+        75.08,
+        62.25,
+        55.39,
+        74.34,
+        66.48,
+        74.35,
+        69.32,
+        60.1,
+        62.97,
+        61.7,
+        62.93,
+        65.64,
+        65.47,
+        62.42,
+        71.75
+      ],
+      "viewing": [
+        62.55,
+        80.78,
+        80.33,
+        66.76,
+        56.96,
+        70.93,
+        52.81,
+        66.4,
+        70.14,
+        60.43,
+        64.88,
+        54.57,
+        74.11,
+        69.9,
+        79.13,
+        67.36,
+        61.06,
+        63.97,
+        58.6,
+        70.71
+      ],
+      "metadata": [
+        60.52,
+        51.61,
+        52.75,
+        60.22,
+        60.36,
+        73.22,
+        72.81,
+        70.02,
+        76.35,
+        81.84,
+        56.34,
+        54.79,
+        54.3,
+        59.29,
+        62.41,
+        53.75,
+        53.2,
+        69.77,
+        65.4,
+        55.36
+      ]
+    }
+  },
+  "browser": {
+    "chromium": "156.0.8078.4",
+    "films": 1000,
+    "detailFavoriteOnReload": true,
+    "detailTitleOnReopen": true,
+    "diaryTitleAndNewReviewOnReopen": true,
+    "viewingRating": 4,
+    "dnaBefore": 200,
+    "dnaAfter": 201
+  },
+  "legacyProjectionVerification": {
+    "version": "0cb429d",
+    "checkedViews": {
+      "cinema_dna": {
+        "status": "passed",
+        "row_count": 200,
+        "digest": "56ab375740722927",
+        "version": "cinema-dna-film.v1"
+      },
+      "library": {
+        "status": "passed",
+        "row_count": 1000,
+        "digest": "8f0ceefc225a6a4e",
+        "version": "library-film.v3"
+      },
+      "detail": {
+        "status": "passed",
+        "row_count": 1000,
+        "digest": "377bddb9b575e2b7",
+        "version": "film-detail.v3"
+      },
+      "search": {
+        "status": "passed",
+        "row_count": 1000,
+        "digest": "e455f60f20204309",
+        "version": "film-search.v3"
+      },
+      "explore_films": {
+        "status": "passed",
+        "row_count": 1000,
+        "digest": "eab8ffae6f92b8ac",
+        "version": "factual-explore-film.v1"
+      },
+      "explore_facets": {
+        "status": "passed",
+        "row_count": 5000,
+        "digest": "fb8fed60f3533543",
+        "version": "factual-explore-facet.v1"
+      },
+      "graph_nodes": {
+        "status": "passed",
+        "row_count": 1036,
+        "digest": "8f6a76c1aed386a4",
+        "version": "graph-node.v1"
+      },
+      "graph_edges": {
+        "status": "passed",
+        "row_count": 3000,
+        "digest": "1981bd6aed3d67b6",
+        "version": "graph-edge.v1"
+      }
+    },
+    "oldReprojectedSubjectMatches": true
+  }
+}

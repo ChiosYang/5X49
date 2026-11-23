@@ -1,3 +1,4 @@
+from contextlib import nullcontext
 from datetime import datetime, timezone
 from typing import Optional
 from uuid import uuid4
@@ -153,9 +154,9 @@ class JobStore:
             session.refresh(job)
             return job.model_dump()
 
-    def is_cancel_requested(self, job_id: str) -> bool:
-        with Session(engine) as session:
-            job = session.get(Job, job_id)
+    def is_cancel_requested(self, job_id: str, *, session: Session | None = None) -> bool:
+        with (Session(engine) if session is None else nullcontext(session)) as reader:
+            job = reader.get(Job, job_id)
             return bool(job and job.cancel_requested)
 
     def retry(self, job_id: str) -> Optional[dict]:

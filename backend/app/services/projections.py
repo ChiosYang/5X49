@@ -121,7 +121,6 @@ class ProjectionCoordinator:
 
         film = effective_film(session, session.get(Film, film_id))
         detail = library_manager._canonical_film_view(session, film_id, include_editions=True)
-        summary = library_manager._canonical_film_view(session, film_id, include_editions=False)
         if detail is None:
             self._delete_film_views(session, film_id)
         else:
@@ -130,14 +129,12 @@ class ProjectionCoordinator:
             from app.services.language_metadata import resolved_languages
             languages = resolved_languages(session, film_id)
             detail = self._safe_payload({**detail, **languages, "resolved_sources": sources})
-            summary_payload = summary or {key: value for key, value in detail.items() if key != "editions"}
-            summary_payload = self._safe_payload(
-                {**summary_payload, **languages, "resolved_sources": sources}
-            )
-            self._upsert_library(session, film_id, summary_payload, visible=summary is not None)
+            visible = any(edition["status"] != "ignored" for edition in detail["editions"])
+            summary_payload = {key: value for key, value in detail.items() if key != "editions"}
+            self._upsert_library(session, film_id, summary_payload, visible=visible)
             self._upsert_detail(session, film_id, detail)
             self._upsert_search(session, film_id, detail)
-            if summary is None or film is None:
+            if not visible or film is None:
                 self._delete_explore_views(session, film_id)
             else:
                 self._refresh_explore(session, film, summary_payload, resolved)
@@ -202,14 +199,25 @@ class ProjectionCoordinator:
     def refresh_states(self, session: Session, *, rebuilt: bool = False) -> None:
         now = _now()
         for name, model in _TABLES.items():
-            rows = session.exec(select(model)).all()
-            digest = _hash(sorted((self._row_id(row), row.source_hash) for row in rows))
+            # Match the compact UTF-8 JSON of sorted (stable ID, hash) pairs
+            # used by verify_session. SQLite already owns both strings.
+            first, *rest = model.__table__.primary_key.columns
+            row_id = first
+            for key in rest:
+                row_id = row_id + ":" + key
+            pairs = (select(row_id.label("row_id"), model.source_hash)
+                     .order_by(row_id.collate("BINARY"), model.source_hash).subquery())
+            count, encoded = session.execute(
+                select(func.count(), func.json_group_array(func.json_array(pairs.c.row_id, pairs.c.source_hash)))
+                .select_from(pairs)
+            ).one()
+            digest = hashlib.sha256(encoded.encode("utf-8")).hexdigest()
             state = session.get(ProjectionState, name)
             if state is None:
                 state = ProjectionState(name=name, projection_version=PROJECTION_VERSIONS[name])
             state.projection_version = PROJECTION_VERSIONS[name]
             state.status = "ready"
-            state.row_count = len(rows)
+            state.row_count = count
             state.digest = digest
             state.rebuilt_at = now if rebuilt or state.rebuilt_at is None else state.rebuilt_at
             state.updated_at = now
