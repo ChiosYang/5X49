@@ -61,25 +61,59 @@ export default function CinemaDnaClient() {
 
   return (
     <section aria-label={t("title")} className="space-y-8">
-      <p className="type-meta text-ink-subtle">{t("allTime")}</p>
-
-      <dl className="grid grid-cols-1 divide-y divide-line border-y border-line sm:grid-cols-3 sm:divide-x sm:divide-y-0">
+      <dl className="grid grid-cols-1 divide-y divide-line border-b border-line sm:grid-cols-3 sm:divide-x sm:divide-y-0">
         {(["watched_films", "viewing_records", "rated_films"] as const).map((key) => (
-          <div key={key} className="min-w-0 px-3 py-5 sm:px-6">
+          <div key={key} className="min-w-0 px-3 py-5 sm:px-6 sm:first:pl-0">
             <dt className="type-label text-ink-subtle">{t(`totals.${key}`)}</dt>
             <dd className="mt-3 text-4xl font-light tabular-nums sm:text-5xl">{number(summary.totals[key])}</dd>
           </div>
         ))}
       </dl>
 
-      <div className="flex flex-wrap gap-2" role="group" aria-label={t("metricLabel")}>
-        {(["exposure", "preference"] as DnaMetric[]).map((metric) => (
-          <Button key={metric} variant={query.metric === metric ? "primary" : "secondary"} aria-pressed={query.metric === metric} onClick={() => navigate({ metric })}>{t(metric)}</Button>
-        ))}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div
+          className="inline-flex w-fit items-stretch border border-line-strong bg-surface-raised"
+          role="group"
+          aria-label={t("metricLabel")}
+        >
+          {(["exposure", "preference"] as DnaMetric[]).map((metric) => {
+            const active = query.metric === metric;
+            return (
+              <button
+                key={metric}
+                type="button"
+                aria-pressed={active}
+                onClick={() => navigate({ metric })}
+                className={`focus-ring duration-standard inline-flex min-h-10 items-center px-4 text-xs font-semibold tracking-wider transition-colors ${
+                  active ? "bg-inverse text-inverse-ink" : "text-ink-subtle hover:text-ink"
+                }`}
+              >
+                {t(metric)}
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="flex flex-wrap items-center gap-x-6 gap-y-2" role="group" aria-label={t("dimensionLabel")}>
+          {DNA_DIMENSIONS.map((dimension) => {
+            const active = query.dimension === dimension;
+            return (
+              <button
+                key={dimension}
+                type="button"
+                aria-pressed={active}
+                onClick={() => navigate({ dimension })}
+                className={`focus-ring duration-fast inline-flex min-h-10 items-center border-b-2 text-xs font-medium tracking-wider transition-colors ${
+                  active ? "border-ink text-ink" : "border-transparent text-ink-subtle hover:text-ink"
+                }`}
+              >
+                {t(`dimensions.${dimension}`)}
+              </button>
+            );
+          })}
+        </div>
       </div>
-      <p className="max-w-3xl text-sm leading-7 text-ink-muted">{t(query.metric === "exposure" ? "exposureBasis" : "preferenceBasis", {
-        global: summary.thresholds.global_rated_films, category: summary.thresholds.category_rated_films,
-      })}</p>
+
       {query.metric === "preference" && summary.needed_global_ratings > 0 ? (
         <div className="flex items-start gap-3 border border-line bg-surface px-5 py-4 text-sm leading-7 text-ink-muted" role="status">
           <Info className="mt-1 h-4 w-4 shrink-0" aria-hidden />
@@ -87,17 +121,10 @@ export default function CinemaDnaClient() {
         </div>
       ) : null}
 
-      <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap" role="group" aria-label={t("dimensionLabel")}>
-        {DNA_DIMENSIONS.map((dimension) => (
-          <Button key={dimension} aria-pressed={query.dimension === dimension} variant={query.dimension === dimension ? "primary" : "ghost"} onClick={() => navigate({ dimension })}>{t(`dimensions.${dimension}`)}</Button>
-        ))}
-      </div>
-
       <div aria-live="polite" aria-busy={facets.isLoading}>
         {facets.error ? <div><StateMessage state="error">{t("error")}</StateMessage><Button onClick={() => void facets.mutate()}>{t("retry")}</Button></div>
           : !page ? <StateMessage state="loading">{t("loading")}</StateMessage>
           : <>
-            <p className="mb-6 text-xs leading-6 text-ink-subtle">{t("coverage", { covered: page.coverage.covered_films, conflicted: page.coverage.conflicted_films, missing: page.coverage.missing_films, total: page.coverage.total_films })}</p>
             {page.items.length === 0 ? (
               <StateMessage>{t(summary.totals.watched_films === 0 ? "emptyHistory" : query.offset > 0 ? "emptyPage" : query.metric === "preference" ? "emptyPreference" : "emptyFacts")}</StateMessage>
             ) : <ol className="divide-y divide-line border-y border-line">
@@ -111,7 +138,7 @@ export default function CinemaDnaClient() {
                       </div>
                       <span className="shrink-0 text-lg tabular-nums">{query.metric === "exposure" ? percent(facet.share) : `${stars(facet.preference!)} / 5`}</span>
                     </div>
-                    <div className="my-3 h-1 w-full bg-line" aria-hidden>
+                    <div className="my-3 h-0.5 w-full bg-line" aria-hidden>
                       <div className="h-full bg-ink-muted" style={{ width: `${Math.min(100, (query.metric === "exposure" ? facet.share || 0 : (facet.preference || 0) / 5) * 100)}%` }} />
                     </div>
                     <div className="flex flex-wrap items-center justify-between gap-x-5 gap-y-2 text-xs leading-6 text-ink-subtle">
@@ -168,8 +195,15 @@ export default function CinemaDnaClient() {
 
       <details className="border-t border-line py-5 text-sm leading-7 text-ink-subtle">
         <summary className="focus-ring cursor-pointer font-semibold text-ink-muted">{t("methodTitle")}</summary>
-        <p className="mt-4 max-w-3xl">{t("method")}</p>
-        <p className="mt-2 type-meta">{summary.formula_version}</p>
+        <div className="mt-4 max-w-3xl space-y-2.5 text-xs leading-6">
+          <p className="type-meta text-ink-subtle">{t("allTime")}</p>
+          <p>{t(query.metric === "exposure" ? "exposureBasis" : "preferenceBasis", {
+            global: summary.thresholds.global_rated_films, category: summary.thresholds.category_rated_films,
+          })}</p>
+          {page ? <p>{t("coverage", { covered: page.coverage.covered_films, conflicted: page.coverage.conflicted_films, missing: page.coverage.missing_films, total: page.coverage.total_films })}</p> : null}
+          <p>{t("method")}</p>
+          <p className="type-meta">{summary.formula_version}</p>
+        </div>
       </details>
     </section>
   );

@@ -104,7 +104,7 @@
     "restore": "解压 ZIP，按 RESTORE.txt 使用现有离线 CLI 校验与恢复。请先在新临时环境验证，并关闭目录监听；恢复后重新配置媒体目录与 API 密钥。片库路径及个人记录仍属私密数据。诊断错误会被清理，个人内容保留；由于不含外部清单，文件操作撤销不可用。此数据库备份与普通业务 JSON 导出不同。"
   },
   "FilmMetadata": {
-    "heading": "基础资料", "edit": "编辑基础资料",
+    "heading": "基础资料", "archiveHeading": "档案与文件信息", "expandDetails": "展开详情", "collapseDetails": "收起详情", "edit": "编辑基础资料",
     "help": "人工修正只保存在 5X49，重新扫描和刮削不会覆盖。编辑不会改写 NFO 或改变影片身份。",
     "title": "标题", "original_title": "原始标题", "year": "年份", "overview": "简介",
     "manual": "人工修正 · 已保护", "automatic": "自动来源",
@@ -945,7 +945,8 @@
     "editionMissing": "缺失",
     "editionIgnoredStatus": "已忽略",
     "sourceLocalFolder": "本地文件夹",
-    "sourceLocalNfo": "本地 NFO"
+    "sourceLocalNfo": "本地 NFO",
+    "editionsSummary": "{count} 个本地版本"
   },
   "FilmGraph": {
     "eyebrow": "电影知识",

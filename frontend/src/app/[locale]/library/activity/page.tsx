@@ -5,10 +5,10 @@ export default async function LibraryActivityPage() {
   const t = await getTranslations("Activity");
 
   return (
-    <div className="min-h-screen bg-black px-8 py-6 text-white selection:bg-white selection:text-black md:px-12 md:py-12">
+    <div className="page-x min-h-screen bg-canvas py-6 text-ink selection:bg-inverse selection:text-inverse-ink md:py-12">
       <div className="w-full space-y-12 pt-32">
         <header>
-          <h1 className="font-serif text-6xl leading-none tracking-tighter md:text-9xl">
+          <h1 className="type-display-editorial">
             {t("title")}
           </h1>
         </header>

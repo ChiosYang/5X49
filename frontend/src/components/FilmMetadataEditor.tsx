@@ -1,6 +1,7 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useRef, useState, type ReactNode } from "react";
+import { ChevronDown } from "lucide-react";
 import useSWR from "swr";
 import { useTranslations } from "next-intl";
 import { useRouter } from "@/i18n/routing";
@@ -13,12 +14,23 @@ import { responseError } from "@/lib/fetcher";
 import { useFilmAction } from "@/hooks/useFilmAction";
 import { metadataFields, metadataDraft, metadataModes, metadataChanges, metadataRequestKey, type MetadataView, type MetadataRequest } from "@/lib/film-metadata";
 
-export default function FilmMetadataEditor({ filmId }: { filmId: string }) {
+export default function FilmMetadataEditor({
+  filmId,
+  archiveSummary,
+  archiveDetails,
+  defaultExpanded = false,
+}: {
+  filmId: string;
+  archiveSummary?: string;
+  archiveDetails?: ReactNode;
+  defaultExpanded?: boolean;
+}) {
   const t = useTranslations("FilmMetadata");
   const router = useRouter();
   const { data, error: readError, mutate } = useSWR<MetadataView>(API.filmMetadata(filmId));
   const refresh = useFilmAction(filmId, { metadata: true });
   const [open, setOpen] = useState(false);
+  const [detailsOpen, setDetailsOpen] = useState(defaultExpanded);
   const [baseline, setBaseline] = useState<MetadataView | null>(null);
   const [draft, setDraft] = useState<ReturnType<typeof metadataDraft> | null>(null);
   const [manual, setManual] = useState<ReturnType<typeof metadataModes> | null>(null);
@@ -87,20 +99,58 @@ export default function FilmMetadataEditor({ filmId }: { filmId: string }) {
     return t(kind === "nfo" ? "sourceNfo" : kind === "tmdb" ? "sourceTmdb" : kind === "filename" ? "sourceFilename" : "sourceLibrary");
   };
 
-  return <section aria-label={t("heading")} className="space-y-5 border-b border-line-strong px-8 py-10 md:px-16">
-    <div className="flex flex-wrap items-center justify-between gap-4">
-      <h2 className="type-section-title">{t("heading")}</h2>
-      <Button onClick={() => { setBaseline(null); setDraft(null); setManual(null); setOpen(true); refresh.clear(); void load(); }}>{t("edit")}</Button>
-    </div>
-    <p className="max-w-3xl text-sm text-ink-muted">{t("help")}</p>
-    {data && <dl className="grid grid-cols-2 gap-4 lg:grid-cols-4">{metadataFields.map(key => <div key={key}>
-      <dt className="type-label text-ink-subtle">{t(key)}</dt>
-      <dd className="mt-2 text-sm text-ink-muted">{data.fields[key].manual ? t("manual") : source(data, key)}</dd>
-    </div>)}</dl>}
-    {readError && <InlineFeedback tone="error">{t("loadFailed")} <button className="focus-ring min-h-11 underline" onClick={() => void mutate()}>{t("retry")}</button></InlineFeedback>}
-    {refresh.feedback && <InlineFeedback tone={refresh.feedback.kind === "refreshFailed" ? "warning" : "success"}>{refresh.feedback.kind === "refreshFailed" ? t("refreshFailed") : t("saved")}</InlineFeedback>}
-    {refresh.feedback?.kind === "refreshFailed" && <Button disabled={refresh.pending} onClick={() => void refresh.retryRefresh()}>{t("refresh")}</Button>}
-    <Dialog open={open} onClose={close} closeLabel={t("cancel")} ariaLabel={t("edit")} size="md" glass={false}
+  const archiveMode = archiveDetails !== undefined;
+
+  return <section aria-label={archiveMode ? t("archiveHeading") : t("heading")} className={archiveMode ? "space-y-6 px-8 py-8 md:px-16 md:py-10" : "space-y-5 border-b border-line-strong px-8 py-10 md:px-16"}>
+    {archiveMode ? (
+      <>
+        <div className="flex flex-col gap-4 border-b border-line pb-6 sm:flex-row sm:items-center sm:justify-between">
+          <div className="min-w-0 flex-1">
+            <h2 className="type-label text-ink-muted">{t("archiveHeading")}</h2>
+            {archiveSummary ? <p className="mt-1.5 break-words text-xs leading-5 text-ink-subtle">{archiveSummary}</p> : null}
+          </div>
+          <div className="flex shrink-0 flex-wrap items-center gap-2">
+            <Button size="sm" variant="ghost" onClick={() => { setBaseline(null); setDraft(null); setManual(null); setOpen(true); refresh.clear(); void load(); }}>{t("edit")}</Button>
+            <Button size="sm" variant="ghost" aria-expanded={detailsOpen} onClick={() => setDetailsOpen((current) => !current)}>
+              {detailsOpen ? t("collapseDetails") : t("expandDetails")}
+              <ChevronDown className={`h-4 w-4 transition-transform duration-fast ${detailsOpen ? "rotate-180" : ""}`} aria-hidden="true" />
+            </Button>
+          </div>
+        </div>
+        {readError && <InlineFeedback tone="error">{t("loadFailed")} <button className="focus-ring min-h-11 underline" onClick={() => void mutate()}>{t("retry")}</button></InlineFeedback>}
+        {refresh.feedback && <InlineFeedback tone={refresh.feedback.kind === "refreshFailed" ? "warning" : "success"}>{refresh.feedback.kind === "refreshFailed" ? t("refreshFailed") : t("saved")}</InlineFeedback>}
+        {refresh.feedback?.kind === "refreshFailed" && <Button disabled={refresh.pending} onClick={() => void refresh.retryRefresh()}>{t("refresh")}</Button>}
+        {detailsOpen ? (
+          <div className="space-y-8 pt-2">
+            {archiveDetails}
+            <div className="space-y-4 border-t border-line pt-6">
+              <h3 className="type-label text-ink-subtle">{t("heading")}</h3>
+              <p className="max-w-3xl text-xs leading-6 text-ink-subtle">{t("help")}</p>
+              {data && <dl className="grid grid-cols-2 gap-4 lg:grid-cols-4">{metadataFields.map(key => <div key={key}>
+                <dt className="type-meta text-ink-subtle">{t(key)}</dt>
+                <dd className="mt-1.5 text-sm text-ink-muted">{data.fields[key].manual ? t("manual") : source(data, key)}</dd>
+              </div>)}</dl>}
+            </div>
+          </div>
+        ) : null}
+      </>
+    ) : (
+      <>
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <h2 className="type-section-title">{t("heading")}</h2>
+          <Button onClick={() => { setBaseline(null); setDraft(null); setManual(null); setOpen(true); refresh.clear(); void load(); }}>{t("edit")}</Button>
+        </div>
+        <p className="max-w-3xl text-sm text-ink-muted">{t("help")}</p>
+        {data && <dl className="grid grid-cols-2 gap-4 lg:grid-cols-4">{metadataFields.map(key => <div key={key}>
+          <dt className="type-label text-ink-subtle">{t(key)}</dt>
+          <dd className="mt-2 text-sm text-ink-muted">{data.fields[key].manual ? t("manual") : source(data, key)}</dd>
+        </div>)}</dl>}
+        {readError && <InlineFeedback tone="error">{t("loadFailed")} <button className="focus-ring min-h-11 underline" onClick={() => void mutate()}>{t("retry")}</button></InlineFeedback>}
+        {refresh.feedback && <InlineFeedback tone={refresh.feedback.kind === "refreshFailed" ? "warning" : "success"}>{refresh.feedback.kind === "refreshFailed" ? t("refreshFailed") : t("saved")}</InlineFeedback>}
+        {refresh.feedback?.kind === "refreshFailed" && <Button disabled={refresh.pending} onClick={() => void refresh.retryRefresh()}>{t("refresh")}</Button>}
+      </>
+    )}
+    <Dialog open={open} onClose={close} closeLabel={t("cancel")} ariaLabel={t("edit")} size="md"
       closeOnBackdrop={false} closeOnEscape={!pending || loading} panelClassName="max-h-[90dvh] overflow-y-auto border border-line-strong">
       <form className="space-y-6 p-5 sm:p-8" onSubmit={event => { event.preventDefault(); void save(); }}>
         <h2 className="type-section-title">{t("edit")}</h2>

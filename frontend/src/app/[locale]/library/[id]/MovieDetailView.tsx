@@ -67,6 +67,53 @@ export default async function MovieDetailView({ film, routeFilmId }: { film: Lib
     { label: t("fileSize"), value: formatFileSize(video?.file_size) },
   ].filter((item) => item.value);
 
+  const archiveSummary = [
+    formatResolution(video?.width, video?.height),
+    video?.codec?.toUpperCase(),
+    formatBitrate(video?.bitrate),
+    video?.fps ? `${video.fps} fps` : null,
+    t("editionsSummary", { count: film.editions.length }),
+  ]
+    .filter(Boolean)
+    .join(" · ");
+
+  const archiveDetails = (
+    <div className="space-y-8">
+      {technicalItems.length > 0 && (
+        <div>
+          <span className="type-label block text-ink-subtle">{t("technicalDetails")}</span>
+          <div className="mt-5 grid grid-cols-2 gap-x-8 gap-y-5 md:grid-cols-4">
+            {technicalItems.map((item) => (
+              <div key={item.label} className="min-w-0 space-y-1">
+                <span className="type-meta block text-ink-subtle">{item.label}</span>
+                <span className="block truncate text-base font-bold text-ink md:text-lg">{item.value}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div className={technicalItems.length > 0 ? "border-t border-line pt-6" : undefined}>
+        <span className="type-label block text-ink-subtle">{t("editions")}</span>
+        <div className="mt-5 grid gap-3 lg:grid-cols-2">
+          {film.editions.map((edition, index) => (
+            <div key={edition.id} className="flex min-w-0 flex-col items-start justify-between gap-4 border border-line p-4 sm:flex-row sm:items-center">
+              <div className="min-w-0 max-w-full sm:flex-1">
+                <p className="truncate font-bold text-ink">{editionLabel(edition, t("edition", { index: index + 1 }))}</p>
+                <p className="type-meta mt-1 truncate text-ink-subtle">{edition.video?.file_name || sourceLabel[edition.source_type] || edition.source_type}</p>
+                {(edition.video?.part_files?.length || 0) > 1 && <p className="type-meta mt-1 break-words text-ink-subtle">{t("splitParts", {count: edition.video!.part_files!.length})}</p>}
+              </div>
+              <div className="flex shrink-0 items-center gap-3">
+                <span className="rounded-pill border border-line px-3 py-1 type-badge text-ink-muted">{statusLabel[edition.status]}</span>
+                <LibraryEditionActions filmId={film.id} itemId={edition.id} primary={edition.id === film.primary_item.id} available={edition.status === "available"} />
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+
   return (
     <MovieArtworkProvider initialFilm={film}>
       <div className="min-h-screen bg-canvas text-ink selection:bg-inverse selection:text-inverse-ink">
@@ -91,8 +138,9 @@ export default async function MovieDetailView({ film, routeFilmId }: { film: Lib
           />
         </div>
 
-        <div className="grid grid-cols-1 gap-12 border-b border-line-strong p-8 md:p-16 lg:grid-cols-3">
-          <div className="space-y-8">
+        <div className="grid grid-cols-1 gap-10 border-b border-line-strong p-8 md:p-16 lg:grid-cols-[minmax(0,19rem)_minmax(0,1fr)] lg:gap-16">
+          <div className="space-y-7">
+            <MovieArtworkPoster title={film.title} />
             <div className="space-y-3">
               <span className="type-label block text-ink-subtle">{t("microGenre")}</span>
               <span className={`block font-serif text-lg text-ink ${/[\u3000-\u9fff\uf900-\ufaff]/.test(film.micro_genre || t("pending")) ? "" : "italic"}`}>
@@ -107,60 +155,33 @@ export default async function MovieDetailView({ film, routeFilmId }: { film: Lib
               </div>
             )}
           </div>
-          <div className="lg:col-span-2">
-            <p className="mb-12 text-xl leading-tight font-bold text-ink-muted md:mb-16 md:text-2xl lg:text-3xl">
+          <div className="min-w-0 space-y-12 md:space-y-14">
+            <p className="max-w-3xl text-xl leading-snug font-bold text-ink-muted md:text-2xl lg:text-3xl">
               {film.overview || t("noDescription")}
             </p>
             {film.external_scores.length > 0 && (
-              <div className="mb-12 md:mb-16">
+              <div>
                 <span className="mb-5 block type-label text-ink-subtle">{t("externalReception")}</span>
                 <ExternalScoreStrip scores={film.external_scores} />
               </div>
             )}
-            <MovieArtworkPoster title={film.title} />
           </div>
         </div>
 
-        {technicalItems.length > 0 && (
-          <section className="border-b border-line-strong px-8 py-10 md:px-16">
-            <span className="type-label block text-ink-subtle">{t("technicalDetails")}</span>
-            <div className="mt-6 grid grid-cols-2 gap-x-8 gap-y-6 md:grid-cols-4">
-              {technicalItems.map((item) => (
-                <div key={item.label} className="min-w-0 space-y-1">
-                  <span className="type-meta block text-ink-subtle">{item.label}</span>
-                  <span className="block truncate text-base font-bold text-ink md:text-lg">{item.value}</span>
-                </div>
-              ))}
-            </div>
-          </section>
-        )}
-
-        <FilmMetadataEditor key={film.id} filmId={film.id} />
         <FilmPersonalState filmId={film.id} initialState={film.profile_state} />
         <MovieViewingSection filmId={film.id} filmTitle={film.title} />
 
+        <MovieAnalysisSection filmId={film.id} initialFilm={film} />
+
         <FilmGraphPanel filmId={film.id} />
 
-        <section className="border-b border-line-strong px-8 py-10 md:px-16">
-          <span className="type-label block text-ink-subtle">{t("editions")}</span>
-          <div className="mt-6 grid gap-3 lg:grid-cols-2">
-            {film.editions.map((edition, index) => (
-              <div key={edition.id} className="flex min-w-0 flex-col items-start justify-between gap-4 border border-line p-4 sm:flex-row sm:items-center">
-                <div className="min-w-0 max-w-full sm:flex-1">
-                  <p className="truncate font-bold text-ink">{editionLabel(edition, t("edition", { index: index + 1 }))}</p>
-                  <p className="type-meta mt-1 truncate text-ink-subtle">{edition.video?.file_name || sourceLabel[edition.source_type] || edition.source_type}</p>
-                  {(edition.video?.part_files?.length || 0) > 1 && <p className="type-meta mt-1 break-words text-ink-subtle">{t("splitParts", {count: edition.video!.part_files!.length})}</p>}
-                </div>
-                <div className="flex shrink-0 items-center gap-3">
-                  <span className="rounded-pill border border-line px-3 py-1 type-badge text-ink-muted">{statusLabel[edition.status]}</span>
-                  <LibraryEditionActions filmId={film.id} itemId={edition.id} primary={edition.id === film.primary_item.id} available={edition.status === "available"} />
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        <MovieAnalysisSection filmId={film.id} initialFilm={film} />
+        <FilmMetadataEditor
+          key={film.id}
+          filmId={film.id}
+          archiveSummary={archiveSummary}
+          defaultExpanded={film.editions.length > 1}
+          archiveDetails={archiveDetails}
+        />
       </div>
     </MovieArtworkProvider>
   );

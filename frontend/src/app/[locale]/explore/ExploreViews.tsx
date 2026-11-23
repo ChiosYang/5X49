@@ -66,7 +66,7 @@ export function ResultStage({
             id="explore-results-title"
             ref={headingRef}
             tabIndex={-1}
-            className="mt-1 font-serif text-3xl text-ink outline-none"
+            className="mt-1 text-2xl font-semibold tracking-tight text-ink outline-none sm:text-3xl"
           >
             {t("resultCount", { count: total })}
           </h2>
@@ -133,7 +133,7 @@ export function ResultStage({
             initial={{ opacity: 0.82 }}
             animate={{ opacity: pending ? 0.58 : 1 }}
             transition={{ duration: 0.18 }}
-            className="grid grid-cols-2 gap-x-3 gap-y-6 sm:grid-cols-3 lg:grid-cols-4"
+            className="grid grid-cols-1 gap-x-5 gap-y-12 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 xl:gap-x-6 xl:gap-y-14"
             aria-busy={pending}
           >
             {results.items.map((item) => (
@@ -158,9 +158,9 @@ export function ResultStage({
             ))}
           </motion.div>
         ) : (
-          <div className="flex min-h-80 flex-col items-center justify-center rounded-structural border border-dashed border-line-strong px-6 text-center">
-            <Compass className="h-8 w-8 text-ink/25" />
-            <h3 className="mt-4 font-serif text-2xl text-ink">{t(filtered ? "zeroTitle" : "emptyViewTitle")}</h3>
+          <div className="flex min-h-72 flex-col items-center justify-center border-y border-line px-6 py-16 text-center">
+            <Compass className="h-7 w-7 text-ink-subtle" />
+            <h3 className="mt-4 text-xl font-semibold text-ink">{t(filtered ? "zeroTitle" : "emptyViewTitle")}</h3>
             <p className="mt-2 max-w-lg text-sm leading-6 text-ink-muted">{t(filtered ? "zeroDetail" : "emptyViewDetail")}</p>
             {filtered ? <Button className="mt-5" variant="secondary" disabled={controlsDisabled} onClick={onClear}>{t("clearAll")}</Button> : null}
           </div>
