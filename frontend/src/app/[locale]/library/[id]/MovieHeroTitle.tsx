@@ -25,7 +25,7 @@ export default function MovieHeroTitle({ title, titleCn }: MovieHeroTitleProps) 
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.04, duration: 0.14 }}
-          className={`break-words [overflow-wrap:anywhere] text-lg sm:text-2xl md:text-3xl font-serif text-neutral-400 ${hasCjk(title) ? "" : "italic"}`}
+          className={`break-words [overflow-wrap:anywhere] text-lg sm:text-2xl md:text-3xl text-neutral-400 ${hasCjk(title) ? "font-normal" : "font-serif italic"}`}
         >
           {title}
         </motion.p>

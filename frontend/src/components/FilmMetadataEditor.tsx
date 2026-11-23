@@ -17,12 +17,14 @@ import { metadataFields, metadataDraft, metadataModes, metadataChanges, metadata
 export default function FilmMetadataEditor({
   filmId,
   archiveSummary,
-  archiveDetails,
+  technicalDetails,
+  editionsDetails,
   defaultExpanded = false,
 }: {
   filmId: string;
   archiveSummary?: string;
-  archiveDetails?: ReactNode;
+  technicalDetails?: ReactNode;
+  editionsDetails?: ReactNode;
   defaultExpanded?: boolean;
 }) {
   const t = useTranslations("FilmMetadata");
@@ -99,7 +101,26 @@ export default function FilmMetadataEditor({
     return t(kind === "nfo" ? "sourceNfo" : kind === "tmdb" ? "sourceTmdb" : kind === "filename" ? "sourceFilename" : "sourceLibrary");
   };
 
-  const archiveMode = archiveDetails !== undefined;
+  const archiveMode = archiveSummary !== undefined || technicalDetails !== undefined || editionsDetails !== undefined;
+
+  const provenanceBlock = (
+    <div className="flex flex-col gap-5 border-t border-line pt-6 xl:flex-row xl:items-start xl:justify-between xl:gap-8">
+      <div className="min-w-0 max-w-md space-y-1">
+        <h3 className="type-label text-ink-subtle">{t("heading")}</h3>
+        <p className="text-xs leading-5 text-ink-subtle">{t("help")}</p>
+      </div>
+      {data && (
+        <dl className="grid shrink-0 grid-cols-2 gap-x-8 gap-y-4 sm:grid-cols-4">
+          {metadataFields.map((key) => (
+            <div key={key} className="min-w-0">
+              <dt className="type-meta text-ink-subtle">{t(key)}</dt>
+              <dd className="mt-1 text-sm text-ink-muted">{data.fields[key].manual ? t("manual") : source(data, key)}</dd>
+            </div>
+          ))}
+        </dl>
+      )}
+    </div>
+  );
 
   return <section aria-label={archiveMode ? t("archiveHeading") : t("heading")} className={archiveMode ? "space-y-6 px-8 py-8 md:px-16 md:py-10" : "space-y-5 border-b border-line-strong px-8 py-10 md:px-16"}>
     {archiveMode ? (
@@ -107,7 +128,7 @@ export default function FilmMetadataEditor({
         <div className="flex flex-col gap-4 border-b border-line pb-6 sm:flex-row sm:items-center sm:justify-between">
           <div className="min-w-0 flex-1">
             <h2 className="type-label text-ink-muted">{t("archiveHeading")}</h2>
-            {archiveSummary ? <p className="mt-1.5 break-words text-xs leading-5 text-ink-subtle">{archiveSummary}</p> : null}
+            {archiveSummary ? <p className="mt-1.5 break-words font-mono text-xs leading-5 tabular-nums text-ink-subtle">{archiveSummary}</p> : null}
           </div>
           <div className="flex shrink-0 flex-wrap items-center gap-2">
             <Button size="sm" variant="ghost" onClick={() => { setBaseline(null); setDraft(null); setManual(null); setOpen(true); refresh.clear(); void load(); }}>{t("edit")}</Button>
@@ -121,17 +142,22 @@ export default function FilmMetadataEditor({
         {refresh.feedback && <InlineFeedback tone={refresh.feedback.kind === "refreshFailed" ? "warning" : "success"}>{refresh.feedback.kind === "refreshFailed" ? t("refreshFailed") : t("saved")}</InlineFeedback>}
         {refresh.feedback?.kind === "refreshFailed" && <Button disabled={refresh.pending} onClick={() => void refresh.retryRefresh()}>{t("refresh")}</Button>}
         {detailsOpen ? (
-          <div className="space-y-8 pt-2">
-            {archiveDetails}
-            <div className="space-y-4 border-t border-line pt-6">
-              <h3 className="type-label text-ink-subtle">{t("heading")}</h3>
-              <p className="max-w-3xl text-xs leading-6 text-ink-subtle">{t("help")}</p>
-              {data && <dl className="grid grid-cols-2 gap-4 lg:grid-cols-4">{metadataFields.map(key => <div key={key}>
-                <dt className="type-meta text-ink-subtle">{t(key)}</dt>
-                <dd className="mt-1.5 text-sm text-ink-muted">{data.fields[key].manual ? t("manual") : source(data, key)}</dd>
-              </div>)}</dl>}
+          technicalDetails ? (
+            <div className="grid grid-cols-1 gap-10 pt-2 lg:grid-cols-[minmax(0,22rem)_minmax(0,1fr)] lg:gap-12">
+              <div className="min-w-0 lg:border-r lg:border-line lg:pr-10">
+                {technicalDetails}
+              </div>
+              <div className="min-w-0 space-y-7">
+                {editionsDetails}
+                {provenanceBlock}
+              </div>
             </div>
-          </div>
+          ) : (
+            <div className="space-y-7 pt-2">
+              {editionsDetails}
+              {provenanceBlock}
+            </div>
+          )
         ) : null}
       </>
     ) : (
