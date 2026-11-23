@@ -2,7 +2,7 @@
 
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { MoreHorizontal } from "lucide-react";
-import { Button } from "@/components/ui/Button";
+import { IconButton } from "@/components/ui/Button";
 import { closeMetadataCandidateInspection } from "@/components/metadata/MetadataCandidatePicker";
 
 /** A disclosure of ordinary buttons; Tab retains the page's normal focus order. */
@@ -42,7 +42,7 @@ export default function FilmMoreActions({ label, modalOpen, children }: {
   }, [open, modalOpen]);
 
   return (
-    <div ref={root} className="relative col-span-2 min-w-0 md:col-span-1" onBlur={(event) => {
+    <div ref={root} className="relative shrink-0" onBlur={(event) => {
       if (!modalOpen && event.relatedTarget && !event.currentTarget.contains(event.relatedTarget)) setOpen(false);
     }} onKeyDown={(event) => {
       if (event.defaultPrevented || modalOpen) return;
@@ -54,10 +54,8 @@ export default function FilmMoreActions({ label, modalOpen, children }: {
         requestAnimationFrame(() => panel.current?.querySelector<HTMLButtonElement>("button:not([disabled])")?.focus());
       }
     }}>
-      <Button ref={trigger} size="sm" className="w-full rounded-pill px-3 sm:px-4" aria-expanded={open} aria-controls={id}
-        onClick={() => setOpen((value) => !value)} icon={<MoreHorizontal className="h-4 w-4 shrink-0" />}>
-        {label}
-      </Button>
+      <IconButton ref={trigger} aria-label={label} title={label} className="rounded-full" aria-expanded={open} aria-controls={id}
+        onClick={() => setOpen((value) => !value)} icon={<MoreHorizontal className="h-4 w-4 shrink-0" />} />
       <div ref={panel} id={id} role="group" aria-label={label} onClick={(event) => {
         if ((event.target as HTMLElement).closest("[data-film-more-close]")) setOpen(false);
       }}
