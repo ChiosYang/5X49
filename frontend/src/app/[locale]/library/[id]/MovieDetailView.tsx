@@ -95,7 +95,9 @@ export default async function MovieDetailView({ film, routeFilmId }: { film: Lib
           <div className="space-y-8">
             <div className="space-y-3">
               <span className="type-label block text-ink-subtle">{t("microGenre")}</span>
-              <span className="block font-serif text-lg text-ink italic">{film.micro_genre || t("pending")}</span>
+              <span className={`block font-serif text-lg text-ink ${/[\u3000-\u9fff\uf900-\ufaff]/.test(film.micro_genre || t("pending")) ? "" : "italic"}`}>
+                {film.micro_genre || t("pending")}
+              </span>
             </div>
             {film.genres.length > 0 && (
               <div className="flex flex-wrap gap-2">

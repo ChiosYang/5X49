@@ -71,7 +71,7 @@ export default function LibraryDangerZone() {
       <div className="flex flex-col gap-5 border-b border-danger/20 pb-7 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
           <p className="text-sm font-medium tracking-widest text-danger uppercase">{t("clearTitle")}</p>
-          <p className="mt-2 max-w-2xl text-xs leading-5 text-ink-disabled">{t("clearDesc")}</p>
+          <p className="mt-2 max-w-2xl text-xs leading-5 text-ink-subtle">{t("clearDesc")}</p>
           <div className="mt-3 min-h-5" aria-live="polite">
             {workflows.error ? <InlineFeedback tone="warning">{t("workflowUnavailable")}</InlineFeedback> : activeWorkflow ? <InlineFeedback tone="warning">{t("workflowBlocked")}</InlineFeedback> : null}
             {error ? <InlineFeedback tone="error">{error}</InlineFeedback> : null}

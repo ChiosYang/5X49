@@ -247,7 +247,7 @@ export default function RootVideoReviewQueue({
               {t("organizationQueueCount", { count: pendingFiles.length })}
             </span>
           </div>
-          <p className="mt-2 max-w-3xl text-xs leading-5 text-ink-disabled">
+          <p className="mt-2 max-w-3xl text-xs leading-5 text-ink-subtle">
             {t("organizationQueueDesc")}
           </p>
         </div>
@@ -337,7 +337,7 @@ export default function RootVideoReviewQueue({
 
                     <div className="min-w-0 border border-line bg-surface/40 p-4 sm:p-5">
                       {!selected && previewingPath !== video.source_path ? (
-                        <p className="text-xs leading-5 text-ink-disabled">{t("organizationSelectCandidate")}</p>
+                        <p className="text-xs leading-5 text-ink-subtle">{t("organizationSelectCandidate")}</p>
                       ) : null}
                       {previewingPath === video.source_path ? (
                         <div className="flex min-h-24 items-center justify-center gap-3 text-xs text-ink-subtle">
@@ -372,12 +372,12 @@ export default function RootVideoReviewQueue({
 
                           <div className="grid min-w-0 gap-3 text-xs sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] sm:items-center">
                             <div className="min-w-0 border-l border-line-strong pl-3">
-                              <p className="type-label text-ink-disabled">{t("organizationSource")}</p>
+                              <p className="type-label text-ink-subtle">{t("organizationSource")}</p>
                               <p className="mt-2 break-all text-ink-muted">{preview.source.filename}</p>
                             </div>
-                            <ArrowRight className="hidden h-4 w-4 text-ink-disabled sm:block" />
+                            <ArrowRight className="hidden h-4 w-4 text-ink-subtle sm:block" />
                             <div className="min-w-0 border-l border-line-strong pl-3">
-                              <p className="type-label text-ink-disabled">{t("organizationTarget")}</p>
+                              <p className="type-label text-ink-subtle">{t("organizationTarget")}</p>
                               <p className="mt-2 break-all text-ink">{preview.target.folder_name}</p>
                               <p className="mt-1 break-all text-ink-muted">{preview.target.video_name}</p>
                             </div>
@@ -385,7 +385,7 @@ export default function RootVideoReviewQueue({
 
                           {preview.sidecars.length > 0 ? (
                             <div>
-                              <p className="type-label text-ink-disabled">{t("organizationSidecars")}</p>
+                              <p className="type-label text-ink-subtle">{t("organizationSidecars")}</p>
                               <ul className="mt-2 space-y-2">
                                 {preview.sidecars.map((sidecar) => (
                                   <li key={sidecar.source_name} className={`flex min-w-0 items-start gap-2 text-xs ${sidecar.conflict ? "text-danger" : "text-ink-muted"}`}>

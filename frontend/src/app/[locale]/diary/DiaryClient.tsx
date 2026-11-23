@@ -233,7 +233,7 @@ export default function DiaryClient() {
   const view = diaryViewFromQuery(params.get("view"), film);
   return <div className="space-y-10">
     <header>
-      <h1 className={`text-ink ${view === "dna" ? "text-5xl font-bold tracking-tight sm:text-7xl" : "type-display-editorial"}`}>{view === "dna" ? dna("title") : t("title")}</h1>
+      <h1 className="type-display-editorial text-ink">{view === "dna" ? dna("title") : t("title")}</h1>
     </header>
     {!film ? <nav aria-label={t("viewMode")} className="grid w-full grid-cols-3 gap-2 border-y border-line py-3 sm:flex sm:flex-wrap">
       {(["timeline", "recent", "dna"] as const).map((mode) => <Link
@@ -241,8 +241,8 @@ export default function DiaryClient() {
         href={mode === "timeline" ? "/diary" : `/diary?view=${mode}`}
         aria-current={view === mode ? "page" : undefined}
         scroll={false}
-        className={`focus-ring duration-fast flex min-h-10 min-w-0 items-center justify-center border px-2 py-2 text-center type-badge transition-colors sm:px-4 ${view === mode ? "border-ink bg-inverse text-inverse-ink" : "border-line text-ink-muted hover:border-line-strong hover:text-ink"}`}
-      >{mode === "dna" ? "Cinema DNA" : t(mode === "recent" ? "recentView" : "timelineView")}</Link>)}
+        className={`focus-ring duration-fast flex min-h-10 min-w-0 items-center justify-center border px-3 py-2 text-center type-label transition-colors sm:px-4 ${view === mode ? "border-ink bg-inverse text-inverse-ink" : "border-line text-ink-muted hover:border-line-strong hover:text-ink"}`}
+      >{mode === "dna" ? dna("title") : t(mode === "recent" ? "recentView" : "timelineView")}</Link>)}
     </nav> : null}
     {view === "dna" ? <CinemaDnaClient /> : <ViewingDiaryClient />}
   </div>;

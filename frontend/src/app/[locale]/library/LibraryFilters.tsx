@@ -76,10 +76,10 @@ export default function LibraryFilters({ state, locale }: { state: LibraryQueryS
     </div>
     <div className="grid min-w-0 gap-5">
       {LIBRARY_RANGES.map(({key, min, max}) => <fieldset key={key} className="min-w-0">
-        <legend className="mb-2 type-label text-ink-subtle">{t(key)} <span className="text-ink-disabled">{min}–{max}</span></legend>
+        <legend className="mb-2 type-label text-ink-subtle">{t(key)} <span className="text-ink-subtle">{min}–{max}</span></legend>
         <div className="flex min-w-0 items-center gap-2">
           <TextInput name={`${key}_min`} aria-label={t(`${key}Min`)} aria-invalid={errors.includes(key)} type="number" min={min} max={max} step={1} defaultValue={state[`${key}_min`]} placeholder={t("minimum")} />
-          <span aria-hidden="true" className="text-ink-disabled">–</span>
+          <span aria-hidden="true" className="text-ink-subtle">–</span>
           <TextInput name={`${key}_max`} aria-label={t(`${key}Max`)} aria-invalid={errors.includes(key)} type="number" min={min} max={max} step={1} defaultValue={state[`${key}_max`]} placeholder={t("maximum")} />
         </div>
       </fieldset>)}

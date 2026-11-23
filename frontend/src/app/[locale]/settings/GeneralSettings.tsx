@@ -7,7 +7,6 @@ import {
   SettingRow,
 } from "@/components/settings/SettingsPrimitives";
 import { InlineFeedback, Spinner } from "@/components/ui/Feedback";
-import { ToggleSwitch } from "@/components/ui/FormControls";
 import { useLanguageSetting, useUpdateLanguage } from "@/hooks/useSettings";
 
 export default function GeneralSettings() {
@@ -42,12 +41,35 @@ export default function GeneralSettings() {
               <span className="inline-flex h-4 w-4 shrink-0" aria-live="polite">
                 {languageSaving ? <><Spinner className="text-ink-subtle" /><span className="sr-only">{t("saving")}</span></> : null}
               </span>
-              <div role="group" aria-label={t("languagePref")} className="inline-flex h-7 items-center gap-2">
-                <span aria-hidden className={`text-xs ${languageData?.language === "zh" ? "font-semibold text-ink" : "text-ink-disabled"}`}>中</span>
-                <ToggleSwitch checked={languageData?.language === "en"} disabled={!languageData || languageSaving}
-                  label={t("languageCurrent", { language: languageData?.language === "en" ? "English" : "中文" })}
-                  onChange={() => void handleLanguageChange(languageData?.language === "en" ? "zh" : "en")} />
-                <span aria-hidden className={`text-xs ${languageData?.language === "en" ? "font-semibold text-ink" : "text-ink-disabled"}`}>EN</span>
+              <div
+                role="group"
+                aria-label={t("languagePref")}
+                className="inline-flex h-7 items-stretch border border-line-strong bg-surface-raised"
+              >
+                {(
+                  [
+                    { value: "zh", label: "中文" },
+                    { value: "en", label: "English" },
+                  ] as const
+                ).map((option) => {
+                  const active = languageData?.language === option.value;
+                  return (
+                    <button
+                      key={option.value}
+                      type="button"
+                      aria-pressed={active}
+                      disabled={!languageData || languageSaving}
+                      onClick={() => void handleLanguageChange(option.value)}
+                      className={`focus-ring duration-standard inline-flex items-center px-3 text-xs font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
+                        active
+                          ? "bg-inverse text-inverse-ink"
+                          : "text-ink-subtle hover:text-ink"
+                      }`}
+                    >
+                      {option.label}
+                    </button>
+                  );
+                })}
               </div>
             </div>
           }

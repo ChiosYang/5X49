@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { PlugZap, Search } from "lucide-react";
+import { ChevronDown, PlugZap, Search } from "lucide-react";
 import { useTranslations } from "next-intl";
 import {
   SettingRow,
@@ -100,7 +100,10 @@ export default function IntegrationSettings() {
               className="flex items-center justify-between gap-4 text-left"
             >
               <span className="truncate">{currentModel || t("selectModel")}</span>
-              <span className="text-ink-subtle">▾</span>
+              <ChevronDown
+                className={`h-4 w-4 shrink-0 text-ink-subtle transition-transform duration-fast ${modelMenuOpen ? "rotate-180" : ""}`}
+                aria-hidden="true"
+              />
             </InputButton>
             {modelMenuOpen && (
               <>
@@ -112,7 +115,7 @@ export default function IntegrationSettings() {
                 />
                 <div className="liquid-glass-popover z-popover absolute mt-2 flex max-h-72 w-full flex-col border border-line/80">
                   <div className="relative border-b border-line-strong p-2">
-                    <Search className="pointer-events-none absolute top-1/2 left-5 h-3.5 w-3.5 -translate-y-1/2 text-ink-disabled" />
+                    <Search className="pointer-events-none absolute top-1/2 left-5 h-3.5 w-3.5 -translate-y-1/2 text-ink-subtle" />
                     <TextInput
                       type="search"
                       value={modelSearch}
@@ -138,7 +141,7 @@ export default function IntegrationSettings() {
                         </button>
                       ))
                     ) : (
-                      <p className="px-4 py-8 text-center text-sm text-ink-disabled">{t("noModelsFound")}</p>
+                      <p className="px-4 py-8 text-center text-sm text-ink-subtle">{t("noModelsFound")}</p>
                     )}
                   </div>
                 </div>

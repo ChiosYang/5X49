@@ -117,7 +117,7 @@ export default function LibraryOfflineCare({ initialData, filmsHref, embedded = 
       </div>
 
       <label className="mt-5 flex min-h-11 max-w-lg items-center gap-3 border border-line-strong bg-surface/50 px-3">
-        <Search className="h-4 w-4 text-ink-disabled" />
+        <Search className="h-4 w-4 text-ink-subtle" />
         <span className="sr-only">{t("searchOffline")}</span>
         <input
           value={query}
@@ -126,7 +126,7 @@ export default function LibraryOfflineCare({ initialData, filmsHref, embedded = 
             setVisibleCount(50);
           }}
           placeholder={t("searchOffline")}
-          className="min-w-0 flex-1 bg-transparent text-sm text-ink outline-none placeholder:text-ink-disabled"
+          className="min-w-0 flex-1 bg-transparent text-sm text-ink outline-none placeholder:text-ink-subtle"
         />
       </label>
 
@@ -138,7 +138,7 @@ export default function LibraryOfflineCare({ initialData, filmsHref, embedded = 
                 <p className="truncate text-sm font-medium text-ink">{item.title}{item.year ? ` (${item.year})` : ""}</p>
                 <p className="mt-1 truncate text-xs text-ink-subtle">{item.display_name || t("unknownEdition")}</p>
               </div>
-              <p className="text-xs text-ink-disabled">
+              <p className="text-xs text-ink-subtle">
                 {item.missing_since ? new Date(item.missing_since).toLocaleString(locale) : t("unknownTime")}
               </p>
             </li>

@@ -239,7 +239,7 @@ export default function MetadataReviewQueue({ refreshSignal }: { refreshSignal?:
               {t("reviewQueueCount", { count: pending.length })}
             </span>
           </div>
-          <p className="mt-2 max-w-2xl text-xs leading-5 text-ink-disabled">
+          <p className="mt-2 max-w-2xl text-xs leading-5 text-ink-subtle">
             {t("reviewQueueDesc")}
           </p>
         </div>

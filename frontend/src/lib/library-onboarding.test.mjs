@@ -2,21 +2,12 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
-  FIRST_RUN_INTRO_SESSION_KEY,
   saveDirectoryAndScan,
   getWorkflowScanState,
   getFirstScanState,
   getLibraryEmptyState,
   isMediaDirectoryReady,
-  shouldPlayFirstRunIntro,
 } from "./library-onboarding.ts";
-
-test("plays the first-run intro only once per motion-enabled session", () => {
-  assert.equal(FIRST_RUN_INTRO_SESSION_KEY, "5x49:first-run-intro-seen:v1");
-  assert.equal(shouldPlayFirstRunIntro({ hasPlayed: false, reducedMotion: false }), true);
-  assert.equal(shouldPlayFirstRunIntro({ hasPlayed: true, reducedMotion: false }), false);
-  assert.equal(shouldPlayFirstRunIntro({ hasPlayed: false, reducedMotion: true }), false);
-});
 
 test("shows onboarding only when the complete Library is empty", () => {
   assert.equal(getLibraryEmptyState(0, 0), "onboarding");

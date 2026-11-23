@@ -87,9 +87,10 @@ for (const locale of ['en', 'zh'] as const) {
     page.on('request', request => { if (request.method() !== 'GET' && request.url().includes('/api/')) writes.push(new URL(request.url()).pathname); });
     await page.setViewportSize({ width, height: 1000 }); await page.goto(`/${locale}/settings?section=general`);
     const language = page.getByRole('group', { name: copy.Settings.languagePref, exact: true });
-    await expect(language.getByRole('switch')).toBeEnabled();
-    await language.getByRole('switch').focus(); await page.keyboard.press('Enter');
-    await expect(language.getByRole('switch')).toHaveAttribute('aria-checked', String(locale === 'en'));
+    const target = language.getByRole('button', { name: locale === 'en' ? 'English' : '中文', exact: true });
+    await expect(target).toBeEnabled();
+    await target.focus(); await page.keyboard.press('Enter');
+    await expect(target).toHaveAttribute('aria-pressed', 'true');
     await expect(page.getByText(copy.Settings.saved, { exact: true })).toHaveCount(0);
     const languageHeight = (await language.boundingBox())!.height;
     await capture(page, `autosave-${locale}-${width}-general.png`);

@@ -10,7 +10,7 @@ import {
 } from "react";
 import { cn } from "@/lib/cn";
 
-const controlClass = "focus-ring duration-standard min-h-11 w-full border border-line-strong bg-surface-raised px-4 text-sm text-ink placeholder:text-ink-disabled transition-colors hover:border-ink-disabled disabled:cursor-not-allowed disabled:opacity-50";
+const controlClass = "focus-ring duration-standard min-h-11 w-full border border-line-strong bg-surface-raised px-4 text-sm text-ink placeholder:text-ink-subtle transition-colors hover:border-ink-disabled disabled:cursor-not-allowed disabled:opacity-50";
 
 export const InputButton = forwardRef<HTMLButtonElement, ButtonHTMLAttributes<HTMLButtonElement>>(
   function InputButton({ className, type = "button", ...props }, ref) {
@@ -56,7 +56,7 @@ export function FormField({
   return (
     <label className="grid min-w-0 gap-2">
       <span className="type-label text-ink-subtle">{label}</span>
-      {description ? <span className="text-xs leading-5 text-ink-disabled">{description}</span> : null}
+      {description ? <span className="text-xs leading-5 text-ink-subtle">{description}</span> : null}
       {children}
       {error ? <span className="break-words text-xs leading-5 text-danger">{error}</span> : null}
     </label>
@@ -89,8 +89,8 @@ export function ToggleSwitch({
     >
       <span
         className={cn(
-          "duration-standard absolute top-1 left-1 h-5 w-5 bg-inverse-ink transition-transform",
-          checked ? "translate-x-5" : "translate-x-0",
+          "duration-standard absolute top-[3px] left-[3px] h-5 w-5 transition-[transform,background-color]",
+          checked ? "translate-x-5 bg-inverse-ink" : "translate-x-0 bg-ink-muted",
         )}
       />
     </button>

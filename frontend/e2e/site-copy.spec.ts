@@ -62,8 +62,6 @@ for (const locale of ['en', 'zh'] as const) {
         ['/library/identity-review', []],
         ['/library/activity', [copy.Activity.eyebrow]],
         ['/library/manage', [copy.LibraryManagement.constellation.eyebrow, copy.LibraryManagement.constellation.subtitle, copy.LibraryManagement.constellation.liveTopology]],
-        ['/library/manage/concepts', ['5X49 · Management interaction study']],
-        ['/library/manage/visual-concepts', ['Visual interaction lab', '5X49 · Visual interaction study']],
         ['/settings', [copy.Settings.subtitle, copy.Settings.generalEyebrow, copy.Settings.generalDesc, copy.Settings.languageDesc]],
         // "Service connections" is now the actual category label, rather than an eyebrow.
         ['/settings?section=integrations', [copy.Settings.integrationsDesc, copy.Settings.aiProviderDesc, copy.Settings.modelDesc, copy.Settings.apiDesc]],

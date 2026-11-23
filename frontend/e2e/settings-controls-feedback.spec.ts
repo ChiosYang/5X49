@@ -51,7 +51,7 @@ test.beforeEach(async ({ context, page, request }) => {
 });
 for (const locale of ['en', 'zh'] as const) {
   const copy = locale === 'en' ? en : zh;
-  test(`${locale} language uses the shared switch, fixed left loading slot, error and no Saved`, async ({ page }) => {
+  test(`${locale} language uses the segmented control, fixed left loading slot, error and no Saved`, async ({ page }) => {
     const held = gate(); let calls = 0, saved = locale === 'en' ? 'zh' : 'en';
     await page.route('**/api/settings/language*', async route => {
       if (route.request().method() === 'PUT') {
@@ -62,20 +62,23 @@ for (const locale of ['en', 'zh'] as const) {
     });
     try {
       await page.setViewportSize({ width: 320, height: 1000 }); await page.goto(`/${locale}/settings?section=general`);
-      const group = page.getByRole('group', { name: copy.Settings.languagePref, exact: true }), control = group.getByRole('switch');
-      await expect(control).toBeEnabled(); const before = (await control.boundingBox())!;
-      await control.focus(); await page.keyboard.press('Space'); await expect(control).toBeDisabled();
+      const group = page.getByRole('group', { name: copy.Settings.languagePref, exact: true });
+      const target = group.getByRole('button', { name: locale === 'en' ? 'English' : '中文', exact: true });
+      const current = group.getByRole('button', { name: locale === 'en' ? '中文' : 'English', exact: true });
+      await expect(target).toBeEnabled(); const before = (await group.boundingBox())!;
+      await target.focus(); await page.keyboard.press('Space'); await expect(target).toBeDisabled(); await expect(current).toBeDisabled();
       const spinner = group.locator('..').locator(':scope > span').first(); const loading = (await spinner.boundingBox())!;
       expect(loading.x + loading.width).toBeLessThan(before.x);
-      expect((await control.boundingBox())!).toEqual(before); await capture(page, `feedback-${locale}-320-language-pending.png`);
+      expect((await group.boundingBox())!).toEqual(before); await capture(page, `feedback-${locale}-320-language-pending.png`);
       held.release(); await expect(page.getByText(copy.Settings.languageSaveFailed, { exact: true })).toBeVisible();
-      await expect(control).toHaveAttribute('aria-checked', String(locale !== 'en'));
-      await control.focus(); await page.keyboard.press('Enter'); await expect(control).toHaveAttribute('aria-checked', String(locale === 'en'));
+      await expect(current).toHaveAttribute('aria-pressed', 'true');
+      await expect(target).toHaveAttribute('aria-pressed', 'false');
+      await target.focus(); await page.keyboard.press('Enter'); await expect(target).toHaveAttribute('aria-pressed', 'true');
+      await expect(current).toHaveAttribute('aria-pressed', 'false');
       await expect(page.getByText(copy.Settings.saved, { exact: true })).toHaveCount(0);
-      await expect(control).toHaveAccessibleName(copy.Settings.languageCurrent.replace('{language}', locale === 'en' ? 'English' : '中文'));
       await choose(page, copy, 'library');
       const other = page.getByRole('switch', { name: copy.Settings.autoScan, exact: true });
-      const after = (await other.boundingBox())!; expect(before.height).toBe(after.height); expect(before.width).toBe(after.width);
+      const after = (await other.boundingBox())!; expect(before.height).toBe(after.height);
     } finally { held.release(); }
   });
 

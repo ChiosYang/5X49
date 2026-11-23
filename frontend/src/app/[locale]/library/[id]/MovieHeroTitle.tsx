@@ -7,6 +7,8 @@ interface MovieHeroTitleProps {
   titleCn?: string;
 }
 
+const hasCjk = (value: string) => /[\u3000-\u9fff\uf900-\ufaff]/.test(value);
+
 export default function MovieHeroTitle({ title, titleCn }: MovieHeroTitleProps) {
   return (
     <div className="absolute bottom-0 left-0 w-full min-w-0 p-6 sm:p-8 md:p-16 z-40">
@@ -23,7 +25,7 @@ export default function MovieHeroTitle({ title, titleCn }: MovieHeroTitleProps) 
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.04, duration: 0.14 }}
-          className="break-words [overflow-wrap:anywhere] text-lg sm:text-2xl md:text-3xl font-serif italic text-neutral-400"
+          className={`break-words [overflow-wrap:anywhere] text-lg sm:text-2xl md:text-3xl font-serif text-neutral-400 ${hasCjk(title) ? "" : "italic"}`}
         >
           {title}
         </motion.p>
