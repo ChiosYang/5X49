@@ -10,7 +10,7 @@ import {
   parseTmdbId,
   prependMetadataCandidate,
 } from "@/components/metadata/MetadataCandidatePicker";
-import { Button } from "@/components/ui/Button";
+import { Button, IconButton } from "@/components/ui/Button";
 import { InlineFeedback } from "@/components/ui/Feedback";
 import {
   useConfirmScrapeFilm,
@@ -237,7 +237,7 @@ export default function MovieRefreshButton({ film }: { film: LibraryFilmDetail }
       </div>
       <div className="w-full min-w-0 space-y-2">
         {needsMetadataMatch && metadataControl}
-        <div className="grid min-w-0 grid-cols-2 gap-2 md:grid-cols-1 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]">
+        <div className="flex min-w-0 flex-wrap items-center gap-2">
         <Button
           onClick={handleWatched}
           disabled={busy}
@@ -247,10 +247,10 @@ export default function MovieRefreshButton({ film }: { film: LibraryFilmDetail }
           title={state.watched && !state.manual_watched ? t("viewDiary") : state.manual_watched ? t("markUnwatched") : t("markWatched")}
           aria-pressed={state.watched}
           size="sm"
-          className="min-w-0 rounded-pill px-2.5 sm:px-4"
+          className="min-w-0 flex-1 rounded-pill px-4 sm:px-5 md:flex-none"
           icon={<Check className="h-4 w-4 shrink-0" />}
         >{state.watched && !state.manual_watched ? t("viewDiary") : t("watchedAction")}</Button>
-        <Button
+        <IconButton
           onClick={() => updateProfile({ favorite: !state.favorite })}
           disabled={busy}
           busy={profile.isMutating}
@@ -258,10 +258,9 @@ export default function MovieRefreshButton({ film }: { film: LibraryFilmDetail }
           aria-label={state.favorite ? t("removeFavorite") : t("favorite")}
           title={state.favorite ? t("removeFavorite") : t("favorite")}
           aria-pressed={state.favorite}
-          size="sm"
-          className="min-w-0 rounded-pill px-2.5 sm:px-4"
+          className="rounded-full"
           icon={<Star className={`h-4 w-4 shrink-0 ${state.favorite ? "fill-current" : ""}`} />}
-        >{t("favoriteAction")}</Button>
+        />
         <FilmMoreActions label={t("moreFilmActions")} modalOpen={artworkOpen}>
         <MovieArtworkPicker movieId={filmId} menuItem disabled={busy} onOpenChange={setArtworkOpen} />
         <Button

@@ -12,7 +12,7 @@ interface MovieDetailReturnProps {
 }
 
 const controlClassName =
-  "focus-ring duration-fast absolute z-navigation inline-flex min-h-11 max-w-[calc(100vw-2rem)] items-center gap-2 rounded-control border border-white/20 bg-black/70 px-4 type-label text-white backdrop-blur-md transition-colors hover:border-white/60 hover:bg-white hover:text-black";
+  "focus-ring duration-fast absolute z-navigation inline-flex h-11 w-11 items-center justify-center rounded-full text-white/85 drop-shadow-[0_1px_8px_rgba(0,0,0,0.85)] transition-[color,transform] hover:-translate-x-0.5 hover:text-white";
 
 const subscribe = () => () => {};
 
@@ -27,14 +27,9 @@ export default function MovieDetailReturn({ behavior, label }: MovieDetailReturn
   }, () => fallback);
   const className = cn(
     controlClassName,
-    behavior === "history" ? "top-4 left-4 sm:top-6 sm:left-6" : "top-24 left-8",
+    behavior === "history" ? "top-4 left-3 sm:top-6 sm:left-5" : "top-24 left-5",
   );
-  const content = (
-    <>
-      <ArrowLeft aria-hidden="true" className="h-4 w-4 shrink-0" />
-      <span className="truncate">{label}</span>
-    </>
-  );
+  const content = <ArrowLeft aria-hidden="true" className="h-5 w-5 shrink-0" />;
 
   if (behavior === "history") {
     return (

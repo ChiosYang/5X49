@@ -20,6 +20,22 @@ function formatResolution(width?: number | null, height?: number | null) {
   return width && height ? `${width} × ${height}` : null;
 }
 
+function formatResolutionTier(width?: number | null, height?: number | null) {
+  if (!width && !height) return null;
+  const w = width || 0;
+  const h = height || 0;
+  if (w >= 3800 || h >= 2100) return "4K UHD";
+  if (w >= 2500 || h >= 1400) return "2K QHD";
+  if (w >= 1900 || h >= 1000) return "1080p HD";
+  if (w >= 1200 || h >= 700) return "720p HD";
+  return "SD";
+}
+
+function formatAspectRatio(width?: number | null, height?: number | null) {
+  if (!width || !height) return null;
+  return `${(width / height).toFixed(2)}:1`;
+}
+
 function formatBitrate(value?: number | null) {
   if (!value) return null;
   return value >= 1_000_000 ? `${(value / 1_000_000).toFixed(1)} Mbps` : `${Math.round(value / 1000)} Kbps`;
@@ -27,6 +43,7 @@ function formatBitrate(value?: number | null) {
 
 function formatDuration(seconds?: number | null) {
   if (!seconds) return null;
+  if (seconds < 60) return `${Math.round(seconds)}s`;
   const totalMinutes = Math.round(seconds / 60);
   const hours = Math.floor(totalMinutes / 60);
   const minutes = totalMinutes % 60;
@@ -55,20 +72,31 @@ export default async function MovieDetailView({ film, routeFilmId }: { film: Lib
   };
   const primary = film.primary_item;
   const video = primary.video;
-  const durationSeconds = video?.duration_seconds || (film.runtime_minutes ? film.runtime_minutes * 60 : null);
-  const technicalItems = [
-    { label: t("resolution"), value: formatResolution(video?.width, video?.height) },
+  const resolution = formatResolution(video?.width, video?.height);
+  const resolutionSubline = [
+    formatResolutionTier(video?.width, video?.height),
+    formatAspectRatio(video?.width, video?.height),
+  ]
+    .filter(Boolean)
+    .join(" · ");
+  const durationSeconds =
+    (video?.duration_seconds && video.duration_seconds >= 60 ? video.duration_seconds : null) ||
+    (film.runtime_minutes ? film.runtime_minutes * 60 : video?.duration_seconds || null);
+  const specPills = [
     { label: t("dynamicRange"), value: video?.dynamic_range && video.dynamic_range !== "unknown" ? video.dynamic_range : null },
-    { label: t("videoCodec"), value: video?.codec?.toUpperCase() },
-    { label: t("bitrate"), value: formatBitrate(video?.bitrate) },
-    { label: t("frameRate"), value: video?.fps ? `${video.fps} fps` : null },
+    { label: t("videoCodec"), value: video?.codec?.toUpperCase() || null },
     { label: t("bitDepth"), value: video?.bit_depth ? `${video.bit_depth}-bit` : null },
+    { label: t("frameRate"), value: video?.fps ? `${video.fps} fps` : null },
+  ].filter((item): item is { label: string; value: string } => Boolean(item.value));
+  const metricItems = [
+    { label: t("bitrate"), value: formatBitrate(video?.bitrate) },
     { label: t("duration"), value: formatDuration(durationSeconds) },
     { label: t("fileSize"), value: formatFileSize(video?.file_size) },
-  ].filter((item) => item.value);
+  ].filter((item): item is { label: string; value: string } => Boolean(item.value));
+  const hasTechnicalDetails = Boolean(resolution || specPills.length > 0 || metricItems.length > 0);
 
   const archiveSummary = [
-    formatResolution(video?.width, video?.height),
+    resolution,
     video?.codec?.toUpperCase(),
     formatBitrate(video?.bitrate),
     video?.fps ? `${video.fps} fps` : null,
@@ -77,39 +105,63 @@ export default async function MovieDetailView({ film, routeFilmId }: { film: Lib
     .filter(Boolean)
     .join(" · ");
 
-  const archiveDetails = (
-    <div className="space-y-8">
-      {technicalItems.length > 0 && (
-        <div>
-          <span className="type-label block text-ink-subtle">{t("technicalDetails")}</span>
-          <div className="mt-5 grid grid-cols-2 gap-x-8 gap-y-5 md:grid-cols-4">
-            {technicalItems.map((item) => (
-              <div key={item.label} className="min-w-0 space-y-1">
-                <span className="type-meta block text-ink-subtle">{item.label}</span>
-                <span className="block truncate text-base font-bold text-ink md:text-lg">{item.value}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+  const microGenreLabel = film.micro_genre || t("pending");
+  const microGenreHasCjk = /[\u3000-\u9fff\uf900-\ufaff]/.test(microGenreLabel);
 
-      <div className={technicalItems.length > 0 ? "border-t border-line pt-6" : undefined}>
-        <span className="type-label block text-ink-subtle">{t("editions")}</span>
-        <div className="mt-5 grid gap-3 lg:grid-cols-2">
-          {film.editions.map((edition, index) => (
-            <div key={edition.id} className="flex min-w-0 flex-col items-start justify-between gap-4 border border-line p-4 sm:flex-row sm:items-center">
-              <div className="min-w-0 max-w-full sm:flex-1">
-                <p className="truncate font-bold text-ink">{editionLabel(edition, t("edition", { index: index + 1 }))}</p>
-                <p className="type-meta mt-1 truncate text-ink-subtle">{edition.video?.file_name || sourceLabel[edition.source_type] || edition.source_type}</p>
-                {(edition.video?.part_files?.length || 0) > 1 && <p className="type-meta mt-1 break-words text-ink-subtle">{t("splitParts", {count: edition.video!.part_files!.length})}</p>}
-              </div>
-              <div className="flex shrink-0 items-center gap-3">
-                <span className="rounded-pill border border-line px-3 py-1 type-badge text-ink-muted">{statusLabel[edition.status]}</span>
-                <LibraryEditionActions filmId={film.id} itemId={edition.id} primary={edition.id === film.primary_item.id} available={edition.status === "available"} />
-              </div>
-            </div>
+  const technicalDetails = hasTechnicalDetails ? (
+    <div>
+      <span className="type-label block text-ink-subtle">{t("technicalDetails")}</span>
+      {resolution ? (
+        <div className="mt-3">
+          <p className="font-mono text-2xl font-light tracking-tight tabular-nums text-ink sm:text-3xl">{resolution}</p>
+          {resolutionSubline ? (
+            <p className="mt-1.5 font-mono text-xs tracking-wider tabular-nums text-ink-subtle">{resolutionSubline}</p>
+          ) : null}
+        </div>
+      ) : null}
+      {specPills.length > 0 ? (
+        <div className="mt-4 flex flex-wrap gap-1.5">
+          {specPills.map((pill) => (
+            <span
+              key={pill.label}
+              title={pill.label}
+              className="rounded-pill border border-line-strong px-2.5 py-1 font-mono text-[11px] tracking-wider tabular-nums text-ink-muted"
+            >
+              {pill.value}
+            </span>
           ))}
         </div>
+      ) : null}
+      {metricItems.length > 0 ? (
+        <dl className={`grid grid-cols-3 gap-3 ${resolution || specPills.length > 0 ? "mt-6 border-t border-line pt-4" : "mt-4"}`}>
+          {metricItems.map((item) => (
+            <div key={item.label} className="min-w-0">
+              <dt className="type-meta text-ink-subtle">{item.label}</dt>
+              <dd className="mt-1 truncate font-mono text-sm tabular-nums text-ink">{item.value}</dd>
+            </div>
+          ))}
+        </dl>
+      ) : null}
+    </div>
+  ) : undefined;
+
+  const editionsDetails = (
+    <div>
+      <span className="type-label block text-ink-subtle">{t("editions")}</span>
+      <div className="mt-4 grid gap-3">
+        {film.editions.map((edition, index) => (
+          <div key={edition.id} className="flex min-w-0 flex-col items-start justify-between gap-4 border border-line bg-white/[0.015] p-4 sm:flex-row sm:items-center">
+            <div className="min-w-0 max-w-full sm:flex-1">
+              <p className="truncate font-semibold text-ink">{editionLabel(edition, t("edition", { index: index + 1 }))}</p>
+              <p className="type-meta mt-1 truncate font-mono text-ink-subtle">{edition.video?.file_name || sourceLabel[edition.source_type] || edition.source_type}</p>
+              {(edition.video?.part_files?.length || 0) > 1 && <p className="type-meta mt-1 break-words text-ink-subtle">{t("splitParts", {count: edition.video!.part_files!.length})}</p>}
+            </div>
+            <div className="flex shrink-0 items-center gap-3">
+              <span className="rounded-pill border border-line px-3 py-1 type-badge text-ink-muted">{statusLabel[edition.status]}</span>
+              <LibraryEditionActions filmId={film.id} itemId={edition.id} primary={edition.id === film.primary_item.id} available={edition.status === "available"} />
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   );
@@ -143,8 +195,8 @@ export default async function MovieDetailView({ film, routeFilmId }: { film: Lib
             <MovieArtworkPoster title={film.title} />
             <div className="space-y-3">
               <span className="type-label block text-ink-subtle">{t("microGenre")}</span>
-              <span className={`block font-serif text-lg text-ink ${/[\u3000-\u9fff\uf900-\ufaff]/.test(film.micro_genre || t("pending")) ? "" : "italic"}`}>
-                {film.micro_genre || t("pending")}
+              <span className={`block text-lg text-ink ${microGenreHasCjk ? "font-normal" : "font-serif italic"}`}>
+                {microGenreLabel}
               </span>
             </div>
             {film.genres.length > 0 && (
@@ -180,7 +232,8 @@ export default async function MovieDetailView({ film, routeFilmId }: { film: Lib
           filmId={film.id}
           archiveSummary={archiveSummary}
           defaultExpanded={film.editions.length > 1}
-          archiveDetails={archiveDetails}
+          technicalDetails={technicalDetails}
+          editionsDetails={editionsDetails}
         />
       </div>
     </MovieArtworkProvider>
