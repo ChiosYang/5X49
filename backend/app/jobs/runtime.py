@@ -37,11 +37,11 @@ class JobContext:
             library_event_bus.publish("workflow_progress", {"workflow": workflow})
         return job
 
-    def is_cancel_requested(self) -> bool:
-        return job_store.is_cancel_requested(self.job_id)
+    def is_cancel_requested(self, *, session=None) -> bool:
+        return job_store.is_cancel_requested(self.job_id, session=session)
 
-    def raise_if_cancelled(self):
-        if self.is_cancel_requested():
+    def raise_if_cancelled(self, *, session=None):
+        if self.is_cancel_requested(session=session):
             raise JobCancelled("Job cancelled")
 
 

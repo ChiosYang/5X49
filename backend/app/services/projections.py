@@ -202,14 +202,18 @@ class ProjectionCoordinator:
     def refresh_states(self, session: Session, *, rebuilt: bool = False) -> None:
         now = _now()
         for name, model in _TABLES.items():
-            rows = session.exec(select(model)).all()
-            digest = _hash(sorted((self._row_id(row), row.source_hash) for row in rows))
+            # The digest depends only on the ordered key and hash. Loading each
+            # full entity also decoded every detail, graph and artwork payload.
+            keys = model.__table__.primary_key.columns
+            rows = session.execute(select(*keys, model.source_hash))
+            entries = sorted((":".join(row[:-1]), row[-1]) for row in rows)
+            digest = _hash(entries)
             state = session.get(ProjectionState, name)
             if state is None:
                 state = ProjectionState(name=name, projection_version=PROJECTION_VERSIONS[name])
             state.projection_version = PROJECTION_VERSIONS[name]
             state.status = "ready"
-            state.row_count = len(rows)
+            state.row_count = len(entries)
             state.digest = digest
             state.rebuilt_at = now if rebuilt or state.rebuilt_at is None else state.rebuilt_at
             state.updated_at = now

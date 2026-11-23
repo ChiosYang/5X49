@@ -6,6 +6,7 @@ from pathlib import Path
 from unittest.mock import Mock, patch
 
 from fastapi.testclient import TestClient
+from sqlalchemy import event
 from sqlmodel import Session, create_engine, select
 from app import database
 from app.main import app
@@ -129,6 +130,57 @@ class MediaRootsTests(unittest.TestCase):
         result = self.service.get_status()['last_result']
         self.assertFalse(result['complete'])
         self.assertEqual([row['state'] for row in result['roots']], ['interrupted', 'not_scanned'])
+
+    def test_interrupted_import_keeps_committed_batch_and_defers_missing_until_retry(self):
+        from app.jobs.runtime import JobCancelled
+
+        removed = self.movie(self.a, 'old/Old.mkv', 300)
+        self.service.reconcile()
+        old_id = next(iter(self.items()))
+        removed.unlink()
+        removed.with_suffix('.nfo').unlink()
+        self.movie(self.a, 'one/One.mkv', 301)
+        self.movie(self.a, 'two/Two.mkv', 302)
+        persist = library.library_manager.add_observations
+        def interrupt_after_first(batch, **kwargs):
+            if len(self.items()) == 2:
+                raise JobCancelled('stop after first batch')
+            return persist(batch, **kwargs)
+
+        with patch('app.services.library_sync.SCAN_BATCH_SIZE', 1), patch.object(
+            library.library_manager, 'add_observations', side_effect=interrupt_after_first
+        ), self.assertRaises(JobCancelled):
+            self.service.reconcile()
+        partial = self.items()
+        self.assertEqual(len(partial), 2)
+        self.assertEqual(partial[old_id]['availability_status'], 'available')
+        receipt = self.service.get_status()['last_result']
+        self.assertFalse(receipt['complete'])
+        self.assertEqual((receipt['scanned'], receipt['added']), (2, 1))
+        retry = self.service.reconcile()
+        self.assertEqual((retry['added'], retry['missing']), (1, 1))
+        final = self.items()
+        self.assertEqual(len(final), 3)
+        self.assertTrue(partial.keys() <= final.keys())
+        self.assertEqual(final[old_id]['availability_status'], 'missing')
+
+    def test_scan_validation_can_read_job_and_settings_after_sqlite_cache_spills(self):
+        from app.jobs import store as jobs
+        from app.jobs.runtime import JobContext
+
+        def small_cache(connection, *_):
+            connection.execute('PRAGMA cache_size = 4')
+            connection.execute('PRAGMA busy_timeout = 40')
+
+        event.listen(self.engine, 'checkout', small_cache)
+        self.addCleanup(event.remove, self.engine, 'checkout', small_cache)
+        for index in range(5):
+            self.movie(self.a, f'{index}/Film.mkv', 400 + index)
+        context = JobContext('test-scan')
+        with patch.object(jobs, 'engine', self.engine), patch.object(context, 'progress'):
+            result = self.service.reconcile(ctx=context)
+        self.assertTrue(result['complete'])
+        self.assertEqual(result['added'], 5)
 
     def test_nested_root_files_repeat_restart_and_personal_records(self):
         self.movie(self.a, 'AtRoot.mkv', 101)

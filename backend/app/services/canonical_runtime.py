@@ -603,7 +603,7 @@ class CanonicalRuntimeWriter:
             if incoming_normalized and locator_normalized == incoming_normalized:
                 continue
             try:
-                root = configured_root(Path(asset.locator))
+                root = configured_root(Path(asset.locator), session=session)
                 if not explicitly_absent(asset.locator, root):
                     return True
             except (OSError, ValueError):

@@ -45,10 +45,10 @@ def safe_path(path: str | Path, root: str | Path) -> Path:
     return path
 
 
-def configured_root(path: str | Path, roots: list[str] | None = None) -> Path:
+def configured_root(path: str | Path, roots: list[str] | None = None, *, session=None) -> Path:
     if roots is None:
         from app.services.settings import get_media_dirs
-        roots = get_media_dirs()
+        roots = get_media_dirs() if session is None else get_media_dirs(session=session)
     for root in roots:
         try:
             safe_path(path, root)

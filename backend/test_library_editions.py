@@ -80,6 +80,25 @@ class LibraryEditionTests(unittest.TestCase):
         self.assertEqual(by_file["Crash.1996.mkv"]["tmdb_id"], "884")
         self.assertNotIn("tmdb_id",by_file["Crash.2005.mkv"])
 
+    def test_probe_cache_follows_primary_edition_and_skips_hidden_films(self):
+        self.video("Blade.Runner.Final.Cut.mkv")
+        self.video("Blade.Runner.Theatrical.mkv")
+        self.shared_nfo()
+        library_sync_service.reconcile(str(self.root))
+        film = library_manager.list_films()[0]
+        editions = library_manager.get_film(film["id"])["editions"]
+        self.assertEqual(len(editions), 2)
+        for edition in editions:
+            library_manager.select_primary_item(film["id"], edition["id"])
+            old = library_manager.get_film_operation_context(film["id"])
+            cache = library_sync_service._video_probe_cache()
+            self.assertEqual(set(cache), {old["media_path"]})
+            for field, value in cache[old["media_path"]].items():
+                self.assertEqual(value, old[field], field)
+        for edition in editions:
+            library_manager.ignore_item(edition["id"])
+        self.assertEqual(library_sync_service._video_probe_cache(), {})
+
     def test_retired_locator_does_not_capture_a_new_film_at_reused_path(self):
         video = self.video("Film.mkv")
         self.shared_nfo()

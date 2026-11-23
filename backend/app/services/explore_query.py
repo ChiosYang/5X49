@@ -4,7 +4,7 @@ import json
 from collections import defaultdict, deque
 from typing import Any
 
-from sqlalchemy import case, func, or_
+from sqlalchemy import Row, case, func, or_
 from sqlmodel import Session, select
 
 from app.canonical_models import (
@@ -44,7 +44,7 @@ class ExploreQueryService:
         """Named, addressable local collections. Viewing state never defines identity."""
         with Session(engine) as session:
             self._require(session)
-            films = {row.film_id: row for row in session.exec(select(ExploreFilmReadModel)).all()}
+            films = self._catalog_films(session)
             entries = self._collection_memberships(session, films)
             needle = normalize_metadata_text(query.strip())
             alias_people = set(session.exec(select(PersonAlias.person_id).join(ExternalIdentity,
@@ -99,7 +99,7 @@ class ExploreQueryService:
                    limit: int, offset: int) -> dict[str, Any] | None:
         with Session(engine) as session:
             self._require(session)
-            films = {row.film_id: row for row in session.exec(select(ExploreFilmReadModel)).all()}
+            films = self._catalog_films(session)
             entries = self._collection_memberships(session, films, kind=kind, key=key)
             if not entries:
                 return None
@@ -112,9 +112,20 @@ class ExploreQueryService:
         return {"collection": summary, "results": results}
 
     @staticmethod
-    def _collection_memberships(session: Session, films: dict[str, ExploreFilmReadModel],
+    def _catalog_films(session: Session) -> dict[str, Row]:
+        fields = select(ExploreFilmReadModel.film_id, ExploreFilmReadModel.sort_title, ExploreFilmReadModel.watched)
+        return {row.film_id: row for row in session.exec(fields)}
+
+    @staticmethod
+    def _collection_memberships(session: Session, films: dict[str, Row],
                                 *, kind: str | None = None, key: str | None = None):
-        statement = select(ExploreFacetReadModel).where(ExploreFacetReadModel.eligible.is_(True))
+        facet = ExploreFacetReadModel
+        roles = func.json_each(facet.payload, "$.roles").table_valued("value")
+        director = select(roles.c.value).where(roles.c.value == "director").exists()
+        statement = select(facet.film_id, facet.dimension, facet.facet_key, facet.display_label).where(
+            facet.eligible.is_(True))
+        if kind != "person":
+            statement = statement.where(or_(facet.dimension != "person", director))
         if kind:
             statement = statement.where(ExploreFacetReadModel.dimension == ("person" if kind == "director" else kind))
         else:
@@ -128,8 +139,6 @@ class ExploreQueryService:
             if row.film_id not in films:
                 continue
             entry_kind = kind or ("director" if row.dimension == "person" else row.dimension)
-            if entry_kind == "director" and "director" not in (row.payload or {}).get("roles", []):
-                continue
             entry = grouped.setdefault((entry_kind, row.facet_key), {
                 "kind": entry_kind, "key": row.facet_key, "label": row.display_label, "ids": set(),
             })
@@ -148,7 +157,7 @@ class ExploreQueryService:
 
     @staticmethod
     def _collection_summaries(session: Session, entries: list[dict[str, Any]],
-                              films: dict[str, ExploreFilmReadModel], *, distinct_previews: bool = False) -> list[dict[str, Any]]:
+                              films: dict[str, Row], *, distinct_previews: bool = False) -> list[dict[str, Any]]:
         previews, used = {}, set()
         for entry in entries:
             candidates = entry["ids"] - used if distinct_previews else entry["ids"]

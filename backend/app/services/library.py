@@ -86,7 +86,7 @@ class LibraryManager:
             session.connection().exec_driver_sql("BEGIN IMMEDIATE")
             for payload, structured in zip(observations, metadata, strict=True):
                 if check_observation:
-                    check_observation(payload)
+                    check_observation(session, payload)
                 source_key = canonical_runtime_writer.source_item_key(payload)
                 existed = session.exec(
                     select(LibraryItem.id)
@@ -575,11 +575,14 @@ class LibraryManager:
         with Session(engine) as session:
             session.connection().exec_driver_sql("BEGIN IMMEDIATE")
             items = session.exec(
-                select(LibraryItem).where(LibraryItem.availability_status == "available")
+                select(LibraryItem).where(
+                    LibraryItem.availability_status == "available",
+                    (LibraryItem.last_seen_at.is_(None)) | (LibraryItem.last_seen_at < seen_at),
+                )
             ).all()
             for item in items:
                 if check_cancelled:
-                    check_cancelled()
+                    check_cancelled(session)
                 assets = session.exec(select(MediaAsset).where(MediaAsset.library_item_id == item.id)
                     .where(MediaAsset.asset_kind == "video")
                     .where(MediaAsset.availability_status != "retired")).all()
@@ -591,8 +594,6 @@ class LibraryManager:
                 except (ValueError, OSError):
                     continue
                 if not explicitly_absent(locator, root):
-                    continue
-                if item.last_seen_at and item.last_seen_at >= seen_at:
                     continue
                 before = {
                     "availability_status": item.availability_status,
@@ -621,7 +622,7 @@ class LibraryManager:
                 )
                 changed += 1
             if check_cancelled:
-                check_cancelled()
+                check_cancelled(session)
             session.commit()
         return changed
 

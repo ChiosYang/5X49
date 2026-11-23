@@ -5,6 +5,7 @@ import json
 import logging
 import math
 import os
+from contextlib import nullcontext
 from datetime import datetime, timedelta
 
 import requests
@@ -297,12 +298,12 @@ def refresh_models_cache():
     """Force refresh the models cache"""
     return get_available_models(force_refresh=True)
 
-def get_media_dirs() -> list[str]:
+def get_media_dirs(*, session: Session | None = None) -> list[str]:
     """An explicit empty list disables media access; legacy settings still work."""
     try:
-        with Session(database.engine) as session:
-            roots = session.get(Setting, "media_dirs")
-            legacy = session.get(Setting, "media_dir")
+        with (Session(database.engine) if session is None else nullcontext(session)) as reader:
+            roots = reader.get(Setting, "media_dirs")
+            legacy = reader.get(Setting, "media_dir")
         if roots is not None and isinstance(roots.value, list):
             return [value for value in roots.value if isinstance(value, str) and value.strip()]
         value = legacy.value if legacy is not None else None
