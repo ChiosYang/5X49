@@ -1,6 +1,7 @@
 "use client";
 
 import { CheckCircle2, Database, RefreshCw, TriangleAlert } from "lucide-react";
+import { useTranslations } from "next-intl";
 import useSWR from "swr";
 
 import { Button } from "@/components/ui/Button";
@@ -15,6 +16,7 @@ const fetcher = async <T,>(url: string): Promise<T> => {
 };
 
 export default function EventSourcingHealthPanel() {
+  const t = useTranslations("EventSourcingHealth");
   const films = useSWR<LibraryFilmSummary[]>(API.libraryFilms(), fetcher);
   const workflows = useSWR<WorkflowRunView[]>(API.workflows(), fetcher);
   const events = useSWR<EventRecord[]>(API.activityEvents({ limit: 100 }), fetcher);
@@ -36,29 +38,29 @@ export default function EventSourcingHealthPanel() {
             <Database className="h-4 w-4" />
           </span>
           <div>
-            <p className="type-label text-ink-subtle">Canonical runtime health</p>
-            <p className="mt-1 type-body text-ink-muted">Film/LibraryItem integrity, recoverable snapshots and durable workflows.</p>
+            <p className="type-label text-ink-subtle">{t("title")}</p>
+            <p className="mt-1 type-body text-ink-muted">{t("description")}</p>
           </div>
         </div>
         <Button onClick={refresh} disabled={loading} busy={loading}>
-          <RefreshCw className="h-4 w-4" /> Refresh
+          <RefreshCw className="h-4 w-4" /> {t("refresh")}
         </Button>
       </div>
 
-      {error && <InlineFeedback tone="error">Canonical health data could not be loaded.</InlineFeedback>}
+      {error && <InlineFeedback tone="error">{t("loadFailed")}</InlineFeedback>}
       {loading && !error ? <Spinner className="h-5 w-5" /> : null}
       {!loading && !error && (
         <>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-            <Metric label="Films" value={films.data?.length || 0} />
-            <Metric label="Integrity issues" value={invalidFilms.length} warning={invalidFilms.length > 0} />
-            <Metric label="Active workflows" value={activeWorkflows.length} />
-            <Metric label="Failed workflows" value={failedWorkflows.length} warning={failedWorkflows.length > 0} />
-            <Metric label="Recoverable events" value={snapshots} />
+            <Metric label={t("films")} value={films.data?.length || 0} />
+            <Metric label={t("integrityIssues")} value={invalidFilms.length} warning={invalidFilms.length > 0} />
+            <Metric label={t("activeWorkflows")} value={activeWorkflows.length} />
+            <Metric label={t("failedWorkflows")} value={failedWorkflows.length} warning={failedWorkflows.length > 0} />
+            <Metric label={t("recoverableEvents")} value={snapshots} />
           </div>
           <p className={`flex items-center gap-2 type-body ${healthy ? "text-success" : "text-warning"}`}>
             {healthy ? <CheckCircle2 className="h-4 w-4" /> : <TriangleAlert className="h-4 w-4" />}
-            {healthy ? "Canonical resource links are consistent in the current page of data." : "Canonical resource links need attention."}
+            {healthy ? t("consistent") : t("needsAttention")}
           </p>
         </>
       )}

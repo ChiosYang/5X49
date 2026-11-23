@@ -201,37 +201,22 @@ export function Dialog({
     };
   }, [lockScroll, open]);
 
-  const content = (
-    <>
-      {closeOnBackdrop ? (
-        <button
-          type="button"
-          tabIndex={-1}
-          className="z-content absolute inset-0 cursor-default"
-          onClick={onClose}
-          aria-label={closeLabel}
-        />
-      ) : (
-        <div className="z-content absolute inset-0" aria-hidden="true" />
-      )}
-      <section
-        id={id}
-        ref={panelRef}
-        tabIndex={-1}
-        role="dialog"
-        aria-modal="true"
-        aria-label={ariaLabel}
-        aria-labelledby={ariaLabelledBy}
-        className={cn(
-          "z-raised relative w-full overflow-hidden text-ink",
-          glass ? "liquid-glass-modal border border-line/80" : "bg-canvas",
-          sizeClasses[size],
-          panelClassName,
-        )}
-      >
-        {children}
-      </section>
-    </>
+  const backdrop = closeOnBackdrop ? (
+    <button
+      type="button"
+      tabIndex={-1}
+      className="z-content absolute inset-0 cursor-default"
+      onClick={onClose}
+      aria-label={closeLabel}
+    />
+  ) : (
+    <div className="z-content absolute inset-0" aria-hidden="true" />
+  );
+  const panelClassNames = cn(
+    "z-raised relative w-full overflow-hidden text-ink",
+    glass ? "liquid-glass-modal border border-line/80" : "bg-canvas",
+    sizeClasses[size],
+    panelClassName,
   );
   const overlayClasses = cn(
     "z-modal fixed inset-0 flex justify-center",
@@ -247,17 +232,50 @@ export function Dialog({
         {open ? (
           <motion.div
             ref={overlayRef}
-            initial={{ opacity: 0, scale: 0.95, y: 20 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: 20 }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.16 }}
             className={overlayClasses}
           >
-            {content}
+            {backdrop}
+            <motion.section
+              id={id}
+              ref={panelRef}
+              tabIndex={-1}
+              role="dialog"
+              aria-modal="true"
+              aria-label={ariaLabel}
+              aria-labelledby={ariaLabelledBy}
+              initial={{ opacity: 0, scale: 0.96, y: 12 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.96, y: 12 }}
+              transition={{ duration: 0.18, ease: [0.2, 0, 0, 1] }}
+              className={panelClassNames}
+            >
+              {children}
+            </motion.section>
           </motion.div>
         ) : null}
       </AnimatePresence>
     );
   }
 
-  return open ? <div ref={overlayRef} className={overlayClasses}>{content}</div> : null;
+  return open ? (
+    <div ref={overlayRef} className={overlayClasses}>
+      {backdrop}
+      <section
+        id={id}
+        ref={panelRef}
+        tabIndex={-1}
+        role="dialog"
+        aria-modal="true"
+        aria-label={ariaLabel}
+        aria-labelledby={ariaLabelledBy}
+        className={panelClassNames}
+      >
+        {children}
+      </section>
+    </div>
+  ) : null;
 }

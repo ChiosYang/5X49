@@ -32,7 +32,7 @@ export default function MovieViewingSection({ filmId }: { filmId: string; filmTi
     <section className="border-b border-line-strong px-8 py-10 md:px-16">
       <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h2 className="font-serif text-3xl text-ink">{t("filmSectionTitle")}</h2>
+          <h2 className="type-section-title text-ink">{t("filmSectionTitle")}</h2>
           {!isLoading && !error ? <p className="type-meta mt-2 text-ink-subtle">{t("viewingCount", { count: viewings.length })}</p> : null}
         </div>
         <div className="flex flex-col gap-2 sm:flex-row">

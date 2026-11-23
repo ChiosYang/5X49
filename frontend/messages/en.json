@@ -1118,6 +1118,7 @@
     "restoreFileLocation": "Restore File Location",
     "restoreFileLocationConfirm": "Restore the files to their pre-organization location? Generated NFO and artwork files will remain.",
     "restoreConflict": "State changed; restore was not applied.",
+    "cancel": "Cancel",
     "aggregate": "Aggregate",
     "all": "All",
     "aggregateId": "Aggregate ID",
@@ -1744,5 +1745,18 @@
     "error_interrupted": "Backend stopped or restarted. Retry explicitly from the beginning.",
     "error_suspend_unsupported": "Safe decoder suspension is unsupported; retry explicitly.",
     "error_timeout": "The tool stopped making progress; full decoding did not complete."
+  },
+  "EventSourcingHealth": {
+    "title": "Canonical runtime health",
+    "description": "Film/LibraryItem integrity, recoverable snapshots and durable workflows.",
+    "refresh": "Refresh",
+    "loadFailed": "Canonical health data could not be loaded.",
+    "films": "Films",
+    "integrityIssues": "Integrity issues",
+    "activeWorkflows": "Active workflows",
+    "failedWorkflows": "Failed workflows",
+    "recoverableEvents": "Recoverable events",
+    "consistent": "Canonical resource links are consistent in the current page of data.",
+    "needsAttention": "Canonical resource links need attention."
   }
 }

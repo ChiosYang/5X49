@@ -59,7 +59,7 @@ for (const locale of ['en', 'zh'] as const) {
       });
       await page.setViewportSize({ width, height: 1000 });
       await page.goto(`/${locale}/settings`);
-      await expect(page.getByRole('group', { name: copy.Settings.languagePref, exact: true }).getByRole('switch')).toBeVisible();
+      await expect(page.getByRole('group', { name: copy.Settings.languagePref, exact: true }).getByRole('button', { name: 'English', exact: true })).toBeVisible();
       await expect(page.getByText(copy.Settings.roadmap, { exact: true })).toHaveCount(0);
       if (width < 768) await page.getByRole('button', { name: copy.SettingsArea.categories, exact: true }).click();
       const nav = page.getByRole('navigation', { name: copy.Settings.settingsNavigation, exact: true });
@@ -71,7 +71,7 @@ for (const locale of ['en', 'zh'] as const) {
         await expect(page.getByRole('heading', { level: 1 })).toHaveText(copy.Settings.title);
         await expect(page.getByRole('heading', { level: 2 })).toHaveText(copy.SettingsArea[section]);
         await expect(page.getByRole('tab')).toHaveCount(0);
-        if (section === 'general') await expect(page.getByRole('group', { name: copy.Settings.languagePref, exact: true }).getByRole('switch')).toHaveAttribute('aria-checked', String(originalLanguage === 'en'));
+        if (section === 'general') await expect(page.getByRole('group', { name: copy.Settings.languagePref, exact: true }).getByRole('button', { name: 'English', exact: true })).toHaveAttribute('aria-pressed', String(originalLanguage === 'en'));
         else if (section === 'library') {
           await expect(page.locator('#media-root-0')).toHaveValue(roots[0]);
           await expect(page.getByRole('heading', { name: copy.SettingsArea.scanRules, exact: true })).toBeVisible();
@@ -264,7 +264,7 @@ for (const locale of ['en', 'zh'] as const) {
     await expect(page.locator('#settings-title-general')).toBeVisible();
     await expect(confirmation).toHaveCount(0);
     await expect(page.locator('body')).not.toHaveCSS('overflow', 'hidden');
-    await expect(page.getByRole('group', { name: copy.Settings.languagePref, exact: true }).getByRole('switch')).toBeEnabled();
+    await expect(page.getByRole('group', { name: copy.Settings.languagePref, exact: true }).getByRole('button', { name: 'English', exact: true })).toBeEnabled();
     await page.goForward();
     await expect(page.getByRole('button', { name: copy.LibraryCare.danger.clearButton, exact: true })).toBeEnabled();
     await expect(confirmation).toHaveCount(0);
@@ -314,16 +314,18 @@ test('language saves preserve the selected category and URL context', async ({ p
   await page.goto('/en/settings?section=general&context=library');
   let reject = true;
   await page.route(/\/api\/settings\/language\?/, route => route.request().method() === 'PUT' && reject ? route.fulfill({ status: 503, json: {} }) : route.continue());
-  const language = page.getByRole('group', { name: en.Settings.languagePref, exact: true }).getByRole('switch');
-  await expect(language).toHaveAttribute('aria-checked', 'true');
-  await language.click();
+  const group = page.getByRole('group', { name: en.Settings.languagePref, exact: true });
+  const english = group.getByRole('button', { name: 'English', exact: true });
+  const chinese = group.getByRole('button', { name: '中文', exact: true });
+  await expect(english).toHaveAttribute('aria-pressed', 'true');
+  await chinese.click();
   await expect(page.getByText(en.Settings.languageSaveFailed, { exact: true })).toBeVisible();
   await expect(page.locator('html')).toHaveAttribute('lang', 'en');
   expect((await read(request, '/settings/language')).language).toBe('en');
   reject = false;
-  await language.click();
+  await chinese.click();
   await expect(page.locator('html')).toHaveAttribute('lang', 'zh');
-  await expect(page.getByRole('group', { name: zh.Settings.languagePref, exact: true }).getByRole('switch')).toHaveAttribute('aria-checked', 'false');
+  await expect(page.getByRole('group', { name: zh.Settings.languagePref, exact: true }).getByRole('button', { name: '中文', exact: true })).toHaveAttribute('aria-pressed', 'true');
   expect(new URL(page.url()).searchParams.get('section')).toBe('general');
   expect(new URL(page.url()).searchParams.get('context')).toBe('library');
 });

@@ -190,7 +190,7 @@ export default function WorkflowRuntimeStatus() {
         <div className="liquid-glass-popover scrollbar-minimal relative max-h-80 overflow-y-auto border border-line/80 p-2">
           <div className="border-b border-line px-3 py-2">
             <p className="text-xs font-bold tracking-widest text-ink-muted uppercase">{t("title")}</p>
-            <p className="mt-1 truncate text-xs text-ink-disabled">
+            <p className="mt-1 truncate text-xs text-ink-subtle">
               {latestWorkflow
                 ? `${workflowLabel(latestWorkflow.type, (key) => t(key as never))} - ${resultSummary(latestWorkflow)}`
                 : t("noRecent")}
@@ -198,7 +198,7 @@ export default function WorkflowRuntimeStatus() {
           </div>
           {loadError && <div role="alert" className="px-3 py-2 text-xs text-danger"><p>{t("loadFailed")}</p><button type="button" className="focus-ring mt-2 min-h-11 underline" onClick={refreshWorkflows}>{t("reload")}</button></div>}
           {workflows.length === 0 ? (
-            <div className="px-3 py-6 text-center text-xs font-bold tracking-widest text-ink-disabled uppercase">
+            <div className="px-3 py-6 text-center text-xs font-bold tracking-widest text-ink-subtle uppercase">
               {t("empty")}
             </div>
           ) : (

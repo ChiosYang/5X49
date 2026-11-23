@@ -2,18 +2,6 @@ import type { MediaDirectoryStatus } from "@/hooks/useSettings";
 
 export type LibraryEmptyState = "onboarding" | "filtered-empty" | "content";
 
-export const FIRST_RUN_INTRO_SESSION_KEY = "5x49:first-run-intro-seen:v1";
-
-export function shouldPlayFirstRunIntro({
-  hasPlayed,
-  reducedMotion,
-}: {
-  hasPlayed: boolean;
-  reducedMotion: boolean;
-}) {
-  return !hasPlayed && !reducedMotion;
-}
-
 export function getLibraryEmptyState(totalFilms: number, filteredFilms: number): LibraryEmptyState {
   if (totalFilms === 0) return "onboarding";
   if (filteredFilms === 0) return "filtered-empty";

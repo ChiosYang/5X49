@@ -81,9 +81,9 @@ export default function LibraryMetadataCare({state}: {state: LibraryQueryState})
         <div className="flex items-center justify-between gap-4 border-b border-line py-4 lg:pt-0">
           <div>
             <p className="type-label text-ink-muted">{t("metadataTitle")}</p>
-            <p className="mt-1 text-xs text-ink-disabled">{t("itemsCount", { count: library.data?.total ?? pending.length })}</p>
+            <p className="mt-1 text-xs text-ink-subtle">{t("itemsCount", { count: library.data?.total ?? pending.length })}</p>
           </div>
-          <Film className="h-4 w-4 text-ink-disabled" />
+          <Film className="h-4 w-4 text-ink-subtle" />
         </div>
         <ul className="scrollbar-minimal max-h-[34rem] overflow-y-auto">
           {pending.map((film) => {
@@ -102,7 +102,7 @@ export default function LibraryMetadataCare({state}: {state: LibraryQueryState})
                 >
                   <span className="min-w-0">
                     <span className="block truncate text-sm font-medium">{film.title}</span>
-                    <span className={`mt-1 block text-[11px] ${active ? "text-inverse-ink/60" : "text-ink-disabled"}`}>
+                    <span className={`mt-1 block text-[11px] ${active ? "text-inverse-ink/60" : "text-ink-subtle"}`}>
                       {t("awaitingConfirmation")} · {film.year ?? t("unknownYear")}
                     </span>
                   </span>

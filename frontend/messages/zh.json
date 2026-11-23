@@ -1118,6 +1118,7 @@
     "restoreFileLocation": "恢复文件位置",
     "restoreFileLocationConfirm": "确认恢复这次整理前的文件位置吗？已生成的 NFO 和图片不会删除。",
     "restoreConflict": "当前状态已变化，未执行恢复。",
+    "cancel": "取消",
     "aggregate": "资源类型",
     "all": "全部",
     "aggregateId": "资源 ID",
@@ -1744,5 +1745,18 @@
     "error_interrupted": "后端停止或重启，请明确重试并从头检测。",
     "error_suspend_unsupported": "环境不支持安全暂停解码器，请明确重试。",
     "error_timeout": "工具长时间没有进度，尚未完成全程解码。"
+  },
+  "EventSourcingHealth": {
+    "title": "规范数据运行健康",
+    "description": "影片与媒体项关联完整性、可恢复操作快照与持久化工作流状态。",
+    "refresh": "刷新",
+    "loadFailed": "无法加载运行健康数据。",
+    "films": "影片数",
+    "integrityIssues": "完整性异常",
+    "activeWorkflows": "进行中任务",
+    "failedWorkflows": "失败任务",
+    "recoverableEvents": "可恢复快照",
+    "consistent": "当前分页中的规范资源关联保持一致。",
+    "needsAttention": "规范资源关联需要检查。"
   }
 }

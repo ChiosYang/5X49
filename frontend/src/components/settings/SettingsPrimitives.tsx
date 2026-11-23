@@ -30,7 +30,7 @@ export function SettingsPanel({
           {title}
         </h3>
         {description && (
-          <p className="mt-2 text-xs leading-5 text-ink-disabled">{description}</p>
+          <p className="mt-2 text-xs leading-5 text-ink-subtle">{description}</p>
         )}
       </div>
       <div className="space-y-6">{children}</div>
@@ -60,7 +60,7 @@ export function SettingRow({
           <p className="mb-1 text-sm font-medium tracking-widest text-ink uppercase">
             {title}
           </p>
-          {description && <p className="max-w-2xl text-xs leading-5 text-ink-disabled">{description}</p>}
+          {description && <p className="max-w-2xl text-xs leading-5 text-ink-subtle">{description}</p>}
         </div>
         {control && <div className="shrink-0 sm:max-w-[60%]">{control}</div>}
       </div>
@@ -146,7 +146,7 @@ export function ActionCard({
         <h3 className={`text-sm font-medium tracking-widest uppercase ${danger ? "text-danger" : "text-ink"}`}>
           {title}
         </h3>
-        <p className="mt-2 text-xs leading-5 text-ink-disabled">{description}</p>
+        <p className="mt-2 text-xs leading-5 text-ink-subtle">{description}</p>
         {meta && <div className="mt-3 text-xs leading-5 text-ink-subtle">{meta}</div>}
       </div>
       <div className="mt-5 min-h-5" aria-live="polite">
@@ -172,7 +172,7 @@ export function StatusTile({
 }) {
   return (
     <div className="border-l border-line-strong py-1 pl-4">
-      <p className="text-[10px] font-medium tracking-widest text-ink-disabled uppercase">{label}</p>
+      <p className="text-[10px] font-medium tracking-widest text-ink-subtle uppercase">{label}</p>
       <p
         className={`mt-3 text-sm font-semibold ${
           error ? "text-danger" : active ? "text-success" : "text-ink"
@@ -180,7 +180,7 @@ export function StatusTile({
       >
         {value}
       </p>
-      {detail && <p className="mt-1 truncate text-xs text-ink-disabled">{detail}</p>}
+      {detail && <p className="mt-1 truncate text-xs text-ink-subtle">{detail}</p>}
     </div>
   );
 }

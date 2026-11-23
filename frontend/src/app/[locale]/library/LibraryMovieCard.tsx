@@ -185,12 +185,6 @@ function formatResolutionBadge(movie: LibraryFilmSummary) {
   return "480p";
 }
 
-function countryCodeToFlag(code: string) {
-  return code
-    .toUpperCase()
-    .replace(/./g, (char) => String.fromCodePoint(127397 + char.charCodeAt(0)));
-}
-
 function countryToCode(country?: string | null) {
   if (!country) {
     return null;
@@ -292,14 +286,13 @@ export default function LibraryMovieCard({ movie, priority = false, readOnly = f
   const description = movie.overview || movie.micro_genre || "";
   const country = movie.countries?.[0];
   const countryCode = countryToCode(country);
-  const countryFlag = countryCode ? countryCodeToFlag(countryCode) : null;
   const extraCountryCount = Math.max((movie.countries?.length || 0) - 1, 0);
   const mediaSpecBadges = getMediaSpecBadges(movie);
   const metadataBadge = getMetadataBadge(movie);
   const tags = [
     movie.micro_genre,
     ...(movie.genres || []),
-    movie.directors?.[0] ? `Dir. ${movie.directors[0]}` : undefined,
+    movie.directors?.[0],
   ]
     .filter(Boolean)
     .slice(0, 3);
@@ -366,7 +359,7 @@ export default function LibraryMovieCard({ movie, priority = false, readOnly = f
       {/* Hover Overlay */}
       <div className="library-card-shade absolute inset-0 bg-canvas/0 transition-colors duration-standard" />
       <div className="library-card-overlay invisible absolute inset-x-0 bottom-0 flex flex-col gap-1 bg-gradient-to-t from-canvas/80 via-canvas/35 to-transparent px-5 pt-12 pb-4 opacity-0 transition-[opacity,transform] duration-standard">
-        <h3 className="line-clamp-1 text-2xl leading-none font-black text-ink uppercase">
+        <h3 className="line-clamp-1 text-2xl leading-tight font-black text-ink uppercase">
           {title}
         </h3>
         <p className="line-clamp-1 text-xs font-bold tracking-wide text-ink uppercase">
@@ -488,24 +481,14 @@ export default function LibraryMovieCard({ movie, priority = false, readOnly = f
                   ))}
                   {country && (
                     <span
-                      className={
-                        countryFlag
-                          ? "inline-flex h-5 items-center gap-1 text-ink-muted"
-                          : "inline-flex h-5 items-center gap-1 rounded-control border border-ink/35 bg-ink/[0.06] px-1.5 text-[10px] leading-none font-black text-ink uppercase shadow-[inset_0_1px_0_rgba(255,255,255,0.14)]"
-                      }
+                      className="inline-flex h-5 items-center gap-1 rounded-control border border-ink/35 bg-ink/[0.06] px-1.5 text-[10px] leading-none font-black text-ink uppercase shadow-[inset_0_1px_0_rgba(255,255,255,0.14)]"
                       title={movie.countries?.join(", ")}
                       aria-label={movie.countries?.join(", ")}
                     >
-                      {countryFlag ? (
-                        <span className="text-base leading-none">{countryFlag}</span>
-                      ) : (
-                        <>
-                          <Globe2 className="h-3.5 w-3.5 text-ink-subtle" />
-                          <span className="max-w-20 truncate">{country}</span>
-                        </>
-                      )}
+                      <Globe2 className="h-3 w-3 shrink-0 text-ink-subtle" aria-hidden="true" />
+                      <span className="max-w-20 truncate">{countryCode || country}</span>
                       {extraCountryCount > 0 && (
-                        <span className="text-xs font-bold text-ink-muted">+{extraCountryCount}</span>
+                        <span className="text-[10px] font-bold text-ink-muted">+{extraCountryCount}</span>
                       )}
                     </span>
                   )}
@@ -531,7 +514,7 @@ export default function LibraryMovieCard({ movie, priority = false, readOnly = f
         {/* Title & Info */}
         <Link href={`/library/${movie.id}`} onClick={() => rememberFilmReturn(movie.id)} onFocus={() => { if (!touchControl) { setActionsOpen(false); setActionsDismissed(true); } }} scroll={false} className="library-card-title focus-ring duration-standard flex min-w-0 cursor-pointer items-start justify-between gap-3 transition-opacity">
           <div className="min-w-0 space-y-1">
-            <h3 className="break-words text-xl md:text-2xl font-bold uppercase leading-none tracking-tight">
+            <h3 className="break-words text-xl md:text-2xl font-bold uppercase leading-tight tracking-tight">
               {title}
             </h3>
             {metadataBadge && (

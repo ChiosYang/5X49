@@ -17,19 +17,19 @@ export default async function MovieDetailPage({ params }: MovieDetailPageProps) 
 
   if (!film) {
     return (
-      <>
+      <div className="relative">
         <MovieDetailReturn behavior="library" label={t("return")} />
         <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center space-y-4">
           <h1 className="text-4xl font-serif font-bold">{t("notFound")}</h1>
         </div>
-      </>
+      </div>
     );
   }
 
   return (
-    <>
+    <div className="relative">
       <MovieDetailReturn behavior="library" label={t("return")} />
       <MovieDetailView film={film} routeFilmId={id} />
-    </>
+    </div>
   );
 }

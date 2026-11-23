@@ -36,7 +36,7 @@ export default function TmdbConnectionSetting() {
           onKeyDown={event => { if (event.key === "Enter" && !event.nativeEvent.isComposing) { event.preventDefault(); void autosave.commit(); } }} />
         <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center gap-2">
           {state.saving ? <><Spinner className="h-3 w-3" /><span className="sr-only">{t("saving")}</span></> : null}
-          <span className={`text-[10px] font-bold tracking-widest uppercase ${data?.configured ? "text-success" : "text-ink-disabled"}`}>{sourceLabel}</span>
+          <span className={`text-[10px] font-bold tracking-widest uppercase ${data?.configured ? "text-success" : "text-ink-subtle"}`}>{sourceLabel}</span>
         </span>
       </div>
       <span className="group/tmdb-test relative inline-flex shrink-0">

@@ -184,7 +184,7 @@ export default async function LibraryPage({ searchParams }: LibraryPageProps) {
               return (
                 <Link key={item} href={buildLibraryHref(queryState, item)} aria-current={active ? "page" : undefined} className={`focus-ring inline-flex min-h-10 min-w-max items-center gap-2 px-4 type-label transition-colors ${active ? "bg-inverse text-inverse-ink" : "text-ink-subtle hover:bg-surface-raised hover:text-ink"}`}>
                   {careT(VIEW_LABELS[item])}
-                  {count !== null ? <span className={`rounded-pill px-2 py-0.5 text-[10px] ${active ? "bg-inverse-ink/15" : "bg-surface-raised text-ink-disabled"}`}>{count}</span> : null}
+                  {count !== null ? <span className={`rounded-pill px-2 py-0.5 text-[10px] ${active ? "bg-inverse-ink/15" : "bg-surface-raised text-ink-subtle"}`}>{count}</span> : null}
                 </Link>
               );
             })}
@@ -220,7 +220,7 @@ export default async function LibraryPage({ searchParams }: LibraryPageProps) {
           <LibraryOnboarding rootVideoCount={organizationCandidates.length} />
         ) : emptyState === "filtered-empty" || (query && filmPage.total === 0) ? (
           <div className="mt-20 space-y-4 py-24 text-center">
-            <p className="[overflow-wrap:anywhere] font-serif text-xl text-ink-subtle italic">{query ? searchT("empty", { query }) : t("emptyFiltered")}</p>
+            <p className={`[overflow-wrap:anywhere] font-serif text-xl text-ink-subtle ${locale === "zh" ? "" : "italic"}`}>{query ? searchT("empty", { query }) : t("emptyFiltered")}</p>
             <Link href={buildLibraryHref(clearLibraryFilters(queryState), "all")} className="focus-ring inline-flex min-h-10 items-center border border-line-strong px-4 text-xs font-medium tracking-widest text-ink-muted uppercase hover:border-ink-disabled hover:text-ink">{t("resetFilter")}</Link>
           </div>
         ) : (

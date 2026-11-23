@@ -168,7 +168,7 @@ export default function MediaDirectoryControl({
       ) : null}
 
       {showDockerNote ? (
-        <p className="mt-3 text-xs leading-5 text-ink-disabled">{t("noteDocker")}</p>
+        <p className="mt-3 text-xs leading-5 text-ink-subtle">{t("noteDocker")}</p>
       ) : null}
 
       {fileBrowserOpen ? (

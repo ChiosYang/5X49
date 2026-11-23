@@ -23,11 +23,19 @@ function NavigationBar({ query, children }: { query: string; children: ReactNode
   const router = useRouter();
   const id = useId();
   const [open, setOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
   const [draft, setDraft] = useState(query);
   const input = useRef<HTMLInputElement>(null);
   const trigger = useRef<HTMLButtonElement>(null);
   const composing = useRef(false);
   const hydrated = useSyncExternalStore(subscribe, () => true, () => false);
+
+  useEffect(() => {
+    const updateScroll = () => setScrolled(window.scrollY > 24);
+    updateScroll();
+    window.addEventListener("scroll", updateScroll, { passive: true });
+    return () => window.removeEventListener("scroll", updateScroll);
+  }, []);
 
   useEffect(() => {
     if (!open) return;
@@ -52,7 +60,7 @@ function NavigationBar({ query, children }: { query: string; children: ReactNode
   }
 
   return (
-    <nav data-search-open={open} className="navigation-bar z-navigation fixed top-0 right-0 left-0 flex items-center justify-between p-8 pr-0 text-ink sm:pr-8">
+    <nav data-search-open={open} data-scrolled={scrolled} className="navigation-bar z-navigation fixed top-0 right-0 left-0 flex items-center justify-between p-8 pr-0 text-ink sm:pr-8">
       <div className="navigation-menu"><NavigationMenu /></div>
       <Link href="/" className="navigation-logo focus-ring z-navigation absolute left-1/2 -translate-x-1/2 font-serif text-2xl font-bold tracking-tighter drop-shadow-lg">5X49</Link>
       <div className="navigation-tools flex min-w-0 items-center gap-0 sm:gap-4">

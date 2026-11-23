@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { X } from "lucide-react";
+import { ArrowUp, Folder, X } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useDirectories } from "@/hooks/useDirectories";
 import { Button, IconButton } from "@/components/ui/Button";
@@ -49,7 +49,8 @@ export default function FileBrowser({ initialPath, onSelect, onCancel, isOpen }:
           onClick={() => data?.parent_path && setCurrentPath(data.parent_path)}
           disabled={!data?.parent_path}
         >
-          ⬆ {t("up")}
+          <ArrowUp className="h-3.5 w-3.5" aria-hidden="true" />
+          {t("up")}
         </Button>
         <div className="max-h-32 min-w-0 flex-1 overflow-y-auto break-all border border-line-strong bg-canvas/35 px-3 py-2 font-mono text-sm text-ink-muted">
           {data?.current_path || currentPath}
@@ -62,7 +63,7 @@ export default function FileBrowser({ initialPath, onSelect, onCancel, isOpen }:
         ) : error ? (
           <StateMessage state="error" className="h-full border-0 bg-transparent">{t("loadFailed")}</StateMessage>
         ) : !data?.directories?.length ? (
-          <StateMessage className="h-full border-0 bg-transparent italic">{t("empty")}</StateMessage>
+          <StateMessage className="h-full border-0 bg-transparent">{t("empty")}</StateMessage>
         ) : (
           <div className="grid grid-cols-1 gap-1">
             {data.directories.map((dir) => (
@@ -72,7 +73,7 @@ export default function FileBrowser({ initialPath, onSelect, onCancel, isOpen }:
                 onClick={() => setCurrentPath(dir.path)}
                 className="focus-ring duration-standard group flex items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-ink/5"
               >
-                <span className="text-xl text-warning/70 group-hover:text-warning">📁</span>
+                <Folder className="h-4 w-4 shrink-0 text-ink-muted transition-colors group-hover:text-ink" aria-hidden="true" />
                 <span className="truncate text-sm font-medium text-ink-muted group-hover:text-ink">{dir.name}</span>
               </button>
             ))}

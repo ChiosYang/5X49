@@ -87,7 +87,7 @@ export default function ExternalScoreStrip({
                 {score.label || score.source}
               </span>
               {score.edition && (
-                <span className="shrink-0 text-[10px] font-bold tracking-widest text-ink-disabled uppercase">
+                <span className="shrink-0 text-[10px] font-bold tracking-widest text-ink-subtle uppercase">
                   {score.edition}
                 </span>
               )}

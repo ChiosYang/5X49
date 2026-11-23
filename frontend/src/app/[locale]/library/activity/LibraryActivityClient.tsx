@@ -6,6 +6,7 @@ import { useMemo, useState } from "react";
 import useSWR, { mutate } from "swr";
 
 import { Button } from "@/components/ui/Button";
+import { Dialog } from "@/components/ui/Dialog";
 import { InlineFeedback, Spinner, StateMessage } from "@/components/ui/Feedback";
 import { FormField, Select, TextInput } from "@/components/ui/FormControls";
 import { useOperationPreview, useRestoreOperation } from "@/hooks/useFilm";
@@ -29,8 +30,24 @@ function SnapshotRestore({ event }: { event: EventRecord }) {
   const snapshotId = event.operation_snapshot_id;
   const { data: preview, error } = useOperationPreview(snapshotId);
   const restore = useRestoreOperation(snapshotId);
+  const [confirmOpen, setConfirmOpen] = useState(false);
   const restoresFileLocation = event.type === "RootVideoOrganized";
   if (!snapshotId) return null;
+
+  const actionLabel = restoresFileLocation ? t("restoreFileLocation") : t("restore");
+  const confirmation = restoresFileLocation ? t("restoreFileLocationConfirm") : t("restoreConfirm");
+
+  const handleConfirmRestore = async () => {
+    if (!preview?.confirmation_token) return;
+    try {
+      await restore.trigger({ confirmation_token: preview.confirmation_token });
+      await mutate(API.activityEvents());
+    } catch {
+      // SWR mutation exposes the error state via restore.error.
+    } finally {
+      setConfirmOpen(false);
+    }
+  };
 
   return (
     <div className="mt-4 space-y-3 border-t border-line pt-4">
@@ -38,24 +55,45 @@ function SnapshotRestore({ event }: { event: EventRecord }) {
       {!preview && !error && <Spinner className="h-4 w-4" />}
       {preview && (
         <>
-          <div className="grid gap-2 type-meta text-ink-subtle sm:grid-cols-2">
-            <p className="break-words">{t("before")}: {JSON.stringify(preview.before)}</p>
-            <p className="break-words">{t("after")}: {JSON.stringify(preview.after)}</p>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="border border-line bg-canvas p-3">
+              <span className="type-meta block text-ink-subtle">{t("before")}</span>
+              <code className="mt-1.5 block break-all font-mono text-xs leading-5 text-ink-muted">{JSON.stringify(preview.before)}</code>
+            </div>
+            <div className="border border-line bg-canvas p-3">
+              <span className="type-meta block text-ink-subtle">{t("after")}</span>
+              <code className="mt-1.5 block break-all font-mono text-xs leading-5 text-ink-muted">{JSON.stringify(preview.after)}</code>
+            </div>
           </div>
           <Button
-            onClick={async () => {
-              const confirmation = restoresFileLocation ? t("restoreFileLocationConfirm") : t("restoreConfirm");
-              if (!preview.confirmation_token || !window.confirm(confirmation)) return;
-              await restore.trigger({ confirmation_token: preview.confirmation_token });
-              await mutate(API.activityEvents());
-            }}
+            onClick={() => setConfirmOpen(true)}
             disabled={!preview.current_matches_after || !preview.confirmation_token || preview.status !== "available"}
             busy={restore.isMutating}
             variant="danger"
           >
             <RotateCcw className="h-4 w-4" />
-            {restoresFileLocation ? t("restoreFileLocation") : t("restore")}
+            {actionLabel}
           </Button>
+          <Dialog
+            open={confirmOpen}
+            onClose={() => { if (!restore.isMutating) setConfirmOpen(false); }}
+            size="sm"
+            ariaLabel={actionLabel}
+            closeLabel={t("cancel")}
+            panelClassName="p-6"
+          >
+            <h3 className="type-section-title text-ink">{actionLabel}</h3>
+            <p className="mt-3 text-sm leading-relaxed text-ink-muted">{confirmation}</p>
+            <div className="mt-6 flex items-center justify-end gap-3">
+              <Button variant="ghost" onClick={() => setConfirmOpen(false)} disabled={restore.isMutating}>
+                {t("cancel")}
+              </Button>
+              <Button variant="danger" busy={restore.isMutating} onClick={() => void handleConfirmRestore()}>
+                <RotateCcw className="h-4 w-4" />
+                {actionLabel}
+              </Button>
+            </div>
+          </Dialog>
           {restore.error && <InlineFeedback tone="error">{t("restoreConflict")}</InlineFeedback>}
         </>
       )}
@@ -132,7 +170,7 @@ export default function LibraryActivityClient() {
                     {event.display_title && event.film_id ? (
                       <Link href={`/library/${event.film_id}`} className="font-bold text-ink hover:underline">{event.display_title}</Link>
                     ) : null}
-                    <pre className="scrollbar-minimal max-h-56 overflow-auto whitespace-pre-wrap break-all border border-line bg-canvas p-3 type-meta text-ink-muted">
+                    <pre className="scrollbar-minimal max-h-56 overflow-auto whitespace-pre-wrap break-all border border-line bg-canvas p-3 font-mono text-xs leading-5 text-ink-muted">
                       {JSON.stringify(event.payload || {}, null, 2)}
                     </pre>
                     <SnapshotRestore event={event} />

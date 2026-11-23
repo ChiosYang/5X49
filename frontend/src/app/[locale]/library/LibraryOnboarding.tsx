@@ -26,7 +26,6 @@ import {
   useTmdbSettings,
 } from "@/hooks/useSettings";
 import { getWorkflowScanState, isMediaDirectoryReady, saveDirectoryAndScan } from "@/lib/library-onboarding";
-import FirstRunIntro from "./FirstRunIntro";
 import { useSettingsScanGuard } from "@/hooks/useSettingsScanGuard";
 import { settingsScanBlocked } from "@/lib/settings-scan-guard";
 
@@ -107,9 +106,7 @@ export default function LibraryOnboarding({ rootVideoCount }: { rootVideoCount: 
   })();
 
   return (
-    <>
-      <FirstRunIntro />
-      <section className="pt-10" aria-labelledby="onboarding-title">
+    <section className="pt-10" aria-labelledby="onboarding-title">
         <header className="max-w-[57rem]">
           <h2 id="onboarding-title" className="max-w-3xl pt-3 font-serif text-3xl tracking-tight text-ink md:text-5xl">
             {t("title")}
@@ -129,7 +126,7 @@ export default function LibraryOnboarding({ rootVideoCount }: { rootVideoCount: 
                   )}
                 </span>
                 <div>
-                  <p className="type-label text-ink-disabled">{t("step", { number: 1 })}</p>
+                  <p className="type-label text-ink-subtle">{t("step", { number: 1 })}</p>
                   <h3 className="mt-1 text-lg font-medium text-ink">{t("directoryTitle")}</h3>
                 </div>
               </div>
@@ -147,7 +144,7 @@ export default function LibraryOnboarding({ rootVideoCount }: { rootVideoCount: 
                 )}
               </span>
               <div className="min-w-0 flex-1">
-                <p className="type-label text-ink-disabled">{t("step", { number: 2 })}</p>
+                <p className="type-label text-ink-subtle">{t("step", { number: 2 })}</p>
                 <h3 className="mt-1 text-lg font-medium text-ink">{t("scanTitle")}</h3>
                 <p className="mt-2 text-xs leading-5 text-ink-subtle">{t("scanDescription")}</p>
 
@@ -179,7 +176,7 @@ export default function LibraryOnboarding({ rootVideoCount }: { rootVideoCount: 
     ├── Film Title (2024).mkv
     └── movie.nfo  # optional`}
                     </pre>
-                    <p className="mt-3 text-xs leading-5 text-ink-disabled">{t("supportedFiles")}</p>
+                    <p className="mt-3 text-xs leading-5 text-ink-subtle">{t("supportedFiles")}</p>
                   </div>
                 ) : null}
               </div>
@@ -197,20 +194,20 @@ export default function LibraryOnboarding({ rootVideoCount }: { rootVideoCount: 
                   {tmdb?.configured ? (
                     <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-success" />
                   ) : (
-                    <Circle className="mt-0.5 h-4 w-4 shrink-0 text-ink-disabled" />
+                    <Circle className="mt-0.5 h-4 w-4 shrink-0 text-ink-subtle" />
                   )}
                   <span>
                     <strong className="block font-medium text-ink">TMDB</strong>
-                    <span className="text-ink-disabled">
+                    <span className="text-ink-subtle">
                       {tmdb?.configured ? t("tmdbConfigured") : t("tmdbOptional")}
                     </span>
                   </span>
                 </li>
                 <li className="flex items-start gap-3">
-                  <Circle className="mt-0.5 h-4 w-4 shrink-0 text-ink-disabled" />
+                  <Circle className="mt-0.5 h-4 w-4 shrink-0 text-ink-subtle" />
                   <span>
                     <strong className="block font-medium text-ink">OpenRouter</strong>
-                    <span className="text-ink-disabled">{t("aiOptional")}</span>
+                    <span className="text-ink-subtle">{t("aiOptional")}</span>
                   </span>
                 </li>
               </ul>
@@ -240,6 +237,5 @@ export default function LibraryOnboarding({ rootVideoCount }: { rootVideoCount: 
           </aside>
         </div>
       </section>
-    </>
   );
 }
