@@ -126,6 +126,34 @@ def control(payload: dict, x_e2e_token: str = Header(default='')):
         raise HTTPException(403)
     global health_allowed
     action = payload['action']
+    if action == 'performance_process':
+        # On Windows the venv launcher can have a different PID from the serving interpreter.
+        return {'pid': os.getpid()}
+    if action == 'performance_import_batch':
+        # Setup only for downstream timings when a full scan cannot populate the fixture.
+        from app.services.library import library_manager
+        media = root / 'scale' / 'media'
+        start = payload['offset']
+        assert isinstance(start, int) and start >= 0
+        folders = sorted(media.glob('film-*'))[start:start + 20]
+        scanner = NFOScanner(str(media))
+        records = [item for folder in folders for item in scanner.scan_folder_editions_observed(folder)]
+        assert not scanner.errors and len(records) == len(folders)
+        count = library_manager.add_observations(
+            [item.film for item in records], structured_observations=[item.structured_metadata for item in records])
+        return {'created': count}
+    if action == 'performance_analysis':
+        from app.contracts.analysis_v2 import AnalysisV2Output
+        from app.evaluation.gate_b import _FixtureHistorian
+        from app.services.analysis import analysis_service
+        output = AnalysisV2Output.model_validate({
+            'subject_film_id': payload['film_id'], 'summary': 'Synthetic performance sample.',
+            'assertions': [{'predicate': 'HAS_MICRO_GENRE',
+                            'target': {'entity_type': 'concept', 'display_name': 'Fixture micro genre'},
+                            'rationale': 'Fixed single-candidate workload.'}],
+        })
+        analysis_service.historian = _FixtureHistorian('performance-fixture', output)
+        return {'configured': True}
     if action == 'semantic_evaluation':
         from app.database import engine
         return semantic_fixture.configure(root, engine, payload)

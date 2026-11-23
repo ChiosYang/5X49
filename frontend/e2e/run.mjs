@@ -8,6 +8,11 @@ import { randomUUID } from 'node:crypto';
 
 const frontend = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const backend = path.resolve(frontend, '../backend');
+const performanceRun = process.argv[2] === '--performance';
+const scaleFilms = Number(process.argv[3] ?? 1000);
+if (performanceRun && (!Number.isSafeInteger(scaleFilms) || scaleFilms <= 12)) {
+  throw Error('The larger performance fixture must contain more than 12 films');
+}
 async function run(root) {
   await writeFile(path.join(root, '.owned'), '5X49 E2E');
   const output = path.join(frontend, 'e2e-artifacts');
@@ -41,17 +46,26 @@ async function run(root) {
       if (exists) throw Error(`E2E requires a clean frontend environment: ${name} exists`);
     }
     await access(python);
-    for (const profile of ['normal', 'mixed']) await finish(start(python, [path.join(backend, 'scripts/generate_test_data.py'), '--output-dir', path.join(root, profile), '--count', profile === 'normal' ? '12' : '60', '--profile', profile, '--video-mode', 'valid'], root));
+    const fixtures = performanceRun ? [['normal', 12], ['scale', scaleFilms]] : [['normal', 12], ['mixed', 60]];
+    for (const [name, count] of fixtures) {
+      await finish(start(python, [path.join(backend, 'scripts/generate_test_data.py'), '--output-dir',
+        path.join(root, name), '--count', String(count), '--profile', name === 'mixed' ? 'mixed' : 'normal',
+        '--video-mode', 'valid'], root));
+    }
+    const backendStartTime = performance.now();
     server = backendStart();
     await ready(`${env.E2E_BACKEND}/health`, server);
+    const backendReadyMs = Math.round(performance.now() - backendStartTime);
     await finish(start(process.execPath, ['node_modules/next/dist/bin/next', 'build'], frontend, 'build.log'));
     const standalone = path.join(frontend, '.next/standalone');
     await cp(path.join(frontend, '.next/static'), path.join(standalone, '.next/static'), { recursive: true });
     await cp(path.join(frontend, 'public'), path.join(standalone, 'public'), { recursive: true });
     // Exercise the loopback host that previously caused default-locale rewrites to loop.
     env.PORT = String(frontendPort); env.HOSTNAME = '127.0.0.1';
+    const frontendStartTime = performance.now();
     const web = start(process.execPath, ['server.js'], standalone, 'frontend.log');
     await ready(`${env.E2E_BASE_URL}/api/health`, web);
+    const frontendReadyMs = Math.round(performance.now() - frontendStartTime);
     watcher = setInterval(async () => {
       if (restarting) return;
       try { await access(path.join(root, 'restart')); } catch { return; }
@@ -62,7 +76,10 @@ async function run(root) {
       } catch (error) { await writeFile(path.join(root, 'restart-error'), String(error)); }
       finally { restarting = false; }
     }, 100);
-    await finish(start(process.execPath, ['node_modules/@playwright/test/cli.js', 'test', ...process.argv.slice(2)], frontend));
+    const command = performanceRun
+      ? ['e2e/performance/run.mjs', ...[scaleFilms, web.pid, backendReadyMs, frontendReadyMs].map(String)]
+      : ['node_modules/@playwright/test/cli.js', 'test', ...process.argv.slice(2)];
+    await finish(start(process.execPath, command, frontend));
     result = 0;
   } catch (error) { console.error(error); }
   finally {

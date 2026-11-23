@@ -16,6 +16,10 @@ Run from `frontend/`:
 npm run test:e2e
 ```
 
+For repeatable production-page, API, mixed-load and background-job timings, run
+`npm run test:perf` from the same directory. The [performance baseline](features/performance-baseline.md)
+describes the fixtures, timing boundaries and reference measurements.
+
 The runner builds the production frontend, starts the standalone Next server (as in the frontend container) and real FastAPI on
 loopback ephemeral ports, and creates an owned temporary directory with SQLite,
 normal/mixed media fixtures (including valid short audio/video), an empty media
