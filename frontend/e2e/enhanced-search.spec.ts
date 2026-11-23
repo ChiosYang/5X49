@@ -35,6 +35,27 @@ test.beforeEach(async({context,request})=>{
 test.afterEach(async({request})=>{await control(request,'discovery_ai',{enabled:false});});
 test.afterAll(async({request})=>{await control(request,'identity_cleanup');});
 
+for (const locale of ['en', 'zh']) {
+  test(`${locale} film graph nodes open keyword search in a new tab`, async ({ page, context }) => {
+    const prefix = locale === 'en' ? '/en' : '';
+    const detailPath = `${prefix}/library/${ids['Search Alpha']}`;
+    const searchPath = `${prefix}/explore/search?q=Search+Director&mode=keyword`;
+    await page.goto(`/${locale}/library/${ids['Search Alpha']}`);
+    const node = page.locator('svg').getByRole('link', { name: 'Search Director', exact: true });
+    await expect(node).toHaveAttribute('href', searchPath);
+
+    for (const button of ['left', 'middle'] as const) {
+      const [newTab] = await Promise.all([
+        context.waitForEvent('page'),
+        node.locator('circle').click({ button, modifiers: button === 'left' ? ['ControlOrMeta'] : [] }),
+      ]);
+      await expect(newTab).toHaveURL(searchPath);
+      await expect(page).toHaveURL(detailPath);
+      await newTab.close();
+    }
+  });
+}
+
 for(const locale of ['en','zh'])for(const width of [1440,320]){
   test(`${locale} complete extended conditions, removable bounds and Return at ${width}px`,async({page,request})=>{
     const copy=locale==='zh'?zh:en;await page.setViewportSize({width,height:900});await page.goto(`/${locale}/explore`);

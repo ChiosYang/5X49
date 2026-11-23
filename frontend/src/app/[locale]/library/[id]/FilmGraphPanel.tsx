@@ -165,22 +165,21 @@ export default function FilmGraphPanel({ filmId }: { filmId: string }) {
                 return <g key={node.id} role="group" aria-label={label}>{nodeGraphic}</g>;
               }
               return (
-                <g
+                <Link
                   key={node.id}
-                  role="link"
-                  tabIndex={0}
+                  href={href}
+                  prefetch={false}
                   aria-label={label}
                   className="group cursor-pointer focus:outline-none"
-                  onClick={() => router.push(href)}
                   onKeyDown={(event) => {
-                    if (event.key === "Enter" || event.key === " ") {
+                    if (event.key === " ") {
                       event.preventDefault();
                       router.push(href);
                     }
                   }}
                 >
                   {nodeGraphic}
-                </g>
+                </Link>
               );
             })}
           </svg>
