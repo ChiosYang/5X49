@@ -11,7 +11,15 @@ import { invalidateViewingCaches, useFilmProfileState, useUpdateFilmProfileState
 import { personalStateChanges } from "@/lib/personal-state";
 import type { FilmProfileState } from "@/types/movie";
 
-export default function FilmPersonalState({ filmId, initialState }: { filmId: string; initialState: FilmProfileState }) {
+export default function FilmPersonalState({
+  filmId,
+  initialState,
+  embedded = false,
+}: {
+  filmId: string;
+  initialState: FilmProfileState;
+  embedded?: boolean;
+}) {
   const t = useTranslations("PersonalState");
   const router = useRouter();
   const { data: state = initialState, mutate } = useFilmProfileState(filmId);
@@ -47,15 +55,28 @@ export default function FilmPersonalState({ filmId, initialState }: { filmId: st
   };
 
   return (
-    <section className="space-y-5 border-b border-line-strong px-8 py-10 md:px-16" aria-label={t("title")}>
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <h2 className="type-section-title">{t("title")}</h2>
-        <Button onClick={edit}>{t("edit")}</Button>
+    <section
+      className={
+        embedded
+          ? "min-w-0 space-y-5 border-b border-line pb-8 lg:border-r lg:border-b-0 lg:pr-10 lg:pb-0"
+          : "space-y-5 border-b border-line-strong px-8 py-10 md:px-16"
+      }
+      aria-label={t("title")}
+    >
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h2 className={embedded ? "text-lg font-semibold tracking-tight text-ink" : "type-section-title"}>{t("title")}</h2>
+        <Button size="sm" variant="secondary" className="rounded-pill px-4" onClick={edit}>{t("edit")}</Button>
       </div>
-      <p className="text-ink-muted">{state.rating == null ? t("unrated") : t("rated", { rating: state.rating })}</p>
-      <p className="max-w-3xl whitespace-pre-wrap break-words text-ink-muted">{state.notes || t("noNotes")}</p>
+      <div className="space-y-2.5">
+        <p className={state.rating == null ? "text-sm text-ink-subtle" : "font-mono text-sm tabular-nums text-ink"}>
+          {state.rating == null ? t("unrated") : t("rated", { rating: state.rating })}
+        </p>
+        <p className={`max-w-3xl whitespace-pre-wrap break-words text-sm leading-6 ${state.notes ? "text-ink-muted" : "text-ink-subtle"}`}>
+          {state.notes || t("noNotes")}
+        </p>
+      </div>
       {saved && <InlineFeedback tone="success">{t("saved")}</InlineFeedback>}
-      <Dialog open={open} onClose={() => { if (!update.isMutating) setOpen(false); }} closeLabel={t("cancel")} ariaLabelledBy="personal-state-title" size="sm">
+      <Dialog open={open} onClose={() => { if (!update.isMutating) setOpen(false); }} closeLabel={t("cancel")} ariaLabelledBy="personal-state-title" size="sm" panelClassName="rounded-media">
         <form className="space-y-6 p-6 sm:p-8" onSubmit={(event) => { event.preventDefault(); void save(); }}>
           <h2 id="personal-state-title" className="type-section-title">{t("title")}</h2>
           <FormField label={t("rating")} description={t("ratingHelp")}>
@@ -69,8 +90,8 @@ export default function FilmPersonalState({ filmId, initialState }: { filmId: st
           </FormField>
           {error && <InlineFeedback tone="error">{t("failed")}</InlineFeedback>}
           <div className="flex flex-wrap justify-end gap-3">
-            <Button disabled={update.isMutating} onClick={() => setOpen(false)}>{t("cancel")}</Button>
-            <Button type="submit" variant="primary" busy={update.isMutating} disabled={update.isMutating || Object.keys(changes).length === 0}>{t("save")}</Button>
+            <Button size="sm" className="rounded-pill px-4" disabled={update.isMutating} onClick={() => setOpen(false)}>{t("cancel")}</Button>
+            <Button size="sm" type="submit" variant="primary" className="rounded-pill px-5" busy={update.isMutating} disabled={update.isMutating || Object.keys(changes).length === 0}>{t("save")}</Button>
           </div>
         </form>
       </Dialog>

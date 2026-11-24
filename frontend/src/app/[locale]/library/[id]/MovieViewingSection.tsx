@@ -20,7 +20,14 @@ function formatDate(viewing: ViewingView, locale: string, unknown: string) {
   );
 }
 
-export default function MovieViewingSection({ filmId }: { filmId: string; filmTitle: string }) {
+export default function MovieViewingSection({
+  filmId,
+  embedded = false,
+}: {
+  filmId: string;
+  filmTitle: string;
+  embedded?: boolean;
+}) {
   const t = useTranslations("Diary");
   const locale = useLocale();
   const { data, error, isLoading } = useFilmViewings(filmId);
@@ -29,17 +36,17 @@ export default function MovieViewingSection({ filmId }: { filmId: string; filmTi
   const viewings = data || [];
 
   return (
-    <section className="border-b border-line-strong px-8 py-10 md:px-16">
-      <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
+    <section className={embedded ? "min-w-0" : "border-b border-line-strong px-8 py-10 md:px-16"}>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h2 className="type-section-title text-ink">{t("filmSectionTitle")}</h2>
-          {!isLoading && !error ? <p className="type-meta mt-2 text-ink-subtle">{t("viewingCount", { count: viewings.length })}</p> : null}
+          <h2 className={embedded ? "text-lg font-semibold tracking-tight text-ink" : "type-section-title text-ink"}>{t("filmSectionTitle")}</h2>
+          {!isLoading && !error ? <p className="type-meta mt-1.5 text-ink-subtle">{t("viewingCount", { count: viewings.length })}</p> : null}
         </div>
-        <div className="flex flex-col gap-2 sm:flex-row">
+        <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center">
           {viewings.length > 0 ? (
             <Link
               href={`/diary?film=${filmId}`}
-              className="focus-ring duration-fast inline-flex min-h-11 items-center justify-center px-5 type-label text-ink-muted transition-colors hover:bg-surface-hover hover:text-ink"
+              className="focus-ring duration-fast inline-flex min-h-10 items-center justify-center rounded-pill px-3.5 type-label text-ink-muted transition-colors hover:bg-surface-hover hover:text-ink"
             >
               {t("viewAll")}
             </Link>
@@ -50,22 +57,22 @@ export default function MovieViewingSection({ filmId }: { filmId: string; filmTi
         </div>
       </div>
 
-      <div className="mt-6">
-        {selected ? <div id="film-viewing-editor" className="mb-6 max-w-2xl border border-line p-4">
-          <p className="font-bold text-ink">{formatDate(selected, locale, t("unknownDate"))}</p>
+      <div className="mt-5">
+        {selected ? <div id="film-viewing-editor" className="mb-5 max-w-2xl rounded-media border border-line bg-surface/60 p-5">
+          <p className="font-semibold text-ink">{formatDate(selected, locale, t("unknownDate"))}</p>
           <ViewingInlineEditor key={selected.id} filmId={filmId} viewing={selected}
             onBusyChange={setEditorBusy} onCancel={() => setSelected(null)} />
         </div> : null}
         {isLoading ? <StateMessage state="loading">{t("loadingFilm")}</StateMessage> : null}
         {error ? <StateMessage state="error">{t("errorFilm")}</StateMessage> : null}
-        {!isLoading && !error && viewings.length === 0 ? <StateMessage>{t("emptyFilm")}</StateMessage> : null}
+        {!isLoading && !error && viewings.length === 0 ? <p className="text-sm text-ink-subtle">{t("emptyFilm")}</p> : null}
         {!isLoading && viewings.length > 0 ? (
-          <div className="grid gap-3 md:grid-cols-3">
+          <div className="divide-y divide-line border-t border-line">
             {viewings.slice(0, 3).map((viewing) => (
-              <div key={viewing.id} className="min-w-0 border border-line p-4">
+              <div key={viewing.id} className="min-w-0 py-3.5 first:pt-3.5">
                 <div className="flex min-w-0 items-center justify-between gap-3">
                   <div className="min-w-0">
-                    <p className="truncate font-bold text-ink">{formatDate(viewing, locale, t("unknownDate"))}</p>
+                    <p className="truncate text-sm font-medium tabular-nums text-ink">{formatDate(viewing, locale, t("unknownDate"))}</p>
                     <p className="type-meta mt-1 truncate text-ink-subtle">{t("sourceLabel", {
                       source: viewing.source === "manual"
                         ? t("sources.manual")
@@ -77,7 +84,7 @@ export default function MovieViewingSection({ filmId }: { filmId: string; filmTi
                   <button
                     type="button"
                     disabled={editorBusy}
-                    className="focus-ring flex h-9 w-9 shrink-0 items-center justify-center border border-line text-ink-muted hover:text-ink"
+                    className="focus-ring duration-fast flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-line text-ink-muted transition-colors hover:border-line-strong hover:text-ink"
                     aria-label={viewing.editable ? t("editViewing") : t("viewViewing")}
                     title={viewing.editable ? t("editViewing") : t("viewViewing")}
                     aria-expanded={selected?.id === viewing.id}
@@ -86,7 +93,7 @@ export default function MovieViewingSection({ filmId }: { filmId: string; filmTi
                       requestAnimationFrame(() => document.getElementById("film-viewing-editor")?.scrollIntoView({ block: "center" }));
                     }}
                   >
-                    {viewing.editable ? <Edit3 className="h-4 w-4" /> : <Info className="h-4 w-4" />}
+                    {viewing.editable ? <Edit3 className="h-3.5 w-3.5" /> : <Info className="h-3.5 w-3.5" />}
                   </button>
                 </div>
                 <ViewingReview viewing={viewing} />

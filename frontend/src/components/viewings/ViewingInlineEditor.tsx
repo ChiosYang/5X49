@@ -204,11 +204,12 @@ export default function ViewingInlineEditor({
           ) : null}
         </div>
         <div className="flex flex-col gap-2 sm:flex-row">
-          <Button variant="ghost" size="sm" disabled={busy || actions.retryPending} onClick={onCancel}>{succeeded ? t("close") : t("cancel")}</Button>
+          <Button variant="ghost" size="sm" className="rounded-pill px-4" disabled={busy || actions.retryPending} onClick={onCancel}>{succeeded ? t("close") : t("cancel")}</Button>
           <Button
             variant="primary"
             size="sm"
-            icon={<CalendarPlus className="h-4 w-4" />}
+            className="rounded-pill px-4"
+            icon={<CalendarPlus className="h-4 w-4 shrink-0" />}
             busy={busy}
             disabled={busy || (!actions.retryPending && (!valid || !dirty)) || succeeded || actions.conflict}
             onClick={save}
@@ -242,8 +243,10 @@ export function ViewingQuickAdd({ className, filmId, onSaved }: ViewingQuickAddP
       {todayCount > 0 ? <p className="mb-2 text-xs text-ink-subtle">{t("todayCount", { count: todayCount })}</p> : null}
       <div className="flex flex-col gap-2 sm:flex-row">
         <Button
+          size="sm"
           variant="primary"
-          icon={<CalendarPlus className="h-4 w-4" />}
+          className="rounded-pill px-4"
+          icon={<CalendarPlus className="h-4 w-4 shrink-0" />}
           busy={busy}
           disabled={otherDateOpen || completed || busy || actions.conflict}
           responsiveWidth
@@ -252,7 +255,9 @@ export function ViewingQuickAdd({ className, filmId, onSaved }: ViewingQuickAddP
           {actions.retryPending ? t("retrySave") : t("watchToday")}
         </Button>
         <Button
+          size="sm"
           variant="secondary"
+          className="rounded-pill px-4"
           responsiveWidth
           disabled={busy || editorBusy || actions.retryPending}
           aria-expanded={otherDateOpen}

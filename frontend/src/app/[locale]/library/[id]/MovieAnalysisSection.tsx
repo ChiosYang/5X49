@@ -38,24 +38,34 @@ export default function MovieAnalysisSection({
     }
   };
 
+  const hasAnalysis = Boolean(analysis);
+
   return (
-    <section id="film-analysis" tabIndex={-1} className="space-y-8 border-b border-line-strong px-8 py-12 md:px-16 md:py-16">
-      <div className="flex flex-wrap items-end justify-between gap-6 border-b border-line-strong pb-6">
-        <div>
-          <h2 className="type-section-title text-ink">{t("title")}</h2>
+    <section
+      id="film-analysis"
+      tabIndex={-1}
+      className={
+        hasAnalysis
+          ? "space-y-8 border-b border-line-strong px-8 py-12 md:px-16 md:py-14"
+          : "space-y-4 border-b border-line-strong px-8 py-7 md:px-16 md:py-8"
+      }
+    >
+      <div className={hasAnalysis ? "flex flex-wrap items-end justify-between gap-6 border-b border-line-strong pb-6" : "flex flex-wrap items-center justify-between gap-4"}>
+        <div className={hasAnalysis ? undefined : "flex flex-wrap items-center gap-x-5 gap-y-2"}>
+          <h2 className={hasAnalysis ? "type-section-title text-ink" : "text-lg font-semibold tracking-tight text-ink"}>{t("title")}</h2>
+          {!hasAnalysis && !error && (
+            <div className="flex items-center gap-2 text-ink-subtle">
+              {running ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Network className="h-3.5 w-3.5" />}
+              <span className="type-meta">{running ? t("analyzing") : t("pendingStatus")}</span>
+            </div>
+          )}
         </div>
-        <Button onClick={triggerAnalysis} disabled={running} busy={running} variant="primary">
+        <Button size="sm" onClick={triggerAnalysis} disabled={running} busy={running} variant="primary" className="rounded-pill px-5">
           {running ? t("analyzing") : t("trigger")}
         </Button>
       </div>
 
       {(error || triggerFailed || analysis?.status === "failed") && <InlineFeedback tone="error">{t("failedStatus")}</InlineFeedback>}
-      {!analysis && !error && (
-        <div className="flex items-center gap-3 text-ink-subtle">
-          {running ? <Loader2 className="h-4 w-4 animate-spin" /> : <Network className="h-4 w-4" />}
-          <span className="type-label">{running ? t("analyzing") : t("pendingStatus")}</span>
-        </div>
-      )}
 
       {analysis && (
         <div className="space-y-10">
@@ -73,7 +83,7 @@ export default function MovieAnalysisSection({
                     href={evidence.source_uri}
                     target="_blank"
                     rel="noreferrer"
-                    className="focus-ring group flex min-w-0 items-start justify-between gap-4 border border-line p-4 transition-colors duration-fast hover:border-line-strong"
+                    className="focus-ring group flex min-w-0 items-start justify-between gap-4 rounded-media border border-line p-4 transition-colors duration-fast hover:border-line-strong"
                   >
                     <div className="min-w-0">
                       <p className="truncate font-bold text-ink">{evidence.source_title}</p>

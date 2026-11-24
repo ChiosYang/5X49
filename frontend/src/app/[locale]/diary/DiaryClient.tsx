@@ -34,6 +34,13 @@ function formatViewingDate(entry: ViewingTimelineEntry, locale: string, unknown:
   }).format(date);
 }
 
+function formatDayStamp(entry: ViewingTimelineEntry) {
+  const { watched_at: value, watched_at_precision: precision } = entry.viewing;
+  if (!value || precision === "unknown") return "—";
+  if (precision === "year") return value.slice(0, 4);
+  return value.slice(8, 10) || "—";
+}
+
 function ViewingDiaryClient() {
   const t = useTranslations("Diary");
   const locale = useLocale();
@@ -129,9 +136,9 @@ function ViewingDiaryClient() {
         </div>
       ) : null}
 
-      {selectedViewing && editorFilmId ? <div id="viewing-editor" className="max-w-2xl border border-line p-4">
-        <p className="font-bold text-ink">{entries.find(entry => entry.film.id === editorFilmId)?.film.title || t("filmFallback")}</p>
-        <p className="mt-1 text-sm text-ink-subtle">{selectedViewing.watched_at || t("unknownDate")}</p>
+      {selectedViewing && editorFilmId ? <div id="viewing-editor" className="max-w-2xl rounded-media border border-line bg-surface/60 p-5">
+        <p className="font-semibold text-ink">{entries.find(entry => entry.film.id === editorFilmId)?.film.title || t("filmFallback")}</p>
+        <p className="mt-1 font-mono text-xs tabular-nums text-ink-subtle">{selectedViewing.watched_at || t("unknownDate")}</p>
         <ViewingInlineEditor key={selectedViewing.id} filmId={editorFilmId} viewing={selectedViewing}
           onBusyChange={setEditorBusy} onCancel={() => setSelectedViewing(null)} onSaved={() => setContinuation(null)} />
       </div> : null}
@@ -139,9 +146,9 @@ function ViewingDiaryClient() {
         <StateMessage>{filmId ? t("emptyFilm") : t("empty")}</StateMessage>
       ) : (
         groups.map((group) => (
-          <section key={group.key} className="grid gap-5 border-t border-line pt-6 lg:grid-cols-[220px_minmax(0,1fr)]">
-            <div className="flex items-start gap-3 type-label text-ink-subtle">
-              <CalendarDays className="mt-0.5 h-4 w-4 shrink-0" />
+          <section key={group.key} className="grid gap-5 border-t border-line pt-7 lg:grid-cols-[200px_minmax(0,1fr)] lg:gap-10">
+            <div className="flex items-start gap-2.5 pt-0.5 text-sm font-medium tracking-wide text-ink-muted">
+              <CalendarDays className="mt-0.5 h-4 w-4 shrink-0 text-ink-subtle" />
               <span>
                 {group.kind === "month"
                   ? new Intl.DateTimeFormat(locale, { year: "numeric", month: "long" }).format(
@@ -152,26 +159,60 @@ function ViewingDiaryClient() {
                     : t("unknownDate")}
               </span>
             </div>
-            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+            <div className="divide-y divide-line border-t border-line lg:border-t-0">
               {group.entries.map((entry) => (
-                <article key={entry.viewing.id} className="min-w-0 border border-line bg-surface p-4">
+                <article key={entry.viewing.id} className="min-w-0 py-4 first:pt-4 lg:first:pt-0">
                   <div className="flex items-start justify-between gap-4">
-                    <div className="min-w-0">
-                      {entry.film.in_library ? (
-                        <Link href={`/library/${entry.film.id}`} id={`viewing-link-${entry.viewing.id}`} onClick={() => rememberFilmReturn(entry.film.id, `viewing-link-${entry.viewing.id}`)} className="focus-ring block truncate font-bold text-ink hover:text-ink-muted">
-                          {entry.film.title}
-                        </Link>
-                      ) : (
-                        <p className="truncate font-bold text-ink">{entry.film.title}</p>
-                      )}
-                      <p className="type-meta mt-1 text-ink-subtle">
-                        {entry.film.year || t("yearUnknown")} · {formatViewingDate(entry, locale, t("unknownDate"))}
-                      </p>
+                    <div className="flex min-w-0 flex-1 items-start gap-4 sm:gap-6">
+                      <span aria-hidden="true" className="w-10 shrink-0 pt-0.5 font-mono text-xl font-light leading-none tabular-nums text-ink-subtle">
+                        {formatDayStamp(entry)}
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-baseline gap-x-2.5 gap-y-1">
+                          {entry.film.in_library ? (
+                            <Link href={`/library/${entry.film.id}`} id={`viewing-link-${entry.viewing.id}`} onClick={() => rememberFilmReturn(entry.film.id, `viewing-link-${entry.viewing.id}`)} className="focus-ring max-w-full truncate text-base font-semibold tracking-tight text-ink transition-colors hover:text-ink-muted sm:text-lg">
+                              {entry.film.title}
+                            </Link>
+                          ) : (
+                            <p className="max-w-full truncate text-base font-semibold tracking-tight text-ink sm:text-lg">{entry.film.title}</p>
+                          )}
+                          <span className="shrink-0 font-serif text-sm italic text-ink-subtle">
+                            {entry.film.year || t("yearUnknown")}
+                          </span>
+                        </div>
+                        <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 type-meta text-ink-subtle">
+                          <span className="tabular-nums">{formatViewingDate(entry, locale, t("unknownDate"))}</span>
+                          <span>·</span>
+                          <span>{t("sourceLabel", {
+                            source: entry.viewing.source === "manual"
+                              ? t("sources.manual")
+                              : entry.viewing.source === "diary"
+                                ? t("sources.diary")
+                                : t("sources.external", { source: entry.viewing.source }),
+                          })}</span>
+                          {!entry.viewing.editable ? <span className="text-warning">{t("readOnly")}</span> : null}
+                          {entry.profile_state.favorite ? <Heart className="h-3.5 w-3.5 fill-current text-ink" aria-label={t("favorite")} /> : null}
+                          {entry.profile_state.rating ? (
+                            <span className="inline-flex items-center gap-1 tabular-nums text-ink">
+                              <Star className="h-3.5 w-3.5 fill-current" /> {t("filmRating")}: {entry.profile_state.rating}/5
+                            </span>
+                          ) : null}
+                        </div>
+                        <ViewingReview viewing={entry.viewing} />
+                        {view === "recent" ? (
+                          <Link
+                            href={`/diary?film=${entry.film.id}`}
+                            className="focus-ring duration-fast mt-3 inline-flex min-h-9 items-center rounded-pill border border-line px-3.5 type-badge text-ink-muted transition-colors hover:border-line-strong hover:text-ink"
+                          >
+                            {t("viewAll")}
+                          </Link>
+                        ) : null}
+                      </div>
                     </div>
                     <button
                       type="button"
                       disabled={editorBusy}
-                      className="focus-ring duration-fast flex h-9 w-9 shrink-0 items-center justify-center border border-line text-ink-muted transition-colors hover:border-line-strong hover:text-ink"
+                      className="focus-ring duration-fast flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-line text-ink-muted transition-colors hover:border-line-strong hover:text-ink"
                       aria-label={entry.viewing.editable ? t("editViewing") : t("viewViewing")}
                       title={entry.viewing.editable ? t("editViewing") : t("viewViewing")}
                       aria-expanded={selectedViewing?.id === entry.viewing.id}
@@ -180,34 +221,9 @@ function ViewingDiaryClient() {
                         requestAnimationFrame(() => document.getElementById("viewing-editor")?.scrollIntoView({ block: "center" }));
                       }}
                     >
-                      {entry.viewing.editable ? <Edit3 className="h-4 w-4" /> : <Info className="h-4 w-4" />}
+                      {entry.viewing.editable ? <Edit3 className="h-3.5 w-3.5" /> : <Info className="h-3.5 w-3.5" />}
                     </button>
                   </div>
-                  <div className="mt-5 flex flex-wrap items-center gap-3 border-t border-line pt-3 type-meta text-ink-subtle">
-                    <span>{t("sourceLabel", {
-                      source: entry.viewing.source === "manual"
-                        ? t("sources.manual")
-                        : entry.viewing.source === "diary"
-                          ? t("sources.diary")
-                          : t("sources.external", { source: entry.viewing.source }),
-                    })}</span>
-                    {!entry.viewing.editable ? <span className="text-warning">{t("readOnly")}</span> : null}
-                    {entry.profile_state.favorite ? <Heart className="h-3.5 w-3.5 fill-current text-ink" aria-label={t("favorite")} /> : null}
-                    {entry.profile_state.rating ? (
-                      <span className="inline-flex items-center gap-1 text-ink">
-                        <Star className="h-3.5 w-3.5 fill-current" /> {t("filmRating")}: {entry.profile_state.rating}/5
-                      </span>
-                    ) : null}
-                  </div>
-                  <ViewingReview viewing={entry.viewing} />
-                  {view === "recent" ? (
-                    <Link
-                      href={`/diary?film=${entry.film.id}`}
-                      className="focus-ring duration-fast mt-4 inline-flex min-h-9 items-center border border-line px-3 type-badge text-ink-muted transition-colors hover:border-line-strong hover:text-ink"
-                    >
-                      {t("viewAll")}
-                    </Link>
-                  ) : null}
                 </article>
               ))}
             </div>
@@ -217,7 +233,7 @@ function ViewingDiaryClient() {
 
       {nextOffset !== null ? (
         <div className="flex flex-col items-center gap-3 border-t border-line pt-8">
-          <Button busy={loadingMore} onClick={loadMore}>{t("loadMore")}</Button>
+          <Button size="sm" className="rounded-pill px-6" busy={loadingMore} onClick={loadMore}>{t("loadMore")}</Button>
           <div aria-live="polite" className="min-h-5 text-sm text-danger">{loadMoreError}</div>
         </div>
       ) : null}
@@ -235,13 +251,13 @@ export default function DiaryClient() {
     <header>
       <h1 className="type-display-editorial text-ink">{view === "dna" ? dna("title") : t("title")}</h1>
     </header>
-    {!film ? <nav aria-label={t("viewMode")} className="grid w-full grid-cols-3 gap-2 border-y border-line py-3 sm:flex sm:flex-wrap">
+    {!film ? <nav aria-label={t("viewMode")} className="scrollbar-minimal flex items-center gap-7 overflow-x-auto border-b border-line">
       {(["timeline", "recent", "dna"] as const).map((mode) => <Link
         key={mode}
         href={mode === "timeline" ? "/diary" : `/diary?view=${mode}`}
         aria-current={view === mode ? "page" : undefined}
         scroll={false}
-        className={`focus-ring duration-fast flex min-h-10 min-w-0 items-center justify-center border px-3 py-2 text-center type-label transition-colors sm:px-4 ${view === mode ? "border-ink bg-inverse text-inverse-ink" : "border-line text-ink-muted hover:border-line-strong hover:text-ink"}`}
+        className={`focus-ring duration-fast -mb-px inline-flex min-h-11 shrink-0 items-center border-b-2 pb-3 type-label transition-colors ${view === mode ? "border-ink text-ink" : "border-transparent text-ink-subtle hover:text-ink"}`}
       >{mode === "dna" ? dna("title") : t(mode === "recent" ? "recentView" : "timelineView")}</Link>)}
     </nav> : null}
     {view === "dna" ? <CinemaDnaClient /> : <ViewingDiaryClient />}
