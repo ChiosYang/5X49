@@ -55,6 +55,7 @@ class LibrarySyncService:
         results = [{"id": root_id(root), "state": "not_scanned", "scanned": 0,
                     "added": 0, "errors": 0, "skipped_links": 0} for root in roots]
         total = {"scanned": 0, "added": 0, "missing": 0}
+        batch_committed = False
         try:
             self._progress(ctx, "discover", "Discovering configured media roots")
             cache = self._video_probe_cache()
@@ -83,6 +84,8 @@ class LibrarySyncService:
                         check_observation=(lambda session, payload: self._validate_observation(
                             payload, root, ctx, session=session)) if enforce_config else None,
                     )
+                    # An update to an existing film also commits when added is zero.
+                    batch_committed = True
                     row["added"] += added
                     total["added"] += added
                 row["state"] = "partial" if scanner.errors else "complete"
@@ -101,17 +104,20 @@ class LibrarySyncService:
                 ctx.progress(stage="finalize", message="Finalizing Library reconcile", counts=total)
             self._set_status(state="idle" if result["complete"] else "partial",
                 last_finished_at=datetime.now(timezone.utc).isoformat(), last_result=result)
-            library_event_bus.publish_library_changed("reconcile", result=result)
-            event_store.safe_append("LibraryReconciled", "library", None, result)
-            return result
         except Exception as exc:
             for row in results:
                 if row["state"] == "running":
                     row["state"] = "interrupted"
+            result = {**total, "roots": results, "complete": False}
             self._set_status(state="interrupted" if type(exc).__name__ == "JobCancelled" else "error",
                 last_finished_at=datetime.now(timezone.utc).isoformat(),
-                last_error=type(exc).__name__, last_result={**total, "roots": results, "complete": False})
+                last_error=type(exc).__name__, last_result=result)
+            if batch_committed or total["missing"]:
+                library_event_bus.publish_library_changed("reconcile", result=result)
             raise
+        library_event_bus.publish_library_changed("reconcile", result=result)
+        event_store.safe_append("LibraryReconciled", "library", None, result)
+        return result
 
     def _validate_observation(self, payload, root, ctx, *, session=None):
         self._check_scan(ctx, root, True, session=session)

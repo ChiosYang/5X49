@@ -125,8 +125,11 @@ class MediaRootsTests(unittest.TestCase):
         self.assertIsNone(metadata_scraper._film_folder({'folder_name': 'Same', 'media_path': str(absent)}))
 
     def test_early_interruption_does_not_claim_root_completed(self):
-        with patch.object(NFOScanner, 'scan_observed', side_effect=RuntimeError('cancelled early')):
+        with patch.object(NFOScanner, 'scan_observed', side_effect=RuntimeError('cancelled early')), patch(
+            'app.services.library_sync.library_event_bus.publish_library_changed'
+        ) as notify:
             with self.assertRaises(RuntimeError): self.service.reconcile()
+        notify.assert_not_called()
         result = self.service.get_status()['last_result']
         self.assertFalse(result['complete'])
         self.assertEqual([row['state'] for row in result['roots']], ['interrupted', 'not_scanned'])
@@ -147,14 +150,18 @@ class MediaRootsTests(unittest.TestCase):
                 raise JobCancelled('stop after first batch')
             return persist(batch, **kwargs)
 
-        with patch('app.services.library_sync.SCAN_BATCH_SIZE', 1), patch.object(
-            library.library_manager, 'add_observations', side_effect=interrupt_after_first
-        ), self.assertRaises(JobCancelled):
+        with (
+            patch('app.services.library_sync.SCAN_BATCH_SIZE', 1),
+            patch.object(library.library_manager, 'add_observations', side_effect=interrupt_after_first),
+            patch('app.services.library_sync.library_event_bus.publish_library_changed') as notify,
+            self.assertRaises(JobCancelled),
+        ):
             self.service.reconcile()
         partial = self.items()
         self.assertEqual(len(partial), 2)
         self.assertEqual(partial[old_id]['availability_status'], 'available')
         receipt = self.service.get_status()['last_result']
+        notify.assert_called_once_with('reconcile', result=receipt)
         self.assertFalse(receipt['complete'])
         self.assertEqual((receipt['scanned'], receipt['added']), (2, 1))
         retry = self.service.reconcile()
@@ -163,6 +170,51 @@ class MediaRootsTests(unittest.TestCase):
         self.assertEqual(len(final), 3)
         self.assertTrue(partial.keys() <= final.keys())
         self.assertEqual(final[old_id]['availability_status'], 'missing')
+
+    def test_failed_rescan_notifies_for_committed_updates_without_additions(self):
+        first = self.movie(self.a, 'one/One.mkv', 303)
+        self.movie(self.a, 'two/Two.mkv', 304)
+        self.service.reconcile()
+        first.with_suffix('.nfo').write_text('<movie><title>Updated</title><tmdbid>303</tmdbid></movie>')
+        with patch('app.services.library_sync.SCAN_BATCH_SIZE', 1), patch.object(
+            self.service, '_validate_observation', side_effect=[None, OSError('second batch failed')]
+        ), patch('app.services.library_sync.library_event_bus.publish_library_changed') as notify:
+            with self.assertRaisesRegex(OSError, 'second batch failed'):
+                self.service.reconcile()
+        receipt = self.service.get_status()['last_result']
+        self.assertEqual(receipt['added'], 0)
+        self.assertFalse(receipt['complete'])
+        self.assertIn('Updated', [film['title'] for film in library.library_manager.list_films()])
+        notify.assert_called_once_with('reconcile', result=receipt)
+
+    def test_interrupted_finalize_notifies_for_committed_missing_items(self):
+        removed = self.movie(self.a, 'gone/Gone.mkv', 305)
+        self.service.reconcile()
+        removed.unlink()
+        removed.with_suffix('.nfo').unlink()
+        context = Mock()
+        def fail_finalize(*, stage, **kwargs):
+            if stage == 'finalize':
+                raise RuntimeError('finalize interrupted')
+        context.progress.side_effect = fail_finalize
+        with patch('app.services.library_sync.library_event_bus.publish_library_changed') as notify:
+            with self.assertRaisesRegex(RuntimeError, 'finalize interrupted'):
+                self.service.reconcile(ctx=context)
+        receipt = self.service.get_status()['last_result']
+        self.assertEqual((receipt['scanned'], receipt['missing']), (0, 1))
+        notify.assert_called_once_with('reconcile', result=receipt)
+
+    def test_failure_inside_first_batch_rolls_back_without_notifying(self):
+        self.movie(self.a, 'one/One.mkv', 306)
+        self.movie(self.a, 'two/Two.mkv', 307)
+        with (
+            patch.object(self.service, '_validate_observation', side_effect=[None, OSError('write failed')]),
+            patch('app.services.library_sync.library_event_bus.publish_library_changed') as notify,
+            self.assertRaisesRegex(OSError, 'write failed'),
+        ):
+            self.service.reconcile()
+        self.assertEqual(self.items(), {})
+        notify.assert_not_called()
 
     def test_scan_validation_can_read_job_and_settings_after_sqlite_cache_spills(self):
         from app.jobs import store as jobs
