@@ -1,7 +1,8 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useId, useRef, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
+import useSWR from "swr";
 import { Button } from "@/components/ui/Button";
 import { InlineFeedback } from "@/components/ui/Feedback";
 import MediaScanResults from "@/components/settings/MediaScanResults";
@@ -10,14 +11,18 @@ import { useSettingsScanGuard } from "@/hooks/useSettingsScanGuard";
 import { useLibraryExternalScoresStatus, useLibraryOrganizeStatus, useLibraryScrapeStatus, useRefreshLibraryExternalScores, useScrapeLibrary, useTmdbSettings } from "@/hooks/useSettings";
 import { useWorkflowCache, useWorkflows } from "@/hooks/useWorkflows";
 import { Link } from "@/i18n/routing";
+import { API } from "@/lib/api";
 import { settingsHref } from "@/lib/settings-navigation";
+import type { IdentityReviewPage } from "@/types/identity-review";
 import type { WorkflowAccepted } from "@/types/movie";
 import LibraryOfflineCare from "../library/LibraryOfflineCare";
 
 export default function LibraryMaintenanceSettings() {
-  const area = useTranslations("SettingsArea"), t = useTranslations("LibraryManagement.constellation");
+  const area = useTranslations("SettingsArea"), t = useTranslations("LibraryManagement.constellation"), reviewT = useTranslations("IdentityReview");
   const locale = useLocale();
+  const reviewCountId = useId();
   const metadata = useLibraryScrapeStatus(), scores = useLibraryExternalScoresStatus(), organizer = useLibraryOrganizeStatus(), tmdb = useTmdbSettings();
+  const reviews = useSWR<IdentityReviewPage>(API.identityReviews(0));
   const scrape = useScrapeLibrary(), refreshScores = useRefreshLibraryExternalScores();
   const workflows = useWorkflows();
   const { upsertWorkflow, refreshWorkflows } = useWorkflowCache();
@@ -55,6 +60,25 @@ export default function LibraryMaintenanceSettings() {
       {scores.error || scores.data?.last_error ? <InlineFeedback tone="error">{scores.data?.last_error || t("loadFailed")}</InlineFeedback> : null}
     </section>
     <section id="root-files" className="scroll-mt-28 space-y-3 border-b border-line pb-6"><h3 className="type-label text-ink-muted">{area("rootFiles")}</h3><Link href="/library?view=inbox" className="focus-ring inline-flex min-h-11 items-center text-sm underline underline-offset-4">{t("actions.organize-files.label")}</Link>{organizer.error || organizer.data?.last_error ? <InlineFeedback tone="error">{organizer.data?.last_error || t("loadFailed")}</InlineFeedback> : null}</section>
+    <section id="identity-review" className="scroll-mt-28 space-y-3 border-b border-line pb-6">
+      <h3 className="type-label text-ink-muted">{reviewT("title")}</h3>
+      <div className="flex flex-wrap items-center gap-3">
+        {/* Keep this static destination out of the Film detail interception route. */}
+        <a
+          href={`/${locale}/library/identity-review`}
+          aria-describedby={reviews.data ? reviewCountId : undefined}
+          className="focus-ring inline-flex min-h-11 items-center text-sm underline underline-offset-4"
+        >
+          {reviewT("title")}
+        </a>
+        {reviews.data ? (
+          <span id={reviewCountId} className="type-meta rounded-pill border border-line px-2.5 py-1 text-ink-subtle">
+            {reviewT("count", { count: reviews.data.total })}
+          </span>
+        ) : null}
+      </div>
+      {reviews.error ? <InlineFeedback tone="error">{reviewT("loadFailed")}</InlineFeedback> : null}
+    </section>
     <section id="missing-files" className="scroll-mt-28"><LibraryOfflineCare embedded scanDisabled={scanBlocked} filmsHref="/library" /></section>
     <div role={notice?.failed ? "alert" : "status"} aria-live="polite">{notice ? <InlineFeedback tone={notice.failed ? "error" : "success"}>{notice.text}</InlineFeedback> : null}</div>
     <MaintenanceWorkflows scanBlocked={scanBlocked} />
