@@ -89,6 +89,11 @@
   line-height: 0.9;
   letter-spacing: -0.04em;
   overflow-wrap: anywhere;
+
+  &:lang(zh) {
+    font-family: var(--font-sans);
+    letter-spacing: -0.025em;
+  }
 }
 
 @utility type-display-film {
@@ -126,6 +131,7 @@
   line-height: 1.5;
 
   &:lang(zh) {
+    font-family: var(--font-sans);
     font-style: normal;
   }
 }

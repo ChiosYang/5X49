@@ -220,8 +220,12 @@ export default async function MovieDetailView({ film, routeFilmId }: { film: Lib
           </div>
         </div>
 
-        <FilmPersonalState filmId={film.id} initialState={film.profile_state} />
-        <MovieViewingSection filmId={film.id} filmTitle={film.title} />
+        <section className="border-b border-line-strong px-8 py-10 md:px-16 lg:py-12">
+          <div className="grid grid-cols-1 gap-10 lg:grid-cols-[minmax(0,22rem)_minmax(0,1fr)] lg:gap-12">
+            <FilmPersonalState filmId={film.id} initialState={film.profile_state} embedded />
+            <MovieViewingSection filmId={film.id} filmTitle={film.title} embedded />
+          </div>
+        </section>
 
         <MovieAnalysisSection filmId={film.id} initialFilm={film} />
 
