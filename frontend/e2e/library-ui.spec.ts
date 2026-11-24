@@ -61,12 +61,10 @@ test.describe('desktop with a mouse', () => {
     await expect(page.getByRole('form', { name: 'Library filters' })).toHaveCount(0);
     await expect(page.locator('h1')).toHaveClass(/type-display-editorial/);
     await expect(page.getByRole('link', { name: 'Identity review', exact: true })).toHaveCount(0);
-    await page.getByRole('button', { name: 'More', exact: true }).click();
-    await expect(page.getByRole('menuitem', { name: 'Identity review', exact: true })).toHaveAttribute('href', '/en/library/identity-review');
-    await page.keyboard.press('Escape');
+    await expect(page.getByRole('button', { name: 'More', exact: true })).toHaveCount(0);
     const grid = page.locator('.library-card-media').first().locator('..').locator('..').locator('..');
     expect(await grid.evaluate(el => getComputedStyle(el).gridTemplateColumns.split(' ').length)).toBe(4);
-    for (const name of ['Filter', 'Sort', 'Scan for Films', 'More']) {
+    for (const name of ['Filter', 'Sort', 'Scan for Films']) {
       const button = page.getByRole('button', { name, exact: true });
       await expect(button).toHaveAttribute('title', name);
       expect(await button.innerText()).toBe('');
@@ -135,7 +133,7 @@ test.describe('desktop with a mouse', () => {
     await expect(dialog.getByRole('link', { name: 'Clear all conditions', exact: true })).toBeFocused();
     await page.keyboard.press('Tab');
     await expect(dialog.getByRole('button', { name: 'Close filters', exact: true })).toBeFocused();
-    await expect(page.getByRole('button', { name: 'More', exact: true })).toHaveCount(0); // Modal background is isolated.
+    await expect(page.getByRole('button', { name: 'Scan for Films', exact: true })).toHaveCount(0); // Modal background is isolated.
     await expect(dialog.getByLabel('Earliest year', { exact: true })).toHaveValue('1900');
     await capture(page, 'library-ui-filter-drawer.png');
     await page.keyboard.press('Escape');
@@ -164,10 +162,11 @@ test('touch entry, narrow drawer, menu keyboard and Chinese layout remain usable
   await capture(page, 'library-ui-touch-actions.png');
   await trigger.tap();
   await expect(page.locator('.library-card-inspector').first()).toBeHidden();
-  await page.getByRole('button', { name: 'More', exact: true }).click();
-  await page.getByRole('menuitem', { name: 'Activity', exact: true }).focus();
+  await expect(page.getByRole('button', { name: 'More', exact: true })).toHaveCount(0);
+  const sortButton = page.getByRole('button', { name: 'Sort', exact: true });
+  await sortButton.click();
   await page.keyboard.press('Escape');
-  await expect(page.getByRole('button', { name: 'More', exact: true })).toBeFocused();
+  await expect(sortButton).toBeFocused();
   for (const [width, columns] of [[360, 1], [768, 2], [1024, 3], [1920, 4]]) {
     await page.setViewportSize({ width, height: 900 });
     const grid = page.locator('.library-card-media').first().locator('..').locator('..').locator('..');

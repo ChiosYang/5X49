@@ -27,52 +27,16 @@ test.beforeEach(async ({ context }) => {
 
 for (const locale of ['en', 'zh'] as const) {
   for (const width of [1440, 390, 320]) {
-    test(`${locale} More owns identity review and sidebar omits Search at ${width}px`, async ({ page, request }) => {
+    test(`${locale} Library omits More, Settings maintenance owns identity review and sidebar omits Search at ${width}px`, async ({ page, request }) => {
       const copy = locale === 'en' ? en : zh;
       const writes: string[] = [];
       page.on('request', req => { if (req.method() !== 'GET' && req.url().includes('/api/')) writes.push(req.url()); });
       await page.setViewportSize({ width, height: 900 });
       await page.goto(`/${locale}/library?q=Identity&sort=duration&dir=desc`);
-      const original = page.url();
       const nav = page.locator('nav.navigation-bar');
-      const more = page.getByRole('button', { name: copy.LibraryCare.more, exact: true });
-      const menu = page.getByRole('menu', { name: copy.LibraryCare.more, exact: true });
-      const identity = menu.getByRole('menuitem', { name: copy.LibraryCare.identityReview, exact: true });
+      await expect(page.getByRole('button', { name: copy.LibraryCare.more, exact: true })).toHaveCount(0);
       await expect(page.getByRole('link', { name: copy.LibraryCare.identityReview, exact: true })).toHaveCount(0);
       await capture(page, `header-${locale}-${width}`);
-      await more.click();
-      await expect(menu).toBeVisible();
-      const { total } = await (await request.get(`${backend}/library/identity-reviews`)).json();
-      await expect(identity).toHaveAccessibleDescription(new RegExp(String(total)));
-      await expect(identity).toContainText(String(total));
-      await expect(identity).toHaveAttribute('href', `/${locale}/library/identity-review`);
-      await capture(page, `more-${locale}-${width}`);
-      expect(await menu.evaluate(element => element.getBoundingClientRect().left >= 0 && element.getBoundingClientRect().right <= innerWidth)).toBe(true);
-      await page.keyboard.press('Escape');
-      await expect(menu).toHaveCount(0);
-      await expect(more).toBeFocused();
-
-      await more.press('ArrowDown');
-      await expect(identity).toBeFocused();
-      await identity.press('End');
-      await expect(menu.getByRole('menuitem', { name: copy.LibraryCare.librarySettings, exact: true })).toBeFocused();
-      await page.keyboard.press('ArrowDown');
-      await expect(identity).toBeFocused();
-      await page.keyboard.press('ArrowUp');
-      await page.keyboard.press('Tab');
-      await expect(menu).toHaveCount(0); // Tab exits instead of trapping focus.
-      await more.focus();
-      await more.press('Enter');
-      await expect(identity).toBeFocused();
-      await identity.press('Enter');
-      await expect(page.getByRole('heading', { name: copy.IdentityReview.title, exact: true })).toBeVisible();
-      await expect(page.locator('html')).toHaveAttribute('lang', locale);
-      await page.goBack();
-      await expect(page).toHaveURL(original);
-      await expect(more).toHaveAttribute('aria-expanded', 'false');
-      await more.click();
-      await page.locator('h1').click();
-      await expect(menu).toHaveCount(0);
 
       const sidebarTrigger = nav.getByRole('button', { name: copy.Navigation.menu, exact: true });
       await sidebarTrigger.click();
@@ -93,20 +57,36 @@ for (const locale of ['en', 'zh'] as const) {
       await search.press('Enter');
       await expect.poll(() => new URL(page.url()).searchParams.get('q')).toBe('Identity');
       await expect(page.locator('.library-card-media')).toHaveCount(2);
+
+      await page.goto(`/${locale}/settings?section=library-maintenance`);
+      const maintenanceUrl = page.url();
+      const identity = page.getByRole('link', { name: copy.IdentityReview.title, exact: true });
+      const { total } = await (await request.get(`${backend}/library/identity-reviews`)).json();
+      await expect(identity).toBeVisible();
+      await expect(identity).toHaveAccessibleDescription(new RegExp(String(total)));
+      await expect(identity).toHaveAttribute('href', `/${locale}/library/identity-review`);
+      await capture(page, `maintenance-identity-${locale}-${width}`);
+      await identity.click();
+      await expect(page.getByRole('heading', { name: copy.IdentityReview.title, exact: true })).toBeVisible();
+      await expect(page.locator('html')).toHaveAttribute('lang', locale);
+      await page.goBack();
+      await expect(page).toHaveURL(maintenanceUrl);
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
       expect(writes).toEqual([]);
     });
   }
 
-  test(`${locale} empty-library More still exposes identity review with a truthful zero`, async ({ page, request }) => {
+  test(`${locale} empty-library omits More and Settings maintenance exposes identity review with a truthful zero`, async ({ page, request }) => {
     const copy = locale === 'en' ? en : zh;
     await control(request, 'identity_cleanup');
     try {
       await page.goto(`/${locale}/library`);
       await expect(page.getByRole('button', { name: copy.Onboarding.scanNow, exact: true })).toBeVisible();
       await expect(page.getByRole('button', { name: copy.LibraryCare.scanNow, exact: true })).toHaveCount(0);
-      await page.getByRole('button', { name: copy.LibraryCare.more, exact: true }).click();
-      const identity = page.getByRole('menuitem', { name: copy.LibraryCare.identityReview, exact: true });
+      await expect(page.getByRole('button', { name: copy.LibraryCare.more, exact: true })).toHaveCount(0);
+
+      await page.goto(`/${locale}/settings?section=library-maintenance`);
+      const identity = page.getByRole('link', { name: copy.IdentityReview.title, exact: true });
       await expect(identity).toHaveAccessibleDescription(/0/);
       await identity.click();
       await expect(page.getByRole('heading', { name: copy.IdentityReview.title, exact: true })).toBeVisible();
